@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button'
 import { StaffChip } from '@/components/StaffChip'
 import EmptyState from '@/components/EmptyState'
 import { getStageToken } from '@/lib/stageTokens'
-import { queryKeys, fetchStory } from '@/lib/queries'
+import { queryKeys, fetchStory, useStory } from '@/lib/queries'
 import { formatStoryDate, stripStoryDatePrefix } from '@/lib/storyTitle'
+import { PLATFORM_META } from '@/lib/contentMeta'
 
 // Rows per page — bounds the rendered DOM so the list scales to thousands of
 // stories without ever mounting thousands of rows (Q: "won't scale").
@@ -18,6 +19,47 @@ const PLATFORM_SHORT = {
   blog: 'Blog', instagram: 'IG', instagram_story: 'Story', facebook: 'FB',
   linkedin: 'LI', gbp: 'GBP', google_ads: 'G Ads', instagram_ads: 'IG Ads',
   landing_page: 'LP', youtube: 'YT', tiktok: 'TT', email: 'Email',
+}
+
+// Per-channel lifecycle state for an expanded sub-row, derived from the piece's
+// own fields. Same lineage as PostsTableView.pieceState so the two surfaces
+// bucket channels identically.
+function channelState(p) {
+  if (p.status === 'failed') return 'failed'
+  if (p.status === 'published' || p.published_at) return 'published'
+  if (p.status === 'scheduled' || p.scheduled_at) return 'scheduled'
+  return 'draft'
+}
+
+// Sub-row status token: rail color + pill. Draft rides the amber act-now token
+// (needs you), scheduled = info, published = success, failed = destructive.
+const CH_STATE = {
+  draft:     { label: 'Draft',     pill: 'bg-action/15 text-action',           rail: 'border-action' },
+  scheduled: { label: 'Scheduled', pill: 'bg-info/15 text-info',               rail: 'border-info' },
+  published: { label: 'Published', pill: 'bg-success/15 text-success',          rail: 'border-success' },
+  failed:    { label: 'Failed',    pill: 'bg-destructive/15 text-destructive', rail: 'border-destructive' },
+}
+
+// When-label for a channel: scheduled shows its slot, published shows when it
+// went out; drafts have no time.
+function channelWhen(state, p) {
+  const iso = state === 'scheduled'
+    ? p.scheduled_at
+    : state === 'published'
+      ? (p.published_at || p.updated_at)
+      : null
+  if (!iso) return ''
+  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+// First non-empty line of the caption, minus a leading markdown heading marker —
+// the scannable per-channel preview. Only string content has a preview; carousel
+// slide JSON / missing content degrade to no preview (opportunistic, from the
+// full-piece detail cache the row already hover-prefetches).
+function captionPreview(content) {
+  if (typeof content !== 'string') return ''
+  const line = content.split('\n').map((l) => l.trim()).find(Boolean) || ''
+  return line.replace(/^#{1,6}\s+/, '')
 }
 
 // The story date the list sorts + groups by. created_at is the interview date
@@ -67,6 +109,17 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
   const qc = useQueryClient()
   const containerRef = useRef(null)
   const [page, setPage] = useState(0)
+  // Expanded story ids — a Set keyed by story.id (NOT row index) so re-sorts,
+  // filter changes, and pagination keep the right rows open and never jump.
+  const [expanded, setExpanded] = useState(() => new Set())
+  function toggleExpand(id) {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const query          = (searchParams.get('q') || '').trim().toLowerCase()
   const sortAsc        = searchParams.get('sort') === 'oldest'
@@ -166,6 +219,7 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
         <table className="w-full min-w-[760px] border-collapse text-sm">
           <thead>
             <tr className="bg-muted/60 text-muted-foreground">
+              <th className="w-9 px-1" aria-hidden="true"></th>
               <th className="text-left font-semibold text-2xs uppercase tracking-wide px-3.5 py-2 w-24">Date</th>
               <th className="text-left font-semibold text-2xs uppercase tracking-wide px-3.5 py-2">Subject</th>
               <th className="text-left font-semibold text-2xs uppercase tracking-wide px-3.5 py-2 w-40">Author</th>
@@ -194,12 +248,13 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
               const failedPlatforms = [...new Set(pieces.filter((p) => p.status === 'failed').map((p) => p.platform))]
               const hasFailed = failedPlatforms.length > 0
               const subject = storySubject(s)
+              const isExpanded = expanded.has(s.id)
 
               return (
                 <RowGroup key={s.id}>
                   {showMonth && (
                     <tr aria-hidden="true">
-                      <td colSpan={6} className="bg-muted/40 text-2xs font-bold uppercase tracking-wider text-muted-foreground px-3.5 py-1.5">
+                      <td colSpan={7} className="bg-muted/40 text-2xs font-bold uppercase tracking-wider text-muted-foreground px-3.5 py-1.5">
                         {ml}
                       </td>
                     </tr>
@@ -213,6 +268,21 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
                     })}
                     className="border-b border-border/60 last:border-b-0 hover:bg-primary/5 cursor-pointer transition-colors"
                   >
+                    <td className="px-1 align-middle w-9">
+                      {/* Disclosure — expands the story into per-channel sub-rows.
+                          stopPropagation so opening channels never also fires the
+                          row's navigate-to-StoryDetail. Row click, hover-prefetch,
+                          and the Subject link all stay intact. */}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); toggleExpand(s.id) }}
+                        aria-expanded={isExpanded}
+                        aria-label={isExpanded ? 'Hide channels' : 'Show channels'}
+                        className="inline-flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-colors"
+                      >
+                        <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} aria-hidden="true" />
+                      </button>
+                    </td>
                     <td className={`px-3.5 py-2.5 align-middle whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground border-l-2 ${rail}`}>
                       {fmtShortDate(ms)}
                     </td>
@@ -285,6 +355,7 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
                       {s.pieces_count ?? 0}
                     </td>
                   </tr>
+                  {isExpanded && <ExpandedChannelRows story={s} />}
                 </RowGroup>
               )
             })}
@@ -320,4 +391,71 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
 // story row as adjacent rows under one stable key.
 function RowGroup({ children }) {
   return <>{children}</>
+}
+
+/**
+ * Per-channel sub-rows for an expanded story. Mounted only while the row is
+ * expanded, so useStory fetches lazily on first expand — reusing the same
+ * queryKeys.stories.detail cache the row already warms on hover (no new N+1).
+ *
+ * The full-piece detail carries `content`, so a caption preview shows once the
+ * detail query resolves; until then (or for the slim list shape) it degrades to
+ * platform + status + time + Edit. Each row's Edit opens /publish/:pieceId
+ * (StoryboardPublish) — the same canonical per-channel editor a story piece
+ * already uses. Module scope (react-hooks/static-components).
+ */
+function ExpandedChannelRows({ story }) {
+  const { data } = useStory(story.id)
+  // Prefer the full pieces (with caption content) once loaded; fall back to the
+  // slim list-shape pieces so status/platform/time render instantly on expand.
+  const pieces = (data?.pieces?.length ? data.pieces : story.pieces) || []
+
+  if (pieces.length === 0) {
+    return (
+      <tr className="bg-muted/25">
+        <td colSpan={7} className="px-3.5 py-3 text-2xs text-muted-foreground pl-12">
+          No channels yet for this story.
+        </td>
+      </tr>
+    )
+  }
+
+  return (
+    <>
+      {pieces.map((p) => {
+        const state = channelState(p)
+        const meta = CH_STATE[state]
+        const label = PLATFORM_META[p.platform]?.label || PLATFORM_SHORT[p.platform] || p.platform
+        const preview = captionPreview(p.content)
+        const when = channelWhen(state, p)
+        return (
+          <tr key={p.id} className="bg-muted/25 border-b border-dashed border-border/50 last:border-b-0">
+            <td colSpan={7} className="p-0">
+              <div className={`flex items-center gap-3 py-2 pr-3.5 border-l-2 pl-11 ${meta.rail}`}>
+                <span className="w-24 shrink-0 text-xs font-bold text-foreground truncate" title={label}>
+                  {label}
+                </span>
+                <span className="flex-1 min-w-0 truncate text-xs text-muted-foreground" title={preview || undefined}>
+                  {preview || <span className="italic">No caption yet</span>}
+                </span>
+                <span className={`shrink-0 text-3xs font-bold px-2 py-0.5 rounded-full ${meta.pill}`}>
+                  {meta.label}
+                </span>
+                <span className="w-28 shrink-0 text-right text-2xs text-muted-foreground tabular-nums whitespace-nowrap">
+                  {when}
+                </span>
+                <Link
+                  to={`/publish/${p.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="shrink-0 text-xs font-semibold text-primary px-2.5 py-1 rounded-md border border-primary/30 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-colors"
+                >
+                  Edit →
+                </Link>
+              </div>
+            </td>
+          </tr>
+        )
+      })}
+    </>
+  )
 }
