@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { Loader2, CheckCircle2, AlertCircle, Settings, ChevronRight } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertCircle, Settings, ChevronRight, Globe, Building2 } from 'lucide-react'
 import LoadingState from '@/components/LoadingState'
 import { SaveBar } from '@/components/settings/helpers'
+import { Room, SectionGuide } from '@/components/settings/Room'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermission } from '@/lib/usePermission'
 import { CAP_SETTINGS_EDIT } from '@/lib/capabilities'
@@ -227,10 +228,19 @@ export default function WorkspaceSettings() {
         </div>
       </div>
 
+      <SectionGuide
+        items={[
+          { id: 'gen-identity', label: 'Identity',     done: !!form.display_name?.trim() },
+          { id: 'gen-web',      label: 'Web presence',  done: !!form.website?.trim() },
+        ]}
+      />
+
       {/* Lead with the two most-edited sections open; the rest collapse into
           value-summary rows below (progressive disclosure — punch-list item 6). */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <SectionCard
+        id="gen-identity"
+        icon={Building2}
         title="Identity"
         description="How this workspace introduces itself on the sign-in screen and in the browser tab."
       >
@@ -249,6 +259,8 @@ export default function WorkspaceSettings() {
       </SectionCard>
 
       <SectionCard
+        id="gen-web"
+        icon={Globe}
         title="Web presence"
         description="Where this workspace lives on the web. Drives outbound links and link previews."
       >
@@ -529,17 +541,15 @@ function DangerZone({ workspace, getToken }) {
   )
 }
 
-function SectionCard({ title, description, children, className = '' }) {
+// A primary settings section — the shared "room" shell (icon tile, title,
+// one-line purpose), matching the Brand screens. Collapsible/advanced sections
+// below still use CollapsibleSectionCard (progressive disclosure), and the
+// Danger zone keeps its own destructive Card.
+function SectionCard({ id, icon, title, description, children, className = '' }) {
   return (
-    <Card className={`rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.03)] ${className}`}>
-      <CardHeader className="pb-4">
-        <CardTitle className="text-lg font-bold">{title}</CardTitle>
-        {description && <CardDescription className="text-xs">{description}</CardDescription>}
-      </CardHeader>
-      <CardContent className="space-y-5">
-        {children}
-      </CardContent>
-    </Card>
+    <Room id={id} icon={icon} title={title} purpose={description} className={className}>
+      {children}
+    </Room>
   )
 }
 

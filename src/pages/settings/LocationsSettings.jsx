@@ -5,7 +5,7 @@ import {
   Loader2, AlertCircle, CheckCircle2, ChevronDown, ChevronRight,
   Trash2, Plus, Star, MapPin,
 } from 'lucide-react'
-import { Section } from '@/components/settings/helpers'
+import { Room } from '@/components/settings/Room'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -59,9 +59,14 @@ export default function LocationsSettings() {
         subtitle="Each physical site you operate. The primary location's city, state, keyword, and hashtag flow into all generated content. Per-post location targeting comes online in a follow-up."
       />
 
-      <Section title="Your locations">
+      <Room
+        id="loc-locations"
+        icon={MapPin}
+        title="Your locations"
+        purpose="Add, edit, and set the primary site — its city, state, keyword, and hashtag flow into generated content."
+      >
         <LocationsPanel getToken={getToken} />
-      </Section>
+      </Room>
     </div>
   )
 }
