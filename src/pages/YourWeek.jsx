@@ -188,7 +188,7 @@ function cardState(item) {
   return { label: 'in review', cls: 'bg-warning text-warning-foreground', action: 'open', reviewable: true, rail: 'bg-warning' }
 }
 
-function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly }) {
+function PlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approving, readOnly }) {
   const meta = PLATFORM_META[item.platform] || { label: item.platform, icon: null }
   const Icon = meta.icon
   const state = cardState(item)
@@ -239,7 +239,8 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
         {!readOnly && state.action === 'draft' && (
           <button
             type="button"
-            disabled={drafting}
+            disabled={drafting || draftBusy}
+            title={!drafting && draftBusy ? 'Already drafting another post — please wait' : undefined}
             onClick={() => onDraft(item)}
             className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold hover:bg-muted disabled:opacity-50"
           >
@@ -311,7 +312,7 @@ function PlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly 
 // Same status language (rail + chip + pill) and the SAME handlers as the week
 // card, but with space to show the draft excerpt inline and lay the working
 // actions out in a row — the "sit down and clear this day" surface.
-function DayPlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOnly }) {
+function DayPlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approving, readOnly }) {
   const meta = PLATFORM_META[item.platform] || { label: item.platform, icon: null }
   const Icon = meta.icon
   const state = cardState(item)
@@ -376,7 +377,8 @@ function DayPlanCard({ item, tz, onDraft, drafting, onApprove, approving, readOn
         {!readOnly && state.action === 'draft' && (
           <button
             type="button"
-            disabled={drafting}
+            disabled={drafting || draftBusy}
+            title={!drafting && draftBusy ? 'Already drafting another post — please wait' : undefined}
             onClick={() => onDraft(item)}
             className="inline-flex items-center gap-1.5 rounded-lg bg-action px-3 py-2 text-xs font-semibold text-action-foreground hover:opacity-90 disabled:opacity-50"
           >
@@ -1013,6 +1015,7 @@ export default function YourWeek() {
                               tz={tz}
                               onDraft={handleDraft}
                               drafting={draftingAtom === item.id}
+                              draftBusy={!!draftingAtom}
                               onApprove={handleApprove}
                               approving={approvingAtom === item.id}
                               readOnly={isPast}
@@ -1068,6 +1071,7 @@ export default function YourWeek() {
                               tz={tz}
                               onDraft={handleDraft}
                               drafting={draftingAtom === item.id}
+                              draftBusy={!!draftingAtom}
                               onApprove={handleApprove}
                               approving={approvingAtom === item.id}
                               readOnly={isPast}
