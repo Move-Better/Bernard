@@ -6,6 +6,8 @@
 // pair ready to pass to generateText. Returns null for unsupported platforms
 // so callers can skip gracefully.
 
+import { briefLengthLine, leanOf } from './socialLengthTargets.js'
+
 // Format an optional event date for injection into prompts.
 function fmtDate(iso) {
   if (!iso) return null
@@ -37,6 +39,7 @@ function briefBlock(brief) {
 
 export function getBriefChannelPrompt(brief, platform, workspace) {
   const wsName    = workspace?.display_name || 'us'
+  const lean      = leanOf(workspace)
   const brandTag  = workspace?.brand_hashtag  ? ` ${workspace.brand_hashtag}` : ''
   const locTag    = workspace?.location_hashtag ?? '#physicaltherapy'
   const ctaLine   = brief.cta_url
@@ -54,7 +57,8 @@ export function getBriefChannelPrompt(brief, platform, workspace) {
         instructions: `You are writing a single Instagram caption for ${wsName}.
 ${VOICE_RULE}
 PLAIN TEXT ONLY: no markdown, no asterisks, no headers.`,
-        user: `Write an Instagram caption (~150 words) based on this brief.
+        user: `Write an Instagram caption based on this brief.
+${briefLengthLine('instagram', lean)}
 ${ctx}
 
 Open with a scroll-stopping hook. Keep it personal and specific — real details, not vague promotion. Do NOT include a URL in the caption body (Instagram links don't work in captions).${ctaLine ? '\nClose with: "Link in bio 👆"' : ''}
@@ -83,7 +87,8 @@ Output ONLY those two lines. Nothing else.`,
         instructions: `You are writing a Facebook post for ${wsName}.
 ${VOICE_RULE}
 PLAIN TEXT ONLY: no markdown, no asterisks.`,
-        user: `Write a Facebook post (~200 words) based on this brief.
+        user: `Write a Facebook post based on this brief.
+${briefLengthLine('facebook', lean)}
 ${ctx}
 
 Facebook allows links in the body — include the CTA URL naturally in the post${brief.cta_label ? ` using the label "${brief.cta_label}"` : ''}.
@@ -97,7 +102,8 @@ Output ONLY the post body.`,
         instructions: `You are writing a LinkedIn post for ${wsName}.
 ${VOICE_RULE}
 PLAIN TEXT ONLY: no markdown, no asterisks.`,
-        user: `Write a LinkedIn post (~200 words) based on this brief.
+        user: `Write a LinkedIn post based on this brief.
+${briefLengthLine('linkedin', lean)}
 ${ctx}
 
 Professional but human — this is an announcement, not a press release. Include the CTA${brief.cta_url ? ` (${brief.cta_url})` : ''} naturally.
@@ -109,7 +115,8 @@ Output ONLY the post body.`,
       return {
         instructions: `You are writing a Google Business Profile post for ${wsName}.
 ${VOICE_RULE}`,
-        user: `Write a Google Business Profile post (150–300 characters) based on this brief.
+        user: `Write a Google Business Profile post based on this brief.
+${briefLengthLine('gbp', lean)}
 ${ctx}
 
 Short, factual, action-oriented. Include the key details (date, location, CTA) that searchers need. No hashtags.
@@ -120,7 +127,8 @@ Output ONLY the post text.`,
       return {
         instructions: `You are writing an X / Twitter post for ${wsName}.
 ${VOICE_RULE}`,
-        user: `Write a tweet (max 280 characters including the URL) based on this brief.
+        user: `Write a tweet based on this brief.
+${briefLengthLine('twitter', lean)}
 ${ctx}
 
 Punchy and direct. Include the CTA URL${brief.cta_url ? ` (${brief.cta_url})` : ''} if it fits.
@@ -132,7 +140,8 @@ Output ONLY the tweet text.`,
       return {
         instructions: `You are writing a Threads post for ${wsName}.
 ${VOICE_RULE}`,
-        user: `Write a Threads post (max 500 characters) based on this brief.
+        user: `Write a Threads post based on this brief.
+${briefLengthLine('threads', lean)}
 ${ctx}
 
 Conversational, community-forward. No link in body (Threads doesn't render links well). End with an open question or invitation.

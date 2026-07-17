@@ -51,6 +51,7 @@ const PATCHABLE_FIELDS = new Set([
   'engagement_digest_enabled',
   'engagement_digest_recipients',
   'publish_intent',
+  'social_length_lean',
 ])
 
 // Platforms recognized in schedule_prefs. Mirrors PLATFORM_SCHEDULE_PREFS in
@@ -617,6 +618,15 @@ async function handler(req, res) {
         const cleaned = sanitizePublishIntent(value)
         if (cleaned === null) return res.status(400).json({ error: 'invalid-publish-intent' })
         patch.publish_intent = cleaned
+        continue
+      }
+      if (key === 'social_length_lean') {
+        // Content length-lean dial. Constrained to the same values as the DB
+        // CHECK so a bad value 400s here, not 500s at the write.
+        if (value !== 'punchy' && value !== 'balanced' && value !== 'indepth') {
+          return res.status(400).json({ error: 'invalid-social-length-lean' })
+        }
+        patch.social_length_lean = value
         continue
       }
       patch[key] = value

@@ -11,6 +11,8 @@
 // can quote different moments from the same interview rather than compressing
 // the same blog summary five different ways.
 
+import { lengthLine, leanOf } from './socialLengthTargets.js'
+
 function buildVoicePhrasesBlock(phrases) {
   const list = Array.isArray(phrases) ? phrases : []
   if (!list.length) return ''
@@ -62,6 +64,7 @@ export function getAtomSystemPrompt(workspace, staffName, condition, platform, a
   void tone; void audienceLabel; void storyTypeLabel
   const firstName = staffName.split(' ')[0]
   const isPersonal = voiceMode === 'personal'
+  const lean = leanOf(workspace)
 
   // workspace.website is sometimes absent (e.g. a caller selecting a narrower
   // workspace row) — guard every interpolation so a missing site degrades to
@@ -124,37 +127,42 @@ Example shape (do NOT copy verbatim — write fresh text per the caption):
 
   const instructions = {
     instagram: {
-      hook: `Write a single Instagram caption (~175 words) for ${workspace.display_name} about ${condition}.
+      hook: `Write a single Instagram caption for ${workspace.display_name} about ${condition}.
+${lengthLine('instagram', 'hook', lean)}
 ANGLE: Open with the most scroll-stopping moment from the conversation — a myth-buster, bold claim, or surprising fact ${firstName ? `${firstName} actually said` : 'the clinician actually said'}. Make it impossible to scroll past.
 ${isPersonal ? `Write in ${firstName}'s first-person voice.` : `Use "we" and "our team" language.`}
 ${articleCtaLine}
-Add a blank line, then 8–10 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
+Add a blank line, then 3–5 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
 
-      quick_win: `Write a single Instagram caption (~175 words) for ${workspace.display_name} about ${condition}.
+      quick_win: `Write a single Instagram caption for ${workspace.display_name} about ${condition}.
+${lengthLine('instagram', 'quick_win', lean)}
 ANGLE: Lead with one actionable tip or self-test the viewer can try right now at home — something concrete that ${firstName ? `${firstName} mentioned` : 'the clinician mentioned'} in the conversation. Make it genuinely useful on its own. Do NOT reference any specific patient, case, or individual's story — keep it general and educational (no PHI).
 ${isPersonal ? `Write in ${firstName}'s first-person voice.` : `Use "we" and "our team" language.`}
 ${quickWinCtaLine}
-Add a blank line, then 8–10 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
+Add a blank line, then 3–5 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
 
-      clinical_insight: `Write a single Instagram caption (~175 words) for ${workspace.display_name} about ${condition}.
+      clinical_insight: `Write a single Instagram caption for ${workspace.display_name} about ${condition}.
+${lengthLine('instagram', 'clinical_insight', lean)}
 ANGLE: Open with the sharpest, most counterintuitive thing ${firstName ? firstName : 'the clinician'} actually said about ${condition} — the misconception they push back on — in their own framing. Do NOT use a templated "the one thing most people get wrong about…" opener; pull the real line from the conversation. Then deliver the key clinical insight ${firstName ? `${firstName} surfaced` : 'the clinician surfaced'} in the conversation.
 ${isPersonal ? `Write in ${firstName}'s first-person voice.` : `Use "we" and "our team" language.`}
 ${clinicalInsightCtaLine}
-Add a blank line, then 8–10 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
+Add a blank line, then 3–5 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
 
-      cta: `Write a single Instagram caption (~125 words) for ${workspace.display_name} about ${condition}.
+      cta: `Write a single Instagram caption for ${workspace.display_name} about ${condition}.
+${lengthLine('instagram', 'cta', lean)}
 ANGLE: Direct invitation to book. Lead with a one-line hook that mirrors back the specific pattern or experience of someone dealing with ${condition} — not a generic "Are you suffering from pain?" opener. Briefly describe what the assessment at ${workspace.display_name} actually involves (movement screen, not just "a consult"). Make the ask feel like the natural next step after the insight you led with.
 ${isPersonal ? `Write in ${firstName}'s first-person voice.` : `Use "we" and "our team" language.`}
 ${bookingCtaLine}
-Add a blank line, then 5–6 targeted local hashtags: ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}, plus condition tags.
+Add a blank line, then 3–5 targeted local hashtags: ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}, plus condition tags.
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
     },
 
     linkedin: {
-      clinical_perspective: `Write a LinkedIn post (~200 words) for ${workspace.display_name} about ${condition}.
+      clinical_perspective: `Write a LinkedIn post for ${workspace.display_name} about ${condition}.
+${lengthLine('linkedin', 'clinical_perspective', lean)}
 ANGLE: Lead with what this clinic approaches differently about ${condition} — framed for clinicians, coaches, and referring providers.
 ${isPersonal
   ? `Write in ${firstName}'s first-person professional voice — this is my clinical perspective.`
@@ -162,7 +170,8 @@ ${isPersonal
 Close with: "Happy to connect with colleagues working with patients dealing with ${condition}."
 ${linkedinUrlLine}`,
 
-      referring_provider: `Write a LinkedIn post (~200 words) for ${workspace.display_name} about ${condition}.
+      referring_provider: `Write a LinkedIn post for ${workspace.display_name} about ${condition}.
+${lengthLine('linkedin', 'referring_provider', lean)}
 ANGLE: Written specifically for referring providers — what should a GP, orthopedic surgeon, or sports medicine doc know before referring a ${condition} patient?
 ${isPersonal
   ? `Write in ${firstName}'s first-person professional voice.`
@@ -170,7 +179,8 @@ ${isPersonal
 Close with: "Happy to answer questions or discuss complex cases — reach out directly."
 ${linkedinUrlLine}`,
 
-      movement_principle: `Write a LinkedIn post (~200 words) for ${workspace.display_name} about ${condition}.
+      movement_principle: `Write a LinkedIn post for ${workspace.display_name} about ${condition}.
+${lengthLine('linkedin', 'movement_principle', lean)}
 ANGLE: Zoom out to the underlying movement principle or clinical reasoning that guides treatment. Educational for clinicians who don't specialize in this area.
 ${isPersonal
   ? `Write in ${firstName}'s first-person professional voice.`
@@ -179,7 +189,8 @@ ${linkedinUrlLine}`,
     },
 
     facebook: {
-      community: `Write a Facebook post (~125 words) for ${workspace.display_name} about ${condition}.
+      community: `Write a Facebook post for ${workspace.display_name} about ${condition}.
+${lengthLine('facebook', 'community', lean)}
 ANGLE: Community-first. Lead with the local angle — people in ${workspace.location_keyword ?? 'your area'} dealing with ${condition}. Neighbor-to-neighbor tone, not clinic broadcasting.
 ${isPersonal
   ? `Write in ${firstName}'s first-person voice — a clinician who cares about the local community.`
@@ -187,7 +198,8 @@ ${isPersonal
 ${facebookUrlLine}
 End with a question that sparks comments. 1–2 hashtags max.`,
 
-      educational: `Write a Facebook post (~125 words) for ${workspace.display_name} about ${condition}.
+      educational: `Write a Facebook post for ${workspace.display_name} about ${condition}.
+${lengthLine('facebook', 'educational', lean)}
 ANGLE: Educational myth-buster. One surprising or commonly misunderstood fact about ${condition} that ${firstName ? firstName : 'the clinician'} raised, explained simply — lead with the fact itself, not a "did you know" wind-up.
 ${isPersonal
   ? `Write in ${firstName}'s first-person voice.`
@@ -197,7 +209,8 @@ End with a question that invites comments. 1–2 hashtags max.`,
     },
 
     gbp: {
-      local_authority: `Write a Google Business Profile post (~200 words) about ${condition} for ${workspace.display_name} in ${workspace.location_keyword ?? 'your area'}.
+      local_authority: `Write a Google Business Profile post about ${condition} for ${workspace.display_name} in ${workspace.location_keyword ?? 'your area'}.
+${lengthLine('gbp', 'local_authority', lean)}
 ANGLE: Establish local authority.
 VOICE FIRST: Open with 1–2 sentences that use the clinician's distinctive diagnostic framing from the VOICE PHRASE ANCHORS above — their specific clinical insight or "how" explanation about ${condition}. Do NOT open with a generic "At [clinic] we treat..." line.
 Then connect that insight to the local context: what ${workspace.display_name} does differently for ${condition} patients in ${workspace.location_keyword ?? 'your area'}.
@@ -206,7 +219,8 @@ Close with 1–2 sentences that echo the specific insight above before the booki
 If the clinician described a specific patient or example in the conversation, USE it — a real, specific story is vivid and welcome here. Only avoid INVENTING a new patient, name, age, or recovery timeline that wasn't actually described.
 No hashtags. Conversational, not salesy.`,
 
-      patient_outcome: `Write a Google Business Profile post (~200 words) about ${condition} for ${workspace.display_name} in ${workspace.location_keyword ?? 'your area'}.
+      patient_outcome: `Write a Google Business Profile post about ${condition} for ${workspace.display_name} in ${workspace.location_keyword ?? 'your area'}.
+${lengthLine('gbp', 'patient_outcome', lean)}
 ANGLE: Results framing.
 VOICE FIRST: Open with 1–2 sentences in the clinician's authentic voice — pull a specific clinical mechanism or patient insight from the VOICE PHRASE ANCHORS above rather than leading with a generic outcomes statement.
 Then pivot to results: what does recovery from ${condition} actually look like at ${workspace.display_name}? If the clinician described a specific patient outcome in the conversation, use it — a real, specific result lands harder than a generic one. Otherwise describe a realistic general outcome ("patients typically find…" or "the goal is…"). Either way, do NOT invent a patient, name, or timeline that wasn't in the conversation.
@@ -216,7 +230,8 @@ No hashtags. Conversational, results-focused.`,
     },
 
     tiktok: {
-      myth_buster: `Write a 45–60 second TikTok / Instagram Reels script (~130 words) for ${workspace.display_name} about ${condition}.
+      myth_buster: `Write a 45–60 second TikTok / Instagram Reels script for ${workspace.display_name} about ${condition}.
+${lengthLine('tiktok', 'myth_buster', lean)}
 ANGLE: Lead with the most counterintuitive claim from the conversation. First 3 seconds must stop the scroll.
 
 [HOOK — first 3 seconds]
@@ -231,7 +246,8 @@ ${tiktokMythBusterCloseLine}
 CAPTION:
 50–80 word TikTok caption with 5–6 hashtags. Brand as ${workspace.display_name}.`,
 
-      process: `Write a 45–60 second TikTok / Instagram Reels script (~130 words) for ${workspace.display_name} about ${condition}.
+      process: `Write a 45–60 second TikTok / Instagram Reels script for ${workspace.display_name} about ${condition}.
+${lengthLine('tiktok', 'process', lean)}
 ANGLE: Show what the recovery process actually looks like step by step. Demystify the treatment.
 
 [HOOK — first 3 seconds]
@@ -248,7 +264,8 @@ CAPTION:
     },
 
     twitter: {
-      hook: `Write a single tweet (X post) for ${workspace.display_name} about ${condition}. Hard limit: 280 characters total INCLUDING any URL or hashtags.
+      hook: `Write a single tweet (X post) for ${workspace.display_name} about ${condition}.
+${lengthLine('twitter', 'hook', lean)}
 ANGLE: Pull the sharpest claim, myth-buster, or counterintuitive insight from the conversation. Make it quotable — the kind of line someone screenshots or quote-tweets.
 ${isPersonal ? `Write in ${firstName}'s first-person voice — punchy and direct.` : `Use plural "we"/"our team" but keep it punchy, not corporate.`}
 No threading. No "1/" prefix. No emoji unless the conversation's tone is unmistakably casual.
@@ -257,7 +274,8 @@ Output ONLY the tweet body. Do not include "TWEET:" or any label.`,
     },
 
     threads: {
-      community_take: `Write a single Threads post for ${workspace.display_name} about ${condition}. Hard limit: 500 characters.
+      community_take: `Write a single Threads post for ${workspace.display_name} about ${condition}.
+${lengthLine('threads', 'community_take', lean)}
 ANGLE: Conversational, opinion-forward. Open with a stance or observation that invites disagreement or "same here" replies — Threads rewards posts that spark replies, not broadcasts.
 ${isPersonal ? `Write in ${firstName}'s first-person voice — like you're posting from your phone, not a brand account.` : `Write as the clinic team but in a personal, conversational register — first names and "we" rather than third-person clinic-speak.`}
 End with an open question or invitation to share experiences. No corporate hashtag stacks — at most 1–2 lowercase hashtags if they feel natural.
@@ -266,7 +284,8 @@ Output ONLY the post body.`,
     },
 
     bluesky: {
-      clinical_share: `Write a single Bluesky post for ${workspace.display_name} about ${condition}. Hard limit: 300 characters.
+      clinical_share: `Write a single Bluesky post for ${workspace.display_name} about ${condition}.
+${lengthLine('bluesky', 'clinical_share', lean)}
 ANGLE: Considered clinician-to-clinician share — assume the reader is another health professional, athlete, or unusually informed patient. The Bluesky audience skews technical and rewards specificity over hype.
 ${isPersonal ? `Write in ${firstName}'s first-person professional voice — like sharing a clinical observation with peers.` : `Write as the clinical team. Specific, not promotional.`}
 NO hashtags (Bluesky culture doesn't use them).
@@ -276,7 +295,8 @@ Output ONLY the post body.`,
     },
 
     mastodon: {
-      educational: `Write a single Mastodon post (toot) for ${workspace.display_name} about ${condition}. Hard limit: 500 characters.
+      educational: `Write a single Mastodon post (toot) for ${workspace.display_name} about ${condition}.
+${lengthLine('mastodon', 'educational', lean)}
 ANGLE: Plain-language educational, federated-community-conscious. The Mastodon audience values: clear writing, inclusive language, accessibility, and content warnings on potentially-distressing health topics.
 ${isPersonal ? `Write in ${firstName}'s first-person voice — like a clinician posting on their personal account.` : `Write as the clinic team in a community register, not a marketing register.`}
 If ${condition} touches injury, pain, weight, eating, or mental health, prefix the post with a content warning line: \`CW: <one-phrase topic>\` on its own line, then a blank line, then the body.
