@@ -148,7 +148,10 @@ const asArray = (m) => (Array.isArray(m) ? m : [])
 
 // Resolve a content_items row to its archetype key. Applies the media-aware
 // refinements: an Instagram piece with a video is a Reel (vvideo); an
-// instagram_story with a video is a video story (storyvid).
+// instagram_story with a video is a video story (storyvid); any single-visual
+// channel (facebook/gbp/linkedin/x/…) with a video becomes a landscape video
+// (lvideo) so it routes to the timeline editor instead of SlideEditor, which is
+// photo-only and would filter the video out (it'd silently vanish, uneditable).
 export function resolveArchetype(piece) {
   const platform = piece?.platform || ''
   const media = asArray(piece?.media_urls)
@@ -157,6 +160,7 @@ export function resolveArchetype(piece) {
 
   if (platform === 'instagram' && hasVideo) key = 'vvideo'
   else if (platform === 'instagram_story' && hasVideo) key = 'storyvid'
+  else if (key === 'visual' && hasVideo) key = 'lvideo'
 
   return key
 }
