@@ -315,6 +315,42 @@ cheapest way to confirm auth, query shape, and any external API call all actuall
 merging, rather than trusting build/lint alone. Delete the script when done. Used to verify
 `cron/snapshot-social-posts.js` (PR #2220) — seeded real rows against prod on the first call.
 
+**Why that matters more than it sounds: an explicit PostgREST `select=` list is invisible to
+every gate we run.** `cron/auto-reel-week.js` shipped selecting a `workspaces.name` column that
+does not exist (the real columns are `display_name` / `app_name`). PostgREST 400s an unknown
+select column, so the handler returned `500 workspace fetch failed` on **every invocation from
+the moment it deployed** — it never rendered anything. `lint`, `typecheck`, `build`, 300+ tests
+and `verify-bundles` were all green, because none of them ever executes a query. Worse, the
+route *probed* healthy: an unauthenticated `curl` returned **401, not 404**, which only proves
+the handler is deployed and reached its auth check — it says nothing about whether the body
+works. Only calling the endpoint for real surfaced it (PR #2232).
+
+Rules: (1) a 401/400 probe proves DEPLOYED, never WORKING — after shipping a cron, invoke it
+once and read the response body; (2) `grep information_schema.columns` before writing any
+explicit `select=` list; (3) for a small-N query feeding a render path that consumes the broad
+`workspaceContext()` shape, prefer `select=*` — an explicit list there is a standing trap where
+one newly-required column silently 400s the whole job.
+
+### Long per-item work: persist as each item lands, never batch to the end
+
+Any `waitUntil`/cron loop doing multi-minute work per item (ffmpeg renders, transcodes, LLM
+passes) must write each unit's result the moment that unit succeeds. Accumulating results in an
+array and doing one insert after the loop means hitting `maxDuration` mid-loop destroys **all**
+of them — including the units that already finished successfully.
+
+`reelFactory.fillReelSlots` did exactly this on its first live run: two clips rendered and
+created correct `content_items` drafts, then the function was killed at the 300s wall during the
+third render, before the batched `content_plan_atoms` insert at the end. The result was two
+real, fully-rendered reels that were **invisible on `/week`** (which reads atoms, not items) —
+and because their `video_segments` were already flipped to `'rendered'`, nothing would ever
+retry them. Silent, permanent orphans, with every gate green and the drafts looking perfect in
+the DB.
+
+Pattern: compute any cross-item derived data (here, the even-spread slot times) UP FRONT, then
+insert per item inside the loop. Size the batch to the wall too — `MAX_PER_RUN` went 3 → 2
+because a render is ~90s on real footage and three sequential renders genuinely raced 300s. Fixed
+in PR #2238.
+
 ---
 
 ## Social-publishing provider adapter (Buffer / bundle.social)
@@ -933,10 +969,20 @@ gotchas below cost a full session (2026-06-21) when `/week` read empty despite 1
   - **`workspace/me.js`'s `sanitizeCadencePolicy` REBUILDS `channels[platform]` from scratch on every
     client save** — `{target_per_week, enabled}` only, nothing else survives. Any extra key nested
     under `cadence_policy.channels[platform]` (a per-channel metric, a flag) is silently dropped the
-    next time Settings → Channels saves. Unknown TOP-LEVEL `cadence_policy` keys ARE preserved verbatim
-    (`out = {...value}`), so server-computed data that isn't a user-editable per-channel setting
-    belongs at the top level, not nested under `channels[platform]` — see `day_time_proposal`,
-    `day_time_dismissed`, and `trust_metrics` (T4 learning loop, #2222–#2228) for the pattern.
+    next time Settings → Channels saves. Server-computed data that isn't a user-editable per-channel
+    setting therefore belongs at the TOP level, not nested under `channels[platform]` — see
+    `day_time_proposal`, `day_time_dismissed`, and `trust_metrics` (T4 learning loop, #2222–#2228).
+  - **Top-level keys are preserved only because the sanitizer now seeds from the STORED row.** It did
+    not always: `out` was seeded from the incoming value alone (`out = {...value}`), so the
+    "unknown top-level keys are preserved" guarantee this doc asserted was false — ANY writer that
+    PATCHed a `cadence_policy` it had built without a key silently DELETED that key, with a 200
+    response and no error. It ate `formats` (the Reel target + voice) within hours of shipping, when a
+    sibling settings save that knew nothing about `formats` wiped it off movebetter; every T4 top-level
+    key was exposed the same way. Fixed in #2255 — `sanitizeCadencePolicy(value, existing)` merges the
+    incoming object OVER the stored policy, so an omitted top-level key is carried forward and only a
+    key the client actually sends replaces. `channels` is still rebuilt wholesale inside its own block.
+    Note this class of bug is invisible to every gate: the write succeeds and the loss only surfaces
+    whenever something next reads the key.
   - This fixed the long-standing bug where Facebook + Instagram Story were enabled-as-output but got
     `0`/disabled cadence (the old hardcoded instagram/linkedin/gbp trio). Phase 2 (engagement-tuned,
     per-tenant cadence from `engagement_snapshots`) is SHIPPED in `api/_lib/cadenceAdaptive.js` and
