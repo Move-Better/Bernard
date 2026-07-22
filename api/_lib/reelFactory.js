@@ -30,7 +30,7 @@ import { sliceWordsToWindow } from './karaokeCaptions.js'
 import { generateCaption } from './captionGen.js'
 import { saveBroll } from './saveBroll.js'
 import { createClipDraft } from './clipDraft.js'
-import { assignSlots } from './strategist.js'
+import { assignSlots, dateAtLocalHour } from './strategist.js'
 import { ATOM_FORMATS } from './atomPlan.js'
 import { classifySegmentVoices, SPEAKER_VOICES } from './speakerVoice.js'
 import { mergeSlotsIntoCadence, slotsByPlatformFromCadence } from './cadenceSlots.js'
@@ -58,9 +58,28 @@ const MIN_SCORE = 75
 const MIN_DURATION_S = 8
 const MAX_DURATION_S = 60
 
-// Never render more than this in one cron tick regardless of the gap — each
-// render is an ffmpeg pass inside a 300s function.
-const MAX_PER_RUN = 3
+// Never render more than this in one cron tick regardless of the gap. Each
+// render is a full ffmpeg pass (~90s on real footage) inside a 300s function,
+// so 3 sequential renders genuinely raced the wall on the first live run: two
+// finished, the third was still going when the function was killed. 2 leaves
+// headroom, and the hourly schedule fills a backlog soon enough anyway.
+const MAX_PER_RUN = 2
+
+// Every non-quiet day of the plan week at Instagram's best local hour, as epoch
+// ms ascending. Used only to re-point an already-elapsed slot forward.
+const WEEKDAY_IDS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+const REEL_BEST_HOUR = 12
+function openDaySlots(weekMonday, quietDays, timezone) {
+  const quiet = new Set((quietDays || []).map((d) => String(d).toLowerCase()))
+  const out = []
+  const [yr, mo, dy] = weekMonday.split('-').map(Number)
+  for (let off = 0; off < 7; off++) {
+    if (quiet.has(WEEKDAY_IDS[off])) continue
+    const day = new Date(Date.UTC(yr, mo - 1, dy + off))
+    out.push(dateAtLocalHour(day.toISOString().slice(0, 10), REEL_BEST_HOUR, timezone).getTime())
+  }
+  return out.sort((a, b) => a - b)
+}
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -310,10 +329,15 @@ export async function selectReelCandidates({ ws, limit }) {
   }
   const rows = await res.json().catch(() => [])
 
-  // Label anyone unlabelled before filtering, so a pre-classifier segment isn't
-  // silently excluded just for being old.
+  // Label unconditionally, NOT only when the gate is on. Gating the labelling on
+  // the filter meant a workspace running the default voice:'any' never got a
+  // single segment classified — the classifier was live but dormant on the whole
+  // backlog, so nobody could SEE who was talking without first flipping a gate
+  // they'd flip based on... seeing who was talking. The label is information;
+  // the filter is a policy applied to it. Cheap (Haiku, ≤24/run, persisted once
+  // per segment forever) and it makes the data visible before it's enforced.
   const voiceFilter = reelVoiceFilter(ws)
-  if (voiceFilter !== 'any') await ensureVoiceLabels(ws, rows)
+  await ensureVoiceLabels(ws, rows)
 
   const picked = []
   const usedAssets = new Set()
@@ -397,9 +421,51 @@ export async function fillReelSlots({ ws, weekMonday }) {
     if (cRes.ok) for (const c of await cRes.json().catch(() => [])) staffNames[c.id] = c.name
   }
 
-  const atomRows = []
+  // Pre-compute the slot times for this batch UP FRONT, then stamp each atom as
+  // its render lands. The batch-at-the-end version lost every atom whenever the
+  // function was killed at the 300s wall mid-batch: the drafts existed but had
+  // no atom, and /week reads atoms — so real rendered reels were invisible, and
+  // their segments were already marked 'rendered' so they were never retried.
+  // Placeholders exist only to run the spread; they are never written.
+  const quietDays = Array.isArray(ws.cadence_policy?.quiet_days) ? ws.cadence_policy.quiet_days : []
+  const timezone = ws.cadence_policy?.timezone || 'UTC'
+  // T3: place into the workspace's PINNED Instagram slots, and specifically the
+  // reel-format ones — assignToPinnedSlots matches on atom.format, so the
+  // placeholders must carry format:'reel' or a reel would be slotted into a
+  // photo tile. Falls back to the computed even-spread when nothing is pinned.
+  const channels = ws.cadence_policy?.channels || {}
+  const slotsByPlatform = slotsByPlatformFromCadence(mergeSlotsIntoCadence(channels, channels, quietDays))
+  const slotTimes = assignSlots(
+    candidates.map(() => ({ platform: 'instagram', format: ATOM_FORMATS.REEL })),
+    weekMonday,
+    quietDays,
+    timezone,
+    slotsByPlatform,
+  ).map((a) => a.scheduled_at)
+
+  // Never hand back a slot that has already happened. assignSlots spreads across
+  // the WHOLE plan week with no "not before now" floor, so a reel cut on
+  // Wednesday could be stamped for Monday — an auto-created draft dated in the
+  // past, which reads as broken on /week. Re-point any elapsed slot at the next
+  // open day in the same week (plan_week must still match, so it can only move
+  // forward WITHIN the week); if the week is genuinely used up, keep the
+  // computed time rather than inventing one outside the plan week.
+  const now = Date.now()
+  // Exclude days a still-valid slot already occupies, or the re-pointed reel
+  // lands on top of one that was fine — two reels at the identical timestamp.
+  const taken = new Set(slotTimes.filter((t) => Date.parse(t) > now).map((t) => Date.parse(t)))
+  const futureSlots = openDaySlots(weekMonday, quietDays, timezone)
+    .filter((t) => t > now && !taken.has(t))
+  let nextFree = 0
+  for (let i = 0; i < slotTimes.length; i++) {
+    if (Date.parse(slotTimes[i]) > now) continue
+    if (nextFree >= futureSlots.length) break
+    slotTimes[i] = new Date(futureSlots[nextFree++]).toISOString()
+  }
+
+  let inserted = 0
   let failed = 0
-  for (const seg of candidates) {
+  for (const [idx, seg] of candidates.entries()) {
     const out = await renderSegmentToReel({
       ws,
       seg,
@@ -411,7 +477,7 @@ export async function fillReelSlots({ ws, weekMonday }) {
       failed += 1
       continue
     }
-    atomRows.push({
+    const atomRow = {
       workspace_id: ws.id,
       // NULL by design: a reel's source is a media_asset + a moment, not an
       // interview. Migration 179 relaxed the NOT NULL for exactly this.
@@ -432,50 +498,36 @@ export async function fillReelSlots({ ws, weekMonday }) {
       content_piece_id: out.draftId,
       planned_by: 'reel_factory',
       plan_week: weekMonday,
-      scheduled_at: null,
+      scheduled_at: slotTimes[idx] || null,
       held_at: null,
-    })
+    }
+
+    // Insert this atom NOW, while we still have a function to do it in.
+    const one = await sb('content_plan_atoms', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify([atomRow]),
+    }).catch(() => null)
+    if (!one || !one.ok) {
+      console.error('[reelFactory] atom insert failed for segment', seg.id, one?.status)
+      failed += 1
+      continue
+    }
+    inserted += 1
+
+    // Mirror the slot time onto the draft so /week and the piece agree.
+    await sb(`content_items?id=eq.${out.draftId}&workspace_id=eq.${ws.id}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ scheduled_at: atomRow.scheduled_at }),
+    }).catch(() => {})
   }
-
-  if (!atomRows.length) return { target, existing, rendered: 0, failed, shortfall: gap }
-
-  // Reuse the Strategist's own slot assigner so reels land on the same best-hour
-  // grid as everything else and respect the workspace's quiet days. T3: place
-  // into the workspace's pinned Instagram slots (reel-format ones specifically
-  // — assignToPinnedSlots matches by atom.format) when present, falling back
-  // to a computed default otherwise, same as the weekly planner.
-  const quietDays = Array.isArray(ws.cadence_policy?.quiet_days) ? ws.cadence_policy.quiet_days : []
-  const timezone = ws.cadence_policy?.timezone || 'UTC'
-  const channels = ws.cadence_policy?.channels || {}
-  const slotsByPlatform = slotsByPlatformFromCadence(mergeSlotsIntoCadence(channels, channels, quietDays))
-  const scheduled = assignSlots(atomRows, weekMonday, quietDays, timezone, slotsByPlatform)
-
-  const insertRes = await sb('content_plan_atoms', {
-    method: 'POST',
-    headers: { Prefer: 'return=minimal' },
-    body: JSON.stringify(scheduled),
-  })
-  if (!insertRes.ok) {
-    console.error('[reelFactory] atom insert failed:', insertRes.status)
-    return { target, existing, rendered: 0, failed: failed + atomRows.length, shortfall: gap }
-  }
-
-  // Mirror the slot time onto the draft so /week and the piece agree.
-  await Promise.all(
-    scheduled.map((a) =>
-      sb(`content_items?id=eq.${a.content_piece_id}&workspace_id=eq.${ws.id}`, {
-        method: 'PATCH',
-        headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ scheduled_at: a.scheduled_at }),
-      }).catch(() => {}),
-    ),
-  )
 
   return {
     target,
     existing,
-    rendered: scheduled.length,
+    rendered: inserted,
     failed,
-    shortfall: Math.max(0, gap - scheduled.length),
+    shortfall: Math.max(0, gap - inserted),
   }
 }
