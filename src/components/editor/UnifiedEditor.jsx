@@ -786,6 +786,9 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
               overlayText={piece.overlay_text || null}
               locationOverrides={piece.location_overrides || null}
               photoTemplateId={piece.photo_template_id || null}
+              // The deck's own aspect, so the preview frame is the shape the
+              // publish bake uses — and a slide's zoom/pan lands where it looked.
+              aspectRatio={piece.aspect_ratio || '4:5'}
             />
           </div>
         </div>
