@@ -54,7 +54,7 @@ async function fetchOverdueItems(wsFilter) {
     `&scheduled_at=lt.${new Date().toISOString()}` +
     `&scheduled_at=gte.${cutoff}` +
     wsFilter +
-    `&select=id,workspace_id,buffer_update_id,scheduled_at,platform,topic` +
+    `&select=id,workspace_id,buffer_update_id,scheduled_at,platform,topic,resolved_url` +
     `&order=scheduled_at.asc` +
     `&limit=${MAX_ITEMS}`
   )
@@ -93,6 +93,23 @@ async function promoteToPublished(id, workspaceId, sentAt) {
   // transition and must not log a duplicate 'published' ledger row.
   const rows = await r.json().catch(() => [])
   return { ok: true, transitioned: Array.isArray(rows) && rows.length > 0 }
+}
+
+// Store the live post's URL so the UI can offer "View live post". The webhook
+// normally gets here first; this covers the deliveries it missed (endpoint not
+// registered, dropped delivery). Unguarded by status — the permalink is a fact
+// about the post, not a consequence of our bookkeeping — and skipped when the
+// row already has one. Best-effort; a missing receipt must never fail the sync.
+async function recordPermalink(id, workspaceId, permalink) {
+  try {
+    await sb(`content_items?id=eq.${id}&workspace_id=eq.${workspaceId}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ resolved_url: permalink, updated_at: new Date().toISOString() }),
+    })
+  } catch (e) {
+    console.warn('[sync-buffer-published] resolved_url write failed for item:', id, e?.message)
+  }
 }
 
 // Workday ledger (Standing Producer Phase 0) — narrate a publish this cron just
@@ -215,6 +232,9 @@ export default async function handler(req, res) {
               summary.skipped++; wsResult.skipped++
             }
             continue
+          }
+          if (status.permalink && !item.resolved_url) {
+            await recordPermalink(item.id, workspaceId, status.permalink)
           }
           const promoted = await promoteToPublished(
             item.id, workspaceId,

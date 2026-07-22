@@ -158,7 +158,12 @@ export default function PostStatusRow({ piece }) {
         </div>
         <p className={`mt-0.5 text-xs ${isFailed ? 'text-destructive' : 'text-muted-foreground'}`}>
           {subline(piece)}
-          {isPublished && piece.platform === 'blog' && piece.resolved_url && (
+          {/* The receipt. Was blog-only because only the website publish path
+              recorded a URL; the bundle webhook now records the network's own
+              permalink too, so a social post can be checked rather than taken on
+              trust. Absent = we don't have a confirmed URL yet, which is why
+              nothing renders instead of a broken link. */}
+          {isPublished && piece.resolved_url && (
             <a href={piece.resolved_url} target="_blank" rel="noreferrer noopener" className="ml-2 inline-flex items-center gap-1 text-primary hover:underline">
               <ExternalLink className="h-3 w-3" aria-hidden="true" />
               View live post

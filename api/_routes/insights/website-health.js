@@ -83,8 +83,12 @@ export default async function handler(req, res) {
   if (!(await enforceLimit(req, res, 'insights-website-health', ws.id))) return
 
   // Published website/blog posts for THIS workspace that have a live URL.
+  // platform=eq.blog is load-bearing, not decoration: resolved_url now also
+  // holds the Instagram/Facebook permalink of a published social post (the
+  // publish receipt), and without this filter every social post would be
+  // fetched and reported on as if it were a page on the clinic's website.
   const sel =
-    `content_items?workspace_id=eq.${ws.id}` +
+    `content_items?workspace_id=eq.${ws.id}&platform=eq.blog` +
     `&status=eq.published&resolved_url=not.is.null` +
     `&select=id,topic,platform,resolved_url,published_at` +
     `&order=published_at.desc.nullslast&limit=${MAX_PAGES}`
