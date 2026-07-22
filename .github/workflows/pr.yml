@@ -59,7 +59,16 @@ jobs:
   # legitimate "not found" response from the handler itself.
   route-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Headroom for cross-job Vercel API throttling. Every probe shells out to
+    # `vercel curl`, and all concurrent route-smoke jobs share one VERCEL_TOKEN
+    # — so the rate-limit bucket is repo-wide, not per-job. A single job runs in
+    # ~1.5-3min, but on 2026-07-22 four overlapping jobs each took 11m46s-13m27s
+    # (all passing 230/230) because the script's retries were waiting out the
+    # throttle. That left #2234 within ~90s of being killed at the old 15min cap.
+    # Raised to 25 so a busy merge window can't turn a passing check red.
+    # The real fix is to stop shelling out to the CLI at all — see the
+    # Protection-Bypass follow-up noted in PR #2248.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
