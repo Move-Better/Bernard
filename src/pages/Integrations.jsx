@@ -400,6 +400,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
   const bufferActive = provider === 'buffer'
   const accounts = status?.accounts || []
   const locations = status?.locations || []
+  const unhealthyCount = accounts.filter((a) => !a.connected).length
 
   return (
     <div className="space-y-3">
@@ -457,7 +458,18 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
                     {status == null ? (
                       <span className="text-2xs text-muted-foreground">Checking…</span>
                     ) : (
-                      <ConnectedBadge>{accounts.filter(a => a.connected).length} connected</ConnectedBadge>
+                      <>
+                        <ConnectedBadge>{accounts.filter(a => a.connected).length} connected</ConnectedBadge>
+                        {/* Without this the summary reads "1 connected" while a
+                            channel is dead, which is exactly how Facebook stayed
+                            broken for three weeks without anyone noticing. */}
+                        {unhealthyCount > 0 && (
+                          <span className="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-action/10 text-action ml-1.5 font-medium">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            {unhealthyCount} need{unhealthyCount === 1 ? 's' : ''} reconnecting
+                          </span>
+                        )}
+                      </>
                     )}
                     <span className="text-2xs text-muted-foreground ml-2">Instagram, Facebook, X, LinkedIn &amp; more</span>
                   </div>

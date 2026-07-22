@@ -8,19 +8,12 @@
 // → Clerk primary email. Always resolves; never throws — a failed alert must
 // never break the publish-status write that triggered it (callers don't await).
 
-import { createClerkClient } from '@clerk/backend'
 import { sendEmail } from './notifyAdmin.js'
 import { recordAgentAction } from './agentActions.js'
+import { ownerEmail } from './workspaceOwner.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
-const CLERK_SECRET = process.env.CLERK_SECRET_KEY
-
-let _clerk = null
-function clerk() {
-  if (!_clerk) _clerk = createClerkClient({ secretKey: CLERK_SECRET })
-  return _clerk
-}
 
 const PLATFORM_LABELS = {
   instagram: 'Instagram', instagram_story: 'Instagram Story', facebook: 'Facebook',
@@ -42,21 +35,6 @@ function sb(path) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   })
-}
-
-async function ownerEmail(clerkUserId) {
-  if (!clerkUserId) return null
-  try {
-    const user = await clerk().users.getUser(clerkUserId)
-    return (
-      user.emailAddresses?.find((a) => a.id === user.primaryEmailAddressId)?.emailAddress
-      || user.emailAddresses?.[0]?.emailAddress
-      || null
-    )
-  } catch (e) {
-    console.warn('[notifyPublishFailure] clerk lookup failed:', e?.message)
-    return null
-  }
 }
 
 /**
