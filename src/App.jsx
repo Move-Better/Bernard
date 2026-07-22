@@ -85,6 +85,7 @@ import UploadTray from '@/components/UploadTray'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import RouteErrorBoundary from '@/components/RouteErrorBoundary'
 import PageSkeleton from '@/components/PageSkeleton'
+import AppBoot from '@/components/AppBoot'
 import { setSentryUser, setSentryWorkspace } from '@/lib/sentry'
 import { initPosthog, posthogIdentify, posthogReset, posthogGroup, posthogPageview } from '@/lib/posthog'
 import { Toaster } from '@/lib/toast'
@@ -767,12 +768,21 @@ function ProtectedApp() {
   const signInName  = ws?.app_name      ?? workspace.appName
   const signInBlurb = ws?.sign_in_blurb ?? workspace.signInBlurb
 
-  if (!isLoaded) return null
+  // Both gates below still hold exactly as long as they did — the guard logic
+  // is unchanged. They just no longer render a blank white page while they
+  // wait. Clerk's boot alone is ~2.2s cold and is mostly its own client-side
+  // work, so this window is not going away; what changed is that it now looks
+  // like loading instead of looking broken. See AppBoot.jsx.
+  //
+  // Clerk hasn't booted, so we don't know if this person is signed in — AppBoot
+  // reads Clerk's __client_uat cookie to choose between the app shell and a
+  // plain brand splash. That hint decides pixels only, never access.
+  if (!isLoaded) return <AppBoot />
 
   if (isSignedIn) {
     // Hold workspace-gated content until the /api/workspace/me fetch resolves
     // so we don't flash the wrong guard (Org vs Domain).
-    if (isLoading) return null
+    if (isLoading) return <AppBoot signedIn />
     return ws?.clerk_org_id
       ? <OrgGate clerkOrgId={ws.clerk_org_id}><AppRoutes /></OrgGate>
       : <DomainGuard><AppRoutes /></DomainGuard>
