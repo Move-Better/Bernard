@@ -282,15 +282,36 @@ const CADENCE_FORMATS = new Set(['reel'])
 const CADENCE_FORMAT_VOICES = new Set(['any', 'clinician'])
 
 // Shape: { channels: { [platform]: { target_per_week, enabled, slots? } }, quiet_days, timezone, formats, ...rest }
-// Merges over the existing row — unknown top-level keys are preserved (version, provenance, etc.)
-// so a partial PATCH from the UI doesn't clobber strategist-managed fields.
-function sanitizeCadencePolicy(value) {
+//
+// `existing` is the workspace's CURRENT stored cadence_policy (pass
+// workspace.cadence_policy from the caller). The result is built by merging
+// the incoming `value` over `existing`, not by trusting the caller sent a
+// complete object — every real caller today (ChannelsSettings.jsx,
+// CadenceCard's day-proposal resolver, /week's quiet-day toggle) already
+// spreads the full policy client-side before sending, but nothing here
+// enforced that. A caller that sends a genuinely partial patch (a future
+// Settings panel, a script, a manual API call) used to silently replace the
+// WHOLE cadence_policy column with just the few keys it sent — wiping
+// channels/slots/version/trust_stage/digests/goals/etc. Confirmed live
+// 2026-07-22: a hand-crafted `{ quiet_days: [...] }` PATCH during T3
+// verification wiped movebetter's cadence_policy down to just quiet_days.
+// Merging against `existing` here makes the server defensive regardless of
+// caller discipline, matching what the doc comment already claimed.
+function sanitizeCadencePolicy(value, existing) {
   if (!isPlainObject(value)) return null
-  const out = { ...value }
+  const base = isPlainObject(existing) ? existing : {}
+  const out = { ...base, ...value }
 
   if ('channels' in value) {
     if (!isPlainObject(value.channels)) return null
+    // Carry forward every platform this patch doesn't mention — same reasoning
+    // as the top-level merge above, one level deeper: a caller updating just
+    // `instagram` must not wipe `facebook`/`gbp`/etc.
+    const baseChannels = isPlainObject(base.channels) ? base.channels : {}
     const cleanChannels = {}
+    for (const [platform, entry] of Object.entries(baseChannels)) {
+      if (CADENCE_PLATFORMS.has(platform) && isPlainObject(entry)) cleanChannels[platform] = entry
+    }
     for (const [platform, entry] of Object.entries(value.channels)) {
       if (!CADENCE_PLATFORMS.has(platform)) continue
       if (!isPlainObject(entry)) return null
@@ -302,6 +323,8 @@ function sanitizeCadencePolicy(value) {
         const cleanSlots = sanitizeChannelSlots(entry.slots)
         if (cleanSlots === null) return null
         cleanChannels[platform].slots = cleanSlots
+      } else if (baseChannels[platform]?.slots) {
+        cleanChannels[platform].slots = baseChannels[platform].slots
       }
     }
     out.channels = cleanChannels
@@ -330,11 +353,17 @@ function sanitizeCadencePolicy(value) {
   // a permanent shortfall.
   if ('formats' in value) {
     if (!isPlainObject(value.formats)) return null
+    // Same carry-forward as `channels` above — only one format key exists
+    // today (`reel`), but the pattern must hold as more are added.
+    const baseFormats = isPlainObject(base.formats) ? base.formats : {}
     const cleanFormats = {}
+    for (const [name, entry] of Object.entries(baseFormats)) {
+      if (CADENCE_FORMATS.has(name) && isPlainObject(entry)) cleanFormats[name] = entry
+    }
     for (const [name, entry] of Object.entries(value.formats)) {
       if (!CADENCE_FORMATS.has(name)) continue
       if (!isPlainObject(entry)) return null
-      const clean = {}
+      const clean = { ...(isPlainObject(baseFormats[name]) ? baseFormats[name] : {}) }
       if (entry.target_per_week != null) {
         const tpw = parseInt(entry.target_per_week, 10)
         if (!Number.isInteger(tpw) || tpw < 0 || tpw > 28) return null
@@ -680,7 +709,7 @@ async function handler(req, res) {
         continue
       }
       if (key === 'cadence_policy') {
-        const cleaned = sanitizeCadencePolicy(value)
+        const cleaned = sanitizeCadencePolicy(value, workspace.cadence_policy)
         if (cleaned === null) return res.status(400).json({ error: 'invalid-cadence-policy' })
         patch.cadence_policy = cleaned
         continue
