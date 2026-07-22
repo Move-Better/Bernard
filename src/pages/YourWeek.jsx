@@ -87,6 +87,16 @@ function weekMondayDate(offset, tz) {
 function weekMondayISO(offset, tz) {
   return weekMondayDate(offset, tz).toISOString().slice(0, 10)
 }
+// T3 — Month overview: convert a clicked calendar date into the weekOffset
+// units Week view already navigates by (weeks from the current week).
+function weekOffsetForDate(dateISO, tz) {
+  const [y, m, d] = dateISO.split('-').map(Number)
+  const targetMonday = new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0))
+  const dow = (targetMonday.getUTCDay() + 6) % 7
+  targetMonday.setUTCDate(targetMonday.getUTCDate() - dow)
+  const thisMonday = weekMondayDate(0, tz)
+  return Math.round((targetMonday.getTime() - thisMonday.getTime()) / (7 * 86_400_000))
+}
 function weekRangeLabel(offset, tz) {
   const mon = weekMondayDate(offset, tz)
   const sun = new Date(mon)
@@ -465,6 +475,72 @@ function AddToDayModal({ slot, weekMonday, heldItems, onClose }) {
   )
 }
 
+// T3 — Month overview (mockup screen 3): a light density chip per day
+// (filled/needs-review/open counts from api/_routes/content-plan/month-
+// summary.js), not per-post detail — Week view stays the source of truth for
+// anything more specific. Click a day jumps into Week view on that date.
+const WEEKDAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+function MonthView({ monthData, monthDate, loading, onSelectDay }) {
+  const year = monthDate.getUTCFullYear()
+  const month = monthDate.getUTCMonth() // 0-indexed
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
+  const startWeekday = new Date(Date.UTC(year, month, 1)).getUTCDay() // 0 = Sun
+  const days = monthData?.days || {}
+
+  const cells = Array.from({ length: startWeekday }, () => null)
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    cells.push({ d, iso, ...(days[iso] || { live: 0, review: 0, open: 0, quiet: false }) })
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="mb-1.5 grid grid-cols-7 gap-1.5 text-center text-3xs font-semibold text-muted-foreground">
+        {WEEKDAY_HEADERS.map((d) => <div key={d}>{d}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-1.5">
+        {cells.map((cell, i) => {
+          if (!cell) return <div key={`blank-${i}`} aria-hidden="true" />
+          let chip = null
+          let cellCls = 'border-border bg-card hover:bg-muted/50'
+          if (cell.review > 0) {
+            chip = <span className="text-3xs font-semibold text-action">{cell.review} review</span>
+            cellCls = 'border-action/30 bg-action/10 hover:bg-action/15'
+          } else if (cell.open > 0) {
+            chip = <span className="text-3xs font-semibold text-pink-600">{cell.open} open</span>
+            cellCls = 'border-pink-200 bg-pink-50 hover:bg-pink-100'
+          } else if (cell.live > 0) {
+            chip = <span className="text-3xs font-semibold text-success">{cell.live} live</span>
+            cellCls = 'border-success/30 bg-success/10 hover:bg-success/15'
+          } else if (cell.quiet) {
+            chip = <span className="text-3xs text-muted-foreground/60">quiet</span>
+            cellCls = 'border-border bg-muted/40 hover:bg-muted/60'
+          }
+          return (
+            <button
+              key={cell.iso}
+              type="button"
+              onClick={() => onSelectDay(cell.iso)}
+              className={`flex h-14 flex-col justify-between rounded-lg border p-1.5 text-left transition-colors sm:h-16 sm:p-2 ${cellCls}`}
+            >
+              <span className="text-2xs font-medium sm:text-xs">{cell.d}</span>
+              {chip}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // DayPlanCard — the roomy, full-width variant of PlanCard used in Day view.
 // Same status language (rail + chip + pill) and the SAME handlers as the week
 // card, but with space to show the draft excerpt inline and lay the working
@@ -600,14 +676,26 @@ export default function YourWeek() {
   const [weekOffset, setWeekOffset] = useState(0) // 0 = this week; <0 past (read-only); >0 future (plannable)
   const [planningWeek, setPlanningWeek] = useState(false)
   const [backlogOpen, setBacklogOpen] = useState(false)
-  const [viewMode, setViewMode] = useState('week')   // 'week' board | 'day' focused work surface
+  const [viewMode, setViewMode] = useState('week')   // 'week' board | 'day' focused work surface | 'month' light overview
   const [selectedDay, setSelectedDay] = useState(null) // day key ('mon'..'sun'); null = auto (today/first)
   const [togglingQuietDay, setTogglingQuietDay] = useState(null) // day key being toggled, for the inline spinner
   const [addToDaySlot, setAddToDaySlot] = useState(null) // {platform, weekday, hour, format, dayLabel, dateLabel} | null
+  const [monthOffset, setMonthOffset] = useState(0) // T3 — months from the current calendar month; independent of weekOffset
   const { data, isLoading } = useQuery({
     queryKey: ['week-summary', weekOffset],
     queryFn: () => apiFetch(`/api/content-plan/week-summary${weekOffset ? `?week=${weekMondayISO(weekOffset, wsTz)}` : ''}`),
     enabled: !roleLoading,
+    refetchOnWindowFocus: false,
+  })
+  // T3 — Month overview data, fetched only while that view is active (a
+  // separate lightweight endpoint, not a fan-out over week-summary — see
+  // api/_routes/content-plan/month-summary.js for why).
+  const monthDate = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + monthOffset, 1))
+  const monthKey = `${monthDate.getUTCFullYear()}-${String(monthDate.getUTCMonth() + 1).padStart(2, '0')}`
+  const { data: monthData, isLoading: monthLoading } = useQuery({
+    queryKey: ['month-summary', monthKey],
+    queryFn: () => apiFetch(`/api/content-plan/month-summary?month=${monthKey}`),
+    enabled: !roleLoading && viewMode === 'month',
     refetchOnWindowFocus: false,
   })
 
@@ -930,23 +1018,23 @@ export default function YourWeek() {
         <span className="text-2xs font-bold uppercase tracking-wide text-primary">· {weekRelative(weekOffset)}</span>
       </div>
       <div className="flex items-stretch gap-2">
-        {data?.hasPlan && (
-          <div role="group" aria-label="View" className="inline-flex shrink-0 items-center rounded-lg border bg-card p-0.5 text-xs">
-            {['week', 'day'].map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setViewMode(m)}
-                aria-pressed={viewMode === m}
-                className={`rounded-md px-3 py-1 font-semibold capitalize transition-colors ${
-                  viewMode === m ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* T3 — always reachable (not gated on this week having a plan): Month
+            is a workspace-wide overview, independent of any single week. */}
+        <div role="group" aria-label="View" className="inline-flex shrink-0 items-center rounded-lg border bg-card p-0.5 text-xs">
+          {['week', 'day', 'month'].map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setViewMode(m)}
+              aria-pressed={viewMode === m}
+              className={`rounded-md px-3 py-1 font-semibold capitalize transition-colors ${
+                viewMode === m ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           onClick={() => setWeekOffset((o) => Math.max(-NAV_BACK, o - 1))}
@@ -1048,6 +1136,73 @@ export default function YourWeek() {
       {/* Clinician review slice (2d) */}
       {YourReviewSlice}
 
+      {/* T3 — Month overview bypasses the rest of the Week/Day tree entirely
+          (mode banner, cadence strip, board, backlog rail all belong to a
+          single week; Month is a workspace-wide, week-independent view). */}
+      {viewMode === 'month' ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <CalendarRange className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="text-lg font-bold">
+                {monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div role="group" aria-label="View" className="inline-flex shrink-0 items-center rounded-lg border bg-card p-0.5 text-xs">
+                {['week', 'day', 'month'].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setViewMode(m)}
+                    aria-pressed={viewMode === m}
+                    className={`rounded-md px-3 py-1 font-semibold capitalize transition-colors ${
+                      viewMode === m ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setMonthOffset((o) => o - 1)}
+                aria-label="Previous month"
+                className="flex w-9 shrink-0 items-center justify-center rounded-lg border bg-card text-muted-foreground hover:bg-muted"
+              >
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setMonthOffset((o) => o + 1)}
+                aria-label="Next month"
+                className="flex w-9 shrink-0 items-center justify-center rounded-lg border bg-card text-muted-foreground hover:bg-muted"
+              >
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+              {monthOffset !== 0 && (
+                <button
+                  type="button"
+                  onClick={() => setMonthOffset(0)}
+                  className="shrink-0 rounded-lg border bg-card px-2.5 text-2xs font-semibold text-muted-foreground hover:bg-muted"
+                >
+                  Today
+                </button>
+              )}
+            </div>
+          </div>
+          <MonthView
+            monthData={monthData}
+            monthDate={monthDate}
+            loading={monthLoading}
+            onSelectDay={(iso) => {
+              setWeekOffset(Math.max(-NAV_BACK, Math.min(NAV_FWD, weekOffsetForDate(iso, wsTz))))
+              setViewMode('week')
+            }}
+          />
+        </div>
+      ) : (
+      <>
       {/* Mode + pre-draft summary — compacted into one row so the controls take
           less vertical space above the week itself. Trust mode is display-only
           (earned, not settable — see LADDER); the pre-draft banner frames /week
@@ -1499,6 +1654,8 @@ export default function YourWeek() {
             </div>
           </div>
         </>
+      )}
+      </>
       )}
 
       <ConfirmDialog
