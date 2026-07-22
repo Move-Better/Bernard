@@ -34,6 +34,13 @@ const PLATFORM_TO_BUNDLE_TYPE = {
   gbp: 'GOOGLE_BUSINESS',
 }
 
+// bundle types the ACCOUNT-level analytics endpoint accepts (SDK enum for
+// /api/v1/analytics/social-account — omits TWITTER/DISCORD/SLACK).
+const ACCOUNT_ANALYTICS_TYPES = new Set([
+  'TIKTOK', 'YOUTUBE', 'INSTAGRAM', 'FACEBOOK', 'THREADS', 'REDDIT',
+  'PINTEREST', 'MASTODON', 'LINKEDIN', 'BLUESKY', 'GOOGLE_BUSINESS',
+])
+
 // bundle types whose post REQUIRES at least one media upload (IG/GBP rejected
 // text-only live; TikTok and YouTube are video/image platforms and cannot post
 // text-only either). Facebook/X/LinkedIn/Threads/Bluesky/Mastodon accept text-only.
@@ -404,6 +411,41 @@ export class BundlePublisher extends SocialPublisher {
       status: a?.status ?? null,
       connected: accountIsConnected(a),
     }))
+  }
+
+  // Account-level analytics snapshots for one connected account — bundle
+  // captures roughly one per day, and each carries the account's CUMULATIVE
+  // post_count and follower count straight off the platform profile. postCount
+  // includes posts made natively outside Bernard/bundle, which is what makes it
+  // the adoption denominator (verified live 2026-07-21 against the movebetter
+  // IG: daily snapshots, postCount 189→193 over ten days). NOT part of the
+  // SocialPublisher contract — bundle-specific.
+  //
+  // Returns null for platforms bundle's account-analytics enum doesn't cover
+  // (TWITTER/DISCORD/SLACK); otherwise { username, displayName, snapshots }
+  // with snapshots sorted oldest→newest (the raw API returns newest-first).
+  async getAccountSnapshots({ platformType } = {}) {
+    if (!platformType) throw publishError('getAccountSnapshots requires platformType', 400)
+    const type = this._bundleType(platformType)
+    if (!ACCOUNT_ANALYTICS_TYPES.has(type)) return null
+    const res = await this.sdk.analytics.analyticsGetSocialAccountAnalytics({
+      teamId: this.teamId,
+      platformType: type,
+    })
+    const items = Array.isArray(res?.items) ? res.items : []
+    const snapshots = items
+      .map((i) => ({
+        at: i?.createdAt ?? null,
+        postCount: Number.isFinite(i?.postCount) ? i.postCount : null,
+        followers: Number.isFinite(i?.followers) ? i.followers : null,
+      }))
+      .filter((s) => s.at)
+      .sort((a, b) => new Date(a.at) - new Date(b.at))
+    return {
+      username: res?.socialAccount?.username ?? null,
+      displayName: res?.socialAccount?.displayName ?? null,
+      snapshots,
+    }
   }
 
   // ── bundle-specific helpers ────────────────────────────────────────────────
