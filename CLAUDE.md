@@ -61,6 +61,22 @@ Q keeps a logged-in Chrome session. Drive it with the **Claude-in-Chrome MCP** (
 
 (Q confirmed 2026-06-04 — "this keeps happening." Chrome-tab-as-standard + keep-e2e-thin confirmed 2026-06-04.)
 
+## Challenge gate — adversarial brief before any non-trivial build
+
+Q is a solo founder: no one checks his feature requests unless the session does. Being agreeable here is the failure mode. (Installed 2026-07-21 after a strategy session found months of component-green work that never composed into the user's job — e.g. a working karaoke-reel engine whose output landed in a b-roll graveyard, and a planner structurally unable to plan a Reel.)
+
+Before scoping any **non-trivial** feature request (new capability, surface, or pipeline stage — not bug fixes with a clear repro, not typo/copy changes), produce a five-line adversarial brief and get Q's explicit go via `AskUserQuestion`:
+
+1. **Job** — the user-job this serves, one sentence ("front desk publishes a week of IG in under 30 min").
+2. **Evidence** — the data point or feedback row saying this is the top gap *now*. Query the DB / PostHog / `feedback` table; don't accept a vibe, including Q's.
+3. **Composition** — the end-to-end chain this must plug into, written as arrows naming every EXISTING stage (`upload → moments → ??? → /week slot → publish-as-REEL`). Any `???` is a finding: the seam gets fixed with (or before) the feature. This line is what catches artifacts that dead-end short of the user.
+4. **Simplest version** — what ships in ≤2 days that tests the job.
+5. **Case against + kill criterion** — the strongest honest argument for NOT building this now (or for building something else), and a measurable kill criterion with a revisit date, recorded in `.claude/decisions.md`.
+
+Dissent is a required output, not garnish: if the case-against wins, say "I recommend we don't build this" plainly and propose the alternative. If the outcome can't be measured, say so in line 5 — that's usually the tell it isn't ready to build. For high-stakes calls, have a FRESH session (or subagent with no stake in the plan) attack the brief rather than asking the authoring context to critique itself.
+
+**Decision log:** settled decisions + kill criteria live in `.claude/decisions.md` (tracked). Consult it before re-litigating a settled choice or building something that contradicts one; planning sessions append to it; `/outcome-review` checks its revisit-by dates monthly.
+
 ## Design interview before building
 
 Before scoping or implementing any non-trivial change, interview Q moderately about every relevant aspect of the planned work. Walk down each branch of the design tree, resolving dependencies between decisions one by one — don't ask about a downstream detail until the upstream choice is settled. If a question can be answered by exploring the codebase (checking how something is currently wired, what shape data is in, whether a path is live end-to-end), explore the codebase instead of asking. Ask only what the code can't answer.
@@ -738,6 +754,7 @@ Every PR must satisfy this checklist before merging. The triage on 2026-05-14 tr
 - [ ] New tables include `GRANT … TO service_role` in the same migration file
 
 ### Testing
+- [ ] **Job-level done, not component-done**: if the PR produces an artifact or output a user acts on, the artifact demonstrably reaches the surface where the user consumes it (the draft appears in /week, the rendered file lands on the content item, the published post is live). "The function returns correct bytes" is component-done. The recurring failure class this gates: render-segments baking reels into a b-roll graveyard, carousel overlay text previewed but never published, drafts born without media — working parts, broken job.
 - [ ] Feature used in-browser at least once before the PR is opened (the step most often skipped)
 - [ ] **Any page with a horizontal tab/filter row** → confirm it doesn't overflow at ~390px. A `flex items-center gap-2` row with 3+ buttons + a `w-48 ml-auto` search input totals 600–700px minimum — guaranteed horizontal scroll on mobile, making the site look "not loading." Fix: tabs in `overflow-x-auto` inner div with `shrink-0` buttons; search in `sm:ml-auto` outer row with `w-full sm:w-48`. (Hit on Slate #1316 → fixed #1322, 2026-06-10.)
 - [ ] For large-surface features: run `npm run e2e` or manually smoke the relevant page on the Vercel preview URL
