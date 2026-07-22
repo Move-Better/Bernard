@@ -962,14 +962,24 @@ export default function YourWeek() {
                   const got = data.byPlatform?.[platform] || 0
                   const target = cfg.target_per_week || 0
                   return (
-                    <div key={platform}>
+                    // The tile links to this channel's posts — users were
+                    // clicking these counts expecting exactly that (2026-07-22
+                    // UX pain check: 3 dead clicks here). The hover/focus
+                    // treatment is what earns the click; don't drop one and
+                    // keep the other.
+                    <Link
+                      key={platform}
+                      to={`/stories?platform=${encodeURIComponent(platform)}`}
+                      aria-label={`View ${meta.label} posts`}
+                      className="-m-1 block rounded-md p-1 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
                       <div className="mb-1 flex items-center justify-between text-2xs">
                         <span className="flex items-center gap-1.5 font-semibold">
                           {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />} {meta.label}
                         </span>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="text-muted-foreground cursor-help"><b className="text-foreground">{got}</b>/{target}</span>
+                            <span className="text-muted-foreground"><b className="text-foreground">{got}</b>/{target}</span>
                           </TooltipTrigger>
                           <TooltipContent>
                             {got} scheduled this week · target {target}/week
@@ -979,7 +989,7 @@ export default function YourWeek() {
                       <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                         <div className="h-full rounded-full bg-primary" style={{ width: `${target ? Math.min(100, (got / target) * 100) : 0}%` }} />
                       </div>
-                    </div>
+                    </Link>
                   )
                 })}
               </div>
