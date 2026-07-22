@@ -610,6 +610,23 @@ correctly, but the spinner never resolved because the kickoff never called the q
 `refetch()`. Fix: call `refetch()` (destructured from the same `useQuery`) immediately after the
 kickoff request resolves, so the very next evaluation sees the fresh pending status.
 
+### Pipeline-transient status values must not round-trip through editable form state
+A row's `status` column can legitimately hold values the server sets itself and that never
+appear as a user-selectable option — e.g. `media_assets.status = 'tagging'` while AI tagging is
+in flight (see `pipelinePending()` above). If a detail-drawer's editable `status` field is seeded
+directly from `asset.status` on load (`useState(asset.status || 'raw')`), it can end up holding
+that transient value with no matching UI chip selected — and if the user (or an autosave) fires a
+save while it's still in that state, the transient value gets sent back verbatim in the PATCH
+body. A backend allowlist that (correctly) rejects pipeline-only values then 400s with a generic
+error that looks like an unrelated validation bug. Fix: when building the save payload, only
+forward a field's value if it's one of the values the UI actually lets the user pick — filter
+against the same `STATUSES`-style constant the chips render from — rather than trusting whatever
+local state happens to hold; consider also disabling Save while the pipeline-only state is live so
+the race can't be hit at all. Hit in `MediaDetail.jsx` (2026-07-21, PR #2233): saving while "Tag
+with AI" was still running sent `status: 'tagging'` and 400'd with "Invalid status" — same
+symptom, different cause, from an earlier same-day fix (#2226) that widened the allowlist for the
+user-selectable statuses but didn't account for the transient one leaking through.
+
 ### Preview ≠ published artifact
 When a feature renders something to a `<canvas>` or any in-memory/preview-only surface, that is
 NOT evidence the same artifact ships at publish/export. The render and the publish are different

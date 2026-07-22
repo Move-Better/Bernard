@@ -308,7 +308,15 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     setSaving(true); setError('')
     try {
       await updateMediaAsset(asset.id, {
-        tags, aiTags, notes, altText, patientPseudonym: patient, condition, status,
+        tags, aiTags, notes, altText, patientPseudonym: patient, condition,
+        // 'status' is seeded from the row and can currently hold 'tagging' —
+        // a transient, server-managed pipeline state that isn't one of the
+        // user-selectable chips (STATUSES) and isn't accepted by the PATCH
+        // handler. Sending it back verbatim 400s ("Invalid status") the
+        // moment a save lands while AI tagging is still in flight. Only
+        // forward status when it's a value the user could have actually
+        // picked; otherwise leave it out so the server keeps its own value.
+        ...(STATUSES.includes(status) ? { status } : {}),
         assetPurpose,
         // Server enforces speaker_role=null when purpose != interview, but
         // mirror the rule client-side so the optimistic state stays accurate.
@@ -1164,10 +1172,19 @@ export default function MediaDetail({ asset, onClose, onChange }) {
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={onClose}>{canEdit && !isArchived ? 'Cancel' : 'Close'}</Button>
             {!isArchived && canEdit && (
-              <Button size="sm" onClick={save} disabled={saving}>
-                {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-                Save
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button size="sm" onClick={save} disabled={saving || isTaggingLive}>
+                      {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+                      Save
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {isTaggingLive && (
+                  <TooltipContent>AI tagging is still running — wait for it to finish before saving.</TooltipContent>
+                )}
+              </Tooltip>
             )}
           </div>
         </div>
