@@ -25,7 +25,18 @@ b. **Cadence delivery**: published count by platform vs `workspaces.cadence_poli
 c. **Silence alarms**: enabled channels (per `enabled_outputs`) with zero published rows in >7 days; all `status='failed'` / `publish_error IS NOT NULL` rows with error text; days since last item *created* per channel (a dead planner looks different from a dead publisher — report both).
 d. **Publish fidelity** (once T1's verification ships): % of published IG/FB rows with `resolved_url` set (verified-live rate); any fidelity-mismatch reports in feedback. Target ≥95%.
 e. **Staff signals**: `feedback` rows this period (triaged + untriaged) grouped by theme; edit/reject rates per lane (once T4 ships); who is actually approving (`approved_by` distinct count — one lonely approver is an adoption smell).
-f. **Adoption denominator** (the north star, partly external): Bernard-published posts vs the clinic's TOTAL posts on IG/FB this month (bundle.social analytics where available; otherwise flag for a manual profile check). Staff posting natively = the churn signal this whole review exists to catch.
+f. **Adoption denominator** (the north star): Bernard-published posts vs the clinic's TOTAL posts on IG/FB this month. Staff posting natively = the churn signal this whole review exists to catch. Instrumented since 2026-07-21: the weekly `cron/snapshot-social-posts` stores each connected channel's cumulative account-level `post_count` (native posts included — it's the platform profile's own total, via bundle.social account analytics) in `social_channel_snapshots`. Total posts for the month = delta between the rows bracketing the month:
+
+   ```sql
+   -- per channel: cumulative post_count at each month boundary (take the row
+   -- nearest each boundary; weekly cadence means within ~3 days of it)
+   SELECT DISTINCT ON (platform)
+     platform, account_username, post_count, followers, captured_at
+   FROM social_channel_snapshots
+   WHERE workspace_id = '<ws>' AND captured_at <= '<boundary>'
+   ORDER BY platform, captured_at DESC;
+   ```
+   Run once with `<boundary>` = month start and once = month end; total = end − start per platform. Bernard's numerator is the existing published `content_items` count (metric b). Caveats: the delta is NET of deletions; a channel whose `post_count` sits at 0/null across snapshots isn't reporting a real total (Facebook pages sometimes don't — Meta exposes no reliable page post total) → fall back to a **manual profile check** for that channel and say so in the report. If the table has no row before the month start yet (instrumentation younger than the window), report the partial window explicitly rather than a made-up month.
 
 ## Phase 3 — Top 3 gaps
 
