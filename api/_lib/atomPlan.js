@@ -3,6 +3,29 @@
 // Single-output platforms (blog, email, landing_page, youtube, google_ads,
 // instagram_ads) are not listed here; they stay as one-shot generations.
 
+// The plannable output formats (migration 179, content_plan_atoms.format).
+// A format is HOW a slot ships, orthogonal to the platform it ships on and the
+// angle it argues. Instagram is the reason this exists: instagram_post and
+// instagram_reel are two genuinely different products (a 4:5 carousel vs a 9:16
+// karaoke-captioned video) that both key under the `instagram` atom platform.
+//
+//   post  — single image / text post. The historical default; NULL means post.
+//   reel  — short vertical video cut from a real clinician clip.
+//   story — 9:16 ephemeral frame (instagram_story).
+export const ATOM_FORMATS = Object.freeze({ POST: 'post', REEL: 'reel', STORY: 'story' })
+
+// The format an atom platform plans in by default. REEL is deliberately absent:
+// a reel slot is never planned speculatively, because a reel can only exist if a
+// real rendered clip backs it. Promising four reels a week against an empty clip
+// library is exactly the "empty promise" failure the format dimension is meant
+// to prevent — reel atoms are inserted by the reel worker AFTER a clip renders,
+// never by the Strategist ahead of time.
+const PLATFORM_DEFAULT_FORMAT = { instagram_story: ATOM_FORMATS.STORY }
+
+export function defaultFormatForPlatform(platform) {
+  return PLATFORM_DEFAULT_FORMAT[platform] || ATOM_FORMATS.POST
+}
+
 export const ATOM_DEFINITIONS = {
   instagram: [
     {
@@ -198,6 +221,7 @@ export function buildPlanRows(interviewId, workspaceId, enabledOutputs) {
         angle,
         angle_label:       label,
         angle_description: description,
+        format:            defaultFormatForPlatform(platform),
         status:            'pending',
       })
     }

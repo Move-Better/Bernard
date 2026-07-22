@@ -52,7 +52,7 @@ export default async function handler(req, res) {
 
   // This week's planned atoms (Strategist output for plan_week). Full detail so
   // the /week calendar can render cards + drill in to the per-piece review.
-  const ATOM_SELECT = 'id,platform,slot,scheduled_at,held_at,angle,angle_label,brief,status,content_piece_id,interview_id,interview:interviews!interview_id(topic)'
+  const ATOM_SELECT = 'id,platform,slot,scheduled_at,held_at,angle,angle_label,brief,format,status,content_piece_id,interview_id,interview:interviews!interview_id(topic)'
 
   // Three independent Supabase round-trips (atoms+drafted-items chain, the
   // backlog query, and the reviewer's own staff+review-queue chain) used to
@@ -158,6 +158,10 @@ export default async function handler(req, res) {
       mediaKind: thumb?.kind || null,
       label: a.angle_label,
       brief: a.brief,
+      // Output format for the slot (migration 179). NULL on every pre-format
+      // row, which means 'post' — normalized here so the client never has to
+      // repeat the fallback.
+      format: a.format || 'post',
       interviewTopic: a.interview?.topic || null,
       status: a.status,
       contentPieceId: a.content_piece_id,

@@ -15,7 +15,7 @@
 // whole pipeline against real interview data with no gateway key.
 
 import { z } from 'zod'
-import { ATOM_DEFINITIONS } from './atomPlan.js'
+import { ATOM_DEFINITIONS, defaultFormatForPlatform } from './atomPlan.js'
 
 // One planned piece as the Strategist must return it. `brief` is REQUIRED and
 // non-empty — the whole point of the schema over a hand-parsed array is that the
@@ -305,6 +305,11 @@ function toAtomRow(c, { workspaceId, planWeek, palette }) {
     angle_label: pal.label || c.angle,
     angle_description: pal.description || null,
     brief: normalizeBrief(c.brief),
+    // Stamped explicitly rather than left NULL so a Strategist-planned slot is
+    // self-describing. The Strategist never plans REEL — see the comment on
+    // PLATFORM_DEFAULT_FORMAT: reels are only ever created against a clip that
+    // has actually rendered, by the reel worker.
+    format: defaultFormatForPlatform(c.platform),
     status: 'pending',
     planned_by: 'strategist',
     plan_week: planWeek,

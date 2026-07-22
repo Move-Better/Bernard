@@ -349,6 +349,7 @@
     "brief",
     "content_piece_id",
     "created_at",
+    "format",
     "held_at",
     "id",
     "interview_id",
@@ -357,6 +358,7 @@
     "platform",
     "scheduled_at",
     "slot",
+    "source_segment_id",
     "status",
     "updated_at",
     "workspace_id"
