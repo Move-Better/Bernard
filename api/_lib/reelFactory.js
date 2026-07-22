@@ -1,0 +1,391 @@
+// The reel factory — pick top moments, render them, and land them as approvable
+// Reel drafts in the week's plan.
+//
+// T2 (reel spine), step 3. Steps 1 and 2 built the two halves this joins:
+//   • createClipDraft()  (clipDraft.js, #2208) — a rendered clip becomes a draft
+//   • content_plan_atoms.format / .source_segment_id (migration 179, #2209)
+//
+// This is the piece that deliberately crosses the line drawn in
+// api/_routes/cron/auto-detect-clips.js: that cron proposes moments and stops,
+// on the principle that automating the labour (find the moments) is fine but
+// automating the judgment (what ships) is not. Q approved crossing it on
+// 2026-07-21 for reels specifically, on the strength of the human approval gate
+// that still sits in front of every publish: this worker only ever produces
+// DRAFTS. Nothing here publishes, and nothing here can publish — the publish
+// path is not in this module's call graph.
+//
+// What is still enforced, and why:
+//   • consent_status pending/revoked is a hard skip. Unchanged from the manual
+//     render path; auto-selection does not get a weaker gate than a human click.
+//   • one reel per source video per run, so a single long interview cannot fill
+//     the whole week with variations of itself.
+//   • a moment is never drafted twice — content_plan_atoms.source_segment_id is
+//     the ledger (that is what migration 179 added it for).
+//   • the week's reel target is a ceiling, counted against reel atoms that
+//     already exist, so re-running is idempotent rather than additive.
+
+import { put as blobPut } from '@vercel/blob'
+import { renderVideoChannel } from './brandRenderVideo.js'
+import { sliceWordsToWindow } from './karaokeCaptions.js'
+import { generateCaption } from './captionGen.js'
+import { saveBroll } from './saveBroll.js'
+import { createClipDraft } from './clipDraft.js'
+import { assignSlots } from './strategist.js'
+import { ATOM_FORMATS } from './atomPlan.js'
+
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+
+// Mirrors render-segments.js — the AI path and the manual workshop must produce
+// the same shape.
+const CLIP_CHANNEL = 'instagram_reel'
+
+// Default share of the Instagram cadence that ships as Reels, when the workspace
+// has not set an explicit instagram_reel target. Q's call (2026-07-21): 3 of a
+// 4-post Instagram week. Reels reach ~2.25x single images and 55% of reel views
+// come from non-followers (discovery = new patients), while carousels win on
+// engagement depth — 3/4 leans into discovery while keeping a carousel lane.
+const DEFAULT_REEL_SHARE = 0.75
+
+// Don't auto-draft a weak moment. Scores are 0-100 (avg ~62 on real movebetter
+// data), NOT 0-10 — a 0-10 assumption here would pass literally every segment.
+const MIN_SCORE = 75
+
+// A reel that is too short reads as a clip of nothing; too long stops being a
+// reel. The renderer already caps at 60s; this is the auto-selection floor.
+const MIN_DURATION_S = 8
+const MAX_DURATION_S = 60
+
+// Never render more than this in one cron tick regardless of the gap — each
+// render is an ffmpeg pass inside a 300s function.
+const MAX_PER_RUN = 3
+
+function sb(path, init = {}) {
+  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+      ...init.headers,
+    },
+  })
+}
+
+/**
+ * How many Reels this workspace wants per week.
+ * An explicit cadence_policy.channels.instagram_reel.target_per_week always
+ * wins (including an explicit 0, which is how a workspace opts out entirely);
+ * otherwise derive it from the Instagram target.
+ */
+export function reelTargetForWorkspace(ws) {
+  const channels = ws?.cadence_policy?.channels || {}
+  const explicit = channels.instagram_reel
+  if (explicit && typeof explicit.target_per_week === 'number') {
+    return explicit.enabled === false ? 0 : Math.max(0, Math.round(explicit.target_per_week))
+  }
+  const ig = channels.instagram
+  // No Instagram cadence at all means Instagram isn't a channel here — no reels.
+  if (!ig || ig.enabled === false) return 0
+  const igTarget = Math.max(0, Number(ig.target_per_week) || 0)
+  if (!igTarget) return 0
+  return Math.min(igTarget, Math.max(1, Math.round(igTarget * DEFAULT_REEL_SHARE)))
+}
+
+/**
+ * Render one moment into a captioned reel, save it as b-roll, and create the
+ * draft. Extracted from render-segments.js so the manual path and this worker
+ * cannot drift apart. Never throws.
+ *
+ * @returns {Promise<{ok: boolean, assetId: string|null, draftId: string|null, caption: string}>}
+ */
+export async function renderSegmentToReel({ ws, seg, asset, staffName, createDraft = true }) {
+  const startSec = Number(seg.start_sec) || 0
+  const durationSec = Math.max(1, (Number(seg.end_sec) || 0) - startSec)
+  const hook = String(seg.hook || '').slice(0, 500)
+  const transcriptExcerpt = String(seg.transcript_excerpt || '').trim()
+
+  try {
+    // Voice-faithful caption from the moment's OWN transcript + the clinician's
+    // voice phrases. Best-effort — fall back to the hook rather than failing the
+    // render because captioning hiccuped.
+    let captionText = hook
+    try {
+      const generated = await generateCaption({
+        topic: hook || 'Clip',
+        clip: {},
+        workspace: ws,
+        staffId: seg.staff_id || null,
+        clipTranscript: transcriptExcerpt,
+      })
+      if (generated && generated.trim()) captionText = generated.trim().slice(0, 500)
+    } catch (e) {
+      console.error('[reelFactory] caption gen failed, using hook:', e?.stack || e?.message)
+    }
+
+    // Persisted captions (migration 137): slice the source's stored words to this
+    // segment's window so the render reuses them instead of re-transcribing.
+    const captionWords = Array.isArray(asset.transcript_words) && asset.transcript_words.length
+      ? sliceWordsToWindow(asset.transcript_words, startSec, durationSec)
+      : null
+
+    // Render the ≤60s window as a reel-format clip with the caption burned in.
+    const { buffer, width, height } = await renderVideoChannel({
+      videoUrl: asset.blob_url,
+      channel: CLIP_CHANNEL,
+      captionText,
+      workspace: ws,
+      staffName,
+      startSec,
+      durationSec,
+      subtitles: true,
+      ...(captionWords && captionWords.length ? { captionWords } : {}),
+    })
+
+    const safeFilename = (asset.filename || 'clip')
+      .replace(/[^\w.-]/g, '_')
+      .replace(/\.\w+$/, '')
+    // Key by segment id so multiple segments off one source never clobber.
+    const pathname = `media/clips/${ws.id}/${asset.id}/${seg.id}-${safeFilename}.mp4`
+    const blob = await blobPut(pathname, buffer, {
+      access: 'public',
+      contentType: 'video/mp4',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    })
+
+    // Insert the b-roll media_assets row (parent_asset_id = source) + index it.
+    const saved = await saveBroll({
+      ws,
+      renders: [{ blobUrl: blob.url, width, height, sizeBytes: buffer.length }],
+      staffId: seg.staff_id || null,
+      notes: `AI clip from asset ${asset.id}${hook ? ` — "${hook.slice(0, 80)}"` : ''}`,
+      parentAssetId: asset.id,
+    })
+    const newAssetId = saved?.[0]?.id || null
+
+    // Land the rendered reel as an approvable draft, not just a Library b-roll
+    // row. Best-effort — a draft-insert failure must not undo a successful
+    // render (the clip is saved and re-draftable by hand), so it is logged and
+    // swallowed rather than triggering the reset-to-'proposed' path below.
+    let draftId = null
+    if (createDraft) {
+      try {
+        draftId = await createClipDraft({
+          ws,
+          videoUrl: blob.url,
+          assetId: newAssetId,
+          filename: `${safeFilename}.mp4`,
+          durationS: durationSec,
+          caption: captionText,
+          staffId: seg.staff_id || null,
+          platform: 'instagram',
+          notes: `Auto-drafted reel from moment ${seg.id} (asset ${asset.id})`,
+        })
+        if (!draftId) console.error('[reelFactory] draft insert returned no id for segment', seg.id)
+      } catch (e) {
+        console.error('[reelFactory] draft creation failed for segment', seg.id, e?.stack || e?.message)
+      }
+    }
+
+    await sb(`video_segments?id=eq.${seg.id}&workspace_id=eq.${ws.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'rendered', rendered_asset_id: newAssetId }),
+    }).catch(() => {})
+
+    return { ok: true, assetId: newAssetId, draftId, caption: captionText }
+  } catch (e) {
+    console.error('[reelFactory] render failed for segment', seg.id, e?.stack || e?.message)
+    // Only reset to 'proposed' if still in 'rendering' — don't clobber a user
+    // edit (discarded/kept) that arrived during the render window.
+    await sb(`video_segments?id=eq.${seg.id}&workspace_id=eq.${ws.id}&status=eq.rendering`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'proposed' }),
+    }).catch(() => {})
+    return { ok: false, assetId: null, draftId: null, caption: '' }
+  }
+}
+
+/**
+ * Top unrendered moments eligible to become reels, best first, at most one per
+ * source video. Pure DB selection — no rendering, no side effects.
+ */
+export async function selectReelCandidates({ ws, limit }) {
+  if (limit <= 0) return []
+
+  // Moments already turned into a reel atom — the never-draft-twice ledger.
+  const drafted = new Set()
+  const draftedRes = await sb(
+    `content_plan_atoms?workspace_id=eq.${ws.id}&source_segment_id=not.is.null&select=source_segment_id`,
+  )
+  if (draftedRes.ok) {
+    for (const r of await draftedRes.json().catch(() => [])) {
+      if (r.source_segment_id) drafted.add(r.source_segment_id)
+    }
+  }
+
+  // Candidates: proposed moments on a usable source video, scored above the bar.
+  // Ordered by score so a truncated fetch still yields the strongest moments.
+  const res = await sb(
+    `video_segments?workspace_id=eq.${ws.id}&status=eq.proposed&score=gte.${MIN_SCORE}` +
+      `&rendered_asset_id=is.null&order=score.desc&limit=120` +
+      `&select=id,source_asset_id,staff_id,start_sec,end_sec,hook,transcript_excerpt,score,` +
+      `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status,transcript_words)`,
+  )
+  if (!res.ok) {
+    console.error('[reelFactory] candidate fetch failed:', res.status)
+    return []
+  }
+  const rows = await res.json().catch(() => [])
+
+  const picked = []
+  const usedAssets = new Set()
+  for (const seg of rows) {
+    if (picked.length >= limit) break
+    if (drafted.has(seg.id)) continue
+
+    const asset = seg.source_asset
+    if (!asset || asset.kind !== 'video' || !asset.blob_url || asset.archived_at) continue
+    // Same hard consent gate the manual path enforces.
+    if (asset.consent_status === 'pending' || asset.consent_status === 'revoked') continue
+    // One reel per source video per run — a single long interview must not fill
+    // the whole week with variations of itself.
+    if (usedAssets.has(asset.id)) continue
+
+    const dur = (Number(seg.end_sec) || 0) - (Number(seg.start_sec) || 0)
+    if (dur < MIN_DURATION_S || dur > MAX_DURATION_S) continue
+
+    usedAssets.add(asset.id)
+    picked.push(seg)
+  }
+  return picked
+}
+
+/**
+ * Fill this workspace's open Reel slots for the week: render the top moments and
+ * insert a `format='reel'` atom per rendered clip, already linked to its draft.
+ *
+ * Idempotent — the target is a ceiling counted against reel atoms that already
+ * exist for the week, so a re-run with a full week is a no-op.
+ *
+ * @returns {Promise<{skipped?: string, target?: number, existing?: number, rendered?: number, failed?: number, shortfall?: number}>}
+ */
+export async function fillReelSlots({ ws, weekMonday }) {
+  if (!ws?.video_pipeline_enabled) return { skipped: 'video_pipeline_disabled' }
+
+  const target = reelTargetForWorkspace(ws)
+  if (target <= 0) return { skipped: 'no_reel_target', target: 0 }
+
+  // Reel slots already filled this week. Skipped atoms don't hold a slot.
+  const existingRes = await sb(
+    `content_plan_atoms?workspace_id=eq.${ws.id}&plan_week=eq.${weekMonday}` +
+      `&format=eq.${ATOM_FORMATS.REEL}&status=neq.skipped&select=id`,
+  )
+  if (!existingRes.ok) return { skipped: 'db_error' }
+  const existing = (await existingRes.json().catch(() => [])).length
+
+  const gap = Math.min(target - existing, MAX_PER_RUN)
+  if (gap <= 0) return { target, existing, rendered: 0, failed: 0, shortfall: 0 }
+
+  const candidates = await selectReelCandidates({ ws, limit: gap })
+  if (!candidates.length) {
+    // A real signal, not an error: the week wants reels and the clip library
+    // cannot supply them. Surfaced so the footage-ask can act on it.
+    return { target, existing, rendered: 0, failed: 0, shortfall: gap }
+  }
+
+  // Claim them up front so a concurrent tick can't double-render the same moment.
+  const claimIds = candidates.map((s) => `"${s.id}"`).join(',')
+  await sb(`video_segments?id=in.(${claimIds})&workspace_id=eq.${ws.id}&status=eq.proposed`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'rendering' }),
+  }).catch(() => {})
+
+  // Resolve staff names once for the lower-third overlay.
+  const staffIds = [...new Set(candidates.map((s) => s.staff_id).filter(Boolean))]
+  const staffNames = {}
+  if (staffIds.length) {
+    const cRes = await sb(
+      `staff?id=in.(${staffIds.map((id) => `"${id}"`).join(',')})&workspace_id=eq.${ws.id}&select=id,name`,
+    )
+    if (cRes.ok) for (const c of await cRes.json().catch(() => [])) staffNames[c.id] = c.name
+  }
+
+  const atomRows = []
+  let failed = 0
+  for (const seg of candidates) {
+    const out = await renderSegmentToReel({
+      ws,
+      seg,
+      asset: seg.source_asset,
+      staffName: staffNames[seg.staff_id] || '',
+      createDraft: true,
+    })
+    if (!out.ok || !out.draftId) {
+      failed += 1
+      continue
+    }
+    atomRows.push({
+      workspace_id: ws.id,
+      // NULL by design: a reel's source is a media_asset + a moment, not an
+      // interview. Migration 179 relaxed the NOT NULL for exactly this.
+      interview_id: null,
+      platform: 'instagram',
+      slot: 1,
+      angle: 'clip_moment',
+      angle_label: 'Reel',
+      angle_description: 'A standalone moment cut from a real clinician video',
+      brief: String(seg.hook || '').replace(/\s+/g, ' ').trim().slice(0, 90) || null,
+      format: ATOM_FORMATS.REEL,
+      source_segment_id: seg.id,
+      // Born drafted: the clip is rendered and the draft exists, so this slot is
+      // never a promise. That is also what keeps it out of the draft/predraft
+      // paths (they require a null content_piece_id) and out of the Strategist's
+      // replace-untouched delete (it only removes pending, unlinked atoms).
+      status: 'drafted',
+      content_piece_id: out.draftId,
+      planned_by: 'reel_factory',
+      plan_week: weekMonday,
+      scheduled_at: null,
+      held_at: null,
+    })
+  }
+
+  if (!atomRows.length) return { target, existing, rendered: 0, failed, shortfall: gap }
+
+  // Reuse the Strategist's own slot assigner so reels land on the same best-hour
+  // grid as everything else and respect the workspace's quiet days.
+  const quietDays = Array.isArray(ws.cadence_policy?.quiet_days) ? ws.cadence_policy.quiet_days : []
+  const timezone = ws.cadence_policy?.timezone || 'UTC'
+  const scheduled = assignSlots(atomRows, weekMonday, quietDays, timezone)
+
+  const insertRes = await sb('content_plan_atoms', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify(scheduled),
+  })
+  if (!insertRes.ok) {
+    console.error('[reelFactory] atom insert failed:', insertRes.status)
+    return { target, existing, rendered: 0, failed: failed + atomRows.length, shortfall: gap }
+  }
+
+  // Mirror the slot time onto the draft so /week and the piece agree.
+  await Promise.all(
+    scheduled.map((a) =>
+      sb(`content_items?id=eq.${a.content_piece_id}&workspace_id=eq.${ws.id}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ scheduled_at: a.scheduled_at }),
+      }).catch(() => {}),
+    ),
+  )
+
+  return {
+    target,
+    existing,
+    rendered: scheduled.length,
+    failed,
+    shortfall: Math.max(0, gap - scheduled.length),
+  }
+}
