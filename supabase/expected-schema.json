@@ -290,6 +290,10 @@
     "publish_error",
     "published_at",
     "region",
+    "reject_note",
+    "reject_reason",
+    "rejected_at",
+    "rejected_by",
     "resolved_url",
     "reviewed_by",
     "scheduled_at",
@@ -388,6 +392,8 @@
     "notify_ok",
     "page_url",
     "screenshot_url",
+    "triage_note",
+    "triaged_at",
     "user_email",
     "user_id",
     "user_name",
@@ -606,6 +612,17 @@
     "question",
     "source",
     "topic",
+    "workspace_id"
+  ],
+  "social_channel_snapshots": [
+    "account_username",
+    "captured_at",
+    "followers",
+    "id",
+    "platform",
+    "post_count",
+    "snapshot_at",
+    "source",
     "workspace_id"
   ],
   "staff": [
