@@ -79,9 +79,12 @@ export default async function handler(req, res) {
     return res.status(200).json({ connected: false, error: 'credential_decrypt_failed' })
   }
 
-  // Published website pages for this workspace that have a URL.
+  // Published website pages for this workspace that have a URL. platform=eq.blog
+  // is load-bearing: resolved_url now also holds the Instagram/Facebook permalink
+  // of a published social post (the publish receipt), and instagram.com paths
+  // would otherwise be turned into page paths and queried against GA4.
   const itemsRes = await sb(
-    `content_items?workspace_id=eq.${ws.id}&status=eq.published&resolved_url=not.is.null` +
+    `content_items?workspace_id=eq.${ws.id}&platform=eq.blog&status=eq.published&resolved_url=not.is.null` +
     `&select=id,topic,resolved_url&order=published_at.desc.nullslast&limit=50`
   )
   const items = itemsRes.ok ? (await itemsRes.json().catch(() => [])) : []

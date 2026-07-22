@@ -798,8 +798,10 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
           </div>
         )}
 
-        {/* Live link — shown once the website publish round-trip captures a URL */}
-        {piece.status === 'published' && piece.platform === 'blog' && piece.resolved_url && (
+        {/* Live link — shown once we have a confirmed URL for the post: the
+            website publish round-trip for a blog, or the network's own permalink
+            recorded by the bundle webhook for a social post. */}
+        {piece.status === 'published' && piece.resolved_url && (
           <a
             href={piece.resolved_url}
             target="_blank"

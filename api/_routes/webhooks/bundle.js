@@ -27,7 +27,7 @@ export const config = { runtime: 'nodejs' }
 
 import { Bundlesocial } from 'bundlesocial'
 import { waitUntil } from '@vercel/functions'
-import { bundleErrorText } from '../../_lib/social/bundlePublisher.js'
+import { bundleErrorText, bundlePermalink } from '../../_lib/social/bundlePublisher.js'
 import { notifyPublishFailure } from '../../_lib/notifyPublishFailure.js'
 import { recordAgentAction } from '../../_lib/agentActions.js'
 
@@ -102,7 +102,7 @@ export default async function handler(req, res) {
   // workspace_id.
   const look = await sb(
     `content_items?buffer_update_id=eq.${encodeURIComponent(postId)}` +
-    `&select=id,workspace_id,status,platform,topic,content&limit=1`,
+    `&select=id,workspace_id,status,platform,topic,content,resolved_url&limit=1`,
     { method: 'GET' }
   )
   const rows = look.ok ? (await look.json().catch(() => [])) : []
@@ -113,6 +113,24 @@ export default async function handler(req, res) {
   }
 
   if (status === 'POSTED') {
+    // Record the receipt FIRST, and unguarded by status. The permalink is a fact
+    // about the live post, not a consequence of our own bookkeeping — the
+    // publish-now path marks a row 'published' optimistically, which makes the
+    // status-guarded promote below a no-op, and folding the URL into that PATCH
+    // would mean the posts most in need of a receipt never got one. Skipped when
+    // the row already has one so a redelivered webhook rewrites nothing.
+    const permalink = bundlePermalink(data, item.platform)
+    if (permalink && !item.resolved_url) {
+      await sb(
+        `content_items?id=eq.${item.id}&workspace_id=eq.${item.workspace_id}`,
+        {
+          method: 'PATCH',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({ resolved_url: permalink, updated_at: new Date().toISOString() }),
+        }
+      ).catch((e) => console.warn('[bundle/webhook] resolved_url write failed:', e?.message))
+    }
+
     // Promote scheduled → published (guarded; a no-op if already published/failed).
     const patch = await sb(
       `content_items?id=eq.${item.id}&workspace_id=eq.${item.workspace_id}&status=eq.scheduled`,

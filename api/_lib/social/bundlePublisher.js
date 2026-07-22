@@ -95,6 +95,30 @@ export function bundleErrorText(res) {
   return null
 }
 
+// The live post's own URL on the network, once bundle knows it. bundle exposes
+// it per-platform under `externalData` on the post object — the same shape the
+// `post.published` webhook delivers (its payload IS a PostGetResponse), so the
+// receipt costs no extra API call.
+//
+// This is the difference between Bernard CLAIMING a post published and being
+// able to show you the post. Exported so the webhook and the hourly sync cron
+// extract it identically.
+export function bundlePermalink(res, platform = null) {
+  const ext = res?.externalData
+  if (!ext || typeof ext !== 'object') return null
+  // Bernard posts one social account type per post, so prefer that platform's
+  // entry and fall back to whatever is present.
+  const preferred = platform ? (PLATFORM_TO_BUNDLE_TYPE[platform] || platform) : null
+  const keys = preferred ? [preferred, ...Object.keys(ext)] : Object.keys(ext)
+  for (const key of keys) {
+    const url = ext[key]?.permalink
+    // Only ever hand back a real absolute URL — this value is rendered as an
+    // href and is also read by the website-health checker.
+    if (typeof url === 'string' && /^https?:\/\//i.test(url)) return url
+  }
+  return null
+}
+
 // Count media by the type bundle ITSELF assigned. bundle's upload response
 // carries `type: 'image'|'video'|'document'`, decided after it downloads the
 // URL — which is a far better signal than our own media_urls entry labels.
@@ -328,6 +352,9 @@ export class BundlePublisher extends SocialPublisher {
     return {
       status,
       postedAt: res?.postedDate ?? null,
+      // The live post URL, so the sync cron can record the receipt for any
+      // publish the webhook missed (unregistered endpoint, dropped delivery).
+      permalink: bundlePermalink(res),
       isPosted: status === 'POSTED',
       // ERROR = bundle tried and the network rejected it → a real publish
       // failure we surface to the user. DELETED = removed in bundle (usually
