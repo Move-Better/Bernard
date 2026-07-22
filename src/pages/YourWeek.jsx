@@ -522,7 +522,16 @@ export default function YourWeek() {
       }
       qc.invalidateQueries({ queryKey: ['week-summary'] })
     } catch (e) {
-      toast.error('Approve failed', { description: e?.message })
+      // Over the platform's hard character ceiling. The piece was left alone and
+      // is still a draft, so name the exact overage and what to do about it.
+      if (e?.payload?.error === 'caption_too_long') {
+        const { cap, over } = e.payload
+        toast.error(`Too long for ${PLATFORM_META[item.platform]?.label || item.platform}`, {
+          description: `The caption is ${over} character${over === 1 ? '' : 's'} over the ${cap} limit. Open it and shorten it, then approve.`,
+        })
+      } else {
+        toast.error('Approve failed', { description: e?.message })
+      }
     } finally {
       setApprovingAtom(null)
     }

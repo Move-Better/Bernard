@@ -40,13 +40,19 @@ export const PLATFORM_META = {
 }
 
 // Hard caption-length caps the destination platform actually enforces at
-// publish time (not soft best-practice guidance). Only platforms with a cap
-// that's realistically reachable by a real caption are listed — Facebook
-// (63,206) and LinkedIn (3,000) posts essentially never hit their ceiling in
-// practice, so they're omitted to avoid cluttering the editor with a warning
-// that never fires. GBP's 1500 is enforced server-side (silently truncated)
-// in api/_routes/publish/buffer.js — surfacing it here in the editor lets the
-// author see and fix an overlong caption before it ships shortened.
+// publish time (not soft best-practice guidance).
+//
+// Every platform the SERVER caps must appear here, because these caps now gate
+// the Approve button as well as the editor warning — a platform capped
+// server-side but missing here would disable Approve with no explanation of
+// why. LinkedIn (3,000) was previously omitted on the grounds that a real post
+// never gets near it; that was fine for a warning and wrong for a gate.
+// tests/lib/captionCap.test.js enforces the correspondence in both directions.
+//
+// Facebook (63,206) stays out: neither side caps it, so nothing is gated.
+// GBP's 1500 is not a gate either — it is clamped sentence-aware at publish
+// (see AUTO_CLAMP_PLATFORMS below); the warning here just lets the author fix
+// it before it ships shortened.
 export const CAPTION_LIMITS = {
   gbp:              1500,
   twitter:          280,
@@ -55,6 +61,26 @@ export const CAPTION_LIMITS = {
   instagram:        2200,
   instagram_story:  2200,
   tiktok:           2200,
+  linkedin:         3000,
+  mastodon:         500,
+}
+
+// Platforms whose over-length text is CLAMPED at publish rather than blocked at
+// approve. Mirror of AUTO_CLAMP_PLATFORMS in api/_lib/socialLengthTargets.js —
+// tests/lib/captionCap.test.js asserts the two stay in step.
+export const AUTO_CLAMP_PLATFORMS = new Set(['gbp'])
+
+// How many characters this caption is OVER the platform's hard ceiling; 0 when
+// it fits, the platform has no ceiling, or the platform auto-clamps instead.
+//
+// Client mirror of checkCaptionCap() in api/_lib/socialLengthTargets.js. The
+// server route is the real boundary — this exists so Approve can be disabled
+// with a reason the author can act on, instead of failing on click.
+export function captionOverage(platform, text) {
+  const cap = CAPTION_LIMITS[platform]
+  if (!cap || AUTO_CLAMP_PLATFORMS.has(platform)) return 0
+  const len = typeof text === 'string' ? text.length : 0
+  return Math.max(0, len - cap)
 }
 
 // See also src/lib/contentStatusTokens.js (kanban-lane variant with `accent` borders; same "Ready to publish" label for the approved status).
