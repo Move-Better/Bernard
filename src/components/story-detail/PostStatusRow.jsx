@@ -5,7 +5,7 @@ import {
   MessageSquareWarning,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { PLATFORM_META, STATUS_META } from '@/lib/contentMeta'
+import { PLATFORM_META, statusMetaFor } from '@/lib/contentMeta'
 import { photoSourceUrl, isVideoEntry } from '@/lib/mediaEntry'
 import { useAddComment, useUpdateContentItemStatus } from '@/lib/queries'
 import { toast } from '@/lib/toast'
@@ -138,7 +138,10 @@ function RequestChangesControl({ piece }) {
 export default function PostStatusRow({ piece }) {
   const meta = PLATFORM_META[piece.platform] || { label: piece.platform, icon: FileText, color: 'text-muted-foreground', bg: 'bg-muted' }
   const Icon = meta.icon
-  const sm = STATUS_META[piece.status] || { label: piece.status || '—', color: 'bg-muted text-muted-foreground' }
+  // statusMetaFor, not STATUS_META — a post that was just sent is 'scheduled'
+  // for the minute bundle takes to post it, and must read "Publishing…" rather
+  // than looking like it sat down in a queue.
+  const sm = statusMetaFor(piece)
   const isFailed = piece.status === 'failed'
   const isPublished = piece.status === 'published'
   const seriesLabel = piece.series_id && piece.series_part

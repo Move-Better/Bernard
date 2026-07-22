@@ -533,10 +533,29 @@ async function handleBundlePublish(req, res, workspace) {
     // dispatching_at=null / status=approved gap the Approve path could re-claim
     // and re-post into before the client's own status PATCH lands. On failure,
     // release only (status untouched) so a retry can re-acquire the lock.
+    //
+    // 'scheduled' even for publish-now: bundle ALWAYS creates the post as
+    // SCHEDULED (postDate ≈ now + 60s) and promotes it to POSTED itself, so
+    // nothing is live at this point. Claiming 'published' here was a claim we
+    // couldn't back — and it silently defeated the post.published webhook, whose
+    // promote is guarded on status=eq.scheduled, so published_at and the live
+    // post URL never landed for exactly the posts a user was watching.
+    //
+    // scheduled_at MUST carry a real timestamp, never null: the hourly
+    // sync-buffer-published backstop only picks up rows whose scheduled_at is
+    // non-null AND in the past, so a null would strand the row at 'scheduled'
+    // forever on any workspace whose webhook delivery failed.
+    const committedAt = scheduledAt || result.body?.scheduledAt || new Date().toISOString()
     const extra = result.status === 200
-      ? { status: scheduledAt ? 'scheduled' : 'published', scheduled_at: scheduledAt || null }
+      ? { status: 'scheduled', scheduled_at: committedAt }
       : {}
     await releaseDispatch(contentItemId, workspace.id, extra)
+
+    if (result.status === 200) {
+      // Tell the client the row is already committed so it doesn't overwrite the
+      // status with an optimistic 'published' of its own.
+      return res.status(200).json({ ...result.body, committedStatus: 'scheduled', scheduledAt: committedAt })
+    }
   }
 
   return res.status(result.status).json(result.body)
