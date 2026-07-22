@@ -35,6 +35,31 @@ function brandFonts(brandStyle) {
   return { heading, body }
 }
 
+// Canvas text metrics depend on a font being LOADED, not merely declared:
+// ctx.measureText() silently falls back to the next family in the stack while a
+// webfont is still in flight. Every wrap decision in this renderer is measured,
+// so a bake that starts before the brand font arrives breaks lines in different
+// places than the warm preview the user signed off on — and that baked image is
+// what ships. Await the exact families this slide will use before drawing.
+async function awaitBrandFonts(brandStyle) {
+  if (typeof document === 'undefined' || !document.fonts) return
+  const { heading, body } = brandFonts(brandStyle)
+  try {
+    // `document.fonts.ready` alone is not enough: a family used ONLY on canvas is
+    // never requested by the document, so `ready` can resolve without it having
+    // been fetched at all. Ask for each family explicitly first (sizes are
+    // arbitrary — the shorthand just has to parse), then let the set settle.
+    await Promise.all([
+      document.fonts.load(`bold 96px ${heading}`),
+      document.fonts.load(`400 40px ${body}`),
+    ])
+    await document.fonts.ready
+  } catch {
+    // A font that never loads is not a reason to abandon the bake — the fallback
+    // stack still renders legible text; only the wrapping differs.
+  }
+}
+
 // `heroAccent` is the server-reconciled hero color (brandStyleForRender() in
 // brandSwatches.js attaches it via the same colors.primary→accent_color→palette
 // chain the server compositor uses), so the client bake matches the server bake
@@ -1448,6 +1473,10 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
   target.width  = W
   target.height = H
   const ctx = target.getContext('2d')
+
+  // Before ANY measuring or drawing — see awaitBrandFonts. Cheap after the first
+  // call (both promises are already-settled once the fonts are in).
+  await awaitBrandFonts(brandStyle)
 
   const layout = theme?.layout
   const palette = theme?.palette

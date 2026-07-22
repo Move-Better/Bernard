@@ -62,6 +62,13 @@ export async function publishPieceToBuffer(
       themeId: piece.photo_template_id || DEFAULT_DECK_THEME,
       customThemes,
       pieceId: piece.id,
+      // The aspect the editor chose and saved on the row. Omitting it does NOT
+      // simply fall back to a default: `aspect` is part of every slide's render
+      // signature, so publishing a 9:16 deck without it recomputed a 4:5
+      // signature, missed the cached 9:16 bakes, and silently RE-BAKED every
+      // slide at 4:5 — text reflowed and the published carousel was a different
+      // shape than the one that was approved.
+      aspect: piece.aspect_ratio || '4:5',
     })
     if (publishMediaUrls.length) mediaUrls = publishMediaUrls
     if (changed) renderedSlides = slides
