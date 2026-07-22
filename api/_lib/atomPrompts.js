@@ -171,8 +171,8 @@ ${lengthLine('linkedin', 'clinical_perspective', lean)}
 ANGLE: Lead with what this clinic approaches differently about ${condition} — framed for clinicians, coaches, and referring providers.
 ${isPersonal
   ? `Write in ${firstName}'s first-person professional voice — this is my clinical perspective.`
-  : `Frame as ${workspace.display_name}'s team perspective: "At ${workspace.display_name}, we approach ${condition} differently…"`}
-Close with: "Happy to connect with colleagues working with patients dealing with ${condition}."
+  : `Frame as ${workspace.display_name}'s team perspective — "we" and "our team". Open directly on the specific clinical position this piece argues, in the language it was actually described with. The first line must be one that could ONLY belong to this conversation: no clinic-name preamble, and no stock announcement that we do things differently before any substance has landed.`}
+Close by inviting colleagues into the conversation. Write that invitation fresh every time, in wording tied to what THIS post argued — never a stock sign-off.
 ${linkedinUrlLine}`,
 
       referring_provider: `Write a LinkedIn post for ${workspace.display_name} about ${condition}.
@@ -181,7 +181,7 @@ ANGLE: Written specifically for referring providers — what should a GP, orthop
 ${isPersonal
   ? `Write in ${firstName}'s first-person professional voice.`
   : `Frame from ${workspace.display_name}'s clinical team perspective.`}
-Close with: "Happy to answer questions or discuss complex cases — reach out directly."
+Close by opening the door to referring providers with questions or complex cases. Phrase it fresh every time, tied to the specifics of this post — never a stock sign-off.
 ${linkedinUrlLine}`,
 
       movement_principle: `Write a LinkedIn post for ${workspace.display_name} about ${condition}.
