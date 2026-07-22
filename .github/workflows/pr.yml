@@ -115,19 +115,12 @@ jobs:
           echo "Timed out waiting for Vercel Preview deployment for ${HEAD_SHA}." >&2
           exit 1
 
-      - name: Install Vercel CLI
-        run: npm install -g vercel@latest
-
-      # `vercel curl` requires a linked project — without one it tries to
-      # link interactively and fails with "requires confirmation" on a CI
-      # runner (there's no .vercel/project.json in a fresh checkout; it's
-      # gitignored). Link non-interactively first. The project id is not
-      # sensitive (same tier as a Supabase project ref) — safe inline.
-      - name: Link Vercel project
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel link --yes --scope movebetter --project prj_K91v3tRFYgfUPhmrvgBQi5hZKAaU
-
+      # No Vercel CLI install and no `vercel link` any more. The smoke reaches
+      # protected preview deployments with Protection Bypass for Automation
+      # (an `x-vercel-protection-bypass` header) over plain fetch, so there is
+      # no CLI to install and no project to link. It resolves the bypass secret
+      # from VERCEL_TOKEN in a single API call — see the header comment in
+      # scripts/smoke-route-resolution.mjs for why the CLI had to go (#2248).
       - name: Route-resolution smoke
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
