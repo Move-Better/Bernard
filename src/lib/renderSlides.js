@@ -17,13 +17,12 @@
 import { apiFetch } from '@/lib/api'
 import { renderFreeformSlide } from '@/lib/overlayTemplates'
 import { resolveTheme } from '@/lib/photoTemplates'
-import { photoSourceUrl } from '@/lib/mediaEntry'
+import { photoSourceUrl, slidePhotos, slidePhotoEntry } from '@/lib/mediaEntry'
 
-// Photos the editor exposes for binding: non-video media with a URL. photo_idx
-// on a slide indexes into THIS filtered list (must match SlideEditor's filter).
-export function slidePhotos(mediaUrls) {
-  return (mediaUrls || []).filter((m) => m && m.type !== 'video' && m.url)
-}
+// Re-exported for existing importers; the definition now lives in mediaEntry.js
+// alongside the rest of the media_urls entry contract, so the preview, the
+// editor and this bake all resolve a slide's photo through one function.
+export { slidePhotos }
 
 // Small, fast, dependency-free string hash → short hex. Stable across reloads
 // (no Math.random / Date). Good enough to detect "did the render inputs change".
@@ -106,15 +105,12 @@ async function renderAndUploadSlide({ slide, photoUrl, brandStyle, theme, sig, p
 //   { changed }           — true if any slide was (re)rendered (caller persists)
 export async function ensureRenderedSlides({ slides, mediaUrls, brandStyle, theme, themeId, customThemes = [], pieceId, aspect }) {
   const [width, height] = AD_CAROUSEL_DIMS[aspect] || AD_CAROUSEL_DIMS['4:5']
-  const photos = slidePhotos(mediaUrls)
   const out = []
   let changed = false
 
   for (let idx = 0; idx < slides.length; idx++) {
     const slide = slides[idx]
-    const photoUrl = typeof slide.photo_idx === 'number' && photos[slide.photo_idx]
-      ? photoSourceUrl(photos[slide.photo_idx])
-      : null
+    const photoUrl = photoSourceUrl(slidePhotoEntry(slide, mediaUrls))
     const sig = slideSignature({ slide, photoUrl, themeId, brandStyle, aspect })
 
     if (slide.rendered_url && slide.rendered_sig === sig) {
@@ -151,13 +147,10 @@ export const AD_CAROUSEL_DIMS = {
 // collide with the 1:1 publish slides (different blob path).
 export async function renderCarouselAds({ slides, mediaUrls, brandStyle, theme, themeId, customThemes = [], pieceId, aspect }) {
   const [width, height] = AD_CAROUSEL_DIMS[aspect] || AD_CAROUSEL_DIMS['4:5']
-  const photos = slidePhotos(mediaUrls)
   const out = []
   for (let idx = 0; idx < slides.length; idx++) {
     const slide = slides[idx]
-    const photoUrl = typeof slide.photo_idx === 'number' && photos[slide.photo_idx]
-      ? photoSourceUrl(photos[slide.photo_idx])
-      : null
+    const photoUrl = photoSourceUrl(slidePhotoEntry(slide, mediaUrls))
     const slideTheme = slide.template_id ? resolveTheme(slide.template_id, customThemes) : theme
     const sig = slideSignature({ slide, photoUrl, themeId, brandStyle }) + 'ad' + aspect.replace(':', 'x')
     const canvas = document.createElement('canvas')

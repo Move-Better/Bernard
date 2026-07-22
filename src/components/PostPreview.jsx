@@ -9,7 +9,7 @@ import { brandStyleForRender } from '@/lib/brandSwatches'
 import { resolveTheme } from '@/lib/photoTemplates'
 import { usePhotoTemplates } from '@/lib/queries'
 import { pickHero } from '@/lib/publishImageMirror'
-import { isVideoEntry, photoSourceUrl } from '@/lib/mediaEntry'
+import { isVideoEntry, photoSourceUrl, slidePhotoEntry } from '@/lib/mediaEntry'
 import { deriveStory } from '@/lib/storyFields'
 
 // Pull the best logo URL for previews, preferring Brand Kit (primary_logo_url
@@ -103,7 +103,10 @@ function SlidesCarousel({ slides, mediaUrls, photoTemplateId = null }) {
   }
 
   const slide = slides[idx]
-  const photo = typeof slide.photo_idx === 'number' ? mediaUrls[slide.photo_idx] : null
+  // photo_idx indexes the PHOTO-ONLY list, not raw media_urls — both callers
+  // hand this component the raw array, so indexing it directly showed a
+  // different photo than the publish bake as soon as a video sat in media_urls.
+  const photo = slidePhotoEntry(slide, mediaUrls)
   const theme = resolveTheme(slide.template_id || photoTemplateId, customThemes)
 
   return (
