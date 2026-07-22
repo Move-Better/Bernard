@@ -30,7 +30,7 @@ import { sliceWordsToWindow } from './karaokeCaptions.js'
 import { generateCaption } from './captionGen.js'
 import { saveBroll } from './saveBroll.js'
 import { createClipDraft } from './clipDraft.js'
-import { assignSlots } from './strategist.js'
+import { assignSlots, dateAtLocalHour } from './strategist.js'
 import { ATOM_FORMATS } from './atomPlan.js'
 import { classifySegmentVoices, SPEAKER_VOICES } from './speakerVoice.js'
 import { mergeSlotsIntoCadence, slotsByPlatformFromCadence } from './cadenceSlots.js'
@@ -64,6 +64,22 @@ const MAX_DURATION_S = 60
 // finished, the third was still going when the function was killed. 2 leaves
 // headroom, and the hourly schedule fills a backlog soon enough anyway.
 const MAX_PER_RUN = 2
+
+// Every non-quiet day of the plan week at Instagram's best local hour, as epoch
+// ms ascending. Used only to re-point an already-elapsed slot forward.
+const WEEKDAY_IDS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+const REEL_BEST_HOUR = 12
+function openDaySlots(weekMonday, quietDays, timezone) {
+  const quiet = new Set((quietDays || []).map((d) => String(d).toLowerCase()))
+  const out = []
+  const [yr, mo, dy] = weekMonday.split('-').map(Number)
+  for (let off = 0; off < 7; off++) {
+    if (quiet.has(WEEKDAY_IDS[off])) continue
+    const day = new Date(Date.UTC(yr, mo - 1, dy + off))
+    out.push(dateAtLocalHour(day.toISOString().slice(0, 10), REEL_BEST_HOUR, timezone).getTime())
+  }
+  return out.sort((a, b) => a - b)
+}
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -313,10 +329,15 @@ export async function selectReelCandidates({ ws, limit }) {
   }
   const rows = await res.json().catch(() => [])
 
-  // Label anyone unlabelled before filtering, so a pre-classifier segment isn't
-  // silently excluded just for being old.
+  // Label unconditionally, NOT only when the gate is on. Gating the labelling on
+  // the filter meant a workspace running the default voice:'any' never got a
+  // single segment classified — the classifier was live but dormant on the whole
+  // backlog, so nobody could SEE who was talking without first flipping a gate
+  // they'd flip based on... seeing who was talking. The label is information;
+  // the filter is a policy applied to it. Cheap (Haiku, ≤24/run, persisted once
+  // per segment forever) and it makes the data visible before it's enforced.
   const voiceFilter = reelVoiceFilter(ws)
-  if (voiceFilter !== 'any') await ensureVoiceLabels(ws, rows)
+  await ensureVoiceLabels(ws, rows)
 
   const picked = []
   const usedAssets = new Set()
@@ -421,6 +442,26 @@ export async function fillReelSlots({ ws, weekMonday }) {
     timezone,
     slotsByPlatform,
   ).map((a) => a.scheduled_at)
+
+  // Never hand back a slot that has already happened. assignSlots spreads across
+  // the WHOLE plan week with no "not before now" floor, so a reel cut on
+  // Wednesday could be stamped for Monday — an auto-created draft dated in the
+  // past, which reads as broken on /week. Re-point any elapsed slot at the next
+  // open day in the same week (plan_week must still match, so it can only move
+  // forward WITHIN the week); if the week is genuinely used up, keep the
+  // computed time rather than inventing one outside the plan week.
+  const now = Date.now()
+  // Exclude days a still-valid slot already occupies, or the re-pointed reel
+  // lands on top of one that was fine — two reels at the identical timestamp.
+  const taken = new Set(slotTimes.filter((t) => Date.parse(t) > now).map((t) => Date.parse(t)))
+  const futureSlots = openDaySlots(weekMonday, quietDays, timezone)
+    .filter((t) => t > now && !taken.has(t))
+  let nextFree = 0
+  for (let i = 0; i < slotTimes.length; i++) {
+    if (Date.parse(slotTimes[i]) > now) continue
+    if (nextFree >= futureSlots.length) break
+    slotTimes[i] = new Date(futureSlots[nextFree++]).toISOString()
+  }
 
   let inserted = 0
   let failed = 0
