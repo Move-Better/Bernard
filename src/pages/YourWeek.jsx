@@ -925,12 +925,25 @@ export default function YourWeek() {
   const stageIdx = Math.max(0, LADDER.findIndex(([s]) => s === (data?.trustStage || 'approve_all')))
   const nextStage = LADDER[stageIdx + 1] || null
 
+  // Whole days of this week already behind you, in the workspace tz — Monday
+  // is 0, so nothing is "late" on a Monday. A future week is 0 (planning ahead
+  // is never behind); a past week never reaches the amber test at all.
+  const weekElapsedDays = weekOffset === 0 && todayKey
+    ? Math.max(0, DAYS.findIndex(([k]) => k === todayKey))
+    : 0
+
   // Flat chip list for the schedule strip. Instagram is the one channel that
   // spans multiple formats (post/reel/story all key under `instagram`), so it
   // contributes one chip per format — otherwise a full Instagram bar hides an
-  // empty Reel target. `short` drives the amber treatment: under target with
-  // the week still ahead of you. Being OVER target is not a warning, and a
-  // finished week can't be acted on, so neither goes amber.
+  // empty Reel target.
+  //
+  // `short` drives the amber treatment, and it is PACE-aware rather than a
+  // flat got < target. Flat comparison lit up three of five chips on a normal
+  // Wednesday — at which point amber is just the strip's colour and stops
+  // meaning "act now". A channel is only short if it is behind where it should
+  // be by this day of the week, so a 2/3 on Wednesday reads as on-pace while a
+  // 0/3 does not. Over target is not a warning, and a finished week can't be
+  // acted on, so neither goes amber.
   const cadenceChips = Object.entries(cadence)
     .filter(([, c]) => c?.enabled)
     .flatMap(([platform, cfg]) => {
@@ -956,7 +969,7 @@ export default function YourWeek() {
         got: data?.byPlatform?.[platform] || 0,
       }]
     })
-    .map((c) => ({ ...c, short: !isPast && c.got < c.target }))
+    .map((c) => ({ ...c, short: !isPast && c.got < (c.target * weekElapsedDays) / 7 }))
 
   // Batch schedule: fetch piece details then publishPieceToBuffer for each approved piece.
   async function batchSchedule() {
@@ -1395,7 +1408,7 @@ export default function YourWeek() {
                   </TooltipTrigger>
                   <TooltipContent>
                     {chip.got} scheduled this week · target {chip.target}/week
-                    {chip.short ? ' · short of target' : ''}
+                    {chip.short ? ' · behind pace for this point in the week' : ''}
                   </TooltipContent>
                 </Tooltip>
               ))}
