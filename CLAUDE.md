@@ -340,6 +340,17 @@ The Layout shell is ALREADY full-bleed: `src/components/Layout.jsx` has `const f
 - **Legitimate exceptions (leave centered):** legal reading pages (Privacy/Terms — readable measure), `max-w-*` on a `<p>` for text measure, and centered `text-center py-16` empty/loading states. Those are correct, not offenders — don't strip them.
 - Daily drivers (Home, Stories, StoryDetail, Library, Slate, YourWeek, Analytics, MediaHub, Settings, Overview) are already full-bleed — verify a new page matches them, don't reintroduce a centered column.
 
+## Making a static element clickable — it inherits anchor color, and a DOM assertion won't catch it
+
+Wrapping a previously-static `<div>` in a `<Link>`/`<a>` to add a click affordance silently repaints its text: the anchor inherits the global link color (Blue Spruce `--primary`, `rgb(12,115,126)`) instead of `text-foreground` (`rgb(11,17,30)`). Nothing errors, lint and build pass, and the element genuinely works — it's just a different color than the design called for. (2026-07-22, #2236 → #2239: linking the `/week` cadence tiles repainted all four channel labels teal, which then competed with the teal progress bars the strip uses to carry its actual signal.) **Fix: put `text-foreground` on the `Link` when the element wasn't link-colored before.**
+
+Two things make this worth its own rule right now:
+
+- **A passing DOM assertion is blind to it.** The prod probe confirmed 4 links, correct `href`s, correct `aria-label`s, hover class, focus ring — all green — while the visual regression was live. Only the screenshot showed it. When a change converts an element's *tag*, assert on `getComputedStyle(el).color` against `document.body`'s, not just on structure and classes.
+- **This conversion is happening a lot.** T3's slot work, #2244, #2245 and #2236 all made previously-static cards/tiles clickable in the same week. Expect it on any "make X clickable" fix.
+
+The inverse is the same bug from the other side, and both shipped in the same week: **don't add a hover-lift (`hover:shadow-md`) without a click handler, and don't add navigation without a visible hover/focus affordance.** A card that lifts but doesn't navigate produced ~9 of `/week`'s 22 dead clicks in the 2026-07-22 UX sweep (#2245). Ship the affordance and the behavior together, or neither.
+
 ## Router conventions (App.jsx)
 
 The outer `<Routes>` in `src/App.jsx` has a deliberately minimal shape:
