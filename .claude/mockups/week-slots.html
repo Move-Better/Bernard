@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T3 — Posting Slots Calendar (mockup)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:0 0% 100%; --foreground:222 47% 8%;
+    --card:0 0% 100%; --card-foreground:222 47% 8%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --muted:220 14% 96%; --muted-foreground:215 19% 34%;
+    --accent-foreground:160 84% 30%;
+    --destructive:0 84% 60%; --destructive-foreground:0 0% 100%;
+    --border:214 32% 91%;
+    --success:152 76% 40%; --success-foreground:0 0% 100%;
+    --warning:38 92% 50%; --warning-foreground:222 47% 8%;
+    --action:32 95% 44%; --action-foreground:0 0% 100%;
+    --radius:0.625rem;
+  }
+  body{ font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; background:hsl(var(--muted)); color:hsl(var(--foreground)); }
+  .bg-primary{background:hsl(var(--primary))} .text-primary{color:hsl(var(--primary))} .border-primary{border-color:hsl(var(--primary))}
+  .bg-card{background:hsl(var(--card))} .border-default{border-color:hsl(var(--border))}
+  .bg-success{background:hsl(var(--success))} .text-success{color:hsl(var(--success))}
+  .bg-action{background:hsl(var(--action))} .text-action{color:hsl(var(--action))}
+  .bg-muted{background:hsl(var(--muted))} .text-muted-fg{color:hsl(var(--muted-foreground))}
+  .text-destructive{color:hsl(var(--destructive))} .bg-destructive{background:hsl(var(--destructive))}
+  .rounded-app{border-radius:var(--radius)}
+  .slot{ transition: box-shadow .15s ease, transform .1s ease; }
+  .slot:hover{ box-shadow: 0 2px 10px rgba(15,23,42,.08); transform: translateY(-1px); }
+  .tag-note{ background: repeating-linear-gradient(45deg, hsl(38 92% 96%), hsl(38 92% 96%) 6px, hsl(38 92% 92%) 6px, hsl(38 92% 92%) 12px); }
+  .screen{ display:none; } .screen.active{ display:block; }
+  ::-webkit-scrollbar{ height:8px; width:8px; } ::-webkit-scrollbar-thumb{ background:hsl(var(--border)); border-radius:99px; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ============ MOCKUP CHROME (not part of the real app) ============ -->
+<div class="sticky top-0 z-50 bg-slate-900 text-white text-xs px-4 py-2 flex flex-wrap items-center gap-3">
+  <span class="font-semibold uppercase tracking-wide text-slate-400">T3 mockup</span>
+  <button onclick="showScreen('week')" class="nav-btn px-3 py-1 rounded-full bg-white/10 hover:bg-white/20" data-screen="week">1. Week board (slots)</button>
+  <button onclick="showScreen('add')" class="nav-btn px-3 py-1 rounded-full bg-white/10 hover:bg-white/20" data-screen="add">2. Add-to-day picker</button>
+  <button onclick="showScreen('month')" class="nav-btn px-3 py-1 rounded-full bg-white/10 hover:bg-white/20" data-screen="month">3. Month overview</button>
+  <button onclick="showScreen('review')" class="nav-btn px-3 py-1 rounded-full bg-white/10 hover:bg-white/20" data-screen="review">4. Full-post review</button>
+  <span class="ml-auto text-slate-400">What changed here ⇢ dashed legend on each screen</span>
+</div>
+
+<!-- ============ SCREEN 1: WEEK BOARD ============ -->
+<div id="screen-week" class="screen">
+  <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <div class="border-2 border-dashed border-amber-400 bg-amber-50 text-amber-900 text-xs rounded-app px-4 py-3 mb-6">
+      <strong>What changed here:</strong> cards are now clickable (whole tile → full review, screen 4) — no more hidden "Review" expander with zero media.
+      Empty pinned slots replace the dead "Nothing planned" filler — each has a <strong>+</strong>.
+      Quiet days are edited inline (moon toggle) — no more Settings → Auto/Manual gate.
+      State colors follow the app's existing severity convention: <span class="text-action font-semibold">amber = act now</span>, <span class="text-success font-semibold">emerald = safe/done</span>.
+      <strong>Added per your feedback:</strong> Instagram's format mix — Post, Reel, Story — is now broken out in the cadence strip below, and every card carries a format icon + label, not just a bare platform name. Maps directly to T2's real <code>atom.format</code> field (post / reel / story), so this isn't a mockup-only idea — the data to compute it already exists.
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div>
+        <h1 class="text-2xl font-bold">Your Week</h1>
+        <p class="text-sm text-muted-fg">Jul 20 – Jul 26 · America/Los_Angeles</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="inline-flex rounded-app border border-default bg-card p-0.5 text-sm">
+          <button class="px-3 py-1.5 rounded-[7px] text-muted-fg">Day</button>
+          <button class="px-3 py-1.5 rounded-[7px] bg-primary text-white font-medium">Week</button>
+          <button class="px-3 py-1.5 rounded-[7px] text-muted-fg" onclick="showScreen('month')">Month</button>
+        </div>
+        <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-app border border-default bg-card text-sm hover:bg-muted"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+        <button class="px-3 py-1.5 rounded-app border border-default bg-card text-sm hover:bg-muted">Today</button>
+        <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-app border border-default bg-card text-sm hover:bg-muted"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+      </div>
+    </div>
+
+    <!-- cadence strip — Instagram broken out by format, per Q's feedback -->
+    <div class="flex flex-wrap items-stretch gap-2 mb-6 text-xs">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 w-full sm:w-auto bg-pink-50/70 border border-pink-200 rounded-app pl-2 pr-3 py-1.5">
+        <span class="flex items-center gap-1.5 shrink-0">
+          <span class="w-5 h-5 rounded-full bg-pink-100 text-pink-700 flex items-center justify-center shrink-0"><i data-lucide="instagram" class="w-3 h-3"></i></span>
+          <span class="font-semibold text-pink-900">Instagram</span>
+        </span>
+        <span class="flex items-center gap-1 text-pink-800 shrink-0"><i data-lucide="image" class="w-3 h-3"></i>Post <strong>1/1</strong></span>
+        <span class="flex items-center gap-1 text-pink-800 shrink-0"><i data-lucide="film" class="w-3 h-3"></i>Reel <strong>1/2</strong></span>
+        <span class="flex items-center gap-1 text-pink-800 shrink-0"><i data-lucide="circle-dot" class="w-3 h-3"></i>Story <strong>1/2</strong></span>
+      </div>
+      <div class="flex items-center gap-1.5 bg-card border border-default rounded-full pl-1 pr-3 py-1"><span class="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center"><i data-lucide="facebook" class="w-3 h-3"></i></span> Facebook <strong>1/3</strong> filled</div>
+      <div class="flex items-center gap-1.5 bg-card border border-default rounded-full pl-1 pr-3 py-1"><span class="w-5 h-5 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center"><i data-lucide="linkedin" class="w-3 h-3"></i></span> LinkedIn <strong>2/3</strong> filled</div>
+      <div class="flex items-center gap-1.5 bg-card border border-default rounded-full pl-1 pr-3 py-1"><span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center"><i data-lucide="map-pin" class="w-3 h-3"></i></span> GBP <strong>2/2</strong> filled</div>
+    </div>
+
+    <!-- 7-col slot grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+
+      <!-- MON -->
+      <div class="rounded-app border border-default bg-card p-2 flex flex-col gap-2 min-h-[220px]">
+        <div class="flex items-center justify-between px-1">
+          <div><div class="text-xs font-semibold">Mon</div><div class="text-[11px] text-muted-fg">Jul 20</div></div>
+          <button onclick="showScreen('add')" class="w-6 h-6 rounded-full border border-default hover:bg-muted flex items-center justify-center text-muted-fg"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+        </div>
+        <div onclick="showScreen('review')" class="slot cursor-pointer rounded-app bg-success text-white p-2 text-xs">
+          <div class="flex items-center gap-1 mb-1"><i data-lucide="linkedin" class="w-3 h-3"></i><span class="opacity-90">7:00 AM</span></div>
+          <div class="font-medium line-clamp-2">Why "just rest it" is bad advice for a sprained ankle</div>
+          <div class="mt-1.5 inline-flex items-center gap-1 text-[10px] bg-white/20 rounded-full px-1.5 py-0.5">Published <i data-lucide="check-circle-2" class="w-2.5 h-2.5"></i></div>
+        </div>
+        <div class="rounded-app border border-dashed border-slate-300 text-slate-400 p-2 text-[11px] flex items-center justify-center h-[52px]">— open slot filled elsewhere —</div>
+      </div>
+
+      <!-- TUE -->
+      <div class="rounded-app border border-default bg-card p-2 flex flex-col gap-2 min-h-[220px]">
+        <div class="flex items-center justify-between px-1">
+          <div><div class="text-xs font-semibold">Tue</div><div class="text-[11px] text-muted-fg">Jul 21</div></div>
+          <button onclick="showScreen('add')" class="w-6 h-6 rounded-full border border-default hover:bg-muted flex items-center justify-center text-muted-fg"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+        </div>
+        <div onclick="showScreen('review')" class="slot cursor-pointer rounded-app bg-action text-white p-2 text-xs relative">
+          <div class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-white text-action flex items-center justify-center text-[10px] font-bold border-2 border-action">!</div>
+          <div class="flex items-center gap-1 mb-1"><i data-lucide="instagram" class="w-3 h-3"></i><i data-lucide="film" class="w-3 h-3"></i><span class="opacity-90">12:00 PM · Reel</span></div>
+          <div class="font-medium line-clamp-2">Dr. Q on why your low back pain isn't "just getting old"</div>
+          <div class="mt-1.5 flex items-center gap-1 text-[10px] bg-white/20 rounded-full px-1.5 py-0.5 w-fit">Needs review</div>
+        </div>
+        <div onclick="showScreen('review')" class="slot cursor-pointer rounded-app bg-success text-white p-2 text-xs">
+          <div class="flex items-center gap-1 mb-1"><i data-lucide="map-pin" class="w-3 h-3"></i><span class="opacity-90">8:00 AM</span></div>
+          <div class="font-medium line-clamp-2">New patient special — this week only</div>
+          <div class="mt-1.5 inline-flex items-center gap-1 text-[10px] bg-white/20 rounded-full px-1.5 py-0.5">Published <i data-lucide="check-circle-2" class="w-2.5 h-2.5"></i></div>
+        </div>
+      </div>
+
+      <!-- WED -->
+      <div class="rounded-app border border-default bg-card p-2 flex flex-col gap-2 min-h-[220px]">
+        <div class="flex items-center justify-between px-1">
+          <div><div class="text-xs font-semibold">Wed</div><div class="text-[11px] text-muted-fg">Jul 22</div></div>
+          <button onclick="showScreen('add')" class="w-6 h-6 rounded-full border border-default hover:bg-muted flex items-center justify-center text-muted-fg"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+        </div>
+        <div onclick="openAddModal('wed-ig-reel')" class="slot cursor-pointer rounded-app border-2 border-dashed border-pink-300 bg-pink-50/60 text-pink-700 p-2 text-xs flex flex-col items-center justify-center h-[60px] hover:bg-pink-50">
+          <div class="flex items-center gap-1"><i data-lucide="instagram" class="w-3.5 h-3.5"></i><i data-lucide="film" class="w-3.5 h-3.5"></i></div>
+          <div class="font-medium mt-0.5">12:00 PM · Reel</div>
+          <div class="text-[10px] flex items-center gap-1 mt-0.5"><i data-lucide="plus-circle" class="w-3 h-3"></i>Open slot</div>
+        </div>
+        <div onclick="showScreen('review')" class="slot cursor-pointer rounded-app bg-action text-white p-2 text-xs">
+          <div class="flex items-center gap-1 mb-1"><i data-lucide="instagram" class="w-3 h-3"></i><i data-lucide="image" class="w-3 h-3"></i><span class="opacity-90">12:00 PM · Post</span></div>
+          <div class="font-medium line-clamp-2">4 signs your desk setup is hurting your neck</div>
+          <div class="mt-1.5 flex items-center gap-1 text-[10px] bg-white/20 rounded-full px-1.5 py-0.5 w-fit">Needs review</div>
+        </div>
+      </div>
+
+      <!-- THU -->
+      <div class="rounded-app border border-default bg-card p-2 flex flex-col gap-2 min-h-[220px]">
+        <div class="flex items-center justify-between px-1">
+          <div><div class="text-xs font-semibold">Thu</div><div class="text-[11px] text-muted-fg">Jul 23</div></div>
+          <button onclick="showScreen('add')" class="w-6 h-6 rounded-full border border-default hover:bg-muted flex items-center justify-center text-muted-fg"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+        </div>
+        <div onclick="showScreen('review')" class="slot cursor-pointer rounded-app bg-action text-white p-2 text-xs">
+          <div class="flex items-center gap-1 mb-1"><i data-lucide="facebook" class="w-3 h-3"></i><span class="opacity-90">12:00 PM</span></div>
+          <div class="font-medium line-clamp-2">3 stretches to do before you get out of bed</div>
+          <div class="mt-1.5 flex items-center gap-1 text-[10px] bg-white/20 rounded-full px-1.5 py-0.5 w-fit">Needs review</div>
+        </div>
+        <div onclick="showScreen('review')" class="slot cursor-pointer rounded-app bg-success text-white p-2 text-xs">
+          <div class="flex items-center gap-1 mb-1"><i data-lucide="instagram" class="w-3 h-3"></i><i data-lucide="circle-dot" class="w-3 h-3"></i><span class="opacity-90">4:00 PM · Story</span></div>
+          <div class="font-medium line-clamp-2">Behind the scenes: today's clinic huddle</div>
+          <div class="mt-1.5 inline-flex items-center gap-1 text-[10px] bg-white/20 rounded-full px-1.5 py-0.5">Scheduled</div>
+        </div>
+      </div>
+
+      <!-- FRI -->
+      <div class="rounded-app border border-default bg-card p-2 flex flex-col gap-2 min-h-[220px]">
+        <div class="flex items-center justify-between px-1">
+          <div><div class="text-xs font-semibold">Fri</div><div class="text-[11px] text-muted-fg">Jul 24</div></div>
+          <button onclick="showScreen('add')" class="w-6 h-6 rounded-full border border-default hover:bg-muted flex items-center justify-center text-muted-fg"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+        </div>
+        <div onclick="openAddModal('fri-ig-story')" class="slot cursor-pointer rounded-app border-2 border-dashed border-pink-300 bg-pink-50/60 text-pink-700 p-2 text-xs flex flex-col items-center justify-center h-[52px] hover:bg-pink-50">
+          <div class="text-[10px] flex items-center gap-1"><i data-lucide="instagram" class="w-3 h-3"></i><i data-lucide="circle-dot" class="w-3 h-3"></i>4:00 PM · Story <i data-lucide="plus-circle" class="w-3 h-3 ml-1"></i></div>
+        </div>
+        <div onclick="showScreen('review')" class="slot cursor-pointer rounded-app bg-success text-white p-2 text-xs">
+          <div class="flex items-center gap-1 mb-1"><i data-lucide="linkedin" class="w-3 h-3"></i><span class="opacity-90">7:00 AM</span></div>
+          <div class="font-medium line-clamp-2">What we tell every runner about shin splints</div>
+          <div class="mt-1.5 inline-flex items-center gap-1 text-[10px] bg-white/20 rounded-full px-1.5 py-0.5">Scheduled</div>
+        </div>
+      </div>
+
+      <!-- SAT — exploration slot (T4 tie-in) -->
+      <div class="rounded-app border-2 border-dashed border-primary/40 bg-card p-2 flex flex-col gap-2 min-h-[220px] relative">
+        <div class="flex items-center justify-between px-1">
+          <div><div class="text-xs font-semibold">Sat</div><div class="text-[11px] text-muted-fg">Jul 25</div></div>
+          <button onclick="toggleQuiet('sat')" title="Toggle quiet day" class="w-6 h-6 rounded-full border border-default hover:bg-muted flex items-center justify-center text-primary"><i data-lucide="bell" class="w-3.5 h-3.5"></i></button>
+        </div>
+        <div class="rounded-app bg-primary/5 border border-primary/20 p-2 text-[11px] text-primary">
+          <div class="flex items-center gap-1 font-medium mb-1"><i data-lucide="flask-conical" class="w-3 h-3"></i>Trying this day</div>
+          <div class="text-primary/80">Bernard is testing Saturday 12:00 PM Reels for Instagram — no data yet on this window.</div>
+        </div>
+        <div onclick="openAddModal('sat-ig-reel')" class="slot cursor-pointer rounded-app border-2 border-dashed border-pink-300 bg-pink-50/60 text-pink-700 p-2 text-xs flex flex-col items-center justify-center h-[52px] hover:bg-pink-50">
+          <div class="text-[10px] flex items-center gap-1"><i data-lucide="instagram" class="w-3 h-3"></i><i data-lucide="film" class="w-3 h-3"></i>12:00 PM · Reel <i data-lucide="plus-circle" class="w-3 h-3 ml-1"></i></div>
+        </div>
+      </div>
+
+      <!-- SUN — quiet day, inline toggle -->
+      <div class="rounded-app border border-default bg-slate-50 p-2 flex flex-col gap-2 min-h-[220px]">
+        <div class="flex items-center justify-between px-1">
+          <div><div class="text-xs font-semibold text-slate-500">Sun</div><div class="text-[11px] text-slate-400">Jul 26</div></div>
+        </div>
+        <div class="flex-1 flex flex-col items-center justify-center gap-2 text-slate-400">
+          <i data-lucide="moon" class="w-5 h-5"></i>
+          <div class="text-[11px]">Quiet day</div>
+          <button onclick="toggleQuiet('sun')" class="text-[11px] text-primary underline underline-offset-2">Turn on posting</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-fg">
+      <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-action"></span>Needs review</div>
+      <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-success"></span>Scheduled / published</div>
+      <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded border-2 border-dashed border-pink-300"></span>Open slot</div>
+      <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded border-2 border-dashed border-primary/40"></span>Exploration slot (T4)</div>
+      <div class="flex items-center gap-1.5"><i data-lucide="moon" class="w-3.5 h-3.5"></i>Quiet day</div>
+      <span class="w-px h-3.5 bg-border"></span>
+      <div class="flex items-center gap-1.5"><i data-lucide="image" class="w-3.5 h-3.5"></i>Post</div>
+      <div class="flex items-center gap-1.5"><i data-lucide="film" class="w-3.5 h-3.5"></i>Reel</div>
+      <div class="flex items-center gap-1.5"><i data-lucide="circle-dot" class="w-3.5 h-3.5"></i>Story</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SCREEN 2: ADD-TO-DAY PICKER ============ -->
+<div id="screen-add" class="screen">
+  <div class="max-w-2xl mx-auto px-4 py-16">
+    <div class="border-2 border-dashed border-amber-400 bg-amber-50 text-amber-900 text-xs rounded-app px-4 py-3 mb-6">
+      <strong>What changed here:</strong> the old "+" affordances (View backlog / Pull from backlog) opened a read-only drawer with no way to actually place an item. This modal does the real job — pick a channel/slot, then either draft something new or pull a backlog piece straight onto it.
+    </div>
+    <div class="bg-card border border-default rounded-app shadow-xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-default flex items-center justify-between">
+        <div>
+          <div class="font-semibold">Add to Wednesday, Jul 22</div>
+          <div class="text-xs text-muted-fg">Instagram Reel slot · 12:00 PM</div>
+        </div>
+        <button onclick="showScreen('week')" class="text-muted-fg hover:text-foreground"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="p-5 grid grid-cols-2 gap-3">
+        <button class="rounded-app border-2 border-primary/30 hover:border-primary bg-primary/5 p-4 text-left">
+          <i data-lucide="sparkles" class="w-5 h-5 text-primary mb-2"></i>
+          <div class="font-medium text-sm">Draft something new</div>
+          <div class="text-xs text-muted-fg mt-1">Bernard writes a caption for this slot from your recent interviews.</div>
+        </button>
+        <button class="rounded-app border-2 border-default hover:border-primary p-4 text-left">
+          <i data-lucide="inbox" class="w-5 h-5 text-primary mb-2"></i>
+          <div class="font-medium text-sm">Pull from backlog</div>
+          <div class="text-xs text-muted-fg mt-1">7 approved-but-unscheduled pieces are waiting.</div>
+        </button>
+      </div>
+      <div class="px-5 pb-5">
+        <div class="text-xs font-medium text-muted-fg mb-2 mt-2">Backlog — Instagram-eligible</div>
+        <div class="space-y-2 max-h-64 overflow-y-auto">
+          <div class="flex items-center gap-3 rounded-app border border-default p-2.5 hover:bg-muted cursor-pointer">
+            <div class="w-10 h-10 rounded bg-slate-200 shrink-0"></div>
+            <div class="min-w-0 flex-1">
+              <div class="text-xs font-medium truncate">Why kids' posture at desks matters more than you think</div>
+              <div class="text-[11px] text-muted-fg">Carousel · banked 4 days</div>
+            </div>
+            <button class="text-xs px-2.5 py-1 rounded-full bg-primary text-white shrink-0">Place here</button>
+          </div>
+          <div class="flex items-center gap-3 rounded-app border border-default p-2.5 hover:bg-muted cursor-pointer">
+            <div class="w-10 h-10 rounded bg-slate-200 shrink-0 flex items-center justify-center"><i data-lucide="play" class="w-4 h-4 text-slate-400"></i></div>
+            <div class="min-w-0 flex-1">
+              <div class="text-xs font-medium truncate">Dr. Sarah on the 3 mistakes runners make with new shoes</div>
+              <div class="text-[11px] text-muted-fg">Reel · banked 1 day</div>
+            </div>
+            <button class="text-xs px-2.5 py-1 rounded-full bg-primary text-white shrink-0">Place here</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SCREEN 3: MONTH OVERVIEW ============ -->
+<div id="screen-month" class="screen">
+  <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="border-2 border-dashed border-amber-400 bg-amber-50 text-amber-900 text-xs rounded-app px-4 py-3 mb-6">
+      <strong>What changed here:</strong> a light overview, not a second full calendar — each day is a density chip (filled/needs-review/open counts), not per-post detail. Click a day to jump into Week view on that date. Built responsive from the start (today's month view has no mobile treatment at all).
+    </div>
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold">July 2026</h1>
+      <div class="inline-flex rounded-app border border-default bg-card p-0.5 text-sm">
+        <button class="px-3 py-1.5 rounded-[7px] text-muted-fg" onclick="showScreen('week')">Week</button>
+        <button class="px-3 py-1.5 rounded-[7px] bg-primary text-white font-medium">Month</button>
+      </div>
+    </div>
+    <div class="grid grid-cols-7 gap-2 text-center text-[11px] text-muted-fg mb-2">
+      <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+    </div>
+    <div class="grid grid-cols-7 gap-2" id="month-grid"></div>
+  </div>
+</div>
+
+<!-- ============ SCREEN 4: FULL-POST REVIEW ============ -->
+<div id="screen-review" class="screen">
+  <div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="border-2 border-dashed border-amber-400 bg-amber-50 text-amber-900 text-xs rounded-app px-4 py-3 mb-6">
+      <strong>What changed here:</strong> this is what a slot click now opens — full words + full media + approve, all in one place (grounding found <code>/publish/:pieceId</code> already renders most of this; T3's job is making the calendar route to it directly instead of an excerpt-only expander). Reject now asks why (ties into T4).
+    </div>
+    <button onclick="showScreen('week')" class="inline-flex items-center gap-1 text-sm text-muted-fg hover:text-foreground mb-4"><i data-lucide="arrow-left" class="w-4 h-4"></i>Back to Your Week</button>
+    <div class="bg-card border border-default rounded-app overflow-hidden">
+      <div class="grid md:grid-cols-2">
+        <div class="bg-slate-900 aspect-[9/16] md:aspect-auto flex items-center justify-center relative">
+          <div class="text-center text-white/60">
+            <i data-lucide="instagram" class="w-8 h-8 mx-auto mb-2"></i>
+            <div class="text-xs">Reel preview · 9:16</div>
+          </div>
+          <div class="absolute bottom-3 left-3 right-3 bg-black/50 rounded-app p-2 text-white text-[11px]">
+            "...and that's why your low back pain isn't 'just getting old.'"
+          </div>
+        </div>
+        <div class="p-5 flex flex-col">
+          <div class="flex items-center gap-2 text-xs text-muted-fg mb-3">
+            <i data-lucide="instagram" class="w-3.5 h-3.5"></i> Instagram Reel · Tue Jul 21, 12:00 PM
+          </div>
+          <div class="text-sm leading-relaxed flex-1">
+            Your back doesn't know how old you are. 🧠<br><br>
+            When patients tell me "I guess it's just my age," I always ask: what actually changed? Usually it's not age — it's a movement pattern that's been quietly compensating for months.<br><br>
+            Dr. Q breaks down the real reason low back pain creeps in — and the one stretch we give almost every new patient.<br><br>
+            #MoveBetter #LowBackPain #SpineHealth
+          </div>
+          <div class="mt-4 pt-4 border-t border-default flex items-center gap-2">
+            <button class="flex-1 px-3 py-2 rounded-app bg-success text-white text-sm font-medium hover:opacity-90">Approve &amp; schedule</button>
+            <button onclick="openReject()" class="px-3 py-2 rounded-app border border-destructive/30 text-destructive text-sm hover:bg-destructive/5">Reject</button>
+            <button class="px-3 py-2 rounded-app border border-default text-sm hover:bg-muted">Edit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="reject-panel" class="hidden mt-4 bg-card border border-destructive/30 rounded-app p-5">
+      <div class="text-sm font-medium mb-3">Why isn't this right? <span class="text-muted-fg font-normal">(teaches Bernard for next time — T4)</span></div>
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <button class="text-left text-xs px-3 py-2 rounded-app border border-default hover:border-destructive hover:bg-destructive/5">Wrong visuals</button>
+        <button class="text-left text-xs px-3 py-2 rounded-app border border-default hover:border-destructive hover:bg-destructive/5">Wrong words / tone</button>
+        <button class="text-left text-xs px-3 py-2 rounded-app border border-default hover:border-destructive hover:bg-destructive/5">Wrong topic</button>
+        <button class="text-left text-xs px-3 py-2 rounded-app border border-default hover:border-destructive hover:bg-destructive/5">Bad timing</button>
+      </div>
+      <textarea class="w-full text-xs border border-default rounded-app p-2 mb-3" rows="2" placeholder="Anything else? (optional)"></textarea>
+      <button class="px-3 py-1.5 rounded-app bg-destructive text-white text-xs">Confirm reject</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function showScreen(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById('screen-'+id).classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('bg-white/30', b.dataset.screen===id));
+    window.scrollTo({top:0});
+    lucide.createIcons();
+  }
+  function openAddModal(slot){ showScreen('add'); }
+  function openReject(){ document.getElementById('reject-panel').classList.remove('hidden'); }
+  function toggleQuiet(day){ alert('Inline toggle — no Settings trip. In the real build this PATCHes cadence_policy.quiet_days directly.'); }
+
+  // Build month grid
+  const monthGrid = document.getElementById('month-grid');
+  const daysInJuly = 31, startWeekday = 3; // Jul 1 2026 = Wed
+  const density = {5:'busy',6:'busy',7:'open',12:'busy',13:'review',14:'busy',19:'quiet',20:'busy',21:'review',22:'open',23:'review',24:'busy',25:'try',26:'quiet'};
+  for(let i=0;i<startWeekday;i++){ monthGrid.innerHTML += `<div></div>`; }
+  for(let d=1; d<=daysInJuly; d++){
+    const state = density[d];
+    let cls = 'bg-card border-default text-foreground', chip='';
+    if(state==='busy') { cls='bg-success/10 border-success/30'; chip=`<span class="text-[10px] font-semibold text-success">4 live</span>`; }
+    if(state==='review') { cls='bg-action/10 border-action/30'; chip=`<span class="text-[10px] font-semibold text-action">2 review</span>`; }
+    if(state==='open') { cls='bg-pink-50 border-pink-200'; chip=`<span class="text-[10px] font-semibold text-pink-600">1 open</span>`; }
+    if(state==='try') { cls='bg-primary/5 border-primary/30 border-dashed'; chip=`<span class="text-[10px] font-semibold text-primary">trying</span>`; }
+    if(state==='quiet') { cls='bg-slate-50 border-slate-200'; chip=`<span class="text-[10px] text-slate-400">quiet</span>`; }
+    monthGrid.innerHTML += `<div onclick="showScreen('week')" class="cursor-pointer rounded-app border ${cls} p-2 h-16 flex flex-col justify-between hover:shadow-sm">
+      <span class="text-xs font-medium">${d}</span>${chip}
+    </div>`;
+  }
+
+  showScreen('week');
+</script>
+</body>
+</html>
