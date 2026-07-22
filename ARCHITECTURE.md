@@ -969,10 +969,20 @@ gotchas below cost a full session (2026-06-21) when `/week` read empty despite 1
   - **`workspace/me.js`'s `sanitizeCadencePolicy` REBUILDS `channels[platform]` from scratch on every
     client save** — `{target_per_week, enabled}` only, nothing else survives. Any extra key nested
     under `cadence_policy.channels[platform]` (a per-channel metric, a flag) is silently dropped the
-    next time Settings → Channels saves. Unknown TOP-LEVEL `cadence_policy` keys ARE preserved verbatim
-    (`out = {...value}`), so server-computed data that isn't a user-editable per-channel setting
-    belongs at the top level, not nested under `channels[platform]` — see `day_time_proposal`,
-    `day_time_dismissed`, and `trust_metrics` (T4 learning loop, #2222–#2228) for the pattern.
+    next time Settings → Channels saves. Server-computed data that isn't a user-editable per-channel
+    setting therefore belongs at the TOP level, not nested under `channels[platform]` — see
+    `day_time_proposal`, `day_time_dismissed`, and `trust_metrics` (T4 learning loop, #2222–#2228).
+  - **Top-level keys are preserved only because the sanitizer now seeds from the STORED row.** It did
+    not always: `out` was seeded from the incoming value alone (`out = {...value}`), so the
+    "unknown top-level keys are preserved" guarantee this doc asserted was false — ANY writer that
+    PATCHed a `cadence_policy` it had built without a key silently DELETED that key, with a 200
+    response and no error. It ate `formats` (the Reel target + voice) within hours of shipping, when a
+    sibling settings save that knew nothing about `formats` wiped it off movebetter; every T4 top-level
+    key was exposed the same way. Fixed in #2255 — `sanitizeCadencePolicy(value, existing)` merges the
+    incoming object OVER the stored policy, so an omitted top-level key is carried forward and only a
+    key the client actually sends replaces. `channels` is still rebuilt wholesale inside its own block.
+    Note this class of bug is invisible to every gate: the write succeeds and the loss only surfaces
+    whenever something next reads the key.
   - This fixed the long-standing bug where Facebook + Instagram Story were enabled-as-output but got
     `0`/disabled cadence (the old hardcoded instagram/linkedin/gbp trio). Phase 2 (engagement-tuned,
     per-tenant cadence from `engagement_snapshots`) is SHIPPED in `api/_lib/cadenceAdaptive.js` and
