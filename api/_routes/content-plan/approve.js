@@ -18,6 +18,7 @@ import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { dispatchContentItem } from '../../_lib/dispatchContentItem.js'
+import { checkCaptionCap } from '../../_lib/socialLengthTargets.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -68,6 +69,23 @@ export default async function handler(req, res) {
   // Terminal states: already scheduled/published — nothing to do.
   if (piece.status === 'scheduled' || piece.status === 'published') {
     return ok(res, { status: piece.status, alreadyApproved: true })
+  }
+
+  // Length gate — BEFORE the status flip, so an over-cap piece stays a draft the
+  // reviewer can still edit rather than becoming an approved piece that fails
+  // hours later at the network with nothing to show for it. GBP is exempt: it
+  // clamps sentence-aware at publish instead (see AUTO_CLAMP_PLATFORMS).
+  // Measure exactly what dispatchContentItem will send, including the
+  // stringify fallback for a non-string body.
+  const captionText = typeof piece.content === 'string' ? piece.content : JSON.stringify(piece.content)
+  const capCheck = checkCaptionCap(piece.platform, captionText)
+  if (!capCheck.ok) {
+    return res.status(422).json({
+      error: 'caption_too_long',
+      cap: capCheck.cap,
+      length: capCheck.length,
+      over: capCheck.over,
+    })
   }
 
   // draft/in_review → flip to approved. 'approved' (already approved but not yet

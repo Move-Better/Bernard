@@ -142,6 +142,36 @@ export function platformCap(platform) {
   return cap
 }
 
+// Platforms whose over-length text is silently CLAMPED at publish rather than
+// blocked at approve. Google Business posts are short machine-written
+// announcements and Google hard-rejects anything over 1500, so a sentence-aware
+// trim is the right trade there (and is long-standing behaviour — see the GBP
+// branches in publish/buffer.js). Every other platform carries the clinician's
+// own words: quietly cutting those is worse than asking someone to shorten it,
+// so they block instead.
+export const AUTO_CLAMP_PLATFORMS = new Set(['gbp'])
+
+/**
+ * Can this caption be published on this platform, length-wise?
+ *
+ * The point is to fail at APPROVE, where someone is looking at the caption and
+ * can shorten it, rather than at publish — where an over-cap Instagram caption
+ * comes back as an opaque network rejection hours later, with the post simply
+ * not appearing. (Reported by staff 2026-07-13.)
+ *
+ * Returns { ok, cap, length, over }. `cap` is null for platforms with no known
+ * hard ceiling, and `ok` is then always true — we only ever block where we know
+ * the real limit, never on a guess.
+ */
+export function checkCaptionCap(platform, text) {
+  const cap = platformCap(platform)
+  const length = typeof text === 'string' ? text.length : 0
+  if (!cap || AUTO_CLAMP_PLATFORMS.has(platform)) {
+    return { ok: true, cap, length, over: 0 }
+  }
+  return { ok: length <= cap, cap, length, over: Math.max(0, length - cap) }
+}
+
 /**
  * Clamp text to a hard character cap WITHOUT cutting mid-sentence. Prefers the
  * last sentence terminator (. ! ?) at/under the cap; falls back to the last word

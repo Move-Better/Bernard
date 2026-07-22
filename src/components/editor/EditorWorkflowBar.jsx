@@ -7,6 +7,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useContentWorkflow } from '@/lib/useContentWorkflow'
 import { useInterview } from '@/lib/queries'
+import { captionOverage, CAPTION_LIMITS, PLATFORM_META } from '@/lib/contentMeta'
 import VoiceChip from './VoiceChip'
 
 // EditorWorkflowBar — approve, voice-check, and publish, inline in the editor's
@@ -173,6 +174,14 @@ export default function EditorWorkflowBar({ piece }) {
   const { data: interview, isLoading: interviewLoading } = useInterview(piece?.interview_id)
   const wordsGateBlocked = !interviewLoading && !!piece?.interview_id && !interview?.words_approved_at
 
+  // Caption-length gate — same shape as the words gate above: the boundary is
+  // the server (checkCaptionCap in api/_lib/socialLengthTargets.js, enforced on
+  // the approve route), this just makes the reason visible instead of letting
+  // Approve fail on click. Approving an over-cap caption used to succeed and
+  // then die at the network hours later with the post simply never appearing.
+  const captionOver = captionOverage(piece?.platform, piece?.content)
+  const captionLabel = PLATFORM_META[piece?.platform]?.label || piece?.platform
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <VoiceChip piece={piece} />
@@ -266,11 +275,21 @@ export default function EditorWorkflowBar({ piece }) {
           visible publish control that lights up once approved. */}
       {canApproveNow && (
         <>
+          {captionOver > 0 && (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1.5 text-xs font-medium text-warning"
+              title={`${captionLabel} captions cap at ${CAPTION_LIMITS[piece.platform]} characters.`}
+            >
+              <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+              {captionOver} character{captionOver === 1 ? '' : 's'} over the {captionLabel} limit
+            </span>
+          )}
           <Button
             size="sm"
-            disabled={wf.statusPending}
+            disabled={wf.statusPending || captionOver > 0}
             loading={wf.statusPending}
             onClick={wf.approve}
+            title={captionOver > 0 ? `Shorten the caption by ${captionOver} characters to approve` : undefined}
           >
             {!wf.statusPending && <Check className="mr-1.5 h-3.5 w-3.5" />}
             Approve
