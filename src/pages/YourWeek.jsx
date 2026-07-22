@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import NeedsYouStrip from '@/components/producer/NeedsYouStrip'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUser } from '@clerk/react'
@@ -791,6 +792,12 @@ export default function YourWeek() {
 
   return (
     <div className="space-y-5 py-6">
+      {/* Dead-ends Bernard can't clear on its own. Chief among them on this page:
+          the footage-ask — the week wants Reels and there's nothing left worth
+          cutting. Self-gating (renders null when the producer is off or nothing
+          is outstanding) and shares the /producer query by react-query key, so
+          mounting it here costs no extra fetch. */}
+      <NeedsYouStrip />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">

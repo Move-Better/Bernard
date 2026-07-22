@@ -146,6 +146,39 @@ async function draftRequestsUnmet(wsId) {
   }))
 }
 
+// Footage gap: the week wants Reels and the clip library cannot supply them.
+// This is the one gap Bernard genuinely cannot close on its own — it needs a
+// human to point a camera at themselves — so it belongs on the "needs you"
+// surface more than anything else here.
+//
+// Written by the auto-reel-week cron (kind 'footage_needed', deduped to one ask
+// per ~day) rather than recomputed live, because deciding it requires the
+// candidate scan the cron already did: target vs existing reel atoms vs how many
+// unrendered moments actually clear the score/consent/duration bars.
+async function footageGaps(wsId) {
+  const since = new Date(Date.now() - FAILURE_WINDOW_MS).toISOString()
+  const r = await sb(
+    `agent_actions?workspace_id=eq.${wsId}&kind=eq.footage_needed&created_at=gte.${since}` +
+    `&select=id,title,detail,created_at&order=created_at.desc&limit=1`
+  )
+  if (!r.ok) { console.error('[producer/needs-you] footage-gap fetch failed:', r.status); return [] }
+  const a = ((await r.json().catch(() => [])) || [])[0]
+  if (!a) return []
+  const short = Number(a.detail?.shortfall) || 0
+  if (short <= 0) return []
+  return [{
+    type:   'footage_gap',
+    short,
+    target: Number(a.detail?.target) || null,
+    // Concrete asks from the workspace's own open topic backlog. Empty is fine
+    // — the card falls back to the generic "more footage" form rather than
+    // inventing a topic.
+    topics: Array.isArray(a.detail?.topics) ? a.detail.topics.slice(0, 3) : [],
+    week:   a.detail?.weekMonday || null,
+    at:     a.created_at || null,
+  }]
+}
+
 // Plan gap: the upcoming week's plan is UNDER the workspace's cadence target —
 // the strategist filled fewer slots than the cadence asks for, so the human's
 // input (a fresh capture) is needed to fill the rest.
@@ -206,13 +239,16 @@ export default async function handler(req, res) {
   // and add any per-category metadata (e.g. thread age, retry count) then.
   let items = []
   try {
-    const [escalated, failures, gaps, unmet] = await Promise.all([
+    const [escalated, failures, gaps, unmet, footage] = await Promise.all([
       escalatedCaptions(ws.id),
       unresolvedPublishFailures(ws.id),
       planGaps(ws.id, ws),
       draftRequestsUnmet(ws.id),
+      footageGaps(ws.id),
     ])
-    items = [...escalated, ...failures, ...gaps, ...unmet]
+    // Footage first: it is the only item here whose fix is "go film something",
+    // which takes real-world time, so it benefits most from being seen early.
+    items = [...footage, ...escalated, ...failures, ...gaps, ...unmet]
   } catch (e) {
     console.error('[producer/needs-you] aggregate failed:', e?.message)
     return res.status(500).json({ error: 'needs_you_fetch_failed' })
@@ -226,6 +262,7 @@ export default async function handler(req, res) {
       publish_failed:      items.filter((i) => i.type === 'publish_failed').length,
       plan_gap:            items.filter((i) => i.type === 'plan_gap').length,
       draft_request_unmet: items.filter((i) => i.type === 'draft_request_unmet').length,
+      footage_gap:         items.filter((i) => i.type === 'footage_gap').length,
     },
     pausedAt: ws.producer_config?.paused_at ?? null,
   })

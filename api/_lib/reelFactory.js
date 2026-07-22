@@ -32,6 +32,7 @@ import { saveBroll } from './saveBroll.js'
 import { createClipDraft } from './clipDraft.js'
 import { assignSlots } from './strategist.js'
 import { ATOM_FORMATS } from './atomPlan.js'
+import { classifySegmentVoices, SPEAKER_VOICES } from './speakerVoice.js'
 import { mergeSlotsIntoCadence, slotsByPlatformFromCadence } from './cadenceSlots.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -75,21 +76,44 @@ function sb(path, init = {}) {
 }
 
 /**
- * How many Reels this workspace wants per week.
- * An explicit cadence_policy.channels.instagram_reel.target_per_week always
- * wins (including an explicit 0, which is how a workspace opts out entirely);
- * otherwise derive it from the Instagram target.
+ * How many of this workspace's weekly Instagram posts should be Reels.
+ *
+ * The Reel target is a SUBSET of the Instagram target, never an addition: "3 of
+ * your 4 Instagram posts are Reels", not "3 Reels on top of 4 posts". That is
+ * why it lives in cadence_policy.FORMATS rather than in cadence_policy.channels
+ * — channels are summed to get the week's total (planGaps in
+ * producer/needs-you.js), so a reel key there would inflate the week to 7 and
+ * make /week report a phantom permanent shortfall.
+ *
+ * Resolution order:
+ *   1. formats.reel.target_per_week — an explicit setting, including an
+ *      explicit 0, which is how a workspace turns auto-drafted Reels off.
+ *   2. channels.instagram_reel.target_per_week — legacy, read-only. The
+ *      sanitizer strips this key on save, so it only exists on rows written
+ *      before formats existed. Kept so those rows keep their meaning.
+ *   3. Derived: DEFAULT_REEL_SHARE of the Instagram target (Q's call: 3 of 4).
+ *
+ * Always clamped to the Instagram target — a subset can never exceed its set.
  */
 export function reelTargetForWorkspace(ws) {
-  const channels = ws?.cadence_policy?.channels || {}
-  const explicit = channels.instagram_reel
-  if (explicit && typeof explicit.target_per_week === 'number') {
-    return explicit.enabled === false ? 0 : Math.max(0, Math.round(explicit.target_per_week))
-  }
+  const policy = ws?.cadence_policy || {}
+  const channels = policy.channels || {}
   const ig = channels.instagram
   // No Instagram cadence at all means Instagram isn't a channel here — no reels.
-  if (!ig || ig.enabled === false) return 0
-  const igTarget = Math.max(0, Number(ig.target_per_week) || 0)
+  const igEnabled = ig && ig.enabled !== false
+  const igTarget = igEnabled ? Math.max(0, Number(ig.target_per_week) || 0) : 0
+
+  const explicit = policy.formats?.reel
+  if (explicit && typeof explicit.target_per_week === 'number') {
+    return Math.min(igTarget, Math.max(0, Math.round(explicit.target_per_week)))
+  }
+
+  const legacy = channels.instagram_reel
+  if (legacy && typeof legacy.target_per_week === 'number') {
+    if (legacy.enabled === false) return 0
+    return Math.min(igTarget, Math.max(0, Math.round(legacy.target_per_week)))
+  }
+
   if (!igTarget) return 0
   return Math.min(igTarget, Math.max(1, Math.round(igTarget * DEFAULT_REEL_SHARE)))
 }
@@ -208,9 +232,54 @@ export async function renderSegmentToReel({ ws, seg, asset, staffName, createDra
   }
 }
 
+// How many unlabelled segments to classify per run. Bounded so a workspace with
+// a large unclassified backlog (movebetter has 165) fills in over several ticks
+// instead of spending the whole function budget on classification.
+const MAX_CLASSIFY_PER_RUN = 24
+
+/**
+ * Ensure the given segments carry a speaker_voice label, classifying and
+ * persisting any that don't (migration 180). Self-healing: segments detected
+ * before the classifier existed get labelled the first time they're considered
+ * for a reel, so no separate backfill job is needed.
+ *
+ * Mutates the passed rows in place so the caller can filter on the fresh label.
+ */
+async function ensureVoiceLabels(ws, segs) {
+  const todo = segs.filter((s) => !s.speaker_voice).slice(0, MAX_CLASSIFY_PER_RUN)
+  if (!todo.length) return
+
+  const results = await classifySegmentVoices(todo)
+  await Promise.all(
+    todo.map(async (seg, i) => {
+      const r = results[i]
+      if (!r) return
+      seg.speaker_voice = r.voice
+      seg.speaker_voice_confidence = r.confidence
+      await sb(`video_segments?id=eq.${seg.id}&workspace_id=eq.${ws.id}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ speaker_voice: r.voice, speaker_voice_confidence: r.confidence }),
+      }).catch(() => {})
+    }),
+  )
+}
+
+/**
+ * Which speaker voices this workspace will auto-draft reels from.
+ * Default 'any' preserves Q's 2026-07-22 call (filmed testimonials are in scope,
+ * humans approve every publish). Setting it to 'clinician' restricts auto-draft
+ * to clinician-voice moments — the patient-voice gate, available without a
+ * deploy now that the label exists. Manual rendering is never restricted.
+ */
+export function reelVoiceFilter(ws) {
+  const v = ws?.cadence_policy?.formats?.reel?.voice
+  return v === 'clinician' ? 'clinician' : 'any'
+}
+
 /**
  * Top unrendered moments eligible to become reels, best first, at most one per
- * source video. Pure DB selection — no rendering, no side effects.
+ * source video. Classifies speaker voice on demand; otherwise DB selection only.
  */
 export async function selectReelCandidates({ ws, limit }) {
   if (limit <= 0) return []
@@ -232,6 +301,7 @@ export async function selectReelCandidates({ ws, limit }) {
     `video_segments?workspace_id=eq.${ws.id}&status=eq.proposed&score=gte.${MIN_SCORE}` +
       `&rendered_asset_id=is.null&order=score.desc&limit=120` +
       `&select=id,source_asset_id,staff_id,start_sec,end_sec,hook,transcript_excerpt,score,` +
+      `speaker_voice,speaker_voice_confidence,` +
       `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status,transcript_words)`,
   )
   if (!res.ok) {
@@ -239,6 +309,11 @@ export async function selectReelCandidates({ ws, limit }) {
     return []
   }
   const rows = await res.json().catch(() => [])
+
+  // Label anyone unlabelled before filtering, so a pre-classifier segment isn't
+  // silently excluded just for being old.
+  const voiceFilter = reelVoiceFilter(ws)
+  if (voiceFilter !== 'any') await ensureVoiceLabels(ws, rows)
 
   const picked = []
   const usedAssets = new Set()
@@ -256,6 +331,15 @@ export async function selectReelCandidates({ ws, limit }) {
 
     const dur = (Number(seg.end_sec) || 0) - (Number(seg.start_sec) || 0)
     if (dur < MIN_DURATION_S || dur > MAX_DURATION_S) continue
+
+    // Patient-voice gate, off by default. When on, only a confidently
+    // clinician-voice moment qualifies — 'mixed', 'unknown' and anything the
+    // classifier wasn't sure about are excluded, because the caller asked for
+    // clinician voice and "probably" is not an answer for a gate.
+    if (voiceFilter === 'clinician') {
+      if (seg.speaker_voice !== SPEAKER_VOICES.CLINICIAN) continue
+      if ((seg.speaker_voice_confidence ?? 0) < 0.6) continue
+    }
 
     usedAssets.add(asset.id)
     picked.push(seg)
