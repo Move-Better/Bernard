@@ -207,9 +207,27 @@ function PlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approving
   const showOpen = readOnly
     ? (!!item.contentPieceId || !!item.interviewId)
     : (state.action === 'open' || state.action === 'schedule')
+  // Where the card body goes when clicked — exactly where its own "Open"
+  // affordance goes, so the body promises nothing the card didn't already do.
+  // null for a not-yet-drafted atom, which has no target yet.
+  const drillHref = showOpen ? drillTo(item) : null
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-border bg-card p-2 pl-3 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_18px_-11px_rgba(15,23,42,0.3)] transition-shadow hover:shadow-md">
+    <div className={`relative overflow-hidden rounded-lg border border-border bg-card p-2 pl-3 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_18px_-11px_rgba(15,23,42,0.3)] ${drillHref ? 'transition-shadow hover:shadow-md' : ''}`}>
+      {/* Whole-card click target (P1-1, UX pain check 2026-07-22). The card had
+          a hover-lift but no onClick, so clicks on the headline / category tag /
+          body did nothing — 9+ of /week's 22 dead clicks. This is a STRETCHED
+          overlay link rather than wrapping the card in <Link>, so the Draft /
+          Review / Approve controls stay siblings instead of nested anchors; they
+          sit at z-20 and keep their own clicks. A card with nowhere to go gets no
+          overlay AND no hover-lift, so it stops advertising a behavior it lacks. */}
+      {drillHref && (
+        <Link
+          to={drillHref}
+          aria-label={`Open ${contentLabel(item)}`}
+          className="absolute inset-0 z-10 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+        />
+      )}
       {/* Solid status rail down the left edge — carries the card's status color
           with real weight (amber = needs you, green = live, spruce = approved). */}
       <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1.5 ${state.rail}`} />
@@ -231,8 +249,9 @@ function PlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approving
         <div className="-mt-1 mb-1.5 truncate text-3xs text-muted-foreground">{categoryTag(item)}</div>
       )}
       {/* Pill and action stack on separate lines — side-by-side overflowed the
-          button out of a narrow day column. */}
-      <div className="flex flex-col items-start gap-1.5">
+          button out of a narrow day column. z-20 lifts the real controls above
+          the stretched card link so Draft / Review / Open still get their clicks. */}
+      <div className="relative z-20 flex flex-col items-start gap-1.5">
         <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-3xs font-bold ${state.cls}`}>
           {state.label}
         </span>
@@ -289,8 +308,10 @@ function PlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approving
             &ldquo;{item.excerpt}&rdquo;
           </p>
           {/* Stacked full-width actions: side-by-side overflowed/wrapped in a
-              narrow day column (the label cramped onto two lines). */}
-          <div className="mt-1.5 flex flex-col gap-1">
+              narrow day column (the label cramped onto two lines). z-20 only on
+              the buttons — the excerpt above stays under the card link, so
+              clicking the quote opens the piece instead of dead-ending. */}
+          <div className="relative z-20 mt-1.5 flex flex-col gap-1">
             <button
               type="button"
               disabled={approving}
@@ -328,9 +349,19 @@ function DayPlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approv
   const showOpen = readOnly
     ? (!!item.contentPieceId || !!item.interviewId)
     : (state.action === 'open' || state.action === 'schedule')
+  // Same rule as PlanCard: the body goes where this card's own "Open" goes.
+  const drillHref = showOpen ? drillTo(item) : null
 
   return (
-    <div className="relative flex gap-3.5 overflow-hidden rounded-xl border border-border bg-card p-4 pl-5 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_18px_-12px_rgba(15,23,42,0.24)] transition-shadow hover:shadow-md">
+    <div className={`relative flex gap-3.5 overflow-hidden rounded-xl border border-border bg-card p-4 pl-5 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_18px_-12px_rgba(15,23,42,0.24)] ${drillHref ? 'transition-shadow hover:shadow-md' : ''}`}>
+      {/* Stretched card link — see PlanCard for why an overlay and not a wrapper. */}
+      {drillHref && (
+        <Link
+          to={drillHref}
+          aria-label={`Open ${contentLabel(item)}`}
+          className="absolute inset-0 z-10 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+        />
+      )}
       <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1.5 ${state.rail}`} />
       {/* Media thumbnail — the drafted post's first image (a video shows its
           poster + play badge); a muted placeholder when there's no media yet. */}
@@ -378,7 +409,7 @@ function DayPlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approv
           <span className="text-2xs text-action">{item.voiceFlag ? `Voice flag: ${item.voiceFlag}` : 'Voice — open draft to review'}</span>
         </div>
       )}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="relative z-20 mt-3 flex flex-wrap items-center gap-2">
         {!readOnly && state.action === 'draft' && (
           <button
             type="button"
