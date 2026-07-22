@@ -250,6 +250,13 @@ const CADENCE_PLATFORMS = new Set([
 ])
 const CADENCE_QUIET_DAYS = new Set(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'])
 
+// cadence_policy.formats — per-format settings (see the `formats` block below).
+// 'any' lets the reel worker auto-draft from any speaker; 'clinician' restricts
+// it to moments the speaker-voice classifier scored as the clinician talking
+// (migration 180). Manual rendering is never restricted by this.
+const CADENCE_FORMATS = new Set(['reel'])
+const CADENCE_FORMAT_VOICES = new Set(['any', 'clinician'])
+
 // Shape: { channels: { [platform]: { target_per_week, enabled } }, quiet_days, timezone, ...rest }
 // Merges over the existing row — unknown top-level keys are preserved (version, provenance, etc.)
 // so a partial PATCH from the UI doesn't clobber strategist-managed fields.
@@ -282,6 +289,35 @@ function sanitizeCadencePolicy(value) {
   if ('timezone' in value) {
     if (typeof value.timezone !== 'string' || value.timezone.length > 60) return null
     out.timezone = value.timezone
+  }
+
+  // `formats` — per-FORMAT settings, a namespace deliberately separate from
+  // `channels`. It is not an oversight that the Reel target does not live in
+  // `channels.instagram_reel`: channels have ADDITIVE semantics (planGaps in
+  // producer/needs-you.js sums target_per_week across every enabled channel to
+  // get the week's total), and the Reel target is a SUBSET of the Instagram
+  // target — 3 of 4 Instagram posts are Reels, not 3 posts on top of 4. Putting
+  // it in `channels` would inflate the weekly target to 7 and make /week report
+  // a permanent shortfall.
+  if ('formats' in value) {
+    if (!isPlainObject(value.formats)) return null
+    const cleanFormats = {}
+    for (const [name, entry] of Object.entries(value.formats)) {
+      if (!CADENCE_FORMATS.has(name)) continue
+      if (!isPlainObject(entry)) return null
+      const clean = {}
+      if (entry.target_per_week != null) {
+        const tpw = parseInt(entry.target_per_week, 10)
+        if (!Number.isInteger(tpw) || tpw < 0 || tpw > 28) return null
+        clean.target_per_week = tpw
+      }
+      if (entry.voice != null) {
+        if (!CADENCE_FORMAT_VOICES.has(entry.voice)) return null
+        clean.voice = entry.voice
+      }
+      cleanFormats[name] = clean
+    }
+    out.formats = cleanFormats
   }
 
   // T4 learning loop, part 3 — day/time proposal (day_time_proposal) is
