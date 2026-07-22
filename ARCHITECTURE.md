@@ -930,6 +930,13 @@ gotchas below cost a full session (2026-06-21) when `/week` read empty despite 1
     keep `CADENCE_PLATFORMS` (me.js) ⊇ the prior's keys or a computed channel is dropped on save.
   - Non-atom channels (blog/email/youtube/ads/landing_page) have no prior entry and are never given a
     weekly atom cadence — they're digest/single-output governed.
+  - **`workspace/me.js`'s `sanitizeCadencePolicy` REBUILDS `channels[platform]` from scratch on every
+    client save** — `{target_per_week, enabled}` only, nothing else survives. Any extra key nested
+    under `cadence_policy.channels[platform]` (a per-channel metric, a flag) is silently dropped the
+    next time Settings → Channels saves. Unknown TOP-LEVEL `cadence_policy` keys ARE preserved verbatim
+    (`out = {...value}`), so server-computed data that isn't a user-editable per-channel setting
+    belongs at the top level, not nested under `channels[platform]` — see `day_time_proposal`,
+    `day_time_dismissed`, and `trust_metrics` (T4 learning loop, #2222–#2228) for the pattern.
   - This fixed the long-standing bug where Facebook + Instagram Story were enabled-as-output but got
     `0`/disabled cadence (the old hardcoded instagram/linkedin/gbp trio). Phase 2 (engagement-tuned,
     per-tenant cadence from `engagement_snapshots`) is SHIPPED in `api/_lib/cadenceAdaptive.js` and
