@@ -34,11 +34,12 @@ function pillBtn(extraClass = '') {
   return `text-xs text-card/80 hover:text-primary transition-colors disabled:opacity-50 ${extraClass}`
 }
 
+// 'rendered' dropped — nothing writes it to media_assets, so bulk-setting it
+// moved assets into a state no other surface recognised.
 const STATUS_OPTIONS = [
   { id: 'raw',      label: 'Raw' },
   { id: 'tagged',   label: 'Tagged' },
-  { id: 'rendered', label: 'Rendered' },
-  { id: 'approved', label: 'Approved' },
+  { id: 'approved', label: 'Finished' },
 ]
 
 // Run an async fn over items with bounded concurrency. Used to throttle the

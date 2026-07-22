@@ -94,7 +94,8 @@ async function handler(req, res) {
   let qs = `media_assets?select=${SELECT}&${scope.column}=eq.${scope.id}&order=created_at.desc&limit=${limit}&offset=${offset}`
   if (kind && ['video', 'photo'].includes(kind)) qs += `&kind=eq.${kind}`
   if (status) {
-    if (!['raw', 'tagged', 'rendered', 'approved', 'archived'].includes(status)) {
+    // 'rendered' removed — no writer, no rows; it only ever returned an empty grid.
+    if (!['raw', 'tagged', 'approved', 'archived'].includes(status)) {
       return res.status(400).json({ error: 'invalid_status' })
     }
     qs += `&status=eq.${status}`

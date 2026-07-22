@@ -6,12 +6,16 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 
 // `rail` is the status-colored left bar on each card (matches the pill tone) —
 // same status-rail language as Stories / Your Week, so a status reads the same
-// color everywhere. Sky = tagged/ready, violet = rendered/approved, faint = raw/archived.
+// color everywhere. Sky = tagged/ready, violet = finished, faint = raw/archived.
+// No `rendered` entry — nothing writes that status to media_assets (see the
+// note on MediaHub's STATUS_FILTERS); an unknown status falls through to the
+// same neutral default any future value would get.
 const STATUS_LABEL = {
   raw:      { label: 'Raw',      tone: 'bg-muted text-muted-foreground', rail: 'bg-muted-foreground/40' },
   tagged:   { label: 'Tagged',   tone: 'bg-info/10 text-info', rail: 'bg-info' },
-  rendered: { label: 'Rendered', tone: 'bg-scheduled/10 text-scheduled', rail: 'bg-scheduled' },
-  approved: { label: 'Approved', tone: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', rail: 'bg-scheduled' },
+  // "Finished", not "Approved" — this is a derived asset that skipped
+  // auto-tagging, not a publish clearance. Nothing gates on it.
+  approved: { label: 'Finished', tone: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', rail: 'bg-scheduled' },
   archived: { label: 'Archived', tone: 'bg-muted text-muted-foreground', rail: 'bg-muted-foreground/40' },
 }
 
