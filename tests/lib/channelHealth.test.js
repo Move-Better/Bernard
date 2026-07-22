@@ -1,35 +1,60 @@
 import { describe, it, expect } from 'vitest'
-import { accountIsConnected } from '../../api/_lib/social/bundlePublisher.js'
+import { accountIsConnected, disconnectReason } from '../../api/_lib/social/bundlePublisher.js'
 import { channelLabel } from '../../api/_lib/notifyChannelHealth.js'
 
-describe('accountIsConnected — what counts as a dead channel', () => {
-  it('flags the states that mean a token needs re-authorizing', () => {
-    for (const status of [
-      'DISCONNECTED', 'disconnected', 'TOKEN_EXPIRED', 'expired',
-      'ERROR', 'REVOKED', 'INVALID_TOKEN', 'UNAUTHORIZED', 'NEEDS_REAUTH',
-    ]) {
-      expect(accountIsConnected({ status }), `${status} should read as broken`).toBe(false)
-    }
+// Fixtures shaped like the REAL socialAccount object — verified 2026-07-22
+// against the installed SDK's TeamGetTeamResponse type and a live teamGetTeam
+// call against the Move Better team. There is no `status` field; a prior
+// version of this file tested one anyway, against invented strings that never
+// occur, and the tests passed while the feature it covered could never fire.
+const HEALTHY = { deletedAt: null, disconnectedCheckTryAt: null, deleteOn: null }
+
+describe('accountIsConnected — what bundle itself believes about a connection', () => {
+  it('is healthy when none of the three signals are set (the real shape of every live account)', () => {
+    expect(accountIsConnected(HEALTHY)).toBe(true)
   })
 
-  it('leaves a healthy account alone', () => {
-    expect(accountIsConnected({ status: 'ACTIVE' })).toBe(true)
-    expect(accountIsConnected({ status: 'connected' })).toBe(true)
+  it('is broken once bundle has soft-deleted the connection', () => {
+    expect(accountIsConnected({ ...HEALTHY, deletedAt: '2026-07-01T00:00:00.000Z' })).toBe(false)
   })
 
-  // This is the deliberate bias, not an oversight. The value drives an email
-  // alert, and a false "your Facebook is disconnected" trains people to ignore
-  // the alert — the exact failure the check exists to fix. Missing an unusual
-  // status string is the cheaper mistake.
-  it('treats an unknown, empty or absent status as healthy rather than crying wolf', () => {
-    expect(accountIsConnected({ status: 'SOME_FUTURE_STATE' })).toBe(true)
-    expect(accountIsConnected({ status: '' })).toBe(true)
-    expect(accountIsConnected({ status: '   ' })).toBe(true)
-    expect(accountIsConnected({ status: null })).toBe(true)
-    expect(accountIsConnected({})).toBe(true)
+  it('is broken while bundle\'s own disconnect-check is actively retrying it', () => {
+    expect(accountIsConnected({ ...HEALTHY, disconnectedCheckTryAt: '2026-07-20T00:00:00.000Z' })).toBe(false)
+  })
+
+  it('is broken once scheduled for automatic removal', () => {
+    expect(accountIsConnected({ ...HEALTHY, deleteOn: '2026-08-01T00:00:00.000Z' })).toBe(false)
+  })
+
+  it('treats an absent or malformed account as healthy rather than throwing', () => {
     expect(accountIsConnected(null)).toBe(true)
-    // A non-string (bad payload) must not throw or read as broken.
-    expect(accountIsConnected({ status: 42 })).toBe(true)
+    expect(accountIsConnected(undefined)).toBe(true)
+    expect(accountIsConnected({})).toBe(true)
+  })
+})
+
+describe('disconnectReason — the WHY, shown in the email and the cron log', () => {
+  it('is null for a connected account', () => {
+    expect(disconnectReason(HEALTHY)).toBe(null)
+  })
+
+  it('names a hard delete plainly', () => {
+    expect(disconnectReason({ ...HEALTHY, deletedAt: '2026-07-01' })).toBe('disconnected')
+  })
+
+  it('names the removal date when scheduled for deletion', () => {
+    const r = disconnectReason({ ...HEALTHY, deleteOn: '2026-08-15T00:00:00.000Z' })
+    expect(r).toContain('removed')
+    expect(r).toMatch(/\d/) // carries an actual date, not just the word "soon"
+  })
+
+  it('falls back to a plain reconnect prompt when only the disconnect-check has fired', () => {
+    expect(disconnectReason({ ...HEALTHY, disconnectedCheckTryAt: '2026-07-20' })).toBe('reconnect needed')
+  })
+
+  it('prefers the hard delete reason over a scheduled-removal date when both are set', () => {
+    const r = disconnectReason({ ...HEALTHY, deletedAt: '2026-07-01', deleteOn: '2026-08-01' })
+    expect(r).toBe('disconnected')
   })
 })
 
