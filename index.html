@@ -24,6 +24,31 @@
     <meta name="twitter:description" content="Turn a 15-minute clinician interview into a full week of patient-facing content." />
     <meta name="twitter:image" content="/bernard-icon.svg" />
     <meta name="twitter:image:alt" content="Bernard — AI content for clinics" />
+    <!-- Clerk first: it gates the entire authed app. App.jsx renders NOTHING
+         until Clerk boots and /v1/client returns, so every authed route waits
+         on this origin (measured ~2.2s to isLoaded on prod, 2026-07-22).
+
+         clerk.browser.js is fetched from here by Clerk's own loader, which
+         cannot start until our vendor-clerk chunk has both downloaded AND
+         executed — measured 435ms -> 457ms, i.e. ~250-450ms of pure serial
+         wait for a file that has no dependency on our code. Preloading lets it
+         come down in parallel with our bundle instead of strictly after it.
+
+         The host is fixed, not per-tenant: it comes from the publishable key,
+         so window.Clerk.frontendApi is 'clerk.withbernard.ai' on every
+         workspace subdomain. Safe to hardcode.
+
+         Two things to re-check if you touch this:
+         1. crossorigin must match how Clerk's loader requests the script, or
+            the browser fetches it TWICE. Verify with exactly one
+            clerk.browser.js entry in performance.getEntriesByType('resource').
+         2. The @6 in the path tracks the clerk-js major. On a @clerk/clerk-react
+            major upgrade this URL goes stale — a stale preload is harmless
+            (unused, logs a console warning) but stops helping, so update it. -->
+    <link rel="preconnect" href="https://clerk.withbernard.ai" crossorigin />
+    <link rel="dns-prefetch" href="https://clerk.withbernard.ai" />
+    <link rel="preload" as="script" crossorigin="anonymous" href="https://clerk.withbernard.ai/npm/@clerk/clerk-js@6/dist/clerk.browser.js" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
