@@ -64,7 +64,7 @@ export async function notifyChannelHealth({ workspace, unhealthy }) {
       producerConfig: workspace.producer_config,
       kind:           'channel_disconnected',
       title:          `${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} disconnected — nothing can publish there`,
-      detail:         { channels: unhealthy.map((a) => ({ type: a.type || null, status: a.status || null })) },
+      detail:         { channels: unhealthy.map((a) => ({ type: a.type || null, reason: a.reason || null })) },
     })
 
     const to = await ownerEmail(workspace.created_by_clerk_user_id)
@@ -76,7 +76,7 @@ export async function notifyChannelHealth({ workspace, unhealthy }) {
     const list = unhealthy.map((a) => {
       const label = channelLabel(a)
       const who = a.displayName ? ` (${a.displayName})` : ''
-      const why = a.status ? ` — ${a.status}` : ''
+      const why = a.reason ? ` — ${a.reason}` : ''
       return `${label}${who}${why}`
     })
 

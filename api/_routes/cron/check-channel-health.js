@@ -10,10 +10,12 @@ export const config = { runtime: 'nodejs' }
 // surface at all: /api/integrations/bundle/status could report it, but only if
 // an admin happened to open the Integrations page and look.
 //
-// Deliberately conservative about what counts as broken — see accountIsConnected
-// in social/bundlePublisher.js. An unrecognized status reads as healthy, because
-// a false "your Facebook is disconnected" trains people to ignore the alert,
-// which is precisely the failure this is meant to fix.
+// What counts as broken — see accountIsConnected in social/bundlePublisher.js —
+// is bundle's own deletedAt / disconnectedCheckTryAt / deleteOn fields on the
+// socialAccount object, confirmed against a live teamGetTeam call. An earlier
+// version of this check read a `status` field that turns out not to exist on
+// the real object at all, so it silently never fired for anyone; caught only
+// by checking live bundle data, not by the unit tests written against it.
 //
 // Auth: Bearer CRON_SECRET (same as all other crons).
 
@@ -72,9 +74,10 @@ export default async function handler(req, res) {
       if (sent?.ok) summary.alerted++
       summary.workspaces.push({
         workspaceId: ws.id,
-        // Log the types and bundle's own status string — that string is the only
-        // clue to WHY, and it is not stored anywhere else.
-        unhealthy: unhealthy.map((a) => ({ type: a.type, status: a.status })),
+        // Log the types and the reason — derived from bundle's own
+        // deletedAt/disconnectedCheckTryAt/deleteOn fields, the only clue to
+        // WHY, and it isn't stored anywhere else.
+        unhealthy: unhealthy.map((a) => ({ type: a.type, reason: a.reason })),
         alerted: !!sent?.ok,
       })
     } catch (e) {

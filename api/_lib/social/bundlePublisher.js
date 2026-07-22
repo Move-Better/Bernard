@@ -126,20 +126,44 @@ export function bundlePermalink(res, platform = null) {
   return null
 }
 
-// bundle reports an account's health as a free-text status string, so this is a
-// keyword match rather than an enum check.
+// CORRECTED 2026-07-22: the socialAccount object has no `status` field at all —
+// verified against the installed SDK's TeamGetTeamResponse type AND a live
+// teamGetTeam call against the real Move Better team. The original version of
+// this function keyed off account.status, which is always undefined on every
+// real account, so it always returned true — the channel-health alert (#2216)
+// could never fire for any workspace, ever. This was caught only by checking
+// live data, not by review or the unit tests (which exercised the regex
+// against invented status strings that don't occur in reality).
 //
-// An unrecognized or absent status counts as HEALTHY, deliberately. This value
-// drives an email alert, and a false "your Facebook is disconnected" is worse
-// than a late true one — it trains people to ignore the alert, which is the
-// exact failure this whole check exists to fix. Better to miss an unusual status
-// string than to cry wolf.
-const UNHEALTHY_STATUS_RE = /disconnect|expired|error|revok|invalid|unauthor|reauth/i
-
+// The real fields bundle exposes, confirmed live:
+//   deletedAt              — the connection was soft-removed. A hard signal.
+//   disconnectedCheckTryAt — bundle's OWN background disconnect-check (see
+//                            organization.disconnectCheckEnabled) has flagged
+//                            this account and is (re)trying it. Set only when
+//                            bundle itself suspects a problem.
+//   deleteOn               — scheduled for automatic removal after a
+//                            prolonged disconnect (organization.deleteAccountAfter
+//                            days). If this is set the other two almost
+//                            certainly are too, but checking it directly means
+//                            the predicate doesn't depend on that ordering.
+// All three were null on every account observed live (Move Better, all 4
+// channels healthy) — there was no genuinely broken account to observe the
+// non-null case against, but the fields themselves and their semantics are
+// confirmed to exist, unlike the string this replaces.
 export function accountIsConnected(account) {
-  const status = account?.status
-  if (typeof status !== 'string' || !status.trim()) return true
-  return !UNHEALTHY_STATUS_RE.test(status)
+  if (!account) return true
+  return !account.deletedAt && !account.disconnectedCheckTryAt && !account.deleteOn
+}
+
+// Human-readable reason a disconnected account is disconnected, for the email
+// alert and the cron's own log. Priority order is most-severe first: a hard
+// delete outranks a scheduled one, which outranks "bundle is still checking".
+// Returns null for a connected account.
+export function disconnectReason(account) {
+  if (accountIsConnected(account)) return null
+  if (account.deletedAt) return 'disconnected'
+  if (account.deleteOn) return `will be removed ${new Date(account.deleteOn).toLocaleDateString()} unless reconnected`
+  return 'reconnect needed'
 }
 
 // Count media by the type bundle ITSELF assigned. bundle's upload response
@@ -398,18 +422,18 @@ export class BundlePublisher extends SocialPublisher {
   }
 
   // List the accounts connected to this workspace's bundle Team, each with a
-  // coarse health flag for the settings status surface + reconnect prompt. NOT
-  // part of the SocialPublisher contract — bundle-specific.
-  // ponytail: the socialAccount health-field names aren't spike-verified; map
-  // defensively (unknown status = connected) — see accountIsConnected.
+  // health flag for the settings status surface + reconnect prompt, and the
+  // channel-health cron's email alert. NOT part of the SocialPublisher
+  // contract — bundle-specific.
   async listAccounts() {
     const team = await this.sdk.team.teamGetTeam({ id: this.teamId })
     const accounts = Array.isArray(team?.socialAccounts) ? team.socialAccounts : []
     return accounts.map((a) => ({
       type: a?.type ?? null,
       displayName: a?.displayName ?? a?.name ?? a?.username ?? null,
-      status: a?.status ?? null,
       connected: accountIsConnected(a),
+      // Why, when it isn't — see disconnectReason. null on a connected account.
+      reason: disconnectReason(a),
     }))
   }
 
