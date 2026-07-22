@@ -1,0 +1,13 @@
+# Decision log — Bernard
+
+Standing rule (see CLAUDE.md "Challenge gate"): planning sessions append decisions here — date, decision, why, kill criterion, revisit-by. Sessions consult this before re-litigating a settled choice or building something that contradicts one. `/outcome-review` checks revisit-by dates monthly. Keep entries ≤6 lines; link deeper docs rather than inlining them.
+
+## 2026-07-21 — Social adoption strategy
+Full brief: `.claude/social-adoption-strategy-2026-07-21.md` (primary checkout) + memory `project-social-adoption-strategy`.
+
+- **Slots over iCal.** /week becomes a posting-schedule (per-channel weekly slots) + week board + month overview — NOT a literal day/week/month calendar. Why: at 5–15 posts/week, slots unify add-to-day, cadence config, and quiet days in one primitive; month-first grids are agency furniture. Revisit if staff ask for month-first planning after 4 weeks of real use.
+- **Auto-draft Reels.** Bernard auto-selects top-scored `video_segments` and renders karaoke-captioned reel DRAFTS into reel slots (deliberately crosses the old "detection-only" line). Humans approve every publish; `trust_stage` stays `approve_all`. Kill criterion: if by **2026-09-15** (~6 weeks post-T2) reels aren't publishing ≥2/week with IG reach clearly up (bundle analytics), stop and rethink the autonomy line or the UX.
+- **T1 closed-loop publishing.** Publish path must send Reels as Reels, honor editor aspect, verify post-publish (permalink → `resolved_url` → "Live ✓"), and alert on connection death day-0. Success bar: zero staff "rendered wrong" reports and ≥95% of published IG/FB rows carrying a verified live link. Revisit-by: **2026-09-01**.
+- **T4 learning loop, full scope.** Reject-with-reason + pre-approve edit-diff mining + weekly "Bernard learned" digest + **day/time cadence learning** (extend `cadenceAdaptive.js` from "how many" to "when", with exploration slots into unproven windows). Why: silent rejection teaches nothing, and frozen `quiet_days`/`BEST_HOUR` defaults are self-sealing — no weekend inventory ⇒ no weekend data ⇒ Auto can never learn weekends.
+- **Approval stays heavy for now, by design.** Full-review-every-post is correct while trust is low; instrument edit-rate per lane so lanes can graduate to lighter review later. Don't hard-wire heavy review forever; don't lighten it before T1 receipts exist.
+- **Meta-process installed** (this PR): challenge gate before non-trivial builds, job-level Definition of Done, this decision log, monthly `/outcome-review`. Why: solo founder with no adversarial check; months of component-green work (172 moments detected → 3 rendered → 0 reels ever) went unnoticed because nothing owned outcomes.
