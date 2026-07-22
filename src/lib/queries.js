@@ -690,19 +690,31 @@ export function useDeleteReference() {
 // staleTime 5min — list rarely changes outside of explicit user actions, and
 // every relevant mutation invalidates queryKeys.stories.all.
 //
-// Side-effect: writes the raw staff array to queryKeys.staff.card()
-// so Home's useStaffSummaries() is a free cache hit when Stories has
-// already loaded, eliminating the duplicate staff network request.
+// Fetches staff THROUGH the shared queryKeys.staff.card() cache entry rather
+// than with a bare apiFetch, so a sibling useStaffSummaries() on the same page
+// resolves to the SAME request instead of issuing its own.
+//
+// This used to be a `setQueryData` after the fetch, which only helped when
+// Stories had already loaded — on a cold Home load both hooks mount in the same
+// tick, so useStaffSummaries fired its own /api/db/staff?view=card long before
+// setQueryData ran, and prod showed the request going out twice (812ms + 427ms,
+// UX pain check follow-up 2026-07-22). ensureQueryData dedupes on the queryKey,
+// so whichever hook asks first owns the single in-flight promise and the other
+// awaits it — order no longer matters. Also removes the duplicate on /stories,
+// which mounts the same pair.
 export function useStories(filters = {}, options = {}) {
   const qc = useQueryClient()
   return useQuery({
     queryKey: queryKeys.stories.list(filters),
     queryFn: async () => {
       const [staff, contentItems] = await Promise.all([
-        apiFetch('/api/db/staff?view=card'),
+        qc.ensureQueryData({
+          queryKey: queryKeys.staff.card(),
+          queryFn: () => apiFetch('/api/db/staff?view=card'),
+          staleTime: 5 * 60_000,
+        }),
         apiFetch('/api/db/content?view=card&limit=500'),
       ])
-      qc.setQueryData(queryKeys.staff.card(), staff)
       return buildStories(staff, contentItems)
     },
     staleTime: 5 * 60_000,
@@ -711,9 +723,11 @@ export function useStories(filters = {}, options = {}) {
 }
 
 // Slim clinician summaries — used by Home page for the "overdue" bucket and
-// resume strip. Shares the view=card endpoint with useStories; when Stories
-// has already loaded, setQueryData above makes this a zero-network cache hit.
-// Falls back to a direct fetch if Home loads before Stories (e.g. direct URL).
+// resume strip. Shares BOTH the view=card endpoint and this cache entry with
+// useStories (see its ensureQueryData above), so mounting the two together
+// costs one network request, not two, whichever mounts first. Keep the
+// staleTime here identical to the one useStories passes, or the two disagree
+// about freshness and the dedupe stops holding.
 export function useStaffSummaries(options = {}) {
   return useQuery({
     queryKey: queryKeys.staff.card(),
