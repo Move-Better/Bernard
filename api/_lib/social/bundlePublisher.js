@@ -119,6 +119,22 @@ export function bundlePermalink(res, platform = null) {
   return null
 }
 
+// bundle reports an account's health as a free-text status string, so this is a
+// keyword match rather than an enum check.
+//
+// An unrecognized or absent status counts as HEALTHY, deliberately. This value
+// drives an email alert, and a false "your Facebook is disconnected" is worse
+// than a late true one — it trains people to ignore the alert, which is the
+// exact failure this whole check exists to fix. Better to miss an unusual status
+// string than to cry wolf.
+const UNHEALTHY_STATUS_RE = /disconnect|expired|error|revok|invalid|unauthor|reauth/i
+
+export function accountIsConnected(account) {
+  const status = account?.status
+  if (typeof status !== 'string' || !status.trim()) return true
+  return !UNHEALTHY_STATUS_RE.test(status)
+}
+
 // Count media by the type bundle ITSELF assigned. bundle's upload response
 // carries `type: 'image'|'video'|'document'`, decided after it downloads the
 // URL — which is a far better signal than our own media_urls entry labels.
@@ -378,8 +394,7 @@ export class BundlePublisher extends SocialPublisher {
   // coarse health flag for the settings status surface + reconnect prompt. NOT
   // part of the SocialPublisher contract — bundle-specific.
   // ponytail: the socialAccount health-field names aren't spike-verified; map
-  // defensively (unknown status = connected) and confirm live when Move Better
-  // connects in Phase 2.
+  // defensively (unknown status = connected) — see accountIsConnected.
   async listAccounts() {
     const team = await this.sdk.team.teamGetTeam({ id: this.teamId })
     const accounts = Array.isArray(team?.socialAccounts) ? team.socialAccounts : []
@@ -387,7 +402,7 @@ export class BundlePublisher extends SocialPublisher {
       type: a?.type ?? null,
       displayName: a?.displayName ?? a?.name ?? a?.username ?? null,
       status: a?.status ?? null,
-      connected: a?.status ? !/disconnect|expired|error|revok|invalid/i.test(String(a.status)) : true,
+      connected: accountIsConnected(a),
     }))
   }
 
