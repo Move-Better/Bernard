@@ -48,7 +48,8 @@ export async function saveBroll({ ws, renders, staffId, notes, parentAssetId }) 
       kind,
       asset_purpose:    kind === 'video' ? 'broll' : 'photo',
       source:           'moments',
-      status:           'approved',
+      // 'tagged', not the retired 'approved' — see exportClipEngine.js.
+      status:           'tagged',
       blob_url:         r.blobUrl,
       blob_pathname:    blobPathname,
       filename,

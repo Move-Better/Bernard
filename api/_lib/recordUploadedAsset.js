@@ -175,7 +175,10 @@ export async function recordUploadedAsset({ blob, tokenPayload }) {
   const row = {
     [scopeColumn]: scopeId,
     kind,
-    status: isReturnUpload ? 'approved' : 'raw',
+    // A return-upload is finished media coming back against a brief — it skips
+    // the auto-pipeline below, so it lands as 'tagged' (ready to use) rather
+    // than 'raw'. Was the retired 'approved', which implied a publish gate.
+    status: isReturnUpload ? 'tagged' : 'raw',
     // Defaults to 'upload' (web uploader). The capture companion passes
     // source: 'capture_companion' so field captures stay distinguishable.
     source: meta.source || 'upload',
