@@ -978,7 +978,11 @@ gotchas below cost a full session (2026-06-21) when `/week` read empty despite 1
     PATCHed a `cadence_policy` it had built without a key silently DELETED that key, with a 200
     response and no error. It ate `formats` (the Reel target + voice) within hours of shipping, when a
     sibling settings save that knew nothing about `formats` wiped it off movebetter; every T4 top-level
-    key was exposed the same way. Fixed in #2255 — `sanitizeCadencePolicy(value, existing)` merges the
+    key was exposed the same way. Two sessions found it independently within hours, from opposite
+    ends — one via `formats` vanishing after a sibling settings save, the other via a hand-crafted
+    `{quiet_days}` PATCH during T3 verification that wiped movebetter's whole policy down to that one
+    key — which is a fair measure of how easy this was to trip. Fixed in #2253 —
+    `sanitizeCadencePolicy(value, existing)` merges the
     incoming object OVER the stored policy, so an omitted top-level key is carried forward and only a
     key the client actually sends replaces. `channels` is still rebuilt wholesale inside its own block.
     Note this class of bug is invisible to every gate: the write succeeds and the loss only surfaces
