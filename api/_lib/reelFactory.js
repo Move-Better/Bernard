@@ -58,9 +58,12 @@ const MIN_SCORE = 75
 const MIN_DURATION_S = 8
 const MAX_DURATION_S = 60
 
-// Never render more than this in one cron tick regardless of the gap — each
-// render is an ffmpeg pass inside a 300s function.
-const MAX_PER_RUN = 3
+// Never render more than this in one cron tick regardless of the gap. Each
+// render is a full ffmpeg pass (~90s on real footage) inside a 300s function,
+// so 3 sequential renders genuinely raced the wall on the first live run: two
+// finished, the third was still going when the function was killed. 2 leaves
+// headroom, and the hourly schedule fills a backlog soon enough anyway.
+const MAX_PER_RUN = 2
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -397,9 +400,31 @@ export async function fillReelSlots({ ws, weekMonday }) {
     if (cRes.ok) for (const c of await cRes.json().catch(() => [])) staffNames[c.id] = c.name
   }
 
-  const atomRows = []
+  // Pre-compute the slot times for this batch UP FRONT, then stamp each atom as
+  // its render lands. The batch-at-the-end version lost every atom whenever the
+  // function was killed at the 300s wall mid-batch: the drafts existed but had
+  // no atom, and /week reads atoms — so real rendered reels were invisible, and
+  // their segments were already marked 'rendered' so they were never retried.
+  // Placeholders exist only to run the spread; they are never written.
+  const quietDays = Array.isArray(ws.cadence_policy?.quiet_days) ? ws.cadence_policy.quiet_days : []
+  const timezone = ws.cadence_policy?.timezone || 'UTC'
+  // T3: place into the workspace's PINNED Instagram slots, and specifically the
+  // reel-format ones — assignToPinnedSlots matches on atom.format, so the
+  // placeholders must carry format:'reel' or a reel would be slotted into a
+  // photo tile. Falls back to the computed even-spread when nothing is pinned.
+  const channels = ws.cadence_policy?.channels || {}
+  const slotsByPlatform = slotsByPlatformFromCadence(mergeSlotsIntoCadence(channels, channels, quietDays))
+  const slotTimes = assignSlots(
+    candidates.map(() => ({ platform: 'instagram', format: ATOM_FORMATS.REEL })),
+    weekMonday,
+    quietDays,
+    timezone,
+    slotsByPlatform,
+  ).map((a) => a.scheduled_at)
+
+  let inserted = 0
   let failed = 0
-  for (const seg of candidates) {
+  for (const [idx, seg] of candidates.entries()) {
     const out = await renderSegmentToReel({
       ws,
       seg,
@@ -411,7 +436,7 @@ export async function fillReelSlots({ ws, weekMonday }) {
       failed += 1
       continue
     }
-    atomRows.push({
+    const atomRow = {
       workspace_id: ws.id,
       // NULL by design: a reel's source is a media_asset + a moment, not an
       // interview. Migration 179 relaxed the NOT NULL for exactly this.
@@ -432,50 +457,36 @@ export async function fillReelSlots({ ws, weekMonday }) {
       content_piece_id: out.draftId,
       planned_by: 'reel_factory',
       plan_week: weekMonday,
-      scheduled_at: null,
+      scheduled_at: slotTimes[idx] || null,
       held_at: null,
-    })
+    }
+
+    // Insert this atom NOW, while we still have a function to do it in.
+    const one = await sb('content_plan_atoms', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify([atomRow]),
+    }).catch(() => null)
+    if (!one || !one.ok) {
+      console.error('[reelFactory] atom insert failed for segment', seg.id, one?.status)
+      failed += 1
+      continue
+    }
+    inserted += 1
+
+    // Mirror the slot time onto the draft so /week and the piece agree.
+    await sb(`content_items?id=eq.${out.draftId}&workspace_id=eq.${ws.id}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ scheduled_at: atomRow.scheduled_at }),
+    }).catch(() => {})
   }
-
-  if (!atomRows.length) return { target, existing, rendered: 0, failed, shortfall: gap }
-
-  // Reuse the Strategist's own slot assigner so reels land on the same best-hour
-  // grid as everything else and respect the workspace's quiet days. T3: place
-  // into the workspace's pinned Instagram slots (reel-format ones specifically
-  // — assignToPinnedSlots matches by atom.format) when present, falling back
-  // to a computed default otherwise, same as the weekly planner.
-  const quietDays = Array.isArray(ws.cadence_policy?.quiet_days) ? ws.cadence_policy.quiet_days : []
-  const timezone = ws.cadence_policy?.timezone || 'UTC'
-  const channels = ws.cadence_policy?.channels || {}
-  const slotsByPlatform = slotsByPlatformFromCadence(mergeSlotsIntoCadence(channels, channels, quietDays))
-  const scheduled = assignSlots(atomRows, weekMonday, quietDays, timezone, slotsByPlatform)
-
-  const insertRes = await sb('content_plan_atoms', {
-    method: 'POST',
-    headers: { Prefer: 'return=minimal' },
-    body: JSON.stringify(scheduled),
-  })
-  if (!insertRes.ok) {
-    console.error('[reelFactory] atom insert failed:', insertRes.status)
-    return { target, existing, rendered: 0, failed: failed + atomRows.length, shortfall: gap }
-  }
-
-  // Mirror the slot time onto the draft so /week and the piece agree.
-  await Promise.all(
-    scheduled.map((a) =>
-      sb(`content_items?id=eq.${a.content_piece_id}&workspace_id=eq.${ws.id}`, {
-        method: 'PATCH',
-        headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ scheduled_at: a.scheduled_at }),
-      }).catch(() => {}),
-    ),
-  )
 
   return {
     target,
     existing,
-    rendered: scheduled.length,
+    rendered: inserted,
     failed,
-    shortfall: Math.max(0, gap - scheduled.length),
+    shortfall: Math.max(0, gap - inserted),
   }
 }
