@@ -1,0 +1,544 @@
+<title>/week automation ladder — current vs proposed</title>
+
+<style>
+  /* ── Page chrome (review tool, NOT Bernard UI) — neutral slate, theme-aware ── */
+  :root {
+    --pg-bg: #f6f7f9;
+    --pg-panel: #ffffff;
+    --pg-ink: #14181f;
+    --pg-ink-soft: #5b6472;
+    --pg-line: #dfe3e9;
+    --pg-note: #8a5a00;
+    --pg-note-bg: #fff8e6;
+    --pg-note-line: #e8c877;
+    --pg-good: #0f6b45;
+    --pg-good-bg: #eaf6f0;
+    --pg-good-line: #a8d6bf;
+
+    /* ── Bernard app tokens — copied verbatim from src/index.css ── */
+    --primary: 186 83% 27%;
+    --primary-foreground: 0 0% 100%;
+    --foreground: 222 47% 8%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 19% 34%;
+    --border: 214 32% 91%;
+    --card: 0 0% 100%;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --pg-bg: #101318;
+      --pg-panel: #191d24;
+      --pg-ink: #e7eaef;
+      --pg-ink-soft: #9aa4b2;
+      --pg-line: #2b313a;
+      --pg-note: #e5b955;
+      --pg-note-bg: #2a2313;
+      --pg-note-line: #5c4a1e;
+      --pg-good: #6cd3a4;
+      --pg-good-bg: #12241c;
+      --pg-good-line: #27503d;
+    }
+  }
+  :root[data-theme="dark"] {
+    --pg-bg: #101318;
+    --pg-panel: #191d24;
+    --pg-ink: #e7eaef;
+    --pg-ink-soft: #9aa4b2;
+    --pg-line: #2b313a;
+    --pg-note: #e5b955;
+    --pg-note-bg: #2a2313;
+    --pg-note-line: #5c4a1e;
+    --pg-good: #6cd3a4;
+    --pg-good-bg: #12241c;
+    --pg-good-line: #27503d;
+  }
+  :root[data-theme="light"] {
+    --pg-bg: #f6f7f9;
+    --pg-panel: #ffffff;
+    --pg-ink: #14181f;
+    --pg-ink-soft: #5b6472;
+    --pg-line: #dfe3e9;
+    --pg-note: #8a5a00;
+    --pg-note-bg: #fff8e6;
+    --pg-note-line: #e8c877;
+    --pg-good: #0f6b45;
+    --pg-good-bg: #eaf6f0;
+    --pg-good-line: #a8d6bf;
+  }
+
+  .page {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    background: var(--pg-bg);
+    color: var(--pg-ink);
+    padding: 32px 20px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    align-items: center;
+  }
+  .wrap { width: 100%; max-width: 860px; display: flex; flex-direction: column; gap: 28px; }
+
+  .eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--pg-ink-soft); margin: 0 0 6px;
+  }
+  h1 { font-size: 25px; line-height: 1.2; font-weight: 700; margin: 0 0 10px; text-wrap: balance; }
+  .lede { font-size: 14.5px; line-height: 1.55; color: var(--pg-ink-soft); margin: 0; max-width: 62ch; }
+  .lede b { color: var(--pg-ink); font-weight: 650; }
+
+  .panel {
+    background: var(--pg-panel);
+    border: 1px solid var(--pg-line);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .panel-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .panel-head h2 { font-size: 15px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  .tag {
+    font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 999px; border: 1px solid currentColor;
+  }
+  .tag.bad { color: #b4443a; }
+  .tag.good { color: var(--pg-good); }
+  .panel-note { font-size: 13px; line-height: 1.55; color: var(--pg-ink-soft); margin: 0; }
+
+  /* Dashed "what changed" legend */
+  .legend {
+    border: 1px dashed var(--pg-note-line);
+    background: var(--pg-note-bg);
+    color: var(--pg-note);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12.5px; line-height: 1.55;
+  }
+  .legend b { font-weight: 700; }
+  .legend ul { margin: 6px 0 0; padding-left: 17px; display: flex; flex-direction: column; gap: 3px; }
+  .legend.good { border-color: var(--pg-good-line); background: var(--pg-good-bg); color: var(--pg-good); }
+
+  /* ── Bernard app surface: everything inside .app mimics the real /week UI ── */
+  .app {
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    border: 1px solid var(--pg-line);
+    border-radius: 10px;
+    padding: 16px;
+    font-size: 12px;
+    display: flex; flex-direction: column; gap: 14px;
+    overflow-x: auto;
+  }
+  .app-caption {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--pg-ink-soft); margin: 0;
+  }
+
+  /* The real "Your mode" card: rounded-xl border bg-card p-3 */
+  .modecard {
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    border-radius: 12px;
+    padding: 12px;
+    display: inline-flex; flex-direction: column; align-items: flex-start;
+    min-width: 0;
+  }
+  .moderow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .modelabel {
+    font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+  .modehelp {
+    margin: 6px 0 0; font-size: 11px; line-height: 16px;
+    color: hsl(var(--muted-foreground)); max-width: 46ch;
+  }
+
+  /* CURRENT: the segmented-looking group (role=group + spans) */
+  .segtrack {
+    display: inline-flex; align-items: center; gap: 0;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--muted) / .4);
+    border-radius: 10px; padding: 2px; font-size: 12px;
+  }
+  .seg {
+    border-radius: 6px; padding: 4px 10px; font-weight: 600;
+    color: hsl(var(--muted-foreground)); white-space: nowrap;
+  }
+  .seg.active {
+    background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / .05);
+  }
+
+  /* The real View toggle (real buttons) — rendered in every panel for contrast */
+  .viewtrack {
+    display: inline-flex; align-items: center; gap: 0;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    border-radius: 10px; padding: 2px; font-size: 12px;
+  }
+  .viewbtn {
+    border: 0; background: transparent; font: inherit; cursor: pointer;
+    border-radius: 6px; padding: 4px 12px; font-weight: 600; text-transform: capitalize;
+    color: hsl(var(--muted-foreground));
+  }
+  .viewbtn.active {
+    background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / .05);
+  }
+  .viewbtn:focus-visible, .viewtrack:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
+
+  .viewrow { display: flex; align-items: center; gap: 8px; }
+  .viewrow .vcap { font-size: 10px; color: var(--pg-ink-soft); font-weight: 600; }
+
+  /* Collision callout arrow */
+  .collide {
+    border-left: 3px solid #d9534f; padding-left: 10px;
+    font-size: 12px; line-height: 1.5; color: var(--pg-ink-soft);
+  }
+  .collide b { color: #c0392b; }
+
+  /* ── Option A — stepper pills (PipelineStepper idiom) ── */
+  .ladderA { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; }
+  .rungA {
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: 999px; padding: 4px 10px; white-space: nowrap;
+  }
+  .rungA .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 16px; width: 16px; border-radius: 999px; font-size: 10px; font-weight: 700;
+  }
+  .rungA.done { background: hsl(var(--primary) / .1); color: hsl(var(--primary)); }
+  .rungA.done .num { background: hsl(var(--primary) / .15); color: hsl(var(--primary)); }
+  .rungA.now { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-weight: 700; }
+  .rungA.now .num { background: rgb(255 255 255 / .25); color: hsl(var(--primary-foreground)); }
+  .rungA.todo { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .rungA.todo .num { background: hsl(var(--muted-foreground) / .15); color: hsl(var(--muted-foreground)); }
+  .connA { height: 1px; width: 20px; flex: none; background: hsl(var(--border)); }
+  .connA.done { background: hsl(var(--primary) / .4); }
+
+  /* ── Option B — earned rungs with chevrons + locked-ahead ── */
+  .ladderB { display: flex; align-items: center; gap: 4px; font-size: 11px; }
+  .rungB { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-weight: 600; }
+  .rungB.done { color: hsl(var(--muted-foreground)); }
+  .rungB.now {
+    color: hsl(var(--primary)); font-weight: 700;
+    background: hsl(var(--primary) / .08);
+    border: 1px solid hsl(var(--primary) / .35);
+    border-radius: 999px; padding: 3px 10px;
+  }
+  .rungB.todo { color: hsl(var(--muted-foreground) / .65); }
+  .rungB .dot {
+    height: 7px; width: 7px; border-radius: 999px; flex: none;
+  }
+  .rungB.done .dot { background: hsl(var(--primary) / .45); }
+  .rungB.now .dot { background: hsl(var(--primary)); }
+  .rungB.todo .dot { background: transparent; border: 1px dashed hsl(var(--muted-foreground) / .5); }
+  .chev { color: hsl(var(--muted-foreground) / .45); font-size: 11px; line-height: 1; padding: 0 1px; }
+  .earnedtag {
+    font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    color: hsl(var(--muted-foreground) / .8);
+  }
+
+  /* ── Option C — one state + 3-segment progress meter ── */
+  .ladderC { display: inline-flex; flex-direction: column; gap: 6px; }
+  .cstate { display: inline-flex; align-items: baseline; gap: 8px; }
+  .cstage {
+    font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+  .cnow { font-size: 13px; font-weight: 700; color: hsl(var(--foreground)); }
+  .meter { display: flex; gap: 3px; width: 190px; }
+  .meter span { height: 4px; flex: 1; border-radius: 999px; background: hsl(var(--muted-foreground) / .18); }
+  .meter span.on { background: hsl(var(--primary)); }
+  .cnext { font-size: 10px; color: hsl(var(--muted-foreground) / .85); }
+
+  .variantgrid { display: flex; flex-direction: column; gap: 18px; }
+  .variant { display: flex; flex-direction: column; gap: 10px; }
+  .vhead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .vname { font-size: 13.5px; font-weight: 700; }
+  .vwhy { font-size: 12.5px; line-height: 1.5; color: var(--pg-ink-soft); margin: 0; max-width: 68ch; }
+
+  .foot { font-size: 12.5px; line-height: 1.6; color: var(--pg-ink-soft); }
+  .foot code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px;
+    background: hsl(var(--muted)); color: hsl(var(--foreground));
+    padding: 1px 5px; border-radius: 4px;
+  }
+  @media (prefers-color-scheme: dark) {
+    .foot code { background: #232830; color: #dfe4ea; }
+  }
+</style>
+
+<div class="page">
+  <div class="wrap">
+
+    <header>
+      <p class="eyebrow">Bernard · /week · P1-2 from the 2026-07-22 UX pain check</p>
+      <h1>The automation ladder looks like a toggle. It isn't one.</h1>
+      <p class="lede">
+        PostHog logged <b>4 dead clicks</b> on “Auto-approve routine” and “Run by goals” — staff
+        trying to change their automation mode by clicking the stage they want. They can't: the mode
+        is <b>earned</b>, not chosen. Nothing in the app sets it, by design (“Bernard asks; the user
+        grants”). The shape is teaching the wrong affordance.
+      </p>
+    </header>
+
+    <!-- ══════════════════ CURRENT ══════════════════ -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Current</h2>
+        <span class="tag bad">Inert, but dressed as a picker</span>
+      </div>
+
+      <div class="app">
+        <p class="app-caption">/week — as it ships today</p>
+
+        <div class="modecard">
+          <div class="moderow">
+            <span class="modelabel">Your mode</span>
+            <div class="segtrack" role="group" aria-label="Current automation mode">
+              <span class="seg active" aria-current="true">Approve each post</span>
+              <span class="seg">Auto-approve routine</span>
+              <span class="seg">Run by goals</span>
+            </div>
+          </div>
+          <p class="modehelp">
+            You approve every post before it publishes. Bernard takes more off your plate as you
+            greenlight more.
+          </p>
+        </div>
+
+        <div class="viewrow">
+          <span class="vcap">↓ inches below, in the control bar:</span>
+          <div class="viewtrack" role="group" aria-label="View">
+            <button type="button" class="viewbtn active" aria-pressed="true">week</button>
+            <button type="button" class="viewbtn" aria-pressed="false">day</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="collide">
+        <b>The collision:</b> both are <code style="font-family:ui-monospace,Menlo,monospace">inline-flex
+        items-center rounded-lg border p-0.5 text-xs</code> tracks with an active segment styled
+        <code style="font-family:ui-monospace,Menlo,monospace">bg-primary text-primary-foreground
+        shadow-sm</code>. Identical shape, identical active state, one screen apart — and the lower
+        one responds to clicks. Users reasonably conclude the upper one does too.
+      </p>
+    </section>
+
+    <!-- ══════════════════ PROPOSED ══════════════════ -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Proposed</h2>
+        <span class="tag good">Stays read-only · reads as progress</span>
+      </div>
+      <p class="panel-note">
+        Three ways to say “this is a rung you've reached,” not “this is a control you operate.”
+        All keep it display-only. Pick one — or mix (e.g. A's pills with C's “Stage 1 of 3”).
+      </p>
+
+      <div class="variantgrid">
+
+        <!-- ── A ── -->
+        <div class="variant">
+          <div class="vhead">
+            <span class="vname">A · Stepper pills</span>
+            <span class="tag good">Matches the house pattern</span>
+          </div>
+          <p class="vwhy">
+            The exact idiom of <code>PipelineStepper.jsx</code> — the component whose own comment
+            reads “purely presentational: it reflects the current stage, it does NOT navigate.”
+            Numbered badges, round pills, connector rules. Nothing in the app that looks like this
+            is clickable.
+          </p>
+          <div class="app">
+            <div class="modecard">
+              <div class="moderow">
+                <span class="modelabel">Your mode</span>
+                <nav class="ladderA" aria-label="Automation progress">
+                  <span class="rungA now" aria-current="step"><span class="num">1</span>Approve each post</span>
+                  <span class="connA" aria-hidden="true"></span>
+                  <span class="rungA todo"><span class="num">2</span>Auto-approve routine</span>
+                  <span class="connA" aria-hidden="true"></span>
+                  <span class="rungA todo"><span class="num">3</span>Run by goals</span>
+                </nav>
+              </div>
+              <p class="modehelp">
+                You approve every post before it publishes. Bernard takes more off your plate as you
+                greenlight more.
+              </p>
+            </div>
+
+            <p class="app-caption" style="margin-top:2px">Once stage 2 is earned</p>
+            <div class="modecard">
+              <div class="moderow">
+                <span class="modelabel">Your mode</span>
+                <nav class="ladderA" aria-label="Automation progress">
+                  <span class="rungA done"><span class="num">✓</span>Approve each post</span>
+                  <span class="connA done" aria-hidden="true"></span>
+                  <span class="rungA now" aria-current="step"><span class="num">2</span>Auto-approve routine</span>
+                  <span class="connA" aria-hidden="true"></span>
+                  <span class="rungA todo"><span class="num">3</span>Run by goals</span>
+                </nav>
+              </div>
+              <p class="modehelp">
+                Bernard auto-approves routine posts and only asks you about the exceptions — taking
+                on more as you greenlight more.
+              </p>
+            </div>
+
+            <div class="viewrow">
+              <span class="vcap">↓ View control, unchanged:</span>
+              <div class="viewtrack" role="group" aria-label="View">
+                <button type="button" class="viewbtn active" aria-pressed="true">week</button>
+                <button type="button" class="viewbtn" aria-pressed="false">day</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── B ── -->
+        <div class="variant">
+          <div class="vhead">
+            <span class="vname">B · Earned rungs with chevrons</span>
+          </div>
+          <p class="vwhy">
+            No track, no boxes — just marks, labels and chevrons flowing left to right. Earned rungs
+            sit quiet, the current rung wears a thin primary ring, and unearned rungs get a dashed
+            hollow dot: visibly “not yours yet.” The most literal ladder of the three.
+          </p>
+          <div class="app">
+            <div class="modecard">
+              <div class="moderow">
+                <span class="modelabel">Your mode</span>
+                <nav class="ladderB" aria-label="Automation progress">
+                  <span class="rungB now" aria-current="step"><span class="dot"></span>Approve each post</span>
+                  <span class="chev" aria-hidden="true">›</span>
+                  <span class="rungB todo"><span class="dot"></span>Auto-approve routine</span>
+                  <span class="chev" aria-hidden="true">›</span>
+                  <span class="rungB todo"><span class="dot"></span>Run by goals</span>
+                </nav>
+                <span class="earnedtag">Earned, not set</span>
+              </div>
+              <p class="modehelp">
+                You approve every post before it publishes. Bernard takes more off your plate as you
+                greenlight more.
+              </p>
+            </div>
+
+            <p class="app-caption" style="margin-top:2px">Once stage 2 is earned</p>
+            <div class="modecard">
+              <div class="moderow">
+                <span class="modelabel">Your mode</span>
+                <nav class="ladderB" aria-label="Automation progress">
+                  <span class="rungB done"><span class="dot"></span>Approve each post</span>
+                  <span class="chev" aria-hidden="true">›</span>
+                  <span class="rungB now" aria-current="step"><span class="dot"></span>Auto-approve routine</span>
+                  <span class="chev" aria-hidden="true">›</span>
+                  <span class="rungB todo"><span class="dot"></span>Run by goals</span>
+                </nav>
+                <span class="earnedtag">Earned, not set</span>
+              </div>
+              <p class="modehelp">
+                Bernard auto-approves routine posts and only asks you about the exceptions — taking
+                on more as you greenlight more.
+              </p>
+            </div>
+
+            <div class="viewrow">
+              <span class="vcap">↓ View control, unchanged:</span>
+              <div class="viewtrack" role="group" aria-label="View">
+                <button type="button" class="viewbtn active" aria-pressed="true">week</button>
+                <button type="button" class="viewbtn" aria-pressed="false">day</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── C ── -->
+        <div class="variant">
+          <div class="vhead">
+            <span class="vname">C · One state + progress meter</span>
+          </div>
+          <p class="vwhy">
+            Drops the other two labels entirely — there is nothing left to click at. A “Stage 1 of 3”
+            eyebrow, the current mode as plain heavy text, a three-segment meter, and what's next.
+            Smallest footprint, buys back vertical space above the week.
+          </p>
+          <div class="app">
+            <div class="modecard">
+              <div class="moderow">
+                <span class="modelabel">Your mode</span>
+                <div class="ladderC">
+                  <div class="cstate">
+                    <span class="cstage">Stage 1 of 3</span>
+                    <span class="cnow">Approve each post</span>
+                  </div>
+                  <div class="meter" role="img" aria-label="Automation stage 1 of 3">
+                    <span class="on"></span><span></span><span></span>
+                  </div>
+                  <span class="cnext">Next rung: Auto-approve routine — Bernard asks once you've greenlit enough.</span>
+                </div>
+              </div>
+              <p class="modehelp">
+                You approve every post before it publishes. Bernard takes more off your plate as you
+                greenlight more.
+              </p>
+            </div>
+
+            <p class="app-caption" style="margin-top:2px">Once stage 2 is earned</p>
+            <div class="modecard">
+              <div class="moderow">
+                <span class="modelabel">Your mode</span>
+                <div class="ladderC">
+                  <div class="cstate">
+                    <span class="cstage">Stage 2 of 3</span>
+                    <span class="cnow">Auto-approve routine</span>
+                  </div>
+                  <div class="meter" role="img" aria-label="Automation stage 2 of 3">
+                    <span class="on"></span><span class="on"></span><span></span>
+                  </div>
+                  <span class="cnext">Next rung: Run by goals — Bernard asks once you've greenlit enough.</span>
+                </div>
+              </div>
+              <p class="modehelp">
+                Bernard auto-approves routine posts and only asks you about the exceptions — taking
+                on more as you greenlight more.
+              </p>
+            </div>
+
+            <div class="viewrow">
+              <span class="vcap">↓ View control, unchanged:</span>
+              <div class="viewtrack" role="group" aria-label="View">
+                <button type="button" class="viewbtn active" aria-pressed="true">week</button>
+                <button type="button" class="viewbtn" aria-pressed="false">day</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="legend good">
+        <b>What changed in all three</b>
+        <ul>
+          <li>The bordered <b>track around the stages is gone</b> — that container is the segmented-control signature.</li>
+          <li>No stage reuses the View toggle's <b>solid-primary pill</b> as its resting active state (A keeps it, but only inside a numbered, connected stepper that nothing clickable in Bernard looks like).</li>
+          <li>Stages ahead read as <b>unearned</b> (dim / dashed / absent) rather than as unselected options.</li>
+          <li>Markup moves from <code>role="group"</code> to <code>&lt;nav aria-label="Automation progress"&gt;</code> with <code>aria-current="step"</code> — screen readers stop hearing a control group too.</li>
+          <li>Still <b>zero interactivity</b>, and no tooltip band-aid. Same data, honest shape.</li>
+        </ul>
+      </div>
+    </section>
+
+    <p class="foot">
+      Confirmed against the code before mocking: <code>trust_stage</code> is written once at
+      onboarding (<code>approve_all</code>) and has <b>no setter anywhere in the app</b> — the spec's
+      graduation model is “signal = agreement, not time … Bernard asks; the user grants.” So
+      read-only is correct; only the affordance is wrong. Wiring it into a real picker would
+      contradict the design. <br>
+      One live copy fix rides along: the source comment claims the mode is “set in Auto-publish
+      settings.” That setting does not exist.
+    </p>
+
+  </div>
+</div>

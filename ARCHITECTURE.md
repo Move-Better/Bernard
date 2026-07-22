@@ -367,6 +367,22 @@ default is a silent no-op, not a fresh read. The force selection round-robins ac
 (not a flat `slice(0,N)` in DB order) so one busy platform can't starve the others out of the
 per-run budget.
 
+**bundle.social's socialAccount object has NO `status` field — connection health lives in
+`deletedAt` / `disconnectedCheckTryAt` / `deleteOn`.** `accountIsConnected()` (bundlePublisher.js)
+originally read `account.status` to decide whether a channel counted as broken for the daily
+channel-health email (`cron/check-channel-health.js`). Verified live 2026-07-22 — against both the
+installed SDK's `TeamGetTeamResponse` type and a real `teamGetTeam` call — that the field does not
+exist at all, so the predicate always returned `true` and the alert could never fire, for any
+workspace, since it shipped; the unit tests stayed green because they exercised invented status
+strings instead of the real shape. The real signals: `deletedAt` (hard disconnect), `disconnectedCheckTryAt`
+(bundle's own background disconnect-check has flagged and is retrying the account — gated by
+`organization.disconnectCheckEnabled`), `deleteOn` (scheduled auto-removal after a prolonged
+disconnect, per `organization.deleteAccountAfter`). Any new health/connection check against a
+bundle socialAccount must key off these three fields, not a status string — same class of bug as
+the analytics `items[]`-vs-`post.analytics` gotcha above: an assumed field shape that silently
+no-ops instead of erroring, caught only by a live call, not by review or tests written against the
+assumption.
+
 **Instagram must be connected via the DIRECT method or per-post analytics 400 forever.**
 `BundlePublisher.connect()` pins `instagramConnectionMethod: 'INSTAGRAM'` (+ `forceBrowserOAuth: true`)
 on the portal link whenever Instagram is among the requested networks. The Facebook-linked method
