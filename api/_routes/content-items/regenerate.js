@@ -27,6 +27,7 @@ import { hasPublishedBlogArticle } from '../../_lib/blogLinkStatus.js'
 import { getContextBlock } from '../../_lib/conceptRetrieval.js'
 import { resolveOwnHistoryBlock, buildRagQuery } from '../../_lib/practiceMemory.js'
 import { loadCurrentTentpole, getTentpolePromptContext } from '../../_lib/tentpoleCampaignContext.js'
+import { resolveSiblingCaptionsBlock } from '../../_lib/producer/draftAtom.js'
 import { extractProvenanceBlock } from '../../../src/lib/provenance.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -202,6 +203,16 @@ export default async function handler(req, res) {
     const activeCampaign = await loadCurrentTentpole(ws.id, interview.staff_id || null)
     const campaignContext = await getTentpolePromptContext(activeCampaign, ws)
     const hasPublishedArticle = await hasPublishedBlogArticle(sb, ws.id, interview.id)
+    // Captions already drafted from THIS interview, excluding the piece being
+    // regenerated (its current text is about to be replaced, so it shouldn't
+    // count as a "moment already used" against itself). Same guard draftAtom.js
+    // applies on first draft — without it, regenerating one of several siblings
+    // from the same interview just re-picks the same over-used moment again.
+    const siblingBlock = await resolveSiblingCaptionsBlock({
+      workspaceId:           ws.id,
+      interviewId:           interview.id,
+      excludeContentPieceId: item.id,
+    })
     const systemPrompt = getAtomSystemPrompt(
       ws,
       staffName,
@@ -218,6 +229,7 @@ export default async function handler(req, res) {
       campaignContext,
       ownHistoryBlock,
       hasPublishedArticle,
+      siblingBlock,
     )
     if (!systemPrompt) {
       return err(res, 'no_prompt_defined', 422)
