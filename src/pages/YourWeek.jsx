@@ -5,23 +5,32 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUser } from '@clerk/react'
 import {
   CalendarRange, Sparkles, Archive, Mail, Moon, ChevronRight, ChevronLeft, Shield, Plus,
-  Check, Loader2, Clock, Eye, Send, BookOpen, ChevronDown, AlertTriangle, Pencil,
-  History, CalendarPlus, Bot, Image as ImageIcon, Play,
+  Check, Loader2, Clock, Eye, Send, BookOpen, AlertTriangle, Pencil,
+  History, CalendarPlus, Bot, Image as ImageIcon, Play, Film, CircleDot, FlaskConical, BellOff, Bell,
 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
-import { useUpdateContentItemStatus, useUpdateContentItem, useCarouselThemes } from '@/lib/queries'
+import { useUpdateContentItemStatus, useUpdateContentItem, useCarouselThemes, queryKeys } from '@/lib/queries'
 import { BUFFER_DISPATCH_PLATFORMS } from '@/lib/publish'
 import { publishPieceToBuffer } from '@/lib/publishPiece'
+import { computeEmptySlots, localSlotParts } from '@/lib/postingSlots'
 import { toast } from '@/lib/toast'
 import PageHelp from '@/components/PageHelp'
 import PageSkeleton from '@/components/PageSkeleton'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/Drawer'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+
+// T3 — format badges shown on cards/slots and in the legend. Mirrors the
+// atom.format vocabulary (api/_lib/atomPlan.js ATOM_FORMATS): post/reel/story.
+const FORMAT_META = {
+  post: { icon: ImageIcon, label: 'Post' },
+  reel: { icon: Film, label: 'Reel' },
+  story: { icon: CircleDot, label: 'Story' },
+}
 
 // F2.3 — "Your week": the producer's plan/review hub (Phase 2).
 // 2b: workspace-tz time display.
@@ -193,28 +202,23 @@ function cardState(item) {
   return { label: 'in review', cls: 'bg-warning text-warning-foreground', action: 'open', reviewable: true, rail: 'bg-warning' }
 }
 
-function PlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approving, readOnly }) {
+// T3 — the whole tile routes to the full review screen (words + all media +
+// approve/reject, /publish/:pieceId) instead of the old hidden "Review"
+// expander that showed a 4-line excerpt with zero media. "Draft" stays a
+// separate, non-navigating action (there's nothing to review yet). Past weeks
+// are read-only: the card still opens for viewing, just no Draft affordance.
+function PlanCard({ item, tz, onDraft, drafting, draftBusy, readOnly }) {
   const meta = PLATFORM_META[item.platform] || { label: item.platform, icon: null }
   const Icon = meta.icon
+  const formatMeta = FORMAT_META[item.format] || FORMAT_META.post
+  const FormatIcon = formatMeta.icon
   const state = cardState(item)
   const time = item.scheduled_at ? timeLabel(item.scheduled_at, tz) : null
-  const [expanded, setExpanded] = useState(false)
-  // The week is reviewable in place: a piece that's "open to review" with a
-  // drafted excerpt can be approved here — the "this sounds like me" decision
-  // happens with the evidence visible, without leaving the week view (D4).
-  // Past weeks are read-only: no draft/approve affordances, just view.
-  const canReviewInline = !readOnly && state.reviewable && !!item.contentPieceId && !!item.excerpt
-  const showOpen = readOnly
-    ? (!!item.contentPieceId || !!item.interviewId)
-    : (state.action === 'open' || state.action === 'schedule')
+  const needsDraft = !readOnly && state.action === 'draft'
 
-  return (
-    <div className="relative overflow-hidden rounded-lg border border-border bg-card p-2 pl-3 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_18px_-11px_rgba(15,23,42,0.3)] transition-shadow hover:shadow-md">
-      {/* Solid status rail down the left edge — carries the card's status color
-          with real weight (amber = needs you, green = live, spruce = approved). */}
+  const body = (
+    <>
       <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1.5 ${state.rail}`} />
-      {/* Brand-colored platform icon chip identifies the channel on its own (no
-          redundant label); the scheduled time rides to the right of the row. */}
       <div className="mb-1.5 flex items-center gap-2">
         <span
           className={`inline-flex h-5 w-5 items-center justify-center rounded-md shrink-0 ${meta.bg || 'bg-muted'} ${meta.color || 'text-muted-foreground'}`}
@@ -222,6 +226,7 @@ function PlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approving
         >
           {Icon && <Icon className="h-3 w-3" aria-hidden="true" />}
         </span>
+        <FormatIcon className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" title={formatMeta.label} />
         {time && <span className="ml-auto shrink-0 text-2xs font-semibold text-muted-foreground">{time}</span>}
       </div>
       <div className="text-2xs font-semibold leading-snug text-foreground line-clamp-3 mb-1.5">
@@ -230,8 +235,6 @@ function PlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approving
       {categoryTag(item) && (
         <div className="-mt-1 mb-1.5 truncate text-3xs text-muted-foreground">{categoryTag(item)}</div>
       )}
-      {/* Pill and action stack on separate lines — side-by-side overflowed the
-          button out of a narrow day column. */}
       <div className="flex flex-col items-start gap-1.5">
         <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-3xs font-bold ${state.cls}`}>
           {state.label}
@@ -241,35 +244,6 @@ function PlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approving
             <Bot className="h-2.5 w-2.5" aria-hidden="true" /> drafted ahead
           </span>
         )}
-        {!readOnly && state.action === 'draft' && (
-          <button
-            type="button"
-            disabled={drafting || draftBusy}
-            title={!drafting && draftBusy ? 'Already drafting another post — please wait' : undefined}
-            onClick={() => onDraft(item)}
-            className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold hover:bg-muted disabled:opacity-50"
-          >
-            {drafting ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3 w-3" aria-hidden="true" />}
-            Draft
-          </button>
-        )}
-        {canReviewInline ? (
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            aria-expanded={expanded}
-            className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold hover:bg-muted"
-          >
-            <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? 'rotate-180' : ''}`} /> Review
-          </button>
-        ) : (showOpen && (
-          <Link
-            to={drillTo(item)}
-            className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold hover:bg-muted"
-          >
-            <Eye className="h-3 w-3" /> Open
-          </Link>
-        ))}
       </div>
       {/* Voice drift flag — only when the gate HELD (a short caption below the
           bar). Long-form scores 'soft' (rubric isn't calibrated there) and
@@ -280,36 +254,79 @@ function PlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approving
           <span className="text-3xs text-action">voice — open draft to review</span>
         </div>
       )}
-      {canReviewInline && expanded && (
-        <div className="mt-1.5 border-t border-border pt-1.5">
-          {item.voiceFlag && item.voiceGate === 'held' && (
-            <p className="mb-1.5 text-3xs italic text-action">Flagged: {item.voiceFlag}</p>
-          )}
-          <p className="text-2xs italic leading-snug text-muted-foreground line-clamp-4">
-            &ldquo;{item.excerpt}&rdquo;
-          </p>
-          {/* Stacked full-width actions: side-by-side overflowed/wrapped in a
-              narrow day column (the label cramped onto two lines). */}
-          <div className="mt-1.5 flex flex-col gap-1">
-            <button
-              type="button"
-              disabled={approving}
-              onClick={() => onApprove(item)}
-              className="inline-flex w-full items-center justify-center gap-1 rounded-md bg-primary px-2 py-1.5 text-3xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {approving ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Check className="h-3 w-3" aria-hidden="true" />}
-              Approve
-            </button>
-            <Link
-              to={drillTo(item)}
-              className="inline-flex w-full items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-3xs font-semibold text-muted-foreground hover:bg-muted"
-            >
-              <Pencil className="h-3 w-3" /> Open to change
-            </Link>
-          </div>
-        </div>
-      )}
-    </div>
+    </>
+  )
+
+  const cardCls = 'relative overflow-hidden rounded-lg border border-border bg-card p-2 pl-3 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_18px_-11px_rgba(15,23,42,0.3)] transition-shadow hover:shadow-md'
+
+  // A "needs draft" atom has nothing to review yet — Draft is the only
+  // action, not a navigation. drillTo() would just fall back to the source
+  // interview, which isn't useful here.
+  if (needsDraft) {
+    return (
+      <div className={cardCls}>
+        {body}
+        <button
+          type="button"
+          disabled={drafting || draftBusy}
+          title={!drafting && draftBusy ? 'Already drafting another post — please wait' : undefined}
+          onClick={() => onDraft(item)}
+          className="mt-1.5 inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold hover:bg-muted disabled:opacity-50"
+        >
+          {drafting ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3 w-3" aria-hidden="true" />}
+          Draft
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <Link to={drillTo(item)} className={`${cardCls} block hover:border-primary/30`}>
+      {body}
+    </Link>
+  )
+}
+
+// T3 — a pinned posting slot with no atom scheduled into it yet. Replaces the
+// old dead "Nothing planned" filler: each defined slot (weekday+hour+format
+// per channel, see api/_lib/cadenceSlots.js) is now visible on the board
+// whether or not it's filled. Clicking opens the Add-to-day picker (PR4) —
+// for now, opens the existing backlog drawer as the interim action.
+// `exploring` (T4 tie-in) gets the primary/dashed treatment + a note instead
+// of the pink "open slot" styling, matching the signed-off mockup.
+function EmptySlotTile({ slot, onClick }) {
+  const meta = PLATFORM_META[slot.platform] || { label: slot.platform, icon: null }
+  const Icon = meta.icon
+  const formatMeta = FORMAT_META[slot.format] || FORMAT_META.post
+  const FormatIcon = formatMeta.icon
+  const label = new Date(2026, 0, 1, slot.hour).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+
+  if (slot.exploring) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex flex-col gap-1 rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 p-2 text-left text-3xs text-primary transition-colors hover:bg-primary/10"
+      >
+        <span className="flex items-center gap-1 font-semibold"><FlaskConical className="h-3 w-3" aria-hidden="true" /> Trying this day</span>
+        <span className="text-primary/80">Bernard is testing {label} {formatMeta.label.toLowerCase()}s for {meta.label} — no data yet on this window.</span>
+      </button>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-pink-300 bg-pink-50/60 p-2 text-3xs font-medium text-pink-700 transition-colors hover:bg-pink-50"
+    >
+      <span className="flex items-center gap-1">
+        {Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
+        <FormatIcon className="h-3.5 w-3.5" aria-hidden="true" />
+      </span>
+      <span>{label} · {formatMeta.label}</span>
+      <span className="flex items-center gap-1"><Plus className="h-3 w-3" aria-hidden="true" />Open slot</span>
+    </button>
   )
 }
 
@@ -440,6 +457,7 @@ export default function YourWeek() {
   const [backlogOpen, setBacklogOpen] = useState(false)
   const [viewMode, setViewMode] = useState('week')   // 'week' board | 'day' focused work surface
   const [selectedDay, setSelectedDay] = useState(null) // day key ('mon'..'sun'); null = auto (today/first)
+  const [togglingQuietDay, setTogglingQuietDay] = useState(null) // day key being toggled, for the inline spinner
   const { data, isLoading } = useQuery({
     queryKey: ['week-summary', weekOffset],
     queryFn: () => apiFetch(`/api/content-plan/week-summary${weekOffset ? `?week=${weekMondayISO(weekOffset, wsTz)}` : ''}`),
@@ -568,6 +586,37 @@ export default function YourWeek() {
     }
   }
 
+  // T3 — quiet-day toggle, inline on the board. Q flagged this repeatedly:
+  // quiet days were only editable at Settings → Channels → Cadence, and only
+  // after flipping Auto→Manual — effectively undiscoverable (D3 in the T3
+  // brief). PATCHes cadence_policy.quiet_days directly against the CURRENT
+  // policy (spread, not replaced) so target_per_week/slots/etc. survive —
+  // same field this endpoint already accepts, same provenance:'user' side
+  // effect the Settings toggle uses (hand-editing quiet days is a manual
+  // cadence decision). Invalidates both the workspace row (so the toggle
+  // persists across a reload) and week-summary (so the board reflects it now).
+  async function handleToggleQuietDay(day) {
+    if (togglingQuietDay) return
+    setTogglingQuietDay(day)
+    const current = workspace?.cadence_policy || {}
+    const currentQuiet = Array.isArray(current.quiet_days) ? current.quiet_days : ['sat', 'sun']
+    const nextQuiet = currentQuiet.includes(day) ? currentQuiet.filter((d) => d !== day) : [...currentQuiet, day]
+    try {
+      await apiFetch('/api/workspace/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cadence_policy: { ...current, quiet_days: nextQuiet, provenance: 'user' } }),
+      })
+      qc.invalidateQueries({ queryKey: queryKeys.workspace.me })
+      qc.invalidateQueries({ queryKey: ['week-summary'] })
+      toast.success(nextQuiet.includes(day) ? `${DAY_FULL[day]} is now quiet` : `${DAY_FULL[day]} is open for posting`)
+    } catch (e) {
+      toast.error('Could not update quiet days', { description: e?.message })
+    } finally {
+      setTogglingQuietDay(null)
+    }
+  }
+
   if (roleLoading || isLoading) return <PageSkeleton variant="dashboard" />
 
   const quiet = new Set((data?.quietDays || ['sat', 'sun']).map((q) => q.toLowerCase()))
@@ -581,6 +630,25 @@ export default function YourWeek() {
   for (const item of scheduled) {
     const k = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: tz }).format(new Date(item.scheduled_at)).toLowerCase().slice(0, 3)
     if (byDay[k]) byDay[k].push(item)
+  }
+
+  // T3 — pinned slots with no matching atom this week ("+ open slot" tiles).
+  // Only meaningful for the current/future week — a past week is read-only,
+  // so there's nothing left to invite placing into it.
+  const emptySlots = isPast ? [] : computeEmptySlots(cadence, scheduled, tz)
+  const emptyByDay = {}
+  for (const [k] of DAYS) emptyByDay[k] = []
+  for (const slot of emptySlots) {
+    if (emptyByDay[slot.weekday]) emptyByDay[slot.weekday].push(slot)
+  }
+  // Real cards + open-slot tiles interleaved by local hour, so the day column
+  // reads chronologically top-to-bottom regardless of which is which.
+  function dayColumnEntries(dayKey) {
+    const items = (byDay[dayKey] || []).map((item) => ({
+      kind: 'item', hour: localSlotParts(item.scheduled_at, tz).hour, item,
+    }))
+    const slots = (emptyByDay[dayKey] || []).map((slot) => ({ kind: 'empty', hour: slot.hour, slot }))
+    return [...items, ...slots].sort((a, b) => a.hour - b.hour)
   }
 
   // Today's column key — only on the current week (a past/future week has no
@@ -978,6 +1046,21 @@ export default function YourWeek() {
                   const Icon = meta.icon
                   const got = data.byPlatform?.[platform] || 0
                   const target = cfg.target_per_week || 0
+                  // T3 — Instagram is the one channel that spans multiple
+                  // formats (post/reel/story all key under `instagram`); break
+                  // its tile out by format so "4 scheduled" doesn't hide that
+                  // 0 of them are Reels. Per-format target is the count of
+                  // enabled pinned slots for that format; other platforms
+                  // are single-format and keep the plain bar.
+                  const breakdown = platform === 'instagram'
+                    ? ['post', 'reel', 'story']
+                      .map((format) => ({
+                        format,
+                        target: (cfg.slots || []).filter((s) => (s.format || 'post') === format && s.enabled !== false).length,
+                        got: scheduled.filter((it) => it.platform === platform && (it.format || 'post') === format).length,
+                      }))
+                      .filter((f) => f.target > 0 || f.got > 0)
+                    : null
                   return (
                     // The tile links to this channel's posts — users were
                     // clicking these counts expecting exactly that (2026-07-22
@@ -994,18 +1077,38 @@ export default function YourWeek() {
                         <span className="flex items-center gap-1.5 font-semibold">
                           {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />} {meta.label}
                         </span>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="text-muted-foreground"><b className="text-foreground">{got}</b>/{target}</span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {got} scheduled this week · target {target}/week
-                          </TooltipContent>
-                        </Tooltip>
+                        {!breakdown && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-muted-foreground"><b className="text-foreground">{got}</b>/{target}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {got} scheduled this week · target {target}/week
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-primary" style={{ width: `${target ? Math.min(100, (got / target) * 100) : 0}%` }} />
-                      </div>
+                      {breakdown ? (
+                        <div className="space-y-1">
+                          {breakdown.map((f) => {
+                            const FormatIcon = FORMAT_META[f.format].icon
+                            return (
+                              <div key={f.format} className="flex items-center gap-1.5 text-3xs">
+                                <FormatIcon className="h-2.5 w-2.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                                <span className="w-8 shrink-0 text-muted-foreground">{FORMAT_META[f.format].label}</span>
+                                <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                                  <div className="h-full rounded-full bg-primary" style={{ width: `${f.target ? Math.min(100, (f.got / f.target) * 100) : 0}%` }} />
+                                </div>
+                                <span className="shrink-0 text-muted-foreground"><b className="text-foreground">{f.got}</b>/{f.target}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                          <div className="h-full rounded-full bg-primary" style={{ width: `${target ? Math.min(100, (got / target) * 100) : 0}%` }} />
+                        </div>
+                      )}
                     </Link>
                   )
                 })}
@@ -1073,7 +1176,11 @@ export default function YourWeek() {
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
                 {DAYS.map(([key, label]) => {
                   const isQuiet = quiet.has(key)
-                  const items = byDay[key] || []
+                  // Quiet days never show "open slot" invitations, even if a
+                  // stale pinned slot references that weekday — but a real,
+                  // already-scheduled item (a human override) still shows.
+                  const entries = dayColumnEntries(key).filter((e) => e.kind === 'item' || !isQuiet)
+                  const itemCount = entries.filter((e) => e.kind === 'item').length
                   const isToday = key === todayKey
                   return (
                     <div key={key} className={`flex min-h-[160px] flex-col rounded-xl border bg-card shadow-sm transition-shadow ${isToday ? 'border-primary/40 ring-1 ring-primary/20' : 'border-border'}`}>
@@ -1081,16 +1188,49 @@ export default function YourWeek() {
                         <span className={`text-2xs font-bold ${isToday ? 'text-primary' : ''}`}>
                           {label}{isToday && ' · Today'}
                         </span>
-                        {items.length > 0 && (
-                          <span className="text-3xs font-semibold text-muted-foreground/60 tabular-nums">{items.length}</span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {itemCount > 0 && (
+                            <span className="text-3xs font-semibold text-muted-foreground/60 tabular-nums">{itemCount}</span>
+                          )}
+                          {/* T3 — quiet day toggle lives on the board now, not
+                              buried in Settings → Auto/Manual. */}
+                          {!isPast && (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleQuietDay(key)}
+                              disabled={togglingQuietDay === key}
+                              title={isQuiet ? 'Turn on posting for this day' : 'Mark this day quiet'}
+                              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
+                                isQuiet ? 'text-muted-foreground hover:bg-muted' : 'text-primary hover:bg-primary/10'
+                              }`}
+                            >
+                              {togglingQuietDay === key ? (
+                                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                              ) : isQuiet ? (
+                                <BellOff className="h-3 w-3" aria-hidden="true" />
+                              ) : (
+                                <Bell className="h-3 w-3" aria-hidden="true" />
+                              )}
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="flex flex-1 flex-col gap-2 px-2 pb-2">
-                        {items.length === 0 ? (
+                        {entries.length === 0 ? (
                           isQuiet ? (
-                            <div className="flex flex-1 flex-col items-center justify-center gap-1 text-muted-foreground">
+                            <div className="flex flex-1 flex-col items-center justify-center gap-1.5 text-muted-foreground">
                               <Moon className="h-4 w-4" aria-hidden="true" />
-                              <span className="text-3xs font-semibold">Quiet</span>
+                              <span className="text-3xs font-semibold">Quiet day</span>
+                              {!isPast && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleQuietDay(key)}
+                                  disabled={togglingQuietDay === key}
+                                  className="text-3xs font-semibold text-primary hover:underline disabled:opacity-50"
+                                >
+                                  Turn on posting
+                                </button>
+                              )}
                             </div>
                           ) : (
                             <div className="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border/70 py-4">
@@ -1107,18 +1247,28 @@ export default function YourWeek() {
                             </div>
                           )
                         ) : (
-                          items.map((item) => (
-                            <PlanCard
-                              key={item.id}
-                              item={item}
-                              tz={tz}
-                              onDraft={handleDraft}
-                              drafting={draftingAtom === item.id}
-                              draftBusy={!!draftingAtom}
-                              onApprove={handleApprove}
-                              approving={approvingAtom === item.id}
-                              readOnly={isPast}
-                            />
+                          entries.map((entry) => (
+                            entry.kind === 'item' ? (
+                              <PlanCard
+                                key={entry.item.id}
+                                item={entry.item}
+                                tz={tz}
+                                onDraft={handleDraft}
+                                drafting={draftingAtom === entry.item.id}
+                                draftBusy={!!draftingAtom}
+                                readOnly={isPast}
+                              />
+                            ) : (
+                              <EmptySlotTile
+                                key={`${entry.slot.platform}-${entry.slot.weekday}-${entry.slot.hour}-${entry.slot.format}`}
+                                slot={entry.slot}
+                                // Interim action until PR4 ships the real
+                                // Add-to-day picker (draft new / pull from
+                                // backlog, scoped to this slot's
+                                // platform+format).
+                                onClick={() => setBacklogOpen(true)}
+                              />
+                            )
                           ))
                         )}
                       </div>
