@@ -58,6 +58,30 @@ export function photoSourceUrl(entry) {
   return entry.sourceUrl || entry.url || null
 }
 
+// The photos a carousel can bind text to: non-video media with a URL.
+//
+// A slide's `photo_idx` indexes THIS FILTERED list, not raw media_urls — that is
+// what both writers compute against (SlideEditor's attach + auto-populate) and
+// what the publish bake reads. Any surface that resolves a slide's photo from
+// the RAW array shows a different photo than the one that ships, the moment a
+// video or a url-less entry sits earlier in media_urls.
+//
+// The predicate is deliberately `type !== 'video'` and NOT isVideoEntry() below:
+// widening it to also exclude `kind === 'video'` would renumber the filtered
+// list, and every photo_idx already stored on a content_items row is an index
+// into the current numbering. Consolidation only — no behavior change.
+export function slidePhotos(mediaUrls) {
+  return (mediaUrls || []).filter((m) => m && m.type !== 'video' && m.url)
+}
+
+// Resolve the media entry a slide is bound to. One resolver so a preview, the
+// editor canvas and the publish bake can never disagree about which photo
+// `photo_idx` names.
+export function slidePhotoEntry(slide, mediaUrls) {
+  if (typeof slide?.photo_idx !== 'number') return null
+  return slidePhotos(mediaUrls)[slide.photo_idx] || null
+}
+
 // True when a media_urls entry is a video. Checks both `kind` and `type`
 // because the two normalizers above set both, but older rows / other writers
 // may carry only one. One predicate so every surface (preview, composer gate,

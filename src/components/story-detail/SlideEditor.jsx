@@ -8,7 +8,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 import { resolveTheme, DEFAULT_DECK_THEME } from '@/lib/photoTemplates'
 import { normalizeGrade, isNeutralGrade } from '@/lib/gradeParams'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
-import { photoSourceUrl, clipToMediaEntry, mediaEntryKey } from '@/lib/mediaEntry'
+import { photoSourceUrl, clipToMediaEntry, mediaEntryKey, slidePhotos } from '@/lib/mediaEntry'
 import { brandStyleForRender } from '@/lib/brandSwatches'
 import { deriveStory } from '@/lib/storyFields'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
@@ -52,7 +52,9 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   // and AdCarouselExportModal below.
   const brandStyle = brandStyleForRender(workspace)
   const pieceMediaUrls = piece?.media_urls
-  const mediaUrls = (pieceMediaUrls || []).filter((m) => m && m.type !== 'video' && m.url)
+  // The photo-only list photo_idx indexes into — same helper the publish bake
+  // and PostPreview use, so all three number the photos identically.
+  const mediaUrls = slidePhotos(pieceMediaUrls)
   const hasMedia = mediaUrls.length > 0
   // Keys of every already-attached entry (photo or video) — so the swap/add
   // picks can mark which suggestions are already on the piece.
@@ -191,7 +193,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
       if (!seen.has(key)) { toAdd.push(pick); seen.add(key) }
     }
     const nextRaw = [...raw, ...toAdd]
-    const photoOnly = nextRaw.filter((m) => m && m.type !== 'video' && m.url)
+    const photoOnly = slidePhotos(nextRaw)
     const newSlides = slides.map((s, i) => {
       const pick = picks[i]
       if (!pick) return s
@@ -284,7 +286,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
       }
       // Index in the photo-only filtered list (videos excluded) — the same filter
       // the editor uses for `mediaUrls`/`photo_idx` everywhere.
-      const photoOnly = nextRaw.filter((m) => m && m.type !== 'video' && m.url)
+      const photoOnly = slidePhotos(nextRaw)
       const photoIdx = photoOnly.findIndex((m) => mediaEntryKey(m) === key)
       if (photoIdx >= 0) {
         setSlides((cur) => cur.map((s, i) => (i === activeSlideIdx ? { ...s, photo_idx: photoIdx } : s)))
