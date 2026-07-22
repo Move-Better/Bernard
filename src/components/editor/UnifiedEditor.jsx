@@ -209,13 +209,17 @@ function SeoPanel({ piece, updateItem }) {
 
 // One suggestion thumbnail — modeled on SlideEditor's SuggestionThumb.
 function SuggestionThumb({ clip, attached, attaching, onAttach }) {
-  const thumb = clip.thumbnailUrl || clip.blobUrl || clip.url
+  // A video's blobUrl is the raw .mov/.mp4 — never a valid <img src>. Only fall
+  // back to it for photos; a video with no poster gets the placeholder icon
+  // instead of a broken image (15 of 466 movebetter videos have no thumbnail).
+  const isVideo = clip.kind === 'video'
+  const thumb = clip.thumbnailUrl || (isVideo ? null : clip.blobUrl || clip.url)
   return (
     <button
       type="button"
       disabled={attaching}
       onClick={onAttach}
-      title={attached ? 'Already in this post' : 'Use this photo'}
+      title={attached ? 'Already in this post' : isVideo ? 'Use this video' : 'Use this photo'}
       className={`group relative aspect-square overflow-hidden rounded-md border transition-all ${
         attached ? 'border-primary' : 'border-border hover:border-primary'
       }`}
@@ -224,10 +228,22 @@ function SuggestionThumb({ clip, attached, attaching, onAttach }) {
         <img src={thumb} alt="" className="h-full w-full object-cover" />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-muted">
-          <ImageIcon className="h-4 w-4 text-muted-foreground" />
+          {isVideo ? (
+            <Video className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          ) : (
+            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+          )}
         </div>
       )}
       <span className="absolute left-1 top-1 rounded bg-primary px-1 text-3xs font-bold leading-tight text-primary-foreground">AI</span>
+      {/* Photo and video candidates now sit side by side, so the kind has to be
+          readable at a glance — a poster frame alone looks like a still. */}
+      {isVideo && (
+        <span className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded bg-black/70 px-1 text-3xs font-medium leading-tight text-white">
+          <Video className="h-2.5 w-2.5" aria-hidden="true" />
+          {clip.durationS != null ? `${Math.round(clip.durationS)}s` : 'Video'}
+        </span>
+      )}
       <span
         className={`absolute inset-0 flex items-center justify-center bg-black/40 text-white transition-opacity ${
           attaching ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
@@ -252,7 +268,14 @@ function MediaPanel({ piece, updateItem, aspect, setAspect }) {
   // single-visual photo posts in SlideEditor's attachPhoto). doc/email/ad
   // keep the append behavior — those genuinely take multiple images.
   const singleMedia = ['vvideo', 'lvideo'].includes(resolveArchetype(piece))
-  const { data: sugg, isLoading } = useMediaSuggestions(piece.id, { kind: 'photo', k: 12 })
+  // No `kind` — the server derives it from the draft's platform via
+  // mediaKindForPlatform: video for reels/tiktok/youtube, photo for blog/email,
+  // and BOTH for instagram/facebook/gbp/linkedin. Passing kind:'photo' here used
+  // to override that for every piece, including reels, so the video half of the
+  // library was never suggested anywhere in the app (4 of 466 videos ever used).
+  // The carousel strip and the Swap-photo panel still pass kind:'photo' — those
+  // two are photo surfaces by definition; this one is not.
+  const { data: sugg, isLoading } = useMediaSuggestions(piece.id, { k: 12 })
   const clips = sugg?.clips || []
   const [attaching, setAttaching] = useState(null)
   const attachedKeys = new Set(media.map(mediaEntryKey))
@@ -302,14 +325,22 @@ function MediaPanel({ piece, updateItem, aspect, setAspect }) {
         {media.length > 0 ? (
           <div className="grid grid-cols-3 gap-2">
             {media.map((entry, idx) => {
-              const url = photoSourceUrl(entry) || entry.thumbnailUrl
+              // A video entry's `url` is the raw file — poster first, and never
+              // fall through to the .mov (photoSourceUrl would hand back the
+              // video url and render a broken tile).
+              const entryIsVideo = isVideoEntry(entry)
+              const url = entryIsVideo ? entry.thumbnailUrl : photoSourceUrl(entry) || entry.thumbnailUrl
               return (
                 <div key={mediaEntryKey(entry) || idx} className="group relative aspect-square overflow-hidden rounded-md border">
                   {url ? (
                     <img src={url} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-muted">
-                      <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                      {entryIsVideo ? (
+                        <Video className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                      ) : (
+                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                      )}
                     </div>
                   )}
                   <button
@@ -371,7 +402,7 @@ function MediaPanel({ piece, updateItem, aspect, setAspect }) {
             </div>
           ) : clips.length === 0 ? (
             <p className="py-4 text-center text-2xs text-muted-foreground">
-              No photo suggestions yet — upload media in your Library to see picks here.
+              No suggestions yet — upload media in your Library to see picks here.
             </p>
           ) : (
             <div className="grid grid-cols-3 gap-2">
