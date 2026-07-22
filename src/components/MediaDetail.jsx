@@ -32,7 +32,10 @@ import AdExportModal from './AdExportModal'
 import { downloadFromUrl } from '@/lib/download'
 import { useConfirm } from '@/lib/useConfirm'
 
-const STATUSES = ['raw', 'tagged', 'rendered', 'approved', 'archived']
+// No 'rendered' — nothing writes it to media_assets (see MediaHub's
+// STATUS_FILTERS note); offering it here let an admin hand-set a status that
+// no other surface understood.
+const STATUSES = ['raw', 'tagged', 'approved', 'archived']
 // Purpose is the primary fork (see MediaUploader for the source of truth).
 // Detail drawer lets admins/editors re-classify if an upload landed on the
 // wrong purpose — flipping out of 'interview' clears speaker_role server-side

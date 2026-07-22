@@ -83,7 +83,10 @@ async function handler(req, res) {
   if (req.method === 'PATCH') {
     const patch = req.body || {}
 
-    const ALLOWED_STATUSES = new Set(['raw', 'tagged', 'rendered', 'approved', 'archived'])
+    // 'rendered' removed — nothing writes it to media_assets (the only
+    // status:'rendered' writer in the codebase targets video_segments), so
+    // accepting it here just let a client park a row in an unreadable state.
+    const ALLOWED_STATUSES = new Set(['raw', 'tagged', 'approved', 'archived'])
     if (patch.status !== undefined && !ALLOWED_STATUSES.has(patch.status)) {
       return res.status(400).json({ error: 'Invalid status' })
     }

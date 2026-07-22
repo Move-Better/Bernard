@@ -65,12 +65,19 @@ function groupByDate(assets) {
 // genuinely different questions ("is this photo usable yet?" vs. "where is
 // this story?"), so don't force them into one shared vocabulary — that would
 // blur the distinction rather than clarify it. (2026-07-04 /auditfull P1-3.)
+// `rendered` is deliberately absent: nothing has ever written it to
+// media_assets (the only `status:'rendered'` writer in the codebase targets
+// video_segments, a different table) and prod holds zero such rows. It was
+// offered here as "Used in a draft", which it never meant — filtering to it
+// always returned an empty grid.
 const STATUS_FILTERS = [
   { id: '',         label: 'Any active' },
   { id: 'raw',      label: 'Just uploaded' },
   { id: 'tagged',   label: 'Tagged — ready to use' },
-  { id: 'rendered', label: 'Used in a draft' },
-  { id: 'approved', label: 'Approved — cleared to publish' },
+  // NOT a publish gate. Written by the four derived-asset paths (clip export,
+  // b-roll save, brief return-upload, edited variant) to mean "already
+  // finished, skip auto-tagging". Nothing in the suggest/publish path reads it.
+  { id: 'approved', label: 'Finished — exported clip or edit' },
   { id: 'archived', label: 'Archived' },
 ]
 

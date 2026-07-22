@@ -411,9 +411,13 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                             </div>
                           )}
 
-                          {a.status === 'rendered' || a.status === 'approved' ? (
+                          {/* "Finished" — a derived asset (exported clip, saved
+                              b-roll, edited variant) that skipped auto-tagging.
+                              Was labelled "Approved"/"Branded", both of which
+                              implied a clearance step that does not exist. */}
+                          {a.status === 'approved' ? (
                             <span className="absolute top-1 left-1 text-3xs font-medium px-1 py-0.5 rounded bg-violet-100 text-violet-700">
-                              {a.status === 'approved' ? 'Approved' : 'Branded'}
+                              Finished
                             </span>
                           ) : null}
                           {tooLong && (
