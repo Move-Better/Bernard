@@ -72,6 +72,77 @@ const GATE = 6.5
 const isFabricated = (score) =>
   Array.isArray(score?.breakdown?.invented_claims) && score.breakdown.invented_claims.length > 0
 
+// Sibling-caption dedup. One interview fans out into up to ~11 atoms across 4-5
+// platforms over several weeks, and each atom used to be drafted in total
+// isolation against the SAME transcript — so every generation independently
+// picked the transcript's single most vivid moment. Measured on the movebetter
+// workspace (45d window, 71 captions): one clinician quote appeared near-verbatim
+// in 4 captions, one anecdote in 7, another in 5. The voice judge can't catch it
+// either — none of its four dimensions measure novelty, and `said_fidelity`
+// actively REWARDS reusing the most quotable line.
+//
+// Note `resolveOwnHistoryBlock` already guards the cross-interview case (it passes
+// excludeInterviewId), which is exactly why the WITHIN-interview case had no guard
+// at all. This is that missing half.
+const SIBLING_MAX      = 8   // most recent N siblings; ~8 × 320 ≈ 2.5k prompt chars
+const SIBLING_EXCERPT  = 320 // enough to identify the anecdote/quote, not the whole post
+
+/**
+ * Build the MOMENTS ALREADY USED block: excerpts of captions already drafted from
+ * THIS interview, so the model steers to an unused part of the conversation.
+ *
+ * Best-effort — returns '' on any failure. Never throws: a dedup miss degrades
+ * output quality, but a throw here would fail the whole draft.
+ *
+ * @param {object} a
+ * @param {string} a.workspaceId
+ * @param {string} a.interviewId
+ * @param {string=} a.excludeContentPieceId  this atom's own prior draft (re-draft case)
+ * @returns {Promise<string>}
+ */
+async function resolveSiblingCaptionsBlock({ workspaceId, interviewId, excludeContentPieceId }) {
+  try {
+    if (!workspaceId || !interviewId) return ''
+    // Rejected pieces are excluded: their moment was never used publicly, so it's
+    // still fair game — and a rejected draft is often rejected BECAUSE it was a
+    // weak treatment of a moment worth revisiting.
+    const res = await sb(
+      `content_items?workspace_id=eq.${workspaceId}&interview_id=eq.${interviewId}` +
+      `&content=not.is.null&status=not.in.(rejected)` +
+      `&select=id,platform,content&order=created_at.desc&limit=${SIBLING_MAX + 1}`,
+    )
+    if (!res.ok) {
+      console.error(`[draftAtom] sibling caption fetch failed: ${res.status}`)
+      return ''
+    }
+    const rows = (await res.json())
+      .filter((r) => r.id !== excludeContentPieceId)
+      .filter((r) => typeof r.content === 'string' && r.content.trim().length > 40)
+      .slice(0, SIBLING_MAX)
+    if (!rows.length) return ''
+
+    const list = rows
+      .map((r, i) => {
+        const excerpt = r.content.trim().replace(/\s+/g, ' ').slice(0, SIBLING_EXCERPT)
+        return `${i + 1}. [${r.platform}] "${excerpt}${r.content.trim().length > SIBLING_EXCERPT ? '…' : ''}"`
+      })
+      .join('\n')
+
+    return `
+
+MOMENTS ALREADY USED — ${rows.length} other post${rows.length === 1 ? ' has' : 's have'} already been written from this SAME conversation. Each excerpt below is a moment, quote, story, or opening line that is already queued or published:
+
+${list}
+
+Do NOT build this piece around any of the moments above. Do not reuse their central anecdote, their hero quote, or their opening framing — a reader who follows more than one of our channels will see these back to back. Go find a DIFFERENT part of the conversation to build on.
+
+If the conversation genuinely contains only ONE usable story, you may still touch it — but enter from a different angle, lead with a different line, and do not repeat the same quote verbatim. Never invent new material to avoid an overlap: staying faithful to what was actually said outranks novelty.`
+  } catch (e) {
+    console.error(`[draftAtom] resolveSiblingCaptionsBlock threw: ${e?.message}`)
+    return ''
+  }
+}
+
 /**
  * Ground + generate + judge one atom's caption. Behavior-identical to draft.js's
  * inline core; does NO DB writes.
@@ -165,6 +236,14 @@ export async function draftAtom({ ws, atom, interview }) {
   // Ground the "link in bio" article claim in reality — see blogLinkStatus.js.
   const hasPublishedArticle = await hasPublishedBlogArticle(sb, ws.id, interview.id)
 
+  // Captions already written from THIS interview, so this atom picks an unused
+  // moment instead of re-mining the transcript's single most vivid story.
+  const siblingBlock = await resolveSiblingCaptionsBlock({
+    workspaceId:           ws.id,
+    interviewId:           interview.id,
+    excludeContentPieceId: atom.content_piece_id || null,
+  })
+
   // Build the focused atom prompt
   const systemPrompt = getAtomSystemPrompt(
     ws,
@@ -182,6 +261,7 @@ export async function draftAtom({ ws, atom, interview }) {
     campaignContext,
     ownHistoryBlock,
     hasPublishedArticle,
+    siblingBlock,
   )
   if (!systemPrompt) throw new Error(`No prompt defined for ${atom.platform}/${atom.angle}`)
 
@@ -375,6 +455,7 @@ export async function draftAtom({ ws, atom, interview }) {
       campaignContext,
       gbpSubjectLocation,
       ownHistoryBlock,
+      siblingBlock,
     },
   }
 }
@@ -401,7 +482,7 @@ export async function buildGbpLocationVariants({ ws, atom, interview, staffName,
   if (atom.platform !== 'gbp') return {}
   const {
     voiceNotes, voicePhrases, conceptBlock, audienceLabel, storyTypeLabel,
-    activeCampaign, campaignContext, gbpSubjectLocation, ownHistoryBlock,
+    activeCampaign, campaignContext, gbpSubjectLocation, ownHistoryBlock, siblingBlock,
   } = gbpContext || {}
 
   const locsRes = await sb(
@@ -441,6 +522,10 @@ export async function buildGbpLocationVariants({ ws, atom, interview, staffName,
           storyTypeLabel,
           locCampaignContext,
           ownHistoryBlock,
+          // hasPublishedArticle was never passed here (defaulted false); pass it
+          // explicitly so adding siblingBlock after it can't change that behavior.
+          false,
+          siblingBlock,
         )
         if (!locPrompt) return null
         const { text: locText } = await generateText({
