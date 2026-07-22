@@ -51,3 +51,17 @@ The 2026-07-22 UX pain check surfaced `Draft`-button dead clicks on `/week` and 
 **Per-tick cap deliberately NOT raised.** `agent-tick` runs `*/5`, so the existing cap of 2 drains a 10-slot week in ~25 min; the binding constraint is `daily_ai_call_cap` (40), not the cap. Raising it would add spend risk without throughput.
 
 **Kill criterion:** if by **2026-08-19** (4 weeks) the agent-predrafted share hasn't moved from 17% to **≥60%** of drafts, the window wasn't the constraint — investigate the daily AI-call cap and the `interview_id`/`scheduled_at` eligibility filters before reconsidering any batch-draft UI.
+
+## 2026-07-22 — /week chrome collapses to header controls; amber is pace-aware (#2257, #2260)
+Q: "Half the screen is used up with non-week stuff… could they just be in a dropdown?" Direction chosen via AskUserQuestion: **A — header controls**, with **cadence staying visible as one line**.
+
+- **Mode** (display-only, see `LADDER` — no setter exists anywhere) → header pill + popover. It is status, not furniture; it moves a few times a year.
+- **Backlog** → header button opening the drawer that already existed directly below the rail. The 288px rail was a 6-row preview of that same drawer, so this was subtraction, not new code.
+- **Posting schedule** → one chip row, and **deliberately NOT collapsed** like the other two. It is the only signal the board structurally cannot show: an unfilled target and a genuinely quiet week look identical on a calendar. Instagram still splits by format so a full IG bar can't hide an empty Reel target.
+- **Pre-draft banner stays inline** — a real per-week event, not standing furniture.
+
+**Amber is pace-aware, and that was a correction, not the original design.** #2257 shipped a flat `got < target`, which on an ordinary Wednesday lit **three of five** chips — at which point amber is just the strip's colour and stops meaning "act now". #2260 changed it to `got < target * elapsedWholeDays / 7` (workspace tz; Monday is 0 elapsed so nothing nags early, future weeks are 0 since planning ahead is never behind, past weeks never test). On the real week this flags Facebook 0/3 from Tuesday, Google Business 1/2 from Friday, LinkedIn 2/3 only at the weekend when it is genuinely unrecoverable, and Instagram never.
+
+**Known limit, accepted:** the strip measures *slots filled*, not *posts published*, so a channel whose whole week is scheduled on Friday reads as fine all week. That is correct for "have you planned enough" and wrong for "has anything gone out" — the latter is a different metric and a different chip, not a fix to this one.
+
+**Kill criterion:** if by **2026-08-19** the pace rule is still producing amber chips Q reads as noise (or he asks for the counts back as a card), the pacing denominator is wrong — try remaining-future-pinned-slots vs the gap (genuinely "can this still be hit?") before reverting to a flat threshold.
