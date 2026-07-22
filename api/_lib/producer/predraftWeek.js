@@ -1,12 +1,13 @@
 // The Standing Producer's pre-draft agent (Phase 3).
 //
 // Inverts the on-demand draft posture: instead of a caption existing only when a
-// human clicks Draft, the producer drafts the UPCOMING week's planned-but-undrafted
-// slots ahead of Monday — fully grounded, voice-judged, gate-filtered — so Monday's
-// /week is a review session, not a workbench.
+// human clicks Draft, the producer drafts planned-but-undrafted slots on its own —
+// fully grounded, voice-judged, gate-filtered — so /week is a review session, not
+// a workbench.
 //
-// A "planned slot needing a draft" = a content_plan_atoms row for the upcoming
-// week (plan_week = next Monday) that is scheduled (scheduled_at set), still
+// A "planned slot needing a draft" = a content_plan_atoms row in the CURRENT or
+// UPCOMING week (thisMonday <= plan_week <= nextMonday) that is scheduled
+// (scheduled_at set, and not more than 24h in the past), still
 // `status='pending'`, has NO content_piece_id yet, and is linked to an interview
 // (interview_id) — the draft path's hard requirement. Atoms already drafted by a
 // human (or a prior tick) are filtered out; the pending→drafting optimistic claim
@@ -30,6 +31,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+const DAY_MS = 24 * 60 * 60 * 1000
 // Default per-invocation drafting cap: a 6-slot week drains over ~3 ticks,
 // smoothing model spend and the tick's 300s budget. Overridable per call.
 const DEFAULT_PREDRAFT_CAP = 2
@@ -240,20 +242,36 @@ export async function predraftWeek({ ws, cap = DEFAULT_PREDRAFT_CAP }) {
   const wsFilter = `workspace_id=eq.${ws.id}`
   // Upcoming week = the Monday one week ahead of the current week's Monday.
   const nextMonday = mondayOf(new Date(Date.now() + WEEK_MS).toISOString())
+  // ...and the CURRENT week's Monday. The window spans both.
+  //
+  // This used to be `plan_week = eq.nextMonday` — next week only. The moment that
+  // week rolled over to being the current week, every slot still undrafted in it
+  // became permanently ineligible and could only be drafted by hand, one at a
+  // time, on /week. That's why pre-drafting only accounted for 11 of movebetter's
+  // last 66 drafts (17%) while the owner hand-clicked the other 83%, hitting the
+  // single-flight lock on every attempt to start the next one (2026-07-22 UX pain
+  // check: 5 dead clicks in 11 minutes, each 12-39s ahead of a real draft row).
+  const thisMonday = mondayOf(new Date().toISOString())
+  // Don't spend model calls re-drafting slots whose moment has clearly passed. A
+  // 24h grace still catches a slot that lapsed earlier today (the owner can post
+  // it late) without reviving a whole stale week. Weeks BEFORE thisMonday are
+  // excluded by the range itself, so abandoned plans stay abandoned.
+  const scheduledFloor = new Date(Date.now() - DAY_MS).toISOString()
 
-  // Planned-but-undrafted slots for the upcoming week: scheduled (has a slot on the
-  // calendar), still pending, not yet bound to a content piece, and linked to an
-  // interview (draftAtom's requirement). Oldest scheduled_at first so the earliest
-  // slots fill first. content_piece_id=is.null belt-and-suspenders alongside
-  // status=eq.pending (a drafted atom is status='drafted' AND has a piece id).
+  // Planned-but-undrafted slots across the current + upcoming week: scheduled (has
+  // a slot on the calendar), still pending, not yet bound to a content piece, and
+  // linked to an interview (draftAtom's requirement). Oldest scheduled_at first so
+  // the earliest slots fill first. content_piece_id=is.null belt-and-suspenders
+  // alongside status=eq.pending (a drafted atom is status='drafted' AND has a piece id).
   const slotsRes = await sb(
-    `content_plan_atoms?${wsFilter}&plan_week=eq.${nextMonday}` +
-    `&scheduled_at=not.is.null&status=eq.pending&content_piece_id=is.null&interview_id=not.is.null` +
+    `content_plan_atoms?${wsFilter}&plan_week=gte.${thisMonday}&plan_week=lte.${nextMonday}` +
+    `&scheduled_at=not.is.null&scheduled_at=gte.${scheduledFloor}` +
+    `&status=eq.pending&content_piece_id=is.null&interview_id=not.is.null` +
     `&select=id,platform,angle,interview_id,scheduled_at&order=scheduled_at.asc&limit=25`
   )
   if (!slotsRes.ok) {
     console.error('[predraftWeek] slot fetch failed', slotsRes.status)
-    return { weekMonday: nextMonday, candidates: 0, drafted: 0, skipped: 0, failed: 0, results: [] }
+    return { weekMonday: thisMonday, throughWeek: nextMonday, candidates: 0, drafted: 0, skipped: 0, failed: 0, results: [] }
   }
   const slots = (await slotsRes.json().catch(() => [])) || []
 
@@ -275,7 +293,7 @@ export async function predraftWeek({ ws, cap = DEFAULT_PREDRAFT_CAP }) {
     }
   }
 
-  const result = { weekMonday: nextMonday, candidates: slots.length, eligible: eligible.length, drafted: 0, skipped: 0, failed: 0, results: [] }
+  const result = { weekMonday: thisMonday, throughWeek: nextMonday, candidates: slots.length, eligible: eligible.length, drafted: 0, skipped: 0, failed: 0, results: [] }
   // Draft sequentially up to the cap (one model chain at a time keeps us well
   // inside the tick budget and avoids a burst of parallel gateway calls).
   for (const atom of eligible) {
