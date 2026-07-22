@@ -984,9 +984,14 @@ gotchas below cost a full session (2026-06-21) when `/week` read empty despite 1
     key — which is a fair measure of how easy this was to trip. Fixed in #2253 —
     `sanitizeCadencePolicy(value, existing)` merges the
     incoming object OVER the stored policy, so an omitted top-level key is carried forward and only a
-    key the client actually sends replaces. `channels` is still rebuilt wholesale inside its own block.
-    Note this class of bug is invisible to every gate: the write succeeds and the loss only surfaces
-    whenever something next reads the key.
+    key the client actually sends replaces. Same PR applies the identical carry-forward one level
+    deeper: `channels` and `formats` no longer rebuild wholesale from `value` alone — an untouched
+    platform/format is carried forward from the stored row, and slots omitted from a touched
+    platform's patch carry forward too. What's still true from the paragraph above: for a platform the
+    patch DOES touch, the sanitizer only ever reconstructs `{target_per_week, enabled, slots?}` —
+    any OTHER per-channel key nested under that platform (a metric, a flag) is still dropped, not
+    spread from the stored object. Note this class of bug is invisible to every gate: the write
+    succeeds and the loss only surfaces whenever something next reads the key.
   - This fixed the long-standing bug where Facebook + Instagram Story were enabled-as-output but got
     `0`/disabled cadence (the old hardcoded instagram/linkedin/gbp trio). Phase 2 (engagement-tuned,
     per-tenant cadence from `engagement_snapshots`) is SHIPPED in `api/_lib/cadenceAdaptive.js` and
