@@ -61,7 +61,9 @@ export async function createPendingBroll({ ws, sourceAsset, notes }) {
     kind:             'video',
     asset_purpose:    'broll',
     source:           'moments',
-    status:           'approved',
+    // 'tagged', not the retired 'approved' — a derived asset is ready to use
+    // and skips auto-tagging, which is exactly what 'tagged' already means.
+    status:           'tagged',
     blob_url:         null,               // set by the worker on completion
     filename:         `${base}-clip.mp4`,
     mime_type:        'video/mp4',

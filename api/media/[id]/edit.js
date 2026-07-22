@@ -481,12 +481,12 @@ async function handler(req, res) {
     }
 
     // Variant insert: new media_assets row carrying parent_id + variant_label
-    // + transforms. Status starts as 'approved' so it's immediately usable
-    // (variants are derived from already-approved content; no need to re-tag).
+    // + transforms. Status starts as 'tagged' so it's immediately usable
+    // (variants are derived from already-tagged content; no need to re-tag).
     const variantRow = {
       [scope.column]: scope.id,
       kind:          source.kind,
-      status:        'approved',
+      status:        'tagged',
       source:        'edit',
       blob_url:      uploaded.url,
       blob_pathname: uploaded.pathname,

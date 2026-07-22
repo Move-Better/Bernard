@@ -94,8 +94,10 @@ async function handler(req, res) {
   let qs = `media_assets?select=${SELECT}&${scope.column}=eq.${scope.id}&order=created_at.desc&limit=${limit}&offset=${offset}`
   if (kind && ['video', 'photo'].includes(kind)) qs += `&kind=eq.${kind}`
   if (status) {
-    // 'rendered' removed — no writer, no rows; it only ever returned an empty grid.
-    if (!['raw', 'tagged', 'approved', 'archived'].includes(status)) {
+    // 'rendered' and 'approved' removed — neither is a live status (see
+    // MediaHub's STATUS_FILTERS note). Filtering to either returned rows no
+    // writer produces any more.
+    if (!['raw', 'tagged', 'archived'].includes(status)) {
       return res.status(400).json({ error: 'invalid_status' })
     }
     qs += `&status=eq.${status}`

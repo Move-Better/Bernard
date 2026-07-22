@@ -411,15 +411,11 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                             </div>
                           )}
 
-                          {/* "Finished" — a derived asset (exported clip, saved
-                              b-roll, edited variant) that skipped auto-tagging.
-                              Was labelled "Approved"/"Branded", both of which
-                              implied a clearance step that does not exist. */}
-                          {a.status === 'approved' ? (
-                            <span className="absolute top-1 left-1 text-3xs font-medium px-1 py-0.5 rounded bg-violet-100 text-violet-700">
-                              Finished
-                            </span>
-                          ) : null}
+                          {/* No status badge: 'rendered' and 'approved' were
+                              retired, and the two labels this drew from them
+                              ("Branded" / "Approved") both implied a clearance
+                              step the app never had. The remaining statuses
+                              (raw/tagged) say nothing a picker needs. */}
                           {tooLong && (
                             <span className="absolute bottom-1 left-1 right-1 text-3xs font-medium px-1 py-0.5 rounded bg-action/80 text-foreground flex items-center gap-0.5 leading-tight">
                               <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
