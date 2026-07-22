@@ -1,10 +1,12 @@
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Heart, MessageCircle, Send, Bookmark, ThumbsUp, Repeat2, Globe, MapPin, ChevronLeft, ChevronRight, Play } from 'lucide-react'
+import { Heart, MessageCircle, Send, Bookmark, ThumbsUp, Repeat2, Globe, MapPin, ChevronLeft, ChevronRight, Play, AlertTriangle } from 'lucide-react'
 import emailTemplateHtml from '../email-template.html?raw'
 import { workspace } from '@/lib/workspace'
 import { useWorkspace } from '@/lib/WorkspaceContext'
-import { renderFreeformSlide, SLIDE_W, SLIDE_H } from '@/lib/overlayTemplates'
+import { renderFreeformSlide } from '@/lib/overlayTemplates'
+import { AD_CAROUSEL_DIMS } from '@/lib/renderSlides'
+import { instagramFeedFrame } from '@/lib/instagramFrame'
 import { brandStyleForRender } from '@/lib/brandSwatches'
 import { resolveTheme } from '@/lib/photoTemplates'
 import { usePhotoTemplates } from '@/lib/queries'
@@ -60,7 +62,7 @@ function mediaSrc(m) {
 // `theme` MUST be passed: renderFreeformSlide keys layout/palette/per-block
 // styling off it, so omitting it renders an un-themed fallback that doesn't
 // match the editor or the published bake.
-function SlideCanvas({ slide, photo, brandStyle, theme }) {
+function SlideCanvas({ slide, photo, brandStyle, theme, width, height }) {
   const canvasRef = React.useRef(null)
   React.useEffect(() => {
     const canvas = canvasRef.current
@@ -74,8 +76,8 @@ function SlideCanvas({ slide, photo, brandStyle, theme }) {
           brandStyle: brandStyle || {},
           canvas,
           theme,
-          width: SLIDE_W,
-          height: SLIDE_H,
+          width,
+          height,
         })
       } catch (e) {
         if (!cancelled) console.warn('[SlideCanvas] render failed', e?.message)
@@ -83,11 +85,16 @@ function SlideCanvas({ slide, photo, brandStyle, theme }) {
     }
     draw()
     return () => { cancelled = true }
-  }, [slide, photo, brandStyle, theme])
+  }, [slide, photo, brandStyle, theme, width, height])
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" aria-hidden="true" />
 }
 
-function SlidesCarousel({ slides, mediaUrls, photoTemplateId = null }) {
+// `aspectRatio` is the deck's own aspect, off the content_items row. It used to
+// be hardcoded to 4:5 here while the publish bake used the row's value, so a
+// 1:1 or 9:16 deck previewed in the wrong SHAPE — and since a slide's zoom and
+// pan are measured relative to the frame, a photo someone deliberately
+// re-centred landed somewhere else than they saw. (Q, 2026-07-21.)
+function SlidesCarousel({ slides, mediaUrls, photoTemplateId = null, aspectRatio = '4:5' }) {
   const [idx, setIdx] = React.useState(0)
   const ws = useWorkspace()
   // heroAccent reconciled to the server compositor's chain (preview == bake).
@@ -99,9 +106,12 @@ function SlidesCarousel({ slides, mediaUrls, photoTemplateId = null }) {
   const total = slides.length
 
   if (total === 0) {
-    return <MediaCarousel mediaUrls={mediaUrls} aspectClass="aspect-square" />
+    return <MediaCarousel mediaUrls={mediaUrls} aspectClass="aspect-square" trueFrame />
   }
 
+  // Same dims table the publish bake renders at, so preview and output can't
+  // disagree about the shape.
+  const [canvasW, canvasH] = AD_CAROUSEL_DIMS[aspectRatio] || AD_CAROUSEL_DIMS['4:5']
   const slide = slides[idx]
   // photo_idx indexes the PHOTO-ONLY list, not raw media_urls — both callers
   // hand this component the raw array, so indexing it directly showed a
@@ -110,8 +120,11 @@ function SlidesCarousel({ slides, mediaUrls, photoTemplateId = null }) {
   const theme = resolveTheme(slide.template_id || photoTemplateId, customThemes)
 
   return (
-    <div className="relative aspect-[4/5] overflow-hidden bg-black select-none">
-      <SlideCanvas slide={slide} photo={photo} brandStyle={brandStyle} theme={theme} />
+    <div
+      className="relative overflow-hidden bg-black select-none"
+      style={{ aspectRatio: `${canvasW} / ${canvasH}` }}
+    >
+      <SlideCanvas slide={slide} photo={photo} brandStyle={brandStyle} theme={theme} width={canvasW} height={canvasH} />
 
       {total > 1 && (
         <>
@@ -154,10 +167,21 @@ function SlidesCarousel({ slides, mediaUrls, photoTemplateId = null }) {
   )
 }
 
-function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square' }) {
+// `trueFrame` — render the photo in the frame Instagram will actually give it
+// (see instagramFrame.js) instead of a square, and say so when Instagram is
+// going to trim it. Only for the raw-photo path: a piece with slides ships a
+// baked image at the deck's aspect, which Instagram never crops.
+//
+// The dimensions come from the loaded <img> rather than the media entry, which
+// doesn't carry width/height — this measures the real file and so can't go stale.
+function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square', trueFrame = false }) {
   const [idx, setIdx] = React.useState(0)
+  const [natural, setNatural] = React.useState(null)
   const total = mediaUrls.length
   const logoSrc = useWorkspaceLogo()
+
+  // Re-measure when the visible photo changes — a carousel's photos differ.
+  React.useEffect(() => { setNatural(null) }, [idx])
 
   if (total === 0) {
     return (
@@ -171,8 +195,18 @@ function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square' }) {
   const m   = mediaUrls[idx]
   const src = mediaSrc(m)
 
+  // Null until the photo has loaded and been measured; the placeholder aspect
+  // holds the layout until then.
+  const frame = trueFrame && m.type !== 'video' && natural
+    ? instagramFeedFrame(natural.w, natural.h)
+    : null
+
   return (
-    <div className={`relative ${aspectClass} overflow-hidden bg-black select-none`}>
+    <>
+    <div
+      className={`relative ${frame ? '' : aspectClass} overflow-hidden bg-black select-none`}
+      style={frame ? { aspectRatio: String(frame.aspect) } : undefined}
+    >
       {/* Slide */}
       {m.type === 'video' ? (
         <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center gap-2">
@@ -187,7 +221,14 @@ function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square' }) {
           <p className="absolute bottom-2 left-0 right-0 text-center text-3xs text-white/60 px-4 line-clamp-1">{m.name}</p>
         </div>
       ) : src ? (
-        <img src={src} alt={m.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" />
+        <img
+          src={src}
+          alt={m.name}
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
+          decoding="async"
+          onLoad={trueFrame ? (e) => setNatural({ w: e.target.naturalWidth, h: e.target.naturalHeight }) : undefined}
+        />
       ) : (
         <div className="absolute inset-0 bg-muted flex items-center justify-center">
           <p className="text-xs text-muted-foreground">{m.name}</p>
@@ -237,6 +278,21 @@ function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square' }) {
         </>
       )}
     </div>
+
+    {/* Advisory — the frame above is faithful, so say what it cost. Only fires
+        when Instagram is genuinely going to discard part of the photo, which
+        is something the author can still fix by reframing or picking a
+        differently-shaped shot. */}
+    {frame && frame.croppedPct > 0 && (
+      <p className="flex items-start gap-1.5 border-t border-action/25 bg-action/10 px-4 py-2 text-2xs text-action">
+        <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <span>
+          Instagram will trim about <strong className="font-semibold">{frame.croppedPct}%</strong> off {frame.trims} of this
+          photo. Open it in the editor to reframe it, or use a shot closer to 4:5.
+        </span>
+      </p>
+    )}
+    </>
   )
 }
 
@@ -277,7 +333,7 @@ function ReelPreview({ video }) {
 }
 
 // ── Instagram ────────────────────────────────────────────────────────────────
-function InstagramPreview({ content, mediaUrls = [], slides = null, photoTemplateId = null }) {
+function InstagramPreview({ content, mediaUrls = [], slides = null, photoTemplateId = null, aspectRatio = '4:5' }) {
   const [showFull, setShowFull] = React.useState(false)
   const lines = (content || '').split('\n')
   const preview = lines.slice(0, 4).join('\n')
@@ -317,8 +373,8 @@ function InstagramPreview({ content, mediaUrls = [], slides = null, photoTemplat
         {reelVideo
           ? <ReelPreview video={reelVideo} />
           : hasSlides
-            ? <SlidesCarousel slides={slides} mediaUrls={mediaUrls} photoTemplateId={photoTemplateId} />
-            : <MediaCarousel mediaUrls={mediaUrls} aspectClass="aspect-square" />}
+            ? <SlidesCarousel slides={slides} mediaUrls={mediaUrls} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} />
+            : <MediaCarousel mediaUrls={mediaUrls} aspectClass="aspect-square" trueFrame />}
       </div>
 
       {/* Actions */}
@@ -1211,7 +1267,7 @@ function EmailPreview({ content, mediaUrls = [] }) {
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function PostPreview({ platform, content, mediaUrls = [], slides = null, overlayText = null, textCard = null, locationOverrides = null, photoTemplateId = null }) {
+export default function PostPreview({ platform, content, mediaUrls = [], slides = null, overlayText = null, textCard = null, locationOverrides = null, photoTemplateId = null, aspectRatio = '4:5' }) {
   // A Story is valid with media + no caption (the overlay/sticker live in
   // dedicated fields), so it must not trip the "no content" guard below.
   const isStory = platform === 'instagram_story'
@@ -1224,7 +1280,7 @@ export default function PostPreview({ platform, content, mediaUrls = [], slides 
   }
 
   switch (platform) {
-    case 'instagram':   return <InstagramPreview content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} />
+    case 'instagram':   return <InstagramPreview content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} />
     case 'instagram_story': return <InstagramStoryPreview content={content} mediaUrls={mediaUrls} overlayText={overlayText} textCard={textCard} />
     case 'facebook':    return <FacebookPreview  content={content} mediaUrls={mediaUrls} />
     case 'linkedin':    return <LinkedInPreview  content={content} />
