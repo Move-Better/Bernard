@@ -17,8 +17,14 @@ import { computeAdaptiveCadenceChannels } from './cadenceAdaptive.js'
 
 // Safety net only — used iff app_config.cadence_defaults is absent. Mirrors the
 // migration-142 seed so behavior is identical before the row is first read.
+// instagram_story is deliberately ABSENT (here and in the app_config row):
+// story drafts are born media-less with no auto-attach step, so the lane
+// cannot deliver — a prior here re-enables an unhittable target for every
+// workspace (a null prior is what excludes a channel from adaptive cadence;
+// 0 would still get the exploration floor). See .claude/decisions.md
+// 2026-07-21 "Instagram Story lane disabled until T3".
 export const FALLBACK_CADENCE_PRIOR = Object.freeze({
-  instagram: 4, instagram_story: 5, linkedin: 3, facebook: 3,
+  instagram: 4, linkedin: 3, facebook: 3,
   gbp: 2, tiktok: 3, twitter: 4, threads: 4, bluesky: 3, mastodon: 3,
 })
 
