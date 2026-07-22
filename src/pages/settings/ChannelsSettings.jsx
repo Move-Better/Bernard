@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
 import {
@@ -204,6 +204,30 @@ function CadenceCard({ cadence, onChange, onProposalResolved, enabledOutputs, pr
   const enabledPlatforms = atomPlatformsOf(enabledOutputs)
   const rows = CADENCE_PLATFORM_META.filter(m => enabledPlatforms.has(m.id))
 
+  // Reels: a split of the Instagram target, stored in cadence_policy.formats.
+  // NOT channels.instagram_reel — channels are summed to get the week's total
+  // (planGaps), and a Reel is one of the Instagram posts, not an extra one.
+  const reelsEnabled = (enabledOutputs || []).includes('instagram_reel')
+  const igTarget = isAuto
+    ? (prior?.instagram ?? 0)
+    : (channels.instagram?.target_per_week ?? prior?.instagram ?? 0)
+  const formats = cadence?.formats || {}
+  // Mirror of reelTargetForWorkspace() in api/_lib/reelFactory.js — keep in sync.
+  const reelTarget = typeof formats.reel?.target_per_week === 'number'
+    ? Math.min(igTarget, Math.max(0, formats.reel.target_per_week))
+    : Math.min(igTarget, Math.max(igTarget ? 1 : 0, Math.round(igTarget * 0.75)))
+  const reelVoice = formats.reel?.voice === 'clinician' ? 'clinician' : 'any'
+
+  function setReelFormat(patch) {
+    // Deliberately does NOT force provenance:'user'. Auto decides how many posts
+    // a channel gets; it has no opinion on which format they take, so choosing
+    // the Reel split shouldn't drag the whole cadence into Manual.
+    onChange({
+      ...(cadence || DEFAULT_CADENCE_POLICY),
+      formats: { ...formats, reel: { target_per_week: reelTarget, voice: reelVoice, ...patch } },
+    })
+  }
+
   function setChannel(platform, patch) {
     onChange({
       ...(cadence || DEFAULT_CADENCE_POLICY),
@@ -275,7 +299,8 @@ function CadenceCard({ cadence, onChange, onProposalResolved, enabledOutputs, pr
               ? { target_per_week: prior?.[id] ?? 0, enabled: true }
               : (channels[id] || { target_per_week: prior?.[id] ?? 0, enabled: true })
             return (
-              <div key={id} className="flex items-center gap-3 px-3 py-2.5">
+              <Fragment key={id}>
+              <div className="flex items-center gap-3 px-3 py-2.5">
                 <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="text-sm flex-1 truncate">{platformLabel}</span>
                 <div className="flex items-center gap-2 shrink-0">
@@ -299,6 +324,49 @@ function CadenceCard({ cadence, onChange, onProposalResolved, enabledOutputs, pr
                   />
                 </div>
               </div>
+              {/* Reels are a SPLIT of the Instagram target, not another channel:
+                  "3 of your 4 Instagram posts are Reels". Rendering it as an
+                  indented sub-row (rather than its own cadence line) is what
+                  makes that subset relationship legible — and it mirrors the
+                  data model, where the value lives in cadence_policy.formats,
+                  not in channels (channels get summed into the weekly total).
+                  Editable in Auto too: Auto computes how MANY posts per channel,
+                  it has no opinion on which format they take. */}
+              {id === 'instagram' && reelsEnabled && (
+                <div className="flex items-center gap-3 px-3 py-2.5 pl-9 bg-muted/30">
+                  <Film className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm flex-1 min-w-0">
+                    <span className="truncate">of which Reels</span>
+                    <span className="block text-2xs text-muted-foreground">
+                      Cut automatically from your videos, in your voice — you still approve each one
+                    </span>
+                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Select value={reelVoice} onValueChange={v => setReelFormat({ voice: v })}>
+                      <SelectTrigger className="h-7 w-[9.5rem] text-2xs" aria-label="Which speaker Reels may be cut from">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">anyone on camera</SelectItem>
+                        <SelectItem value="clinician">clinician only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <input
+                      type="number"
+                      aria-label="Instagram Reels per week target"
+                      min={0}
+                      max={Math.max(0, ch.target_per_week)}
+                      value={Math.min(reelTarget, ch.target_per_week)}
+                      onChange={e => setReelFormat({
+                        target_per_week: Math.max(0, Math.min(ch.target_per_week, parseInt(e.target.value, 10) || 0)),
+                      })}
+                      className="w-12 text-center text-sm border border-input rounded-md px-1 py-0.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <span className="text-2xs text-muted-foreground w-8">of {ch.target_per_week}</span>
+                  </div>
+                </div>
+              )}
+              </Fragment>
             )
           })}
         </div>
