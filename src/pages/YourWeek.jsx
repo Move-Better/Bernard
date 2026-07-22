@@ -21,6 +21,7 @@ import { toast } from '@/lib/toast'
 import PageHelp from '@/components/PageHelp'
 import PageSkeleton from '@/components/PageSkeleton'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/Drawer'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
@@ -330,6 +331,140 @@ function EmptySlotTile({ slot, onClick }) {
   )
 }
 
+// T3 — the Add-to-day picker (mockup screen 2). Opened by clicking an empty
+// pinned slot; scoped to that slot's platform+format+weekday+hour. Two paths:
+// draft a fresh piece from a recent, not-yet-covered interview
+// (create-slot-atom + the existing /api/content-plan/draft, unchanged), or
+// place an already-banked backlog item straight into the slot
+// (/api/content-plan/assign-slot).
+function AddToDayModal({ slot, weekMonday, heldItems, onClose }) {
+  const navigate = useNavigate()
+  const qc = useQueryClient()
+  const [drafting, setDrafting] = useState(false)
+  const [placingId, setPlacingId] = useState(null)
+
+  const meta = PLATFORM_META[slot.platform] || { label: slot.platform, icon: null }
+  const Icon = meta.icon
+  const formatMeta = FORMAT_META[slot.format] || FORMAT_META.post
+  const timeStr = new Date(2026, 0, 1, slot.hour).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+
+  // Backlog items eligible for this exact slot — same platform, and either a
+  // matching format or no format set yet (undrafted atoms rarely carry one).
+  const eligible = (heldItems || []).filter(
+    (item) => item.platform === slot.platform && (!item.format || item.format === slot.format),
+  )
+
+  async function handleDraftNew() {
+    if (drafting) return
+    setDrafting(true)
+    try {
+      const created = await apiFetch('/api/content-plan/create-slot-atom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform: slot.platform, format: slot.format, weekday: slot.weekday, hour: slot.hour, weekMonday }),
+      })
+      const result = await apiFetch('/api/content-plan/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ atom_id: created.atom.id }),
+      })
+      toast.success('Draft ready — in review')
+      qc.invalidateQueries({ queryKey: ['week-summary'] })
+      onClose()
+      if (result?.content_piece?.id) navigate(`/publish/${result.content_piece.id}`)
+    } catch (e) {
+      if (e?.payload?.error === 'no_eligible_interview') {
+        toast.info('Nothing new to draft from', {
+          description: 'Every recent capture already has a piece on this channel. Start a new capture to add fresh material.',
+        })
+      } else {
+        toast.error('Draft failed', { description: e?.message })
+      }
+    } finally {
+      setDrafting(false)
+    }
+  }
+
+  async function handlePlaceHere(item) {
+    if (placingId) return
+    setPlacingId(item.id)
+    try {
+      await apiFetch('/api/content-plan/assign-slot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ atomId: item.id, weekday: slot.weekday, hour: slot.hour, weekMonday }),
+      })
+      toast.success('Placed on the board')
+      qc.invalidateQueries({ queryKey: ['week-summary'] })
+      onClose()
+    } catch (e) {
+      toast.error('Could not place', { description: e?.message })
+    } finally {
+      setPlacingId(null)
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose() }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add to {slot.dayLabel}{slot.dateLabel ? `, ${slot.dateLabel}` : ''}</DialogTitle>
+          <DialogDescription className="flex items-center gap-1.5">
+            {Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />} {meta.label} {formatMeta.label.toLowerCase()} slot · {timeStr}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            disabled={drafting}
+            onClick={handleDraftNew}
+            className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 text-left transition-colors hover:border-primary disabled:opacity-50"
+          >
+            {drafting ? <Loader2 className="mb-2 h-5 w-5 animate-spin text-primary" aria-hidden="true" /> : <Sparkles className="mb-2 h-5 w-5 text-primary" aria-hidden="true" />}
+            <div className="text-sm font-medium">Draft something new</div>
+            <div className="mt-1 text-2xs text-muted-foreground">Bernard writes a caption for this slot from your recent interviews.</div>
+          </button>
+          <div className="rounded-lg border-2 border-border p-4 text-left">
+            <Archive className="mb-2 h-5 w-5 text-primary" aria-hidden="true" />
+            <div className="text-sm font-medium">Pull from backlog</div>
+            <div className="mt-1 text-2xs text-muted-foreground">
+              {eligible.length} {eligible.length === 1 ? 'piece' : 'pieces'} waiting.
+            </div>
+          </div>
+        </div>
+        {eligible.length > 0 && (
+          <div>
+            <div className="mb-2 text-2xs font-medium text-muted-foreground">
+              Backlog — {meta.label}-eligible
+            </div>
+            <div className="max-h-64 space-y-1.5 overflow-y-auto">
+              {eligible.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 rounded-lg border border-border p-2.5">
+                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
+                    {item.thumbnailUrl && <img src={item.thumbnailUrl} alt="" loading="lazy" className="h-full w-full object-cover" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-xs font-medium">{contentLabel(item)}</div>
+                    <div className="text-3xs text-muted-foreground">{categoryTag(item) || meta.label}</div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={placingId === item.id}
+                    onClick={() => handlePlaceHere(item)}
+                    className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-2xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {placingId === item.id ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : 'Place here'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // DayPlanCard — the roomy, full-width variant of PlanCard used in Day view.
 // Same status language (rail + chip + pill) and the SAME handlers as the week
 // card, but with space to show the draft excerpt inline and lay the working
@@ -458,6 +593,7 @@ export default function YourWeek() {
   const [viewMode, setViewMode] = useState('week')   // 'week' board | 'day' focused work surface
   const [selectedDay, setSelectedDay] = useState(null) // day key ('mon'..'sun'); null = auto (today/first)
   const [togglingQuietDay, setTogglingQuietDay] = useState(null) // day key being toggled, for the inline spinner
+  const [addToDaySlot, setAddToDaySlot] = useState(null) // {platform, weekday, hour, format, dayLabel, dateLabel} | null
   const { data, isLoading } = useQuery({
     queryKey: ['week-summary', weekOffset],
     queryFn: () => apiFetch(`/api/content-plan/week-summary${weekOffset ? `?week=${weekMondayISO(weekOffset, wsTz)}` : ''}`),
@@ -1262,11 +1398,7 @@ export default function YourWeek() {
                               <EmptySlotTile
                                 key={`${entry.slot.platform}-${entry.slot.weekday}-${entry.slot.hour}-${entry.slot.format}`}
                                 slot={entry.slot}
-                                // Interim action until PR4 ships the real
-                                // Add-to-day picker (draft new / pull from
-                                // backlog, scoped to this slot's
-                                // platform+format).
-                                onClick={() => setBacklogOpen(true)}
+                                onClick={() => setAddToDaySlot({ ...entry.slot, dayLabel: DAY_FULL[key], dateLabel: dayDates[DAYS.findIndex(([k]) => k === key)] })}
                               />
                             )
                           ))
@@ -1368,6 +1500,16 @@ export default function YourWeek() {
         loading={scheduling}
         onConfirm={batchSchedule}
       />
+
+      {/* T3 — Add-to-day picker, opened from an empty pinned slot tile. */}
+      {addToDaySlot && (
+        <AddToDayModal
+          slot={addToDaySlot}
+          weekMonday={data.weekMonday}
+          heldItems={data.held}
+          onClose={() => setAddToDaySlot(null)}
+        />
+      )}
     </div>
   )
 }
