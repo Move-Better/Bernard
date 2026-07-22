@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Pencil, Unplug, Mic, AlertTriangle } from 'lucide-react'
+import { Pencil, Unplug, Mic, AlertTriangle, Video } from 'lucide-react'
 import { useNeedsYou, useRetryPublishFailure } from '@/lib/queries'
 
 // "Needs you" (Standing Producer Phase 4). Bernard clears what he can on his own
@@ -15,6 +15,9 @@ import { useNeedsYou, useRetryPublishFailure } from '@/lib/queries'
 //   plan_gap            { slot?, topicSuggestion?, week? }
 //   draft_request_unmet { topic, platform } — F20: no interview grounds a
 //     human-typed draft request (draftOnTopic.js's grounded-only escalation).
+//   footage_gap         { short, target, topics: [{topic, why}], week } — T2:
+//     the week wants Reels and the clip library can't supply them. The only
+//     item here whose fix is off-screen (go film something), so it sorts first.
 
 const TYPE_META = {
   escalated_caption: {
@@ -37,6 +40,13 @@ const TYPE_META = {
     tone: 'action',
     cta: () => ({ to: '/new', label: 'Record a topic' }),
   },
+  footage_gap: {
+    icon: Video,
+    tone: 'action',
+    // Straight to the uploader: the ask is "film this and put it here", and the
+    // clip pipeline takes over from the upload on its own.
+    cta: () => ({ to: '/library', label: 'Upload footage' }),
+  },
 }
 const FALLBACK_META = { icon: AlertTriangle, tone: 'muted', cta: () => ({ to: '/producer', label: 'Open' }) }
 
@@ -55,6 +65,7 @@ function titleFor(item) {
     case 'publish_failed':    return `${item.platform ? `${item.platform} ` : ''}publish failed — needs a reconnect`
     case 'plan_gap':          return `Next week is ${item.short || 'a few'} post${item.short === 1 ? '' : 's'} short`
     case 'draft_request_unmet': return `Nothing from the team on “${topic}” yet`
+    case 'footage_gap':       return `${item.short || 'A few'} Reel${item.short === 1 ? '' : 's'} this week need footage`
     default:                  return 'Something needs you'
   }
 }
@@ -70,6 +81,15 @@ function detailFor(item) {
       return `${typeof item.scheduled === 'number' && typeof item.target === 'number' ? `Your plan fills ${item.scheduled} of ${item.target} slots — ` : ''}a short capture from you fills the rest.`
     case 'draft_request_unmet':
       return `I couldn’t find an interview to ground this in, so I didn’t guess. A quick capture and I’ll draft it properly.`
+    case 'footage_gap': {
+      // Name real topics when we have them — "film 30s on plantar fasciitis" is
+      // a task someone can do today; "record more videos" is easy to ignore.
+      const named = (item.topics || []).map((t) => t.topic).filter(Boolean)
+      if (named.length) {
+        return `I’ve used every clip worth cutting. 30 seconds to camera on ${named.slice(0, 2).join(' or ')} and I’ll cut, caption and draft it for you.`
+      }
+      return `I’ve used every clip worth cutting. Any short video of you talking and I’ll cut, caption and draft the Reels from it.`
+    }
     default:
       return item.detail || ''
   }

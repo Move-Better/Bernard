@@ -28,6 +28,7 @@ import { z } from 'zod'
 import ffmpegPath from 'ffmpeg-static'
 import { transcribeToSegmentsAndWords } from './whisper.js'
 import { scoreSegments } from './scoreMoments.js'
+import { classifySegmentVoices } from './speakerVoice.js'
 import { visualScoreSegments } from './scoreMomentsVisual.js'
 import { nominateVisualWindows } from './visualNominate.js'
 
@@ -322,6 +323,14 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
     // drafted hook/excerpt); their on-camera score comes from the F13 pass.
     const scores = segments.length ? await scoreSegments(segments, ws) : []
 
+    // Who is TALKING in each moment (migration 180). Per-moment, because one
+    // interview file contains both the clinician and the patient and the miner
+    // cuts standalone windows from either — media_assets.speaker_role is
+    // per-asset and demonstrably wrong (a patient testimonial filed as
+    // 'clinician'). Order-aligned with `segments`, same contract as scores.
+    // Never throws: an outage labels 'unknown', it does not block detection.
+    const voices = segments.length ? await classifySegmentVoices(segments) : []
+
     // Fetch old proposed/rendering IDs BEFORE inserting so we can delete
     // them only after the insert succeeds. Avoids permanent data loss if the
     // insert fails — prior proposals survive and the user can retry.
@@ -347,6 +356,8 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
         score: scores[i]?.score ?? null,
         moment_type: scores[i]?.moment_type ?? null,
         nomination_source: s.nomination_source || 'transcript',
+        speaker_voice: voices[i]?.voice ?? null,
+        speaker_voice_confidence: voices[i]?.confidence ?? null,
         ...(campaignId ? { campaign_id: campaignId } : {}),
       }))
       const ins = await sb('video_segments', { method: 'POST', body: JSON.stringify(rows) })

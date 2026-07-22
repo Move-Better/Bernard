@@ -25,6 +25,7 @@ import { withSentry } from '../../_lib/sentry.js'
 import { createClerkClient } from '@clerk/backend'
 import { buildDigest } from '../../_lib/engagementDigestEmail.js'
 import { verifyCronSecret } from '../../_lib/auth.js'
+import { computeTrustMetrics } from '../../_lib/trustMetrics.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -81,7 +82,7 @@ async function handler(req, res) {
   const wsRes = await sb(
     'workspaces?engagement_digest_enabled=eq.true&status=eq.active' +
     '&select=id,slug,display_name,name,primary_logo_url,colors,clerk_org_id,' +
-    'engagement_digest_recipients,engagement_digest_last_sent_at'
+    'engagement_digest_recipients,engagement_digest_last_sent_at,cadence_policy'
   )
   if (!wsRes.ok) {
     const text = await wsRes.text().catch(() => '')
@@ -96,6 +97,26 @@ async function handler(req, res) {
 
   for (const ws of workspaces) {
     try {
+      // T4 learning loop — instrument per-lane trust metrics (reject-rate,
+      // edit-rate) independent of whether the digest email itself sends this
+      // run. "Capture the metric now even if graduation ships later" — see
+      // .claude/decisions.md 2026-07-21 T4 scoping. Never blocks the digest:
+      // logged, not thrown, on failure.
+      try {
+        const trustMetrics = await computeTrustMetrics(ws.id, sb)
+        if (Object.keys(trustMetrics).length > 0) {
+          const nextPolicy = { ...(ws.cadence_policy || {}), trust_metrics: trustMetrics }
+          const tmRes = await sb(`workspaces?id=eq.${ws.id}`, {
+            method: 'PATCH',
+            headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify({ cadence_policy: nextPolicy }),
+          })
+          if (tmRes.ok) ws.cadence_policy = nextPolicy
+        }
+      } catch (e) {
+        console.error(`[engagement-digest] trust-metrics failed for ${ws.slug}:`, e?.message)
+      }
+
       // Skip if we sent recently (covers schedule drift / cron rerun).
       const since = daysSince(ws.engagement_digest_last_sent_at)
       if (since < MIN_RESEND_INTERVAL_DAYS) {
@@ -248,6 +269,7 @@ async function handler(req, res) {
         queued: queuedWithNames,
         rejected,
         editDiffs,
+        dayProposal: ws.cadence_policy?.day_time_proposal || null,
         weekStart,
         weekEnd,
       })
