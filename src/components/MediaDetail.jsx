@@ -25,6 +25,7 @@ import { useUserRole } from '@/lib/useUserRole'
 import { toast, runWithToast } from '@/lib/toast'
 import ContentBriefDetail from './ContentBriefDetail'
 import CollectionPicker from './CollectionPicker'
+import ConsentControls from './moments/ConsentControls'
 import MediaEditModal from './MediaEditModal'
 import MediaVideoPlayer from './MediaVideoPlayer'
 import AdExportModal from './AdExportModal'
@@ -1026,6 +1027,22 @@ export default function MediaDetail({ asset, onClose, onChange }) {
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">Condition</label>
                 <Input value={condition} onChange={(e) => setCondition(e.target.value)} placeholder="e.g. low back, stifle" aria-label="Condition" className="h-8 text-sm" />
+              </div>
+            </div>
+
+            {/* Consent — whether the person shown/heard in this asset agreed
+                to its use in marketing content. Distinct from the workflow
+                `status` above; tracked via its own consent_status column so
+                it survives independent of tagging/approval state. */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1.5">Consent</label>
+              <div className="rounded-md border border-border overflow-hidden">
+                <ConsentControls
+                  key={asset.id}
+                  sourceAssetId={asset.id}
+                  consentStatus={a.consent_status || 'not_required'}
+                  onUpdate={() => { refetchLiveAsset(); onChange?.() }}
+                />
               </div>
             </div>
 

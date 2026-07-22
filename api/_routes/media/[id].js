@@ -41,7 +41,7 @@ function sb(path, init = {}) {
   })
 }
 
-const SELECT_COMMON = 'id,kind,status,source,blob_url,blob_pathname,original_blob_url,web_blob_url,web_width,web_height,mux_asset_id,mux_playback_id,transcode_status,render_status,render_error,rendered_url,drive_id,filename,display_title,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,transcript_words,visual_narrative,asset_purpose,speaker_role,staff_id,parent_id,notes,alt_text,content_item_ids,archived_at,created_at,updated_at,created_by,video_edit_draft,workspace:workspaces(brand_style,colors,brand_visual_identity)'
+const SELECT_COMMON = 'id,kind,status,source,blob_url,blob_pathname,original_blob_url,web_blob_url,web_width,web_height,mux_asset_id,mux_playback_id,transcode_status,render_status,render_error,rendered_url,drive_id,filename,display_title,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,transcript_words,visual_narrative,asset_purpose,speaker_role,staff_id,parent_id,notes,alt_text,content_item_ids,archived_at,created_at,updated_at,created_by,video_edit_draft,consent_status,consent_notes,consent_updated_at,consent_updated_by,workspace:workspaces(brand_style,colors,brand_visual_identity)'
 
 async function fetchRow(where, select) {
   const r = await sb(`media_assets?${where}&select=${select}`)
@@ -83,7 +83,7 @@ async function handler(req, res) {
   if (req.method === 'PATCH') {
     const patch = req.body || {}
 
-    const ALLOWED_STATUSES = new Set(['raw', 'tagged', 'archived'])
+    const ALLOWED_STATUSES = new Set(['raw', 'tagged', 'rendered', 'approved', 'archived'])
     if (patch.status !== undefined && !ALLOWED_STATUSES.has(patch.status)) {
       return res.status(400).json({ error: 'Invalid status' })
     }
