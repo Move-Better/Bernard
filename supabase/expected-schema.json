@@ -773,6 +773,8 @@
     "rendered_asset_id",
     "score",
     "source_asset_id",
+    "speaker_voice",
+    "speaker_voice_confidence",
     "staff_id",
     "start_sec",
     "status",
