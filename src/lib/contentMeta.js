@@ -94,6 +94,39 @@ export const STATUS_META = {
   archived:   { label: 'Archived',   color: 'bg-muted text-muted-foreground', icon: Archive },
 }
 
+// A publish-now on the bundle path lands as status='scheduled' with a
+// scheduled_at about a minute out: bundle accepts the post, posts it, then
+// confirms by webhook (which promotes the row to 'published' with the real time
+// and the live-post URL). That minute is genuinely IN FLIGHT, not queued — so a
+// post someone just sent must not sit there reading "Scheduled", which looks
+// like it didn't go.
+//
+// Derived from the timestamp rather than a new column, and symmetric on purpose:
+// a post due a couple of minutes either side of now is publishing right about
+// now. Anything further out is genuinely scheduled, and anything long overdue is
+// genuinely late — neither should claim to be publishing.
+const PUBLISHING_WINDOW_MS = 3 * 60_000
+const PUBLISHING_META = {
+  label: 'Publishing…',
+  color: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled',
+  icon: Send,
+}
+
+export function isPublishing(piece) {
+  if (piece?.status !== 'scheduled' || !piece?.scheduled_at) return false
+  const due = new Date(piece.scheduled_at).getTime()
+  if (!Number.isFinite(due)) return false
+  return Math.abs(due - Date.now()) <= PUBLISHING_WINDOW_MS
+}
+
+// Status chip for a whole piece (not just a status string), so the in-flight
+// window above can be reflected. Prefer this over indexing STATUS_META directly
+// anywhere a user is watching a post go out.
+export function statusMetaFor(piece) {
+  if (isPublishing(piece)) return PUBLISHING_META
+  return STATUS_META[piece?.status] || { label: piece?.status || '—', color: 'bg-muted text-muted-foreground' }
+}
+
 // 'archived' is a UI-only pseudo-tab — there's no `archived` value on the
 // status enum. Selecting it switches the list query to `archived=only` so
 // rows with archived_at set come back regardless of their underlying status.
