@@ -971,7 +971,7 @@ export default function YourWeek() {
                       key={platform}
                       to={`/stories?platform=${encodeURIComponent(platform)}`}
                       aria-label={`View ${meta.label} posts`}
-                      className="-m-1 block rounded-md p-1 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="-m-1 block rounded-md p-1 text-foreground transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
                       <div className="mb-1 flex items-center justify-between text-2xs">
                         <span className="flex items-center gap-1.5 font-semibold">
