@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Video, Image as ImageIcon, Play, Check, Download, Link2, Loader2, AlertTriangle } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import MediaUsageBadge from '@/components/ui/MediaUsageBadge'
 
 // `rail` is the status-colored left bar on each card (matches the pill tone) —
 // same status-rail language as Stories / Your Week, so a status reads the same
@@ -154,14 +154,7 @@ async function quickCopyLink(e, asset) {
 // Individual grid cell with hover overlay, badges, and checkbox.
 function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, buttonRef }) {
   const [hovered, setHovered] = useState(false)
-  const navigate = useNavigate()
   const statusMeta = STATUS_LABEL[asset.status] || STATUS_LABEL.raw
-
-  // Usage count from the content_item_ids array stored on the asset row.
-  // This is populated server-side when a content piece is linked to a source
-  // asset; for new uploads it's null/empty so we show ×0.
-  const usageCount = Array.isArray(asset.content_item_ids) ? asset.content_item_ids.length : 0
-  const firstStoryId = usageCount > 0 ? asset.content_item_ids[0] : null
 
   // Clinician initial badge. created_by is a Clerk user ID string.
   // We show "?" when it's a raw Clerk ID because we don't resolve names
@@ -231,66 +224,17 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
         </div>
       )}
 
-      {/* Lifecycle / usage badge — top right. When the consumer injects a
-          _lifecycle marker (Library workflow view), we render a lifecycle-aware
-          chip (NEW / ● active / ✓ shipped). In the default date-grouped view
-          (_lifecycle is absent) we show "used ×N" on assets that have been
-          linked to stories, and nothing on unused assets so unused tiles stay
-          clean. Both are clickable and navigate to the first linked story. */}
+      {/* Usage badge — top right. "used ×N" on assets already attached to a
+          post, nothing on unused ones so fresh uploads stay clean. Opening the
+          tile shows the posts themselves (the drawer lists them), so the badge
+          is a signal rather than a second click target.
+
+          The three _lifecycle branches that used to live here (NEW / ● active /
+          ✓ shipped) were removed: no consumer in src/ ever set _lifecycle, and
+          all three gated on an id from content_item_ids — a column no writer
+          populates — so none of them could ever render. */}
       <div className="absolute top-1.5 right-1.5 z-10">
-        {asset._lifecycle === 'new' && (
-          <span className="text-3xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full leading-none">
-            NEW
-          </span>
-        )}
-        {asset._lifecycle === 'in_pipeline' && firstStoryId && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="text-3xs bg-success text-success-foreground px-1.5 py-0.5 rounded-full leading-none hover:bg-success/90 transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  navigate(`/stories/${firstStoryId}`)
-                }}
-              >
-                ● {usageCount}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{usageCount === 1 ? 'In 1 active post — click to open' : `In ${usageCount} active posts — click to open the first`}</TooltipContent>
-          </Tooltip>
-        )}
-        {asset._lifecycle === 'shipped' && firstStoryId && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="text-3xs bg-success/80 text-success-foreground px-1.5 py-0.5 rounded-full leading-none hover:bg-success transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  navigate(`/stories/${firstStoryId}`)
-                }}
-              >
-                ✓ shipped
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>Already published — click to open the post</TooltipContent>
-          </Tooltip>
-        )}
-        {!asset._lifecycle && firstStoryId && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="text-3xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full leading-none hover:bg-primary/90 transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  navigate(`/stories/${firstStoryId}`)
-                }}
-              >
-                used ×{usageCount}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{usageCount === 1 ? 'Used in 1 story — click to open' : `Used in ${usageCount} stories — click to open the first`}</TooltipContent>
-          </Tooltip>
-        )}
+        <MediaUsageBadge asset={asset} />
       </div>
 
       {/* Selected overlay */}

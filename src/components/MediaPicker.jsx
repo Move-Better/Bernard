@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { listMedia, uploadMedia } from '@/lib/mediaLib'
 import { listCollections } from '@/lib/collectionsLib'
 import { apiFetch } from '@/lib/api'
+import MediaUsageBadge from '@/components/ui/MediaUsageBadge'
 
 // Picker for attaching media to a post. Two tabs:
 //   1. Library — the Media Hub (Vercel Blob + media_assets), the canonical home.
@@ -416,6 +417,14 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                               ("Branded" / "Approved") both implied a clearance
                               step the app never had. The remaining statuses
                               (raw/tagged) say nothing a picker needs. */}
+                          {/* Reuse counter — this is the moment someone would
+                              otherwise re-pick a photo the audience has already
+                              seen, so the count belongs here and not just in the
+                              Library. Renders nothing on unused assets. */}
+                          <div className="absolute top-1 right-1">
+                            <MediaUsageBadge asset={a} />
+                          </div>
+
                           {tooLong && (
                             <span className="absolute bottom-1 left-1 right-1 text-3xs font-medium px-1 py-0.5 rounded bg-action/80 text-foreground flex items-center gap-0.5 leading-tight">
                               <AlertTriangle className="h-2.5 w-2.5 shrink-0" />

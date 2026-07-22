@@ -54,6 +54,10 @@ const DEFAULT_MIN_SCORE = 0.3
 // keep resurfacing the identical top-ranked shot on every new draft.
 const RECENT_EXCLUDE_LIMIT = 20
 
+// Module scope so both the request-id validation and the usage lookup below
+// share one definition.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 async function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -104,7 +108,6 @@ export default async function handler(req, res) {
   // --- Resolve the query ---
   const body = req.body || {}
   const id = body.id ? String(body.id) : null
-  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (id && !UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
   let query = body.query ? String(body.query).trim() : ''
   // Platform drives which media kinds are valid to suggest (see `kind`, below).
@@ -157,10 +160,49 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'search_failed'})
   }
 
+  // Reuse counter on each suggested clip. The picker renders semantic hits and
+  // plain text-search rows in ONE grid; /api/media/list already attaches usage,
+  // so without this the same grid would badge some tiles and not others purely
+  // by which query found them. Degrades to no counter rather than failing the
+  // suggestion — a missing badge beats an empty picker.
   return res.status(200).json({
     query,
     model: 'text-embedding-3-small',
     workspaceId: ws.id,
-    clips,
+    clips: await withUsage(clips, ws.id),
   })
+}
+
+// Attach { usage: { total, published } } to each clip, from the
+// media_asset_usage view (migration 185). Same derivation and same shape as
+// api/_routes/media/list.js, so MediaUsageBadge reads one contract everywhere.
+async function withUsage(clips, workspaceId) {
+  const zero = { total: 0, published: 0, lastUsedAt: null }
+  if (!Array.isArray(clips) || clips.length === 0) return clips
+
+  const ids = [...new Set(clips.map((c) => c.assetId).filter((v) => UUID_RE.test(v || '')))]
+  if (ids.length === 0) return clips.map((c) => ({ ...c, usage: zero }))
+
+  const byId = new Map()
+  try {
+    const r = await sb(
+      `media_asset_usage?select=asset_id,use_count,published_count,last_used_at` +
+      `&workspace_id=eq.${workspaceId}&asset_id=in.(${ids.map(encodeURIComponent).join(',')})`
+    )
+    if (r.ok) {
+      for (const u of await r.json()) {
+        byId.set(u.asset_id, {
+          total:      u.use_count || 0,
+          published:  u.published_count || 0,
+          lastUsedAt: u.last_used_at || null,
+        })
+      }
+    } else {
+      console.error('[content-items/suggest-media] usage lookup failed:', r.status)
+    }
+  } catch (e) {
+    console.error('[content-items/suggest-media] usage lookup failed:', e?.message)
+  }
+
+  return clips.map((c) => ({ ...c, usage: byId.get(c.assetId) || zero }))
 }

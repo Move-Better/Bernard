@@ -77,7 +77,39 @@ async function handler(req, res) {
     const r = await sb(`media_assets?${where}&select=${SELECT}`)
     if (!r.ok) return res.status(500).json({ error: 'Database error' })
     const data = await r.json()
-    return res.status(200).json(data[0] ?? null)
+    const row = data[0] ?? null
+    if (!row) return res.status(200).json(null)
+
+    // Reuse counter + the posts behind it, so the drawer can show "Used in 3
+    // posts" AND let staff click through to each one. Derived live from
+    // content_items.media_urls (see migration 185) — jsonb containment matches
+    // the array-of-objects entry shape written by clipToMediaEntry /
+    // pickerItemToMediaEntry. Degrades to an empty list on failure rather than
+    // failing the whole drawer.
+    row.usage = { total: 0, published: 0, lastUsedAt: null, posts: [] }
+    try {
+      const contains = encodeURIComponent(JSON.stringify([{ mediaAssetId: id.toLowerCase() }]))
+      const uRes = await sb(
+        `content_items?select=id,platform,status,topic,published_at,created_at` +
+        `&${scope.column}=eq.${scope.id}&archived_at=is.null` +
+        `&media_urls=cs.${contains}&order=created_at.desc&limit=50`
+      )
+      if (uRes.ok) {
+        const posts = await uRes.json()
+        row.usage = {
+          total:      posts.length,
+          published:  posts.filter((p) => p.status === 'published').length,
+          lastUsedAt: posts[0]?.published_at || posts[0]?.created_at || null,
+          posts,
+        }
+      } else {
+        console.error('[media/[id]] usage lookup failed:', uRes.status)
+      }
+    } catch (e) {
+      console.error('[media/[id]] usage lookup failed:', e?.message)
+    }
+
+    return res.status(200).json(row)
   }
 
   if (req.method === 'PATCH') {
