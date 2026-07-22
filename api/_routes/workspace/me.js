@@ -282,11 +282,22 @@ const CADENCE_FORMATS = new Set(['reel'])
 const CADENCE_FORMAT_VOICES = new Set(['any', 'clinician'])
 
 // Shape: { channels: { [platform]: { target_per_week, enabled, slots? } }, quiet_days, timezone, formats, ...rest }
-// Merges over the existing row — unknown top-level keys are preserved (version, provenance, etc.)
-// so a partial PATCH from the UI doesn't clobber strategist-managed fields.
-function sanitizeCadencePolicy(value) {
+//
+// Merges the incoming object OVER the STORED policy: a top-level key the client
+// omits is carried forward untouched; a key it sends replaces. (`channels` is
+// still replaced wholesale inside its own block below, so removing a channel
+// behaves exactly as before — this governs top-level keys only.)
+//
+// That merge was CLAIMED by this comment but never implemented: `out` was seeded
+// from the incoming value alone, so any writer that PATCHed a cadence_policy it
+// had built without a given key silently DELETED it. It bit `formats` (the Reel
+// target + voice) within hours of shipping — a sibling settings save that knew
+// nothing about `formats` wiped it off movebetter, reverting the workspace to
+// the derived default with no error raised anywhere. Seeding from the stored row
+// makes the documented behaviour real and protects future keys the same way.
+function sanitizeCadencePolicy(value, existing = null) {
   if (!isPlainObject(value)) return null
-  const out = { ...value }
+  const out = { ...(isPlainObject(existing) ? existing : {}), ...value }
 
   if ('channels' in value) {
     if (!isPlainObject(value.channels)) return null
@@ -680,7 +691,7 @@ async function handler(req, res) {
         continue
       }
       if (key === 'cadence_policy') {
-        const cleaned = sanitizeCadencePolicy(value)
+        const cleaned = sanitizeCadencePolicy(value, workspace?.cadence_policy)
         if (cleaned === null) return res.status(400).json({ error: 'invalid-cadence-policy' })
         patch.cadence_policy = cleaned
         continue
