@@ -475,65 +475,135 @@ async function handler(req, res) {
       })
     }
 
-    // Attach active workspace_locations so the SPA can render the per-post
-    // location picker without an extra round trip. Locations are not secret —
-    // the same identity (city/region/hashtag) is already interpolated into
-    // public-facing copy via prompts. Failing the locations fetch is non-fatal
-    // (legacy workspaces with the table absent get [] and degrade to single-
-    // location behavior).
-    let locations = []
-    try {
-      const lr = await sb(
-        `workspace_locations?workspace_id=eq.${encodeURIComponent(workspace.id)}&status=eq.active&select=*&order=position.asc`
-      )
-      if (lr.ok) {
-        const rows = await lr.json().catch(() => [])
-        locations = Array.isArray(rows) ? rows : []
-      }
-    } catch (e) {
-      console.error('[workspace/me] locations fetch failed:', e?.message)
-    }
+    // ---- Six independent enrichment reads, run concurrently ----
+    //
+    // Each of these needs only workspace.id (the tier read also needs
+    // auth.userId); none consumes another's result. They used to run as six
+    // sequential awaits, so this handler cost the SUM of six round trips.
+    //
+    // That matters more here than almost anywhere else: the SPA shell blocks on
+    // this endpoint (App.jsx holds AppRoutes until /api/workspace/me resolves,
+    // so it doesn't flash the wrong guard), which puts this latency on the
+    // critical path of EVERY authed route. Measured on prod 2026-07-22 it ran
+    // ~850ms consistently, and /week's own week-summary query — which answers in
+    // ~300ms — couldn't even start until ~3.7s into the load. Same waterfall fix
+    // #2170 applied to week-summary.js.
+    //
+    // Each element keeps its OWN try/catch and non-fatal fallback INSIDE the
+    // promise: Promise.all rejects on the first throw, so the isolation has to
+    // live in the element, not around the group. Every one of these is
+    // best-effort by design — the client degrades rather than fails.
+    const [
+      locations,
+      primary_logo_url,
+      tierRow,
+      active_campaigns,
+      connected_publish_services,
+      cadence_defaults,
+    ] = await Promise.all([
+      // Active workspace_locations so the SPA can render the per-post location
+      // picker without an extra round trip. Locations are not secret — the same
+      // identity (city/region/hashtag) is already interpolated into public-facing
+      // copy via prompts. Legacy workspaces with the table absent get [] and
+      // degrade to single-location behavior.
+      (async () => {
+        try {
+          const lr = await sb(
+            `workspace_locations?workspace_id=eq.${encodeURIComponent(workspace.id)}&status=eq.active&select=*&order=position.asc`
+          )
+          if (lr.ok) {
+            const rows = await lr.json().catch(() => [])
+            return Array.isArray(rows) ? rows : []
+          }
+        } catch (e) {
+          console.error('[workspace/me] locations fetch failed:', e?.message)
+        }
+        return []
+      })(),
 
-    // Resolve the Brand Kit primary_logo to a URL so the SPA header can render
-    // it without a second round trip. Falls back to workspace.logo.main when
-    // no role is assigned. Non-fatal on failure — header still has the static
-    // logo to fall back to.
-    let primary_logo_url = null
-    try {
-      const lr = await sb(
-        `brand_kit_roles?workspace_id=eq.${encodeURIComponent(workspace.id)}&role=eq.primary_logo&select=brand_assets(blob_url)&limit=1`
-      )
-      if (lr.ok) {
-        const rows = await lr.json().catch(() => [])
-        primary_logo_url = rows?.[0]?.brand_assets?.blob_url || null
-      }
-    } catch (e) {
-      console.error('[workspace/me] primary_logo fetch failed:', e?.message)
-    }
+      // Brand Kit primary_logo resolved to a URL so the SPA header can render it
+      // without a second round trip. Falls back to workspace.logo.main when no
+      // role is assigned — header still has the static logo to fall back to.
+      (async () => {
+        try {
+          const lr = await sb(
+            `brand_kit_roles?workspace_id=eq.${encodeURIComponent(workspace.id)}&role=eq.primary_logo&select=brand_assets(blob_url)&limit=1`
+          )
+          if (lr.ok) {
+            const rows = await lr.json().catch(() => [])
+            return rows?.[0]?.brand_assets?.blob_url || null
+          }
+        } catch (e) {
+          console.error('[workspace/me] primary_logo fetch failed:', e?.message)
+        }
+        return null
+      })(),
 
-    // Phase 4: per-workspace permission_tier for the calling user. Drives the
-    // producer-restricted UX (nav filtering, default landing redirect). Falls
-    // back to null when the user has no clinicians row in this workspace —
-    // the client treats null as "no special restriction" so the existing nav
-    // shows. Non-fatal on failure.
-    let current_user_tier = null
-    let current_user_producer_onboarded_at = null
-    let current_user_capability_overrides = {}
-    try {
-      const ctr = await sb(
-        `staff?user_id=eq.${encodeURIComponent(auth.userId)}` +
-        `&workspace_id=eq.${encodeURIComponent(workspace.id)}` +
-        `&select=permission_tier,producer_onboarded_at,capability_overrides&limit=1`
-      )
-      if (ctr.ok) {
-        const rows = await ctr.json().catch(() => [])
-        current_user_tier = rows?.[0]?.permission_tier || null
-        current_user_producer_onboarded_at = rows?.[0]?.producer_onboarded_at || null
-        current_user_capability_overrides = rows?.[0]?.capability_overrides || {}
-      }
-    } catch (e) {
-      console.error('[workspace/me] tier fetch failed:', e?.message)
-    }
+      // Phase 4: per-workspace permission_tier for the calling user. Drives the
+      // producer-restricted UX (nav filtering, default landing redirect). Null
+      // when the user has no staff row in this workspace — the client treats
+      // null as "no special restriction" so the existing nav shows.
+      (async () => {
+        try {
+          const ctr = await sb(
+            `staff?user_id=eq.${encodeURIComponent(auth.userId)}` +
+            `&workspace_id=eq.${encodeURIComponent(workspace.id)}` +
+            `&select=permission_tier,producer_onboarded_at,capability_overrides&limit=1`
+          )
+          if (ctr.ok) {
+            const rows = await ctr.json().catch(() => [])
+            return rows?.[0] || null
+          }
+        } catch (e) {
+          console.error('[workspace/me] tier fetch failed:', e?.message)
+        }
+        return null
+      })(),
+
+      // Phase 4 Tentpole PR B: currently-active campaigns, so the Moment Miner
+      // client can do slot allocation against them without a separate fetch.
+      // Moment Miner falls back to legacy non-campaign generation when absent.
+      (async () => {
+        try {
+          return await getActiveCampaigns(workspace.id)
+        } catch (e) {
+          console.error('[workspace/me] active campaigns fetch failed:', e?.message)
+          return []
+        }
+      })(),
+
+      // Connected publish-integration service names (buffer, wordpress, beehiiv,
+      // …). Exposed to every org-bound caller — not just admins — so Story Detail
+      // can decide Publish-vs-Export client-side without hitting the admin-gated
+      // /credentials endpoint. Service NAMES only; never the secrets. [] degrades
+      // the UI to Export, which is the safe default.
+      (async () => {
+        try {
+          const rows = await listConfiguredServices(workspace.id)
+          return Array.isArray(rows) ? rows.map((r) => r.service).filter(Boolean) : []
+        } catch (e) {
+          console.error('[workspace/me] connected services fetch failed:', e?.message)
+          return []
+        }
+      })(),
+
+      // Cold-start cadence prior (app_config.cadence_defaults) so the Presence
+      // settings UI computes the Auto per-channel cadence from server data
+      // instead of a client-side hardcode. The client falls back to its own
+      // constant if absent.
+      (async () => {
+        try {
+          return await getCadencePrior(sb)
+        } catch (e) {
+          console.error('[workspace/me] cadence prior fetch failed:', e?.message)
+          return null
+        }
+      })(),
+    ])
+
+    const current_user_tier = tierRow?.permission_tier || null
+    const current_user_producer_onboarded_at = tierRow?.producer_onboarded_at || null
+    const current_user_capability_overrides = tierRow?.capability_overrides || {}
 
     // Phase 4 PR 3: resolve the user's effective capability set. Matches the
     // opt-in-per-user model used by requireCapability server-side:
@@ -553,43 +623,6 @@ async function handler(req, res) {
         : resolveCapabilities('clinician', workspace)
     } else {
       current_user_capabilities = resolveCapabilities(current_user_tier, workspace, current_user_capability_overrides)
-    }
-
-    // Phase 4 Tentpole PR B: embed currently-active campaigns so the Moment Miner
-    // client can do slot allocation against them without a separate fetch.
-    // Non-fatal on failure — Moment Miner falls back to legacy non-campaign
-    // generation when the field is absent or empty.
-    let active_campaigns = []
-    try {
-      active_campaigns = await getActiveCampaigns(workspace.id)
-    } catch (e) {
-      console.error('[workspace/me] active campaigns fetch failed:', e?.message)
-    }
-
-    // Connected publish-integration service names (buffer, wordpress, beehiiv, …).
-    // Exposed to every org-bound caller — not just admins — so the Story Detail
-    // action surface can decide Publish-vs-Export client-side without hitting the
-    // admin-gated /credentials endpoint. Service NAMES only; never the secrets.
-    // Non-fatal: [] degrades the UI to Export, which is the safe default.
-    let connected_publish_services = []
-    try {
-      const rows = await listConfiguredServices(workspace.id)
-      connected_publish_services = Array.isArray(rows)
-        ? rows.map((r) => r.service).filter(Boolean)
-        : []
-    } catch (e) {
-      console.error('[workspace/me] connected services fetch failed:', e?.message)
-    }
-
-    // Cold-start cadence prior (app_config.cadence_defaults) so the Presence
-    // settings UI can compute the Auto per-channel cadence from server data
-    // instead of a client-side hardcode. Non-fatal: the client falls back to
-    // its own constant if absent.
-    let cadence_defaults = null
-    try {
-      cadence_defaults = await getCadencePrior(sb)
-    } catch (e) {
-      console.error('[workspace/me] cadence prior fetch failed:', e?.message)
     }
 
     return res.status(200).json({
