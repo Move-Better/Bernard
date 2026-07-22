@@ -100,7 +100,7 @@ const SIBLING_EXCERPT  = 320 // enough to identify the anecdote/quote, not the w
  * @param {string=} a.excludeContentPieceId  this atom's own prior draft (re-draft case)
  * @returns {Promise<string>}
  */
-async function resolveSiblingCaptionsBlock({ workspaceId, interviewId, excludeContentPieceId }) {
+export async function resolveSiblingCaptionsBlock({ workspaceId, interviewId, excludeContentPieceId }) {
   try {
     if (!workspaceId || !interviewId) return ''
     // Rejected pieces are excluded: their moment was never used publicly, so it's
