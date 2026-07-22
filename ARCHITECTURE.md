@@ -294,6 +294,27 @@ before it could reach its own `catch` (which reverts status + records an error) 
 in a `'tagging'`-equivalent pending state forever with no error ever surfaced. Fix: keep
 `maxDuration` sized for the ACTUAL background work, not the response.
 
+### Verifying a new cron handler before it ships — invoke it directly, don't wait for the schedule
+
+Every `api/_routes/cron/*.js` handler is a plain Node `(req, res)` function gated by
+`verifyCronSecret(req)` (Bearer `CRON_SECRET`). That means it can be exercised end-to-end —
+real Supabase reads/writes, real third-party API calls — from a throwaway local script, with no
+deploy and no waiting for the actual schedule to fire:
+
+```js
+process.env.CRON_SECRET = 'local-verify-' + process.pid
+const { default: handler } = await import('./api/_routes/cron/<name>.js')
+const req = { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } }
+const res = { status(n) { this._s = n; return this }, json(b) { console.log(this._s, JSON.stringify(b, null, 2)) } }
+await handler(req, res)
+```
+
+Run with real env (`SUPABASE_URL`/`SUPABASE_SERVICE_KEY`/whatever third-party key, sourced per
+the 1Password-mount rules) and it produces the exact same rows the scheduled run would — the
+cheapest way to confirm auth, query shape, and any external API call all actually work before
+merging, rather than trusting build/lint alone. Delete the script when done. Used to verify
+`cron/snapshot-social-posts.js` (PR #2220) — seeded real rows against prod on the first call.
+
 ---
 
 ## Social-publishing provider adapter (Buffer / bundle.social)
@@ -345,6 +366,22 @@ same post forever. Any new bundle analytics consumer must pass `force: true` exp
 default is a silent no-op, not a fresh read. The force selection round-robins across platforms
 (not a flat `slice(0,N)` in DB order) so one busy platform can't starve the others out of the
 per-run budget.
+
+**bundle.social's socialAccount object has NO `status` field — connection health lives in
+`deletedAt` / `disconnectedCheckTryAt` / `deleteOn`.** `accountIsConnected()` (bundlePublisher.js)
+originally read `account.status` to decide whether a channel counted as broken for the daily
+channel-health email (`cron/check-channel-health.js`). Verified live 2026-07-22 — against both the
+installed SDK's `TeamGetTeamResponse` type and a real `teamGetTeam` call — that the field does not
+exist at all, so the predicate always returned `true` and the alert could never fire, for any
+workspace, since it shipped; the unit tests stayed green because they exercised invented status
+strings instead of the real shape. The real signals: `deletedAt` (hard disconnect), `disconnectedCheckTryAt`
+(bundle's own background disconnect-check has flagged and is retrying the account — gated by
+`organization.disconnectCheckEnabled`), `deleteOn` (scheduled auto-removal after a prolonged
+disconnect, per `organization.deleteAccountAfter`). Any new health/connection check against a
+bundle socialAccount must key off these three fields, not a status string — same class of bug as
+the analytics `items[]`-vs-`post.analytics` gotcha above: an assumed field shape that silently
+no-ops instead of erroring, caught only by a live call, not by review or tests written against the
+assumption.
 
 **Instagram must be connected via the DIRECT method or per-post analytics 400 forever.**
 `BundlePublisher.connect()` pins `instagramConnectionMethod: 'INSTAGRAM'` (+ `forceBrowserOAuth: true`)

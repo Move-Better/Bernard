@@ -72,12 +72,17 @@ export async function computeCadenceChannels(wsId, enabledOutputs, prior, sb) {
 
 // PURE: compute the Auto cadence policy `channels` map from a workspace's
 // enabled_outputs and a prior. Returns
-//   { [atomPlatform]: { target_per_week, enabled: true } }
+//   { [atomPlatform]: { target_per_week, enabled: true, slots? } }
 // for every enabled output that maps to a cadence-bearing atom platform.
 // Channels with no prior entry (blog / email / youtube / ads / landing_page —
 // not per-piece atom-cadence channels) are skipped. Returns {} when there are
 // no enabled outputs (caller decides the fallback).
-export function computeAutoCadenceChannels(enabledOutputs, prior = FALLBACK_CADENCE_PRIOR) {
+// `existingChannels` (T3): each platform's `.slots` (posting-schedule tiles,
+// api/_lib/cadenceSlots.js) is carried forward when present — this function
+// materializes fresh target_per_week/enabled, but slots are a separate,
+// human/T4-owned concern that recomputing Auto cadence must not wipe. Mirrors
+// computeAutoChannels in src/pages/settings/ChannelsSettings.jsx.
+export function computeAutoCadenceChannels(enabledOutputs, prior = FALLBACK_CADENCE_PRIOR, existingChannels = {}) {
   const platforms = atomPlatformsFromEnabledOutputs(enabledOutputs)
   const out = {}
   if (!platforms) return out
@@ -85,6 +90,8 @@ export function computeAutoCadenceChannels(enabledOutputs, prior = FALLBACK_CADE
     const tpw = prior[p]
     if (tpw == null) continue // not an atom-cadence channel — skip
     out[p] = { target_per_week: tpw, enabled: true }
+    const slots = existingChannels?.[p]?.slots
+    if (Array.isArray(slots) && slots.length) out[p].slots = slots
   }
   return out
 }

@@ -24,7 +24,24 @@ if (!URL_ARG) {
 const ROOT = resolve(fileURLToPath(import.meta.url), '..', '..')
 const ROUTES = join(ROOT, 'api', '_routes')
 const toPosix = (p) => p.split(sep).join('/')
-const CONCURRENCY = 8
+
+// Every probe spawns a fresh `vercel curl`, and each of those does its own auth
+// + project + deployment resolution against the Vercel API before it ever sends
+// the HTTP request. At 8-way concurrency across ~227 routes that burst trips
+// Vercel's API rate limit: the CLI silently backs off and retries, so a call
+// that normally takes ~1.2s takes 60–90s instead. The old 30s timeout killed
+// those mid-retry and recorded them as "TRANSPORT ERROR" — reddening the check
+// while every route was in fact resolving fine.
+//
+// Measured against a live preview (80 routes): concurrency 8 → 15 stalls / 269s;
+// concurrency 2 → 0 stalls / 36s. Lower concurrency is both more reliable AND
+// faster overall, because nothing burns a full timeout. The retry below absorbs
+// residual throttling when several route-smoke jobs run at once (they all share
+// one VERCEL_TOKEN, so the rate-limit bucket is repo-wide, not per-job).
+const CONCURRENCY = 3
+const HIT_TIMEOUT_MS = 60_000
+const MAX_ATTEMPTS = 3
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 function walk(dir, acc = []) {
   for (const name of readdirSync(dir)) {
@@ -55,12 +72,12 @@ const targets = [
   ...keptProbes.map((p) => ({ path: p, kind: 'kept', route: p })),
 ]
 
-function hit(path) {
+function hitOnce(path) {
   return new Promise((res) => {
     execFile(
       'vercel',
       ['curl', path, '--deployment', URL_ARG, '--', '-s', '-w', '\n%{http_code}'],
-      { cwd: ROOT, timeout: 30_000, maxBuffer: 10 * 1024 * 1024 },
+      { cwd: ROOT, timeout: HIT_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024 },
       (err, stdout) => {
         const out = (stdout || '').trim()
         const nl = out.lastIndexOf('\n')
@@ -71,6 +88,20 @@ function hit(path) {
       },
     )
   })
+}
+
+// A status of 0 means the CLI never produced an HTTP status — throttled, killed
+// by the timeout, or a transient network fault. None of those say anything about
+// whether the ROUTE resolves, so retry with backoff before believing it. Only a
+// real HTTP status (or a genuine routing miss) is a verdict worth reporting.
+async function hit(path) {
+  let last
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    last = await hitOnce(path)
+    if (last.status !== 0) return { ...last, attempts: attempt }
+    if (attempt < MAX_ATTEMPTS) await sleep(2000 * attempt)
+  }
+  return { ...last, attempts: MAX_ATTEMPTS }
 }
 
 const misses = []
@@ -96,8 +127,12 @@ async function run() {
     for (const m of misses) console.log(`    [${m.kind}] ${m.route}  →  ${m.path}`)
   }
   if (errors.length) {
-    console.log(`\n⚠ TRANSPORT ERRORS (${errors.length}) — no status (retry / protection / network):`)
+    console.log(
+      `\n⚠ TRANSPORT ERRORS (${errors.length}) — no HTTP status after ${MAX_ATTEMPTS} attempts ` +
+        `(Vercel API throttling / protection / network). These are NOT routing failures:`,
+    )
     for (const e of errors.slice(0, 20)) console.log(`    ${e.route}  ${e.err || ''}`)
+    if (errors.length > 20) console.log(`    …and ${errors.length - 20} more (list truncated at 20)`)
   }
   const okCount = targets.length - misses.length - errors.length
   console.log(`\n${okCount}/${targets.length} routes resolved.`)
