@@ -187,6 +187,19 @@ function assignEvenSpread(list, platform, weekMonday, openOffsets, timezone) {
 // More atoms than matching slots: cycle through the slots (same weekday/hour
 // reused) and nudge the minute on each wrap so repeated cycles don't collapse
 // onto an identical scheduled_at.
+// Convert a {weekday, hour} slot (in the workspace's local time) to the actual
+// calendar instant for the given plan week. Shared by assignToPinnedSlots and
+// api/_routes/content-plan/assign-slot.js (placing a single atom into a
+// specific slot on demand, outside a full planning run — the backlog "Place
+// here" action).
+export function dateForWeekdaySlot(weekMonday, weekday, hour, timezone) {
+  const monOffset = (WEEKDAY.indexOf(weekday) + 6) % 7
+  const [yr, mo, dy] = weekMonday.split('-').map(Number)
+  const dayDate = new Date(Date.UTC(yr, mo - 1, dy + monOffset))
+  const dayStr = dayDate.toISOString().slice(0, 10)
+  return dateAtLocalHour(dayStr, hour, timezone)
+}
+
 function assignToPinnedSlots(list, pinnedSlots, weekMonday, timezone) {
   const byFormat = {}
   for (const s of pinnedSlots) (byFormat[s.format || 'post'] ||= []).push(s)
@@ -204,11 +217,7 @@ function assignToPinnedSlots(list, pinnedSlots, weekMonday, timezone) {
     const idx = i % slots.length
     const wrap = Math.floor(i / slots.length)
     const slot = slots[idx]
-    const monOffset = (WEEKDAY.indexOf(slot.weekday) + 6) % 7
-    const [yr, mo, dy] = weekMonday.split('-').map(Number)
-    const dayDate = new Date(Date.UTC(yr, mo - 1, dy + monOffset))
-    const dayStr = dayDate.toISOString().slice(0, 10)
-    const d = dateAtLocalHour(dayStr, slot.hour, timezone)
+    const d = dateForWeekdaySlot(weekMonday, slot.weekday, slot.hour, timezone)
     if (wrap > 0) d.setUTCMinutes(d.getUTCMinutes() + wrap * 5)
     a.scheduled_at = d.toISOString()
   })
