@@ -24,6 +24,7 @@ import { ConfirmDialog } from '@/components/ui/alert-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/Drawer'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 
 // T3 — format badges shown on cards/slots and in the legend. Mirrors the
 // atom.format vocabulary (api/_lib/atomPlan.js ATOM_FORMATS): post/reel/story.
@@ -924,6 +925,39 @@ export default function YourWeek() {
   const stageIdx = Math.max(0, LADDER.findIndex(([s]) => s === (data?.trustStage || 'approve_all')))
   const nextStage = LADDER[stageIdx + 1] || null
 
+  // Flat chip list for the schedule strip. Instagram is the one channel that
+  // spans multiple formats (post/reel/story all key under `instagram`), so it
+  // contributes one chip per format — otherwise a full Instagram bar hides an
+  // empty Reel target. `short` drives the amber treatment: under target with
+  // the week still ahead of you. Being OVER target is not a warning, and a
+  // finished week can't be acted on, so neither goes amber.
+  const cadenceChips = Object.entries(cadence)
+    .filter(([, c]) => c?.enabled)
+    .flatMap(([platform, cfg]) => {
+      const meta = PLATFORM_META[platform] || { label: platform, icon: null }
+      if (platform === 'instagram') {
+        return ['post', 'reel', 'story']
+          .map((format) => ({
+            key: `${platform}-${format}`,
+            platform,
+            label: `IG ${FORMAT_META[format].label}`,
+            icon: FORMAT_META[format].icon,
+            target: (cfg.slots || []).filter((s) => (s.format || 'post') === format && s.enabled !== false).length,
+            got: scheduled.filter((it) => it.platform === platform && (it.format || 'post') === format).length,
+          }))
+          .filter((c) => c.target > 0 || c.got > 0)
+      }
+      return [{
+        key: platform,
+        platform,
+        label: meta.label,
+        icon: meta.icon,
+        target: cfg.target_per_week || 0,
+        got: data?.byPlatform?.[platform] || 0,
+      }]
+    })
+    .map((c) => ({ ...c, short: !isPast && c.got < c.target }))
+
   // Batch schedule: fetch piece details then publishPieceToBuffer for each approved piece.
   async function batchSchedule() {
     if (!approvedSchedulable.length || scheduling) return
@@ -1126,6 +1160,48 @@ export default function YourWeek() {
               Schedule {approvedSchedulable.length} approved
             </button>
           )}
+          {/* Backlog moved out of the right rail and into the header: the rail
+              was a 6-row preview of the drawer below, and cost the board 288px
+              of width on every week. The button opens that same drawer. */}
+          {data?.heldCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setBacklogOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-1 text-2xs font-semibold text-muted-foreground hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <Archive className="h-3 w-3" aria-hidden="true" /> Backlog · {data.heldCount}
+            </button>
+          )}
+          {/* Trust mode is display-only (see LADDER) and changes at most a few
+              times a year, so it reads as a status pill rather than a card
+              above the week. The detail lives one click away. */}
+          {isEditor && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-1 text-2xs font-semibold text-muted-foreground hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  Stage {stageIdx + 1} of {LADDER.length}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72">
+                <div className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">Your mode</div>
+                <div className="mt-1 text-sm font-bold">{LADDER[stageIdx]?.[1]}</div>
+                <div className="mt-2 flex gap-1" aria-hidden="true">
+                  {LADDER.map(([s], i) => (
+                    <span key={s} className={`h-1 flex-1 rounded-full ${i <= stageIdx ? 'bg-primary' : 'bg-muted-foreground/20'}`} />
+                  ))}
+                </div>
+                <p className="mt-2 text-2xs text-muted-foreground">{LADDER[stageIdx]?.[2]}</p>
+                {nextStage && (
+                  <p className="mt-1.5 text-3xs text-muted-foreground/85">
+                    Next rung: {nextStage[1]} — Bernard asks once you&apos;ve greenlit enough.
+                  </p>
+                )}
+              </PopoverContent>
+            </Popover>
+          )}
           <PageHelp pageKey="your-week" variant="default" />
           <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-2xs font-medium text-muted-foreground">
             <Shield className="h-3 w-3" aria-hidden="true" /> {isEditor ? 'Producer' : 'Clinician'} view
@@ -1203,67 +1279,25 @@ export default function YourWeek() {
         </div>
       ) : (
       <>
-      {/* Mode + pre-draft summary — compacted into one row so the controls take
-          less vertical space above the week itself. Trust mode is display-only
-          (earned, not settable — see LADDER); the pre-draft banner frames /week
-          as a review session when Bernard drafted ahead. */}
-      {(isEditor || data?.predraftSummary?.predrafted > 0) && (
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
-          {isEditor && (
-            <div className="rounded-xl border bg-card p-3 lg:shrink-0">
-              {/* Read-out + meter, NOT a segmented control. The old three-pill
-                  bordered track was visually identical to the View toggle a few
-                  inches below it (same wrapper, same bg-primary active pill), so
-                  staff clicked the rung they wanted and nothing happened —
-                  4 dead clicks in the 2026-07-22 UX pain check. The mode can't be
-                  picked at all (see LADDER), so the fix is to stop drawing it as
-                  a picker: one current stage, a progress meter, and what's next. */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">Your mode</span>
-                <div className="flex min-w-0 flex-col gap-1.5">
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-3xs font-bold uppercase tracking-wide text-muted-foreground">
-                      Stage {stageIdx + 1} of {LADDER.length}
-                    </span>
-                    <span className="text-sm font-bold">{LADDER[stageIdx]?.[1]}</span>
-                  </div>
-                  {/* Decorative — "Stage N of 3" above already states it. */}
-                  <div className="flex w-48 max-w-full gap-1" aria-hidden="true">
-                    {LADDER.map(([s], i) => (
-                      <span
-                        key={s}
-                        className={`h-1 flex-1 rounded-full ${i <= stageIdx ? 'bg-primary' : 'bg-muted-foreground/20'}`}
-                      />
-                    ))}
-                  </div>
-                  {nextStage && (
-                    <span className="text-3xs text-muted-foreground/85">
-                      Next rung: {nextStage[1]} — Bernard asks once you&apos;ve greenlit enough.
-                    </span>
-                  )}
-                </div>
-              </div>
-              <p className="mt-1.5 text-2xs text-muted-foreground">{LADDER[stageIdx]?.[2]}</p>
+      {/* Pre-draft summary. Unlike the trust mode (now a header pill — it is
+          standing furniture that changes a few times a year), this is a real
+          per-week event: it frames /week as a review session on the weeks
+          Bernard actually drafted ahead, and renders on no other week. */}
+      {data?.predraftSummary?.predrafted > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/[0.04] p-3.5">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+            <Bot className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold">
+              Bernard pre-drafted your week — {data.predraftSummary.predrafted} of {data.predraftSummary.total} planned posts
             </div>
-          )}
-
-          {data?.predraftSummary?.predrafted > 0 && (
-            <div className="flex flex-1 items-center gap-3 rounded-xl border border-primary/30 bg-primary/[0.04] p-3.5">
-              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-                <Bot className="h-4 w-4" aria-hidden="true" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold">
-                  Bernard pre-drafted your week — {data.predraftSummary.predrafted} of {data.predraftSummary.total} planned posts
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {weekStages.review} ready to review · {weekStages.scheduled} scheduled · {data.heldCount} in backlog
-                  {data.predraftSummary.needsYou > 0 ? ` · ${data.predraftSummary.needsYou} flagged for a closer look` : ''}
-                  {' · '}nothing publishes without your yes.
-                </div>
-              </div>
+            <div className="text-xs text-muted-foreground">
+              {weekStages.review} ready to review · {weekStages.scheduled} scheduled · {data.heldCount} in backlog
+              {data.predraftSummary.needsYou > 0 ? ` · ${data.predraftSummary.needsYou} flagged for a closer look` : ''}
+              {' · '}nothing publishes without your yes.
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -1325,104 +1359,66 @@ export default function YourWeek() {
         )
       ) : (
         <>
-          {/* Cadence strip */}
-          {Object.keys(cadence).length > 0 && (
-            <div className="rounded-xl border bg-card p-3">
-              <div className="mb-2 flex items-center gap-2">
-                <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">Posting schedule</span>
+          {/* Cadence strip — one line of channel chips rather than a 4-column
+              card. This is the one signal the board itself cannot show: an
+              unfilled target and a genuinely quiet week look identical on a
+              calendar, so it stays visible instead of moving behind a click
+              like the mode and backlog did. Each chip still links to that
+              channel's posts (2026-07-22 UX pain check: 3 dead clicks on the
+              old counts) and still carries the scheduled/target tooltip that
+              the removed explainer sentence used to spell out. */}
+          {cadenceChips.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 rounded-xl border bg-card px-3 py-2">
+              <span className="mr-1 text-2xs font-bold uppercase tracking-wide text-muted-foreground">Schedule</span>
+              {cadenceChips.map((chip) => (
+                <Tooltip key={chip.key}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={`/stories?platform=${encodeURIComponent(chip.platform)}`}
+                      aria-label={`${chip.label} — ${chip.got} scheduled this week, target ${chip.target} per week. View posts.`}
+                      className={`inline-flex items-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-2xs font-semibold transition-colors hover:border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                        chip.short ? 'bg-action/10 text-action' : 'bg-muted/50 text-muted-foreground'
+                      }`}
+                    >
+                      {chip.icon && <chip.icon className="h-3 w-3 shrink-0" aria-hidden="true" />}
+                      <span>{chip.label}</span>
+                      <span className="h-1 w-6 shrink-0 overflow-hidden rounded-full bg-foreground/10" aria-hidden="true">
+                        <span
+                          className={`block h-full rounded-full ${chip.short ? 'bg-action' : 'bg-primary'}`}
+                          style={{ width: `${chip.target ? Math.min(100, (chip.got / chip.target) * 100) : 0}%` }}
+                        />
+                      </span>
+                      <span className={chip.short ? '' : 'text-foreground'}>
+                        <b>{chip.got}</b>/{chip.target}
+                      </span>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {chip.got} scheduled this week · target {chip.target}/week
+                    {chip.short ? ' · short of target' : ''}
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+              <span className="ml-auto inline-flex items-center gap-2 pl-2">
                 <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-3xs font-semibold text-primary">
                   <Sparkles className="h-3 w-3" aria-hidden="true" /> {data.scheduledTotal} scheduled
                 </span>
-                <span className="ml-auto inline-flex items-center gap-1 text-2xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground">
                   <Clock className="h-3 w-3" aria-hidden="true" />
                   {tzLabel(tz)}
                 </span>
-              </div>
-              <p className="mb-2 text-3xs text-muted-foreground">
-                Each channel shows posts <b className="font-semibold text-foreground">scheduled this week</b> / your <b className="font-semibold text-foreground">weekly target</b>.
-              </p>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {Object.entries(cadence).filter(([, c]) => c?.enabled).map(([platform, cfg]) => {
-                  const meta = PLATFORM_META[platform] || { label: platform, icon: null }
-                  const Icon = meta.icon
-                  const got = data.byPlatform?.[platform] || 0
-                  const target = cfg.target_per_week || 0
-                  // T3 — Instagram is the one channel that spans multiple
-                  // formats (post/reel/story all key under `instagram`); break
-                  // its tile out by format so "4 scheduled" doesn't hide that
-                  // 0 of them are Reels. Per-format target is the count of
-                  // enabled pinned slots for that format; other platforms
-                  // are single-format and keep the plain bar.
-                  const breakdown = platform === 'instagram'
-                    ? ['post', 'reel', 'story']
-                      .map((format) => ({
-                        format,
-                        target: (cfg.slots || []).filter((s) => (s.format || 'post') === format && s.enabled !== false).length,
-                        got: scheduled.filter((it) => it.platform === platform && (it.format || 'post') === format).length,
-                      }))
-                      .filter((f) => f.target > 0 || f.got > 0)
-                    : null
-                  return (
-                    // The tile links to this channel's posts — users were
-                    // clicking these counts expecting exactly that (2026-07-22
-                    // UX pain check: 3 dead clicks here). The hover/focus
-                    // treatment is what earns the click; don't drop one and
-                    // keep the other.
-                    <Link
-                      key={platform}
-                      to={`/stories?platform=${encodeURIComponent(platform)}`}
-                      aria-label={`View ${meta.label} posts`}
-                      className="-m-1 block rounded-md p-1 text-foreground transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    >
-                      <div className="mb-1 flex items-center justify-between text-2xs">
-                        <span className="flex items-center gap-1.5 font-semibold">
-                          {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />} {meta.label}
-                        </span>
-                        {!breakdown && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-muted-foreground"><b className="text-foreground">{got}</b>/{target}</span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {got} scheduled this week · target {target}/week
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                      {breakdown ? (
-                        <div className="space-y-1">
-                          {breakdown.map((f) => {
-                            const FormatIcon = FORMAT_META[f.format].icon
-                            return (
-                              <div key={f.format} className="flex items-center gap-1.5 text-3xs">
-                                <FormatIcon className="h-2.5 w-2.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                                <span className="w-8 shrink-0 text-muted-foreground">{FORMAT_META[f.format].label}</span>
-                                <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
-                                  <div className="h-full rounded-full bg-primary" style={{ width: `${f.target ? Math.min(100, (f.got / f.target) * 100) : 0}%` }} />
-                                </div>
-                                <span className="shrink-0 text-muted-foreground"><b className="text-foreground">{f.got}</b>/{f.target}</span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      ) : (
-                        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                          <div className="h-full rounded-full bg-primary" style={{ width: `${target ? Math.min(100, (got / target) * 100) : 0}%` }} />
-                        </div>
-                      )}
-                    </Link>
-                  )
-                })}
-              </div>
+              </span>
             </div>
           )}
 
           {/* Control bar — directly below the posting schedule, above the board. */}
           {controlBarEl}
 
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-            {/* Calendar */}
-            <div className="min-w-0 flex-1">
+          <div className="flex flex-col gap-4">
+            {/* Calendar — full width. The backlog rail that used to sit beside
+                it moved to a header button (it was a 6-row preview of the
+                drawer below, for 288px of board width every week). */}
+            <div className="min-w-0">
               {viewMode === 'day' ? (
                 <div>
                   {/* Selected day's posts as roomy working cards (the day picker
@@ -1576,49 +1572,26 @@ export default function YourWeek() {
               )}
             </div>
 
-            {/* Right rail: backlog + digest */}
-            <div className="w-full shrink-0 space-y-3 lg:w-72">
-              <div className="rounded-xl border bg-card p-3.5">
-                <div className="mb-2 flex items-center gap-2">
-                  <Archive className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                  <span className="text-sm font-bold">Backlog</span>
-                  <span className="ml-auto inline-flex items-center rounded-full bg-foreground/10 px-2 py-0.5 text-2xs font-bold text-foreground">
-                    {data.heldCount} banked
-                  </span>
+            {/* Opened from the header button — the rail was only ever a
+                preview of this list. Unchanged. */}
+            <Drawer open={backlogOpen} onOpenChange={setBacklogOpen}>
+              <DrawerContent side="right">
+                <DrawerHeader>
+                  <DrawerTitle>Backlog — {data.heldCount} banked</DrawerTitle>
+                </DrawerHeader>
+                <div className="flex-1 space-y-1.5 overflow-y-auto p-4">
+                  {(data.held || []).map((item) => (
+                    <BacklogRow key={item.id} item={item} onNavigate={() => setBacklogOpen(false)} />
+                  ))}
                 </div>
-                {data.heldCount === 0 ? (
-                  <p className="text-2xs text-muted-foreground">Surplus pieces get banked here and pulled in to fill thin weeks.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {(data.held || []).slice(0, 6).map((item) => (
-                      <BacklogRow key={item.id} item={item} />
-                    ))}
-                    {data.heldCount > 6 && (
-                      <button
-                        type="button"
-                        onClick={() => setBacklogOpen(true)}
-                        className="w-full rounded-lg px-2 py-1.5 text-2xs font-semibold text-primary hover:underline"
-                      >
-                        View all {data.heldCount}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
+              </DrawerContent>
+            </Drawer>
 
-              <Drawer open={backlogOpen} onOpenChange={setBacklogOpen}>
-                <DrawerContent side="right">
-                  <DrawerHeader>
-                    <DrawerTitle>Backlog — {data.heldCount} banked</DrawerTitle>
-                  </DrawerHeader>
-                  <div className="flex-1 space-y-1.5 overflow-y-auto p-4">
-                    {(data.held || []).map((item) => (
-                      <BacklogRow key={item.id} item={item} onNavigate={() => setBacklogOpen(false)} />
-                    ))}
-                  </div>
-                </DrawerContent>
-              </Drawer>
-
+            {/* Below the board: the two cards that outlived the rail. Both are
+                per-week status, not standing navigation, so they read fine
+                after the week rather than beside it. */}
+            {(data.digest || (!isPast && approvedSchedulable.length > 0)) && (
+            <div className="grid gap-3 sm:grid-cols-2">
               {data.digest && (
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5">
                   <div className="mb-1.5 flex items-center gap-2">
@@ -1652,6 +1625,7 @@ export default function YourWeek() {
                 </div>
               )}
             </div>
+            )}
           </div>
         </>
       )}
