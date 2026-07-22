@@ -31,9 +31,13 @@ const DAYS = [
   ['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'], ['fri', 'Fri'], ['sat', 'Sat'], ['sun', 'Sun'],
 ]
 const DAY_FULL = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' }
-// Trust modes, shown as a segmented control (not a breadcrumb — it displays
-// which mode you're currently in, it isn't a step-by-step trail). Keys are the
-// stored cadence_policy.trust_stage values; labels + helper are user-facing.
+// Trust modes, in ladder order. This is a rung you REACH, never a mode you
+// pick: trust_stage is written once at onboarding ('approve_all') and advances
+// only when Bernard earns it and asks (the graduation model in
+// .claude/f1-f2-cadence-spec.md) — there is no setter anywhere in the app.
+// Rendered as a read-out + progress meter for that reason; see the render site.
+// Keys are the stored cadence_policy.trust_stage values; labels + helper are
+// user-facing.
 const LADDER = [
   ['approve_all', 'Approve each post', 'You approve every post before it publishes. Bernard takes more off your plate as you greenlight more.'],
   ['approve_exception', 'Auto-approve routine', 'Bernard auto-approves routine posts and only asks you about the exceptions — taking on more as you greenlight more.'],
@@ -615,6 +619,7 @@ export default function YourWeek() {
   )
 
   const stageIdx = Math.max(0, LADDER.findIndex(([s]) => s === (data?.trustStage || 'approve_all')))
+  const nextStage = LADDER[stageIdx + 1] || null
 
   // Batch schedule: fetch piece details then publishPieceToBuffer for each approved piece.
   async function batchSchedule() {
@@ -824,30 +829,42 @@ export default function YourWeek() {
 
       {/* Mode + pre-draft summary — compacted into one row so the controls take
           less vertical space above the week itself. Trust mode is display-only
-          (set in Auto-publish settings); the pre-draft banner frames /week as a
-          review session when Bernard drafted ahead. */}
+          (earned, not settable — see LADDER); the pre-draft banner frames /week
+          as a review session when Bernard drafted ahead. */}
       {(isEditor || data?.predraftSummary?.predrafted > 0) && (
         <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
           {isEditor && (
             <div className="rounded-xl border bg-card p-3 lg:shrink-0">
+              {/* Read-out + meter, NOT a segmented control. The old three-pill
+                  bordered track was visually identical to the View toggle a few
+                  inches below it (same wrapper, same bg-primary active pill), so
+                  staff clicked the rung they wanted and nothing happened —
+                  4 dead clicks in the 2026-07-22 UX pain check. The mode can't be
+                  picked at all (see LADDER), so the fix is to stop drawing it as
+                  a picker: one current stage, a progress meter, and what's next. */}
               <div className="flex flex-wrap items-center gap-2.5">
                 <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">Your mode</span>
-                <div
-                  role="group"
-                  aria-label="Current automation mode"
-                  className="inline-flex items-center rounded-lg border bg-muted/40 p-0.5 text-xs"
-                >
-                  {LADDER.map(([s, lbl], i) => (
-                    <span
-                      key={s}
-                      aria-current={i === stageIdx ? 'true' : undefined}
-                      className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${
-                        i === stageIdx ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {lbl}
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="text-3xs font-bold uppercase tracking-wide text-muted-foreground">
+                      Stage {stageIdx + 1} of {LADDER.length}
                     </span>
-                  ))}
+                    <span className="text-sm font-bold">{LADDER[stageIdx]?.[1]}</span>
+                  </div>
+                  {/* Decorative — "Stage N of 3" above already states it. */}
+                  <div className="flex w-48 max-w-full gap-1" aria-hidden="true">
+                    {LADDER.map(([s], i) => (
+                      <span
+                        key={s}
+                        className={`h-1 flex-1 rounded-full ${i <= stageIdx ? 'bg-primary' : 'bg-muted-foreground/20'}`}
+                      />
+                    ))}
+                  </div>
+                  {nextStage && (
+                    <span className="text-3xs text-muted-foreground/85">
+                      Next rung: {nextStage[1]} — Bernard asks once you&apos;ve greenlit enough.
+                    </span>
+                  )}
                 </div>
               </div>
               <p className="mt-1.5 text-2xs text-muted-foreground">{LADDER[stageIdx]?.[2]}</p>
