@@ -95,6 +95,78 @@ export function bundleErrorText(res) {
   return null
 }
 
+// Count media by the type bundle ITSELF assigned. bundle's upload response
+// carries `type: 'image'|'video'|'document'`, decided after it downloads the
+// URL — which is a far better signal than our own media_urls entry labels.
+// Those are written by five different call sites that disagree on the spelling
+// ('video' vs 'photo' vs 'image'), so deriving "is this a video post?" from them
+// is exactly how a Reel ends up shipping as an in-feed POST.
+function countMedia(uploads) {
+  let video = 0
+  let image = 0
+  for (const u of uploads || []) {
+    if (u?.type === 'video') video++
+    else if (u?.type === 'image') image++
+  }
+  return { video, image }
+}
+
+// An all-video payload is a Reel on Instagram and Facebook. Mirrors the legacy
+// Buffer path's rule exactly (buildMetadata in api/_routes/publish/buffer.js:
+// `videoCount > 0 && imageCount === 0`): a mixed photo+video payload stays a
+// POST, because neither network accepts a Reel with a still in it and this
+// publisher can't produce a mixed carousel anyway.
+export function isReelPayload(uploads) {
+  const { video, image } = countMedia(uploads)
+  return video > 0 && image === 0
+}
+
+// Build the per-platform `data` block for postCreate. Pure — takes the resolved
+// bundle uploads (not our media entries) plus an optional already-uploaded cover
+// URL — so the Reel-vs-POST decision is unit-testable without an API key.
+export function buildDataBlock({ platform, type, text, uploads = [], coverUrl = null }) {
+  const uploadIds = uploads.map((u) => u?.id).filter(Boolean)
+  const media = uploadIds.length ? { uploadIds } : {}
+  // bundle's `thumbnail` is "the URL to an image uploaded on bundle.social" —
+  // i.e. the cover frame. Without it Instagram picks the first frame of the
+  // video, which on a talking-head clip is usually a half-blink.
+  const cover = coverUrl ? { thumbnail: coverUrl } : {}
+
+  if (type === 'INSTAGRAM') {
+    if (platform === 'instagram_story') return { type: 'STORY', text, ...media }
+    if (isReelPayload(uploads)) {
+      // shareToFeed puts the Reel in the main feed as well as the Reels tab.
+      // The legacy Buffer path set the same flag (shouldShareToFeed).
+      return { type: 'REEL', text, shareToFeed: true, ...media, ...cover }
+    }
+    return { type: 'POST', text, ...media }
+  }
+  if (type === 'GOOGLE_BUSINESS') {
+    return { text, topicType: 'STANDARD', ...media }
+  }
+  if (type === 'FACEBOOK') {
+    if (isReelPayload(uploads)) return { type: 'REEL', text, ...media, ...cover }
+    return { type: 'POST', text, ...media }
+  }
+  if (type === 'YOUTUBE') {
+    // Bernard distinguishes long-form (youtube) from Shorts (youtube_short);
+    // both require a video upload (guarded by MEDIA_REQUIRED_TYPES).
+    return { type: platform === 'youtube_short' ? 'SHORT' : 'VIDEO', text, ...media }
+  }
+  // X/Twitter, Threads, LinkedIn, TikTok, Bluesky, Mastodon: a generic
+  // text(+media) block. Verified against the SDK PostCreateData type defs
+  // (2026-06-20) that each posts with only text/media — their other fields are
+  // optional (LinkedIn requires `text`, which the handler always provides;
+  // TikTok requires media, guarded above). Networks that need extra required
+  // fields (Pinterest boardName, Reddit sr, Discord/Slack channelId) are NOT
+  // offered for connect (see CLINIC_NETWORKS) so this block is never hit for
+  // them; adding one means collecting that field in the publish flow first.
+  return { text, ...media }
+}
+
+// Networks whose Reel format accepts a separate cover image.
+const REEL_COVER_TYPES = new Set(['INSTAGRAM', 'FACEBOOK'])
+
 export class BundlePublisher extends SocialPublisher {
   /**
    * @param {Object} workspace Full `workspaces` row.
@@ -179,12 +251,21 @@ export class BundlePublisher extends SocialPublisher {
       ? new Date(scheduledAt).toISOString()
       : new Date(Date.now() + 60_000).toISOString()
 
-    let uploadIds
+    let uploads = []
     if (Array.isArray(mediaUrls) && mediaUrls.length) {
-      uploadIds = await this._uploadMedia(mediaUrls)
-    } else if (MEDIA_REQUIRED_TYPES.has(type)) {
+      uploads = await this._uploadMedia(mediaUrls)
+    }
+    // Covers both "caller sent no media" and "every upload failed" — the latter
+    // used to reach bundle as an empty uploadIds array and come back as an
+    // opaque 400, so fail here with the reason instead.
+    if (MEDIA_REQUIRED_TYPES.has(type) && uploads.length === 0) {
       throw publishError(`${platform} posts require at least one media item`, 400)
     }
+
+    // A Reel gets an explicit cover frame; a photo post never needs one.
+    const coverUrl = REEL_COVER_TYPES.has(type) && isReelPayload(uploads)
+      ? await this._uploadCover(mediaUrls)
+      : null
 
     const res = await this.sdk.post.postCreate({
       requestBody: {
@@ -193,7 +274,7 @@ export class BundlePublisher extends SocialPublisher {
         postDate,
         status: 'SCHEDULED',
         socialAccountTypes: [type],
-        data: { [type]: this._dataBlock(platform, type, content || '', uploadIds) },
+        data: { [type]: this._dataBlock(platform, type, content || '', uploads, coverUrl) },
       },
     })
     return {
@@ -298,42 +379,43 @@ export class BundlePublisher extends SocialPublisher {
     return t || 'Bernard post'
   }
 
+  // Returns the FULL bundle upload records, not just ids — `type` (image/video)
+  // drives the Reel decision in buildDataBlock, and width/height/videoLength are
+  // there for future format checks.
   async _uploadMedia(mediaUrls) {
-    const ids = []
+    const uploads = []
     for (const m of mediaUrls) {
       if (!m?.url) continue
       const up = await this.sdk.upload.uploadCreateFromUrl({
         requestBody: { teamId: this.teamId, url: m.url },
       })
-      if (up?.id) ids.push(up.id)
+      if (up?.id) uploads.push(up)
     }
-    return ids
+    return uploads
   }
 
-  _dataBlock(platform, type, text, uploadIds) {
-    if (type === 'INSTAGRAM') {
-      return { type: platform === 'instagram_story' ? 'STORY' : 'POST', text, uploadIds }
+  // Upload the video's poster frame so the Reel ships with the cover the editor
+  // showed. `thumbnail` must be a bundle-hosted URL, so our blob URL goes
+  // through uploadCreateFromUrl first. A photo entry's thumbnailUrl is just its
+  // own url (see mediaEntry.js), so require the two to differ.
+  async _uploadCover(mediaUrls) {
+    const entry = (mediaUrls || []).find((m) => m?.thumbnailUrl && m.thumbnailUrl !== m.url)
+    if (!entry) return null
+    try {
+      const up = await this.sdk.upload.uploadCreateFromUrl({
+        requestBody: { teamId: this.teamId, url: entry.thumbnailUrl },
+      })
+      return up?.url || null
+    } catch (e) {
+      // A missing cover is cosmetic — Instagram falls back to the first frame.
+      // Never fail a publish over it.
+      console.warn('[BundlePublisher] reel cover upload failed:', e?.message)
+      return null
     }
-    if (type === 'GOOGLE_BUSINESS') {
-      return { text, topicType: 'STANDARD', uploadIds }
-    }
-    if (type === 'FACEBOOK') {
-      return { type: 'POST', text, ...(uploadIds ? { uploadIds } : {}) }
-    }
-    if (type === 'YOUTUBE') {
-      // Bernard distinguishes long-form (youtube) from Shorts (youtube_short);
-      // both require a video upload (guarded by MEDIA_REQUIRED_TYPES).
-      return { type: platform === 'youtube_short' ? 'SHORT' : 'VIDEO', text, ...(uploadIds ? { uploadIds } : {}) }
-    }
-    // X/Twitter, Threads, LinkedIn, TikTok, Bluesky, Mastodon: a generic
-    // text(+media) block. Verified against the SDK PostCreateData type defs
-    // (2026-06-20) that each posts with only text/media — their other fields are
-    // optional (LinkedIn requires `text`, which the handler always provides;
-    // TikTok requires media, guarded above). Networks that need extra required
-    // fields (Pinterest boardName, Reddit sr, Discord/Slack channelId) are NOT
-    // offered for connect (see CLINIC_NETWORKS) so this block is never hit for
-    // them; adding one means collecting that field in the publish flow first.
-    return { text, ...(uploadIds ? { uploadIds } : {}) }
+  }
+
+  _dataBlock(platform, type, text, uploads, coverUrl) {
+    return buildDataBlock({ platform, type, text, uploads, coverUrl })
   }
 }
 
