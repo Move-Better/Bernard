@@ -87,7 +87,14 @@ async function handler(req, res) {
   // Only workspaces with the video pipeline on can have reels at all.
   const wsRes = await fetch(
     `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&video_pipeline_enabled=is.true` +
-      `&select=id,slug,cadence_policy,enabled_outputs,video_pipeline_enabled,brand_style,brand_voice,name,producer_config`,
+      // select=* deliberately: the render path (renderVideoChannel + generateCaption)
+      // consumes the same broad workspace shape workspaceContext() hands the manual
+      // path, so an explicit column list here is a standing trap — one wrong or
+      // newly-required name and PostgREST 400s the whole query. It did exactly
+      // that: `name` does not exist on workspaces (it is display_name/app_name),
+      // so this cron returned 500 'workspace fetch failed' on every run from the
+      // moment it shipped and never rendered anything. 7 rows, once an hour.
+      `&select=*`,
     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
   )
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })
