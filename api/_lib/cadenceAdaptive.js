@@ -156,3 +156,138 @@ export async function computeAdaptiveCadenceChannels(wsId, enabledOutputs, prior
 
   return out
 }
+
+// ─── T4 learning loop, part 3 — day/time ("when") learning ──────────────────
+//
+// The engine above answers "how many"; this answers "when." cadence_policy.
+// quiet_days (migration 140) is a frozen author default that can never
+// self-correct on its own: no weekend inventory → no weekend engagement data
+// → Auto can never learn a weekend works. Two cooperating pieces break the
+// loop:
+//   1. applyExplorationSlots() — called from strategistPlan.js's
+//      getWeekInputs(), NOT from inside assignSlots() in strategist.js (that
+//      file is under active work for the format dimension; wrapping the call
+//      site keeps the collision surface near zero — see .claude/decisions.md
+//      2026-07-21 T4 scoping). PURE: deterministically rotates through a
+//      workspace's quiet, not-yet-dismissed days — un-quieting exactly ONE
+//      for a given week's plan — so a real post lands there and produces
+//      real engagement_snapshots. Rotating (not always the same day) means
+//      every quiet day accumulates evidence over time, and dismissing a day
+//      (Q's explicit "no") permanently excludes it from rotation.
+//   2. computeDayProposal() reads the resulting engagement_snapshots and,
+//      once a quiet day has cleared a minimum sample size, reports how it
+//      compared to the workspace's normal (non-quiet) days — evidence only,
+//      never auto-applied. Surfaced as an Accept/Dismiss card in Settings →
+//      Channels → Cadence (src/pages/settings/ChannelsSettings.jsx).
+//
+// Deliberately workspace-level, not per-platform: cadence_policy.quiet_days
+// is one shared set of days across every channel, so the comparison
+// aggregates engagement across all platforms rather than fragmenting an
+// already-small sample further.
+
+// Exploration data is scarcer by design (one day gets ~1 extra post/week at
+// most) — lower than the channel engine's MIN_SAMPLE=5.
+const DAY_MIN_SAMPLE = 3
+const WEEKDAY_CODES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+
+/**
+ * Rotate through a workspace's quiet, not-dismissed days — one per week — so
+ * exploration evidence accumulates for every quiet day instead of repeating
+ * the same one. PURE: weekMonday determines the rotation index, so replanning
+ * the same week twice always explores the same day.
+ *
+ * @param {string[]} quietDays     — cadence_policy.quiet_days
+ * @param {string[]} dismissedDays — cadence_policy.day_time_dismissed (days Q
+ *                                    has explicitly said to keep quiet)
+ * @param {string}   weekMonday    — YYYY-MM-DD
+ * @returns {{ effectiveQuietDays: string[], exploring: string|null }}
+ */
+export function applyExplorationSlots(quietDays, dismissedDays, weekMonday) {
+  const dismissed = new Set((dismissedDays || []).map((d) => d.toLowerCase()))
+  const candidates = (quietDays || []).filter((d) => !dismissed.has(d.toLowerCase()))
+  if (!candidates.length) return { effectiveQuietDays: quietDays || [], exploring: null }
+
+  const weekIndex = Math.floor(new Date(`${weekMonday}T00:00:00Z`).getTime() / WEEK_MS)
+  const exploring = candidates[((weekIndex % candidates.length) + candidates.length) % candidates.length]
+  const effectiveQuietDays = (quietDays || []).filter((d) => d !== exploring)
+  return { effectiveQuietDays, exploring }
+}
+
+function dayCodeOf(iso, timezone) {
+  try {
+    return new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'short' })
+      .format(new Date(iso)).slice(0, 3).toLowerCase()
+  } catch {
+    return WEEKDAY_CODES[new Date(iso).getUTCDay()]
+  }
+}
+
+/**
+ * Compare a currently-quiet, not-dismissed day's engagement against the
+ * workspace's normal (open) days, once exploration has produced enough
+ * samples to say anything. Evidence only — the caller decides what to do
+ * with it (persist as a proposal, or not).
+ *
+ * @param {string}   wsId
+ * @param {string[]} quietDays     — cadence_policy.quiet_days
+ * @param {string[]} dismissedDays — cadence_policy.day_time_dismissed
+ * @param {string}   timezone      — cadence_policy.timezone
+ * @param {Function} sb            — Supabase REST helper
+ * @returns {Promise<null | { day: string, sampleCount: number, avgScore: number, baselineAvgScore: number, baselineCount: number }>}
+ */
+export async function computeDayProposal(wsId, quietDays, dismissedDays, timezone, sb) {
+  if (!wsId) return null
+  const dismissed = new Set((dismissedDays || []).map((d) => d.toLowerCase()))
+  const quiet = new Set((quietDays || []).map((d) => d.toLowerCase()))
+  const candidateDays = [...quiet].filter((d) => !dismissed.has(d))
+  if (!candidateDays.length) return null
+
+  const cutoff = new Date(Date.now() - TRAILING_WEEKS * 7 * 24 * 60 * 60 * 1000).toISOString()
+  let snapshots = []
+  try {
+    const r = await sb(
+      `engagement_snapshots?workspace_id=eq.${wsId}&fetched_at=gt.${cutoff}` +
+      `&select=stats,content_items(published_at)&order=fetched_at.desc&limit=5000`
+    )
+    if (!r.ok) return null
+    snapshots = await r.json()
+  } catch {
+    return null
+  }
+
+  const byDay = {} // { dayCode: { count, totalScore } }
+  for (const snap of snapshots) {
+    const publishedAt = snap.content_items?.published_at
+    if (!publishedAt || snap.stats == null) continue
+    const day = dayCodeOf(publishedAt, timezone || 'UTC')
+    const score = scoreOf(snap.stats)
+    ;(byDay[day] ||= { count: 0, totalScore: 0 })
+    byDay[day].count += 1
+    byDay[day].totalScore += score
+  }
+
+  // Baseline = the workspace's currently-open (non-quiet) days.
+  const baselineDays = WEEKDAY_CODES.filter((d) => !quiet.has(d))
+  let baselineCount = 0, baselineTotal = 0
+  for (const d of baselineDays) {
+    if (byDay[d]) { baselineCount += byDay[d].count; baselineTotal += byDay[d].totalScore }
+  }
+  if (baselineCount === 0) return null // no open-day data yet either — too early to compare anything
+
+  // First candidate quiet day that's cleared the sample floor (stable order —
+  // WEEKDAY_CODES order, not candidateDays' Set-iteration order).
+  for (const day of WEEKDAY_CODES) {
+    if (!candidateDays.includes(day)) continue
+    const data = byDay[day]
+    if (!data || data.count < DAY_MIN_SAMPLE) continue
+    return {
+      day,
+      sampleCount: data.count,
+      avgScore: Math.round((data.totalScore / data.count) * 10) / 10,
+      baselineAvgScore: Math.round((baselineTotal / baselineCount) * 10) / 10,
+      baselineCount,
+    }
+  }
+  return null
+}
