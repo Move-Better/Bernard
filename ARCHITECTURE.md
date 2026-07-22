@@ -608,6 +608,70 @@ Reference: `api/_lib/thumbnail.js`, `api/_lib/tagAsset.js`.
 
 ---
 
+## Media suggestions — what actually gates an asset
+
+`POST /api/content-items/suggest-media` → `searchClips` (`api/_lib/clipSearch.js`) → the
+`match_visual_memory_chunks` RPC. Three contracts, each of which has already been
+got wrong once:
+
+**1. The only gate is an embedded `visual_memory_chunks` row.** The RPC filters on
+workspace, kind, staff, similarity and `archived_at` — **never on
+`media_assets.status`**. An asset at `raw` is exactly as suggestable as any other.
+An asset with no chunk is invisible no matter what its status says. So "why isn't
+this photo being suggested?" is always a question about `indexMediaAsset`, not about
+a status field. (`media_assets.status` is now just `raw | tagged | archived` and
+gates nothing anywhere — #2274.)
+
+Indexing runs in `recordUploadedAsset`'s `waitUntil`, chained *after* `tagAndPersist`
+so the embedding text includes `ai_tags`. That chaining means **a tagging failure
+also silently skips indexing**, permanently — there's no retry and no re-index after
+a later manual tag. When auditing coverage, count chunks, don't assume:
+
+```sql
+select count(*) filter (where v.id is null) as never_indexed
+from media_assets m
+left join visual_memory_chunks v
+  on v.source_id = m.id and v.source_type = 'media_asset' and v.embedding is not null
+where m.workspace_id = '<ws>' and m.archived_at is null;
+```
+
+**2. `kind` is derived server-side from the draft's platform — do not override it
+from the client.** `mediaKindForPlatform` (`api/_lib/platformMedia.js`) returns
+`video` for reels/tiktok/youtube, `photo` for blog/landing/email/ads, and `null`
+(= both) for instagram/facebook/gbp/linkedin. An explicit `body.kind` **wins over
+that default**, so a client passing `kind:'photo'` disables the whole mapping for
+every platform at once. That shipped: every caller of `useMediaSuggestions`
+hardcoded `kind:'photo'`, so no surface in the app had ever requested a video, and
+movebetter reached 466 videos with 4 attachments before anyone noticed (#2272).
+Only pass `kind` from a surface that is photo-only *by construction* (SlideEditor's
+carousel strip, SwapAddPhoto). A general editor must stay silent and let the
+platform decide.
+
+Consequence for any surface that may now receive both: a video's `blobUrl` is the
+raw `.mov`/`.mp4` and is **never** a valid `<img src>`. Use `thumbnailUrl`, and fall
+back to the placeholder icon rather than the blob when a poster is missing.
+`photoSourceUrl(entry)` returns `entry.url` — the video file — for a video entry, so
+guard it with `isVideoEntry()` (`src/lib/mediaEntry.js`).
+
+**3. Join the asset with an existence guard, not a bare `LEFT JOIN`.** The RPC
+attaches asset columns via `LEFT JOIN … AND m.archived_at IS NULL`. Without a
+guard, a chunk whose asset is archived or deleted still satisfies the WHERE clause
+and returns with every asset field NULL — consuming one of the caller's
+`match_count` slots and reaching the client as a blank card that displaces a real
+candidate. It only bites when `filter_kind IS NULL`, because `m.kind = filter_kind`
+already discards NULL-asset rows — i.e. exactly the instagram/facebook/gbp/linkedin
+path. Migration 183 adds `AND (v.source_type <> 'media_asset' OR m.id IS NOT NULL)`;
+keep that predicate if the function is ever rewritten, and prefer it over a plain
+`INNER JOIN` so a future non-`media_asset` source type isn't silently dropped.
+
+Retrieval quality itself is fine and is not the usual suspect — a probe of real
+drafts against the live index returns 8/8 candidates at 0.49–0.58 cosine, well
+clear of the 0.3 floor, with topically correct picks. Before scoping any
+embedding/backfill work, run that probe first: import `buildDraftMatchQuery` +
+`searchClips` in a scratch harness against a real workspace id and print the scores.
+
+---
+
 ## Async pipeline patterns
 
 ### Polling: hard cap is universal
