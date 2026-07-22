@@ -33,6 +33,7 @@ import { createClipDraft } from './clipDraft.js'
 import { assignSlots } from './strategist.js'
 import { ATOM_FORMATS } from './atomPlan.js'
 import { classifySegmentVoices, SPEAKER_VOICES } from './speakerVoice.js'
+import { mergeSlotsIntoCadence, slotsByPlatformFromCadence } from './cadenceSlots.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -75,21 +76,44 @@ function sb(path, init = {}) {
 }
 
 /**
- * How many Reels this workspace wants per week.
- * An explicit cadence_policy.channels.instagram_reel.target_per_week always
- * wins (including an explicit 0, which is how a workspace opts out entirely);
- * otherwise derive it from the Instagram target.
+ * How many of this workspace's weekly Instagram posts should be Reels.
+ *
+ * The Reel target is a SUBSET of the Instagram target, never an addition: "3 of
+ * your 4 Instagram posts are Reels", not "3 Reels on top of 4 posts". That is
+ * why it lives in cadence_policy.FORMATS rather than in cadence_policy.channels
+ * — channels are summed to get the week's total (planGaps in
+ * producer/needs-you.js), so a reel key there would inflate the week to 7 and
+ * make /week report a phantom permanent shortfall.
+ *
+ * Resolution order:
+ *   1. formats.reel.target_per_week — an explicit setting, including an
+ *      explicit 0, which is how a workspace turns auto-drafted Reels off.
+ *   2. channels.instagram_reel.target_per_week — legacy, read-only. The
+ *      sanitizer strips this key on save, so it only exists on rows written
+ *      before formats existed. Kept so those rows keep their meaning.
+ *   3. Derived: DEFAULT_REEL_SHARE of the Instagram target (Q's call: 3 of 4).
+ *
+ * Always clamped to the Instagram target — a subset can never exceed its set.
  */
 export function reelTargetForWorkspace(ws) {
-  const channels = ws?.cadence_policy?.channels || {}
-  const explicit = channels.instagram_reel
-  if (explicit && typeof explicit.target_per_week === 'number') {
-    return explicit.enabled === false ? 0 : Math.max(0, Math.round(explicit.target_per_week))
-  }
+  const policy = ws?.cadence_policy || {}
+  const channels = policy.channels || {}
   const ig = channels.instagram
   // No Instagram cadence at all means Instagram isn't a channel here — no reels.
-  if (!ig || ig.enabled === false) return 0
-  const igTarget = Math.max(0, Number(ig.target_per_week) || 0)
+  const igEnabled = ig && ig.enabled !== false
+  const igTarget = igEnabled ? Math.max(0, Number(ig.target_per_week) || 0) : 0
+
+  const explicit = policy.formats?.reel
+  if (explicit && typeof explicit.target_per_week === 'number') {
+    return Math.min(igTarget, Math.max(0, Math.round(explicit.target_per_week)))
+  }
+
+  const legacy = channels.instagram_reel
+  if (legacy && typeof legacy.target_per_week === 'number') {
+    if (legacy.enabled === false) return 0
+    return Math.min(igTarget, Math.max(0, Math.round(legacy.target_per_week)))
+  }
+
   if (!igTarget) return 0
   return Math.min(igTarget, Math.max(1, Math.round(igTarget * DEFAULT_REEL_SHARE)))
 }
@@ -416,10 +440,15 @@ export async function fillReelSlots({ ws, weekMonday }) {
   if (!atomRows.length) return { target, existing, rendered: 0, failed, shortfall: gap }
 
   // Reuse the Strategist's own slot assigner so reels land on the same best-hour
-  // grid as everything else and respect the workspace's quiet days.
+  // grid as everything else and respect the workspace's quiet days. T3: place
+  // into the workspace's pinned Instagram slots (reel-format ones specifically
+  // — assignToPinnedSlots matches by atom.format) when present, falling back
+  // to a computed default otherwise, same as the weekly planner.
   const quietDays = Array.isArray(ws.cadence_policy?.quiet_days) ? ws.cadence_policy.quiet_days : []
   const timezone = ws.cadence_policy?.timezone || 'UTC'
-  const scheduled = assignSlots(atomRows, weekMonday, quietDays, timezone)
+  const channels = ws.cadence_policy?.channels || {}
+  const slotsByPlatform = slotsByPlatformFromCadence(mergeSlotsIntoCadence(channels, channels, quietDays))
+  const scheduled = assignSlots(atomRows, weekMonday, quietDays, timezone, slotsByPlatform)
 
   const insertRes = await sb('content_plan_atoms', {
     method: 'POST',

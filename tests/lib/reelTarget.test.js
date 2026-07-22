@@ -50,3 +50,41 @@ describe('reelTargetForWorkspace', () => {
     expect(reelTargetForWorkspace(null)).toBe(0)
   })
 })
+
+describe('reelTargetForWorkspace — formats namespace', () => {
+  const wsf = (channels, formats) => ({ cadence_policy: { channels, formats } })
+  const IG4 = { instagram: { target_per_week: 4, enabled: true } }
+
+  it('an explicit formats.reel target wins over the derived share', () => {
+    expect(reelTargetForWorkspace(wsf(IG4, { reel: { target_per_week: 2 } }))).toBe(2)
+  })
+
+  it('an explicit 0 in formats turns auto-drafted Reels off', () => {
+    expect(reelTargetForWorkspace(wsf(IG4, { reel: { target_per_week: 0 } }))).toBe(0)
+  })
+
+  it('clamps the reel target to the Instagram target — a subset cannot exceed its set', () => {
+    // The whole reason formats is separate from channels: reels come OUT of the
+    // Instagram allowance, they are not added on top of it.
+    expect(reelTargetForWorkspace(wsf(IG4, { reel: { target_per_week: 9 } }))).toBe(4)
+  })
+
+  it('formats wins over the legacy channels.instagram_reel key', () => {
+    expect(
+      reelTargetForWorkspace({
+        cadence_policy: {
+          channels: { ...IG4, instagram_reel: { target_per_week: 1 } },
+          formats: { reel: { target_per_week: 3 } },
+        },
+      }),
+    ).toBe(3)
+  })
+
+  it('still honours a legacy channels.instagram_reel row written before formats existed', () => {
+    expect(reelTargetForWorkspace(wsf({ ...IG4, instagram_reel: { target_per_week: 1 } }, undefined))).toBe(1)
+  })
+
+  it('returns 0 when Instagram is off, whatever formats says', () => {
+    expect(reelTargetForWorkspace(wsf({ instagram: { target_per_week: 4, enabled: false } }, { reel: { target_per_week: 3 } }))).toBe(0)
+  })
+})

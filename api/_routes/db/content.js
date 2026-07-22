@@ -347,6 +347,13 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           scheduled_at: patch.scheduledAt,
           plan_week: planWeek,
+          // T3: a piece actively being scheduled can no longer be "held"
+          // backlog — without this, an atom scheduled through this path
+          // (rather than the dedicated /assign-slot endpoint) kept held_at
+          // set, so it stayed on the backlog list even though it now has a
+          // real slot. Only on an actual (non-null) scheduledAt — unscheduling
+          // isn't a hold action, so it leaves held_at untouched.
+          ...(patch.scheduledAt ? { held_at: null } : {}),
           updated_at: new Date().toISOString(),
         }),
         headers: { Prefer: 'return=minimal' },

@@ -11,6 +11,7 @@ import { composeWeeklyPlan, RECOMMENDED_CADENCE, mondayOf } from './strategist.j
 import { getCadencePrior, computeCadenceChannels } from './cadenceDefaults.js'
 import { getActiveCampaigns, campaignWeight } from './activeCampaigns.js'
 import { applyExplorationSlots, computeDayProposal } from './cadenceAdaptive.js'
+import { mergeSlotsIntoCadence, withExplorationSlot } from './cadenceSlots.js'
 
 // P3 promo lane: how much of the feed campaign-attributed pieces may claim.
 // Ramps with event proximity — a far-off (or evergreen) campaign gets the floor,
@@ -140,6 +141,23 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
   const configuredQuietDays = policy?.quiet_days || ['sat', 'sun']
   const dismissedDays = policy?.day_time_dismissed || []
   const { effectiveQuietDays, exploring } = applyExplorationSlots(configuredQuietDays, dismissedDays, weekMonday)
+
+  // T3: attach each channel's pinned posting slots (persisted, or a computed
+  // default when absent) — orthogonal to the Auto/Manual/Adaptive "how many"
+  // resolution above, since Auto mode recomputes `cadence` fresh every call
+  // and never itself carries slots. Uses the CONFIGURED quiet days (not
+  // effectiveQuietDays) so a channel's default slot layout stays stable week
+  // to week rather than shifting with T4's weekly exploration rotation. See
+  // cadenceSlots.js.
+  cadence = mergeSlotsIntoCadence(cadence, policy?.channels || {}, configuredQuietDays)
+
+  // T4's exploration mechanism assumes a channel falls back to assignSlots'
+  // legacy even-spread (which honors effectiveQuietDays) — but a channel with
+  // PINNED slots (the common case after the T3 seed) ignores quietDays
+  // entirely and would never place anything on the exploring day. Inject a
+  // real, ephemeral (never persisted) exploration slot so pinned-slot
+  // channels participate in exploration too.
+  if (exploring) cadence = withExplorationSlot(cadence, exploring)
 
   return { interviews, cadence, quietDays: effectiveQuietDays, exploring, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, backlog }
 }
