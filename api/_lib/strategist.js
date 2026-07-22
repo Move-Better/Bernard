@@ -16,6 +16,7 @@
 
 import { z } from 'zod'
 import { ATOM_DEFINITIONS, defaultFormatForPlatform } from './atomPlan.js'
+import { slotsByPlatformFromCadence } from './cadenceSlots.js'
 
 // One planned piece as the Strategist must return it. `brief` is REQUIRED and
 // non-empty — the whole point of the schema over a hand-parsed array is that the
@@ -59,7 +60,7 @@ const WEEKDAY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 // Uses a single-pass Intl probe: start with the naive UTC candidate, check
 // what local hour that produces, then nudge by the delta. ±1h DST boundary
 // error is acceptable for scheduling purposes.
-function dateAtLocalHour(weekMonday, localHour, tzName) {
+export function dateAtLocalHour(weekMonday, localHour, tzName) {
   try {
     // Candidate: treat localHour as UTC (off by the tz offset)
     const [yr, mo, dy] = weekMonday.split('-').map(Number)
@@ -124,7 +125,12 @@ export function mondayOf(date, tz) {
 }
 
 // Spread N this-week pieces of a channel across the non-quiet weekdays, stamping
-// scheduled_at at the channel's best LOCAL hour converted to UTC. Pure.
+// scheduled_at at the channel's best LOCAL hour converted to UTC. Pure. This is
+// the LEGACY path — used only when the channel has no pinned slots at all (see
+// assignToPinnedSlots below), which after the T3 migration should be rare
+// (every enabled channel gets a computed-or-persisted slot list — see
+// cadenceSlots.js) but is kept as a fallback so a channel that somehow has an
+// empty slots array still schedules something rather than silently dropping.
 //
 // Each platform has a single fixed best-hour, so two pieces landing on the same
 // weekday must get DIFFERENT hours or they collapse to an identical scheduled_at
@@ -135,41 +141,103 @@ export function mondayOf(date, tz) {
 //   • target > open days → wrap across the open days with `i % openOffsets.length`
 //     (multiple-per-day is intentional), and bump the hour by the wrap count so
 //     same-day pieces get distinct hours and never share a (day, hour) slot.
-export function assignSlots(atoms, weekMonday, quietDays, timezone = 'UTC') {
+function assignEvenSpread(list, platform, weekMonday, openOffsets, timezone) {
+  const baseHour = BEST_HOUR[platform] ?? 11
+  list.forEach((a, i) => {
+    let off, hourBump
+    if (!openOffsets.length) {
+      off = 0
+      hourBump = 0
+    } else if (list.length <= openOffsets.length) {
+      // Fewer pieces than open days: step evenly across them. Indices are
+      // distinct for i in [0, list.length), so no two share a day.
+      off = openOffsets[Math.round((i * (openOffsets.length - 1)) / Math.max(1, list.length - 1))]
+      hourBump = 0
+    } else {
+      // More pieces than open days: wrap, and bump the hour on each full wrap so
+      // two pieces on the same weekday land at different hours.
+      off = openOffsets[i % openOffsets.length]
+      hourBump = Math.floor(i / openOffsets.length) * 2
+    }
+    // Clamp into a sane posting window. ponytail: re-collision is only possible
+    // at unrealistic per-platform volumes (>~7 pieces/day past the clamp); the
+    // weekly cadence target keeps `hourBump` ≤ ~4 in practice.
+    const localHour = Math.min(baseHour + hourBump, 22)
+    // Compute the calendar date for this offset from weekMonday.
+    const [yr, mo, dy] = weekMonday.split('-').map(Number)
+    const dayDate = new Date(Date.UTC(yr, mo - 1, dy + off))
+    const dayStr = dayDate.toISOString().slice(0, 10)
+    const d = dateAtLocalHour(dayStr, localHour, timezone)
+    a.scheduled_at = d.toISOString()
+  })
+}
+
+// T3 — place atoms INTO a channel's pinned slots (persisted or
+// cadenceSlots.js-computed) instead of inventing a day/time fresh every run.
+// `pinnedSlots` is `[{weekday, hour, format, enabled}]`, already filtered to
+// enabled !== false by the caller.
+//
+// Matching is by FORMAT first (a reel atom must land on a reel slot, not a
+// post slot — Instagram is the platform where this matters, since one channel
+// key carries both). Falls back to 'post' slots, then any slot at all, rather
+// than leaving an atom unscheduled — a slot list missing the exact format it
+// needs (e.g. a workspace whose Instagram slots are all 'post', no 'reel' yet)
+// should still place the piece somewhere on the calendar.
+//
+// More atoms than matching slots: cycle through the slots (same weekday/hour
+// reused) and nudge the minute on each wrap so repeated cycles don't collapse
+// onto an identical scheduled_at.
+function assignToPinnedSlots(list, pinnedSlots, weekMonday, timezone) {
+  const byFormat = {}
+  for (const s of pinnedSlots) (byFormat[s.format || 'post'] ||= []).push(s)
+  const byWeekdayHour = (a, b) => {
+    const ao = (WEEKDAY.indexOf(a.weekday) + 6) % 7
+    const bo = (WEEKDAY.indexOf(b.weekday) + 6) % 7
+    return ao - bo || a.hour - b.hour
+  }
+  for (const arr of Object.values(byFormat)) arr.sort(byWeekdayHour)
+
+  list.forEach((a, i) => {
+    const fmt = a.format || 'post'
+    const slots = byFormat[fmt]?.length ? byFormat[fmt] : (byFormat.post?.length ? byFormat.post : pinnedSlots)
+    if (!slots.length) return // caller only invokes this branch when pinnedSlots is non-empty
+    const idx = i % slots.length
+    const wrap = Math.floor(i / slots.length)
+    const slot = slots[idx]
+    const monOffset = (WEEKDAY.indexOf(slot.weekday) + 6) % 7
+    const [yr, mo, dy] = weekMonday.split('-').map(Number)
+    const dayDate = new Date(Date.UTC(yr, mo - 1, dy + monOffset))
+    const dayStr = dayDate.toISOString().slice(0, 10)
+    const d = dateAtLocalHour(dayStr, slot.hour, timezone)
+    if (wrap > 0) d.setUTCMinutes(d.getUTCMinutes() + wrap * 5)
+    a.scheduled_at = d.toISOString()
+  })
+}
+
+/**
+ * Assign scheduled_at to each atom, grouped by platform.
+ *
+ * `slotsByPlatform` — optional `{ [platform]: [{weekday,hour,format,enabled}] }`
+ * (build one from a slots-carrying cadence object with
+ * cadenceSlots.js's slotsByPlatformFromCadence). When a platform has a
+ * non-empty entry, atoms are placed INTO those pinned slots
+ * (assignToPinnedSlots); otherwise they fall back to the legacy even-spread
+ * computation (assignEvenSpread) so a caller that doesn't pass slots — or a
+ * platform cadenceSlots.js couldn't derive any for — still schedules.
+ */
+export function assignSlots(atoms, weekMonday, quietDays, timezone = 'UTC', slotsByPlatform = null) {
   const quiet = new Set((quietDays || []).map((q) => q.toLowerCase()))
   // Candidate weekday offsets (Mon..Sun = 0..6) that aren't quiet.
   const openOffsets = [0, 1, 2, 3, 4, 5, 6].filter((off) => !quiet.has(WEEKDAY[(off + 1) % 7]))
   const byChannel = {}
   for (const a of atoms) (byChannel[a.platform] ||= []).push(a)
   for (const [platform, list] of Object.entries(byChannel)) {
-    const baseHour = BEST_HOUR[platform] ?? 11
-    list.forEach((a, i) => {
-      let off, hourBump
-      if (!openOffsets.length) {
-        off = 0
-        hourBump = 0
-      } else if (list.length <= openOffsets.length) {
-        // Fewer pieces than open days: step evenly across them. Indices are
-        // distinct for i in [0, list.length), so no two share a day.
-        off = openOffsets[Math.round((i * (openOffsets.length - 1)) / Math.max(1, list.length - 1))]
-        hourBump = 0
-      } else {
-        // More pieces than open days: wrap, and bump the hour on each full wrap so
-        // two pieces on the same weekday land at different hours.
-        off = openOffsets[i % openOffsets.length]
-        hourBump = Math.floor(i / openOffsets.length) * 2
-      }
-      // Clamp into a sane posting window. ponytail: re-collision is only possible
-      // at unrealistic per-platform volumes (>~7 pieces/day past the clamp); the
-      // weekly cadence target keeps `hourBump` ≤ ~4 in practice.
-      const localHour = Math.min(baseHour + hourBump, 22)
-      // Compute the calendar date for this offset from weekMonday.
-      const [yr, mo, dy] = weekMonday.split('-').map(Number)
-      const dayDate = new Date(Date.UTC(yr, mo - 1, dy + off))
-      const dayStr = dayDate.toISOString().slice(0, 10)
-      const d = dateAtLocalHour(dayStr, localHour, timezone)
-      a.scheduled_at = d.toISOString()
-    })
+    const pinned = (slotsByPlatform?.[platform] || []).filter((s) => s?.enabled !== false)
+    if (pinned.length) {
+      assignToPinnedSlots(list, pinned, weekMonday, timezone)
+    } else {
+      assignEvenSpread(list, platform, weekMonday, openOffsets, timezone)
+    }
   }
   return atoms
 }
@@ -443,9 +511,13 @@ export async function composeWeeklyPlan({
   const { thisWeek, held, promoted } = allocateToCadence(candidates, cadence, backlogWithPromo, recentRegionCounts, promoShare)
 
   // Materialize this-week + held candidates into atom rows; assign slots to the
-  // this-week set; mark held with held_at=now.
+  // this-week set; mark held with held_at=now. T3: place atoms INTO the
+  // workspace's pinned posting slots (cadence[platform].slots, attached by
+  // getWeekInputs via cadenceSlots.js) instead of recomputing a day/time fresh
+  // every run — a channel with no slots falls back to the legacy even-spread.
   const now = new Date().toISOString()
-  const thisWeekRows = assignSlots(thisWeek.map((c) => toAtomRow(c, { workspaceId, planWeek, palette })), planWeek, quietDays, timezone)
+  const slotsByPlatform = slotsByPlatformFromCadence(cadence)
+  const thisWeekRows = assignSlots(thisWeek.map((c) => toAtomRow(c, { workspaceId, planWeek, palette })), planWeek, quietDays, timezone, slotsByPlatform)
   const heldRows = held.map((c) => ({ ...toAtomRow(c, { workspaceId, planWeek, palette }), held_at: now }))
   // Promoted backlog atoms already exist — they just flip held→this-week.
   const promotedUpdates = assignSlots(
@@ -453,6 +525,7 @@ export async function composeWeeklyPlan({
     planWeek,
     quietDays,
     timezone,
+    slotsByPlatform,
   )
 
   return {

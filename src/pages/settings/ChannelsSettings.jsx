@@ -96,11 +96,17 @@ const FALLBACK_CADENCE_PRIOR = {
 
 // PURE: compute Auto cadence channels from enabled_outputs × prior. Mirrors
 // computeAutoCadenceChannels in api/_lib/cadenceDefaults.js.
-function computeAutoChannels(enabledOutputs, prior) {
+// T3: carries forward each platform's existing `.slots` (posting-schedule
+// tiles, see api/_lib/cadenceSlots.js) from `existingChannels` — this
+// materializes fresh target_per_week/enabled every Auto save, but slots are a
+// separate, human/T4-owned concern that a routine Save must not silently wipe.
+function computeAutoChannels(enabledOutputs, prior, existingChannels = {}) {
   const out = {}
   for (const p of atomPlatformsOf(enabledOutputs)) {
     if (prior?.[p] == null) continue
     out[p] = { target_per_week: prior[p], enabled: true }
+    const slots = existingChannels?.[p]?.slots
+    if (Array.isArray(slots) && slots.length) out[p].slots = slots
   }
   return out
 }
@@ -607,7 +613,7 @@ export default function ChannelsSettings() {
       const policy = form.cadence_policy || DEFAULT_CADENCE_POLICY
       const isAutoPolicy = (policy.provenance ?? 'bernard') !== 'user'
       const cadenceToSave = isAutoPolicy
-        ? { ...policy, channels: computeAutoChannels(form.enabled_outputs, prior) }
+        ? { ...policy, channels: computeAutoChannels(form.enabled_outputs, prior, policy.channels) }
         : policy
       const r = await fetch('/api/workspace/me', {
         method: 'PATCH',
