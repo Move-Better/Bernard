@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { assignSlots } from '../../api/_lib/strategist.js'
-import { defaultSlotsForChannel, mergeSlotsIntoCadence, slotsByPlatformFromCadence } from '../../api/_lib/cadenceSlots.js'
+import { defaultSlotsForChannel, mergeSlotsIntoCadence, slotsByPlatformFromCadence, withExplorationSlot } from '../../api/_lib/cadenceSlots.js'
 
 const WEEK_MONDAY = '2026-06-22' // a Monday
 
@@ -115,6 +115,39 @@ describe('assignSlots — pinned-slot placement (T3)', () => {
     const atoms = [{ id: 'i1', platform: 'instagram' }]
     const [a] = assignSlots(atoms, WEEK_MONDAY, ['sat', 'sun'], 'UTC')
     expect(typeof a.scheduled_at).toBe('string')
+  })
+})
+
+describe('withExplorationSlot — T4 tie-in', () => {
+  const cadence = {
+    linkedin: { target_per_week: 3, enabled: true, slots: [{ weekday: 'mon', hour: 7, format: 'post', enabled: true }] },
+    instagram: { target_per_week: 4, enabled: true, slots: [{ weekday: 'mon', hour: 12, format: 'post', enabled: true }] },
+  }
+
+  it('adds an exploration slot to the highest-target enabled channel', () => {
+    const out = withExplorationSlot(cadence, 'sat')
+    expect(out.instagram.slots.some((s) => s.weekday === 'sat' && s.exploring)).toBe(true)
+    expect(out.linkedin.slots.some((s) => s.weekday === 'sat')).toBe(false)
+  })
+
+  it('uses reel format for instagram, matching the signed-off mockup', () => {
+    const out = withExplorationSlot(cadence, 'sat')
+    const slot = out.instagram.slots.find((s) => s.weekday === 'sat')
+    expect(slot.format).toBe('reel')
+  })
+
+  it('does not duplicate a slot when the day is already covered', () => {
+    const out = withExplorationSlot(cadence, 'mon') // instagram already has a Monday slot
+    expect(out.instagram.slots.filter((s) => s.weekday === 'mon')).toHaveLength(1)
+  })
+
+  it('is a no-op when there is nothing to explore', () => {
+    expect(withExplorationSlot(cadence, null)).toBe(cadence)
+  })
+
+  it('is a no-op when no channel is enabled with a positive target', () => {
+    const empty = { linkedin: { target_per_week: 0, enabled: true } }
+    expect(withExplorationSlot(empty, 'sat')).toBe(empty)
   })
 })
 
