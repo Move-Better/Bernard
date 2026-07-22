@@ -99,7 +99,7 @@ describe('buildStories', () => {
     expect(s.pieces).toEqual([])
     expect(s.pieces_count).toBe(0)
     expect(s.pieces_by_status).toEqual({
-      draft: 0, in_review: 0, approved: 0, scheduled: 0, published: 0, failed: 0,
+      draft: 0, in_review: 0, approved: 0, scheduled: 0, published: 0, failed: 0, rejected: 0,
     })
     expect(s.story_stage).toBe('drafting')
     expect(s.next_scheduled_at).toBeNull()

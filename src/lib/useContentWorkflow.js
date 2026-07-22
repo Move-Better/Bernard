@@ -133,6 +133,26 @@ export function useContentWorkflow(piece) {
     }
   }
 
+  // T4 learning loop — reject with a reason, instead of silently deleting or
+  // ignoring a wrong draft. Terminal state (no undo — a rejected piece stays
+  // as a labeled record so it can feed the weekly "Bernard learned" digest).
+  // `reason` must be one of the fixed enum values the server validates
+  // (api/_routes/db/content.js REJECT_REASONS); `note` is optional free text.
+  const reject = async (reason, note) => {
+    try {
+      await updateStatus.mutateAsync({
+        id: piece.id,
+        status: 'rejected',
+        rejectReason: reason,
+        rejectNote: note?.trim() || undefined,
+      })
+      posthogCapture('draft_rejected', { pieceId: piece.id, platform: piece.platform, reason })
+      toast.success('Rejected', { description: "Thanks — Bernard will factor this in." })
+    } catch (err) {
+      toast.error('Failed to reject', { description: err.message })
+    }
+  }
+
   // Unified publish path. Called with one of:
   //   { scheduledAt: Date } — schedule at specific time (customScheduled)
   //   { useQueue: true }    — add to Buffer's queue (shareNext)
@@ -331,6 +351,7 @@ export function useContentWorkflow(piece) {
     sendForReview,
     approve,
     unapprove,
+    reject,
     publish,
     sendToBeehiiv,
     cancelScheduled,

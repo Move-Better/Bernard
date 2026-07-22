@@ -21,7 +21,9 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 // Allowlists for query-param values interpolated into PostgREST query strings.
 // Without these, a crafted value like `draft,approved)&limit=10000` would break
 // out of the intended clause and override server-side constraints.
-const VALID_STATUSES  = new Set(['draft', 'in_review', 'approved', 'published', 'scheduled'])
+const VALID_STATUSES  = new Set(['draft', 'in_review', 'approved', 'published', 'scheduled', 'rejected'])
+// T4 learning loop — fixed reason enum for a hard reject (see migration 180).
+const REJECT_REASONS = new Set(['wrong_visuals', 'wrong_words', 'wrong_topic', 'wrong_timing', 'other'])
 const VALID_PLATFORMS = new Set([
   // atom-namespace keys (ATOM_DEFINITIONS in api/_lib/atomPlan.js)
   'instagram', 'linkedin', 'facebook', 'gbp', 'tiktok', 'twitter',
@@ -65,7 +67,7 @@ async function dbErr(res, r, msg = 'Database error', status = 500) {
   return res.status(status).json({ error: msg })
 }
 
-const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,content,overlay_text,slides,text_card,status,publish_error,scheduled_at,published_at,media_urls,platform_post_id,buffer_update_id,resolved_url,target_locations,location_id,location_overrides,notes,reviewed_by,approved_by,approved_at,performed_well,archived_at,hashtag_suggestions,buffer_metrics,buffer_metrics_fetched_at,provenance,voice_fidelity_score,voice_audit,length_preset,series_id,series_part,series_total,photo_treatment,photo_composite_url,photo_template_id,aspect_ratio,seo_title,meta_description,created_at,updated_at'
+const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,content,overlay_text,slides,text_card,status,publish_error,scheduled_at,published_at,media_urls,platform_post_id,buffer_update_id,resolved_url,target_locations,location_id,location_overrides,notes,reviewed_by,approved_by,approved_at,reject_reason,reject_note,rejected_at,rejected_by,performed_well,archived_at,hashtag_suggestions,buffer_metrics,buffer_metrics_fetched_at,provenance,voice_fidelity_score,voice_audit,length_preset,series_id,series_part,series_total,photo_treatment,photo_composite_url,photo_template_id,aspect_ratio,seo_title,meta_description,created_at,updated_at'
 
 // Slim shape for the Stories list (Cards / Pipeline / Calendar / Themes views).
 // Drops heavy columns (`content`, `media_urls`, `buffer_metrics`, `notes`, etc.)
@@ -245,6 +247,11 @@ export default async function handler(req, res) {
     const patch = req.body || {}
 
     if (patch.status !== undefined && !VALID_STATUSES.has(patch.status)) return err(res, 'Invalid status', 400)
+    // T4 learning loop — a reject must always carry a reason from the fixed
+    // enum, or the whole point (capturing WHY) is lost. Note is optional.
+    if (patch.status === 'rejected' && !REJECT_REASONS.has(patch.rejectReason)) {
+      return err(res, 'Invalid rejectReason', 400)
+    }
     if (patch.locationId && !UUID_RE.test(patch.locationId)) return err(res, 'Invalid locationId', 400)
     if (patch.targetLocations !== undefined && patch.targetLocations !== null) {
       if (!Array.isArray(patch.targetLocations) || !patch.targetLocations.every((lid) => UUID_RE.test(String(lid)))) {
@@ -288,16 +295,23 @@ export default async function handler(req, res) {
       aspect_ratio:           patch.aspectRatio,
       seo_title:              patch.seoTitle,
       meta_description:       patch.metaDescription,
+      reject_reason:          patch.status === 'rejected' ? patch.rejectReason : undefined,
+      reject_note:            patch.status === 'rejected' ? (patch.rejectNote || null) : undefined,
     }
     // Audit fields are server-set only — never accept from the client.
     // approved_by/approved_at are set when status transitions to 'approved';
-    // reviewed_by is set when status transitions to 'in_review'.
+    // reviewed_by is set when status transitions to 'in_review';
+    // rejected_by/rejected_at when status transitions to 'rejected' (T4).
     if (patch.status === 'approved') {
       allowed.approved_by = auth.userId
       allowed.approved_at = new Date().toISOString()
     }
     if (patch.status === 'in_review') {
       allowed.reviewed_by = auth.userId
+    }
+    if (patch.status === 'rejected') {
+      allowed.rejected_by = auth.userId
+      allowed.rejected_at = new Date().toISOString()
     }
     const body = Object.fromEntries(
       Object.entries(allowed).filter(([_k, v]) => v !== undefined)

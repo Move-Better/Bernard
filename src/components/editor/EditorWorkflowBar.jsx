@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Check, CheckCircle2, CalendarClock, ChevronDown, ListPlus, Send,
-  Clock, RotateCcw, XCircle, Lock,
+  Clock, RotateCcw, XCircle, Lock, ThumbsDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useContentWorkflow } from '@/lib/useContentWorkflow'
@@ -140,6 +140,95 @@ function PublishControl({ wf, piece, enabled }) {
   )
 }
 
+// T4 learning loop — reject with a reason instead of silently deleting or
+// ignoring a wrong draft. Reason is required (fixed enum, mirrors the server's
+// REJECT_REASONS in api/_routes/db/content.js); note is an optional detail.
+const REJECT_REASONS = [
+  { value: 'wrong_visuals', label: 'Wrong visuals' },
+  { value: 'wrong_words', label: 'Wrong words' },
+  { value: 'wrong_topic', label: 'Wrong topic' },
+  { value: 'wrong_timing', label: 'Wrong timing' },
+  { value: 'other', label: 'Other' },
+]
+
+function RejectControl({ wf }) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState(null)
+  const [note, setNote] = useState('')
+  const busy = wf.statusPending
+
+  const submit = async () => {
+    if (!reason) return
+    await wf.reject(reason, note)
+    setOpen(false)
+    setReason(null)
+    setNote('')
+  }
+
+  return (
+    <div className="relative inline-flex">
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={busy}
+        onClick={() => setOpen((v) => !v)}
+        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+      >
+        <ThumbsDown className="mr-1.5 h-3.5 w-3.5" />
+        Reject
+      </Button>
+
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label="Close"
+            className="fixed inset-0 z-40 cursor-default"
+            onClick={() => setOpen(false)}
+          />
+          <div className="absolute left-0 z-50 mt-9 w-72 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-lg">
+            <div className="mb-2 text-xs font-semibold text-foreground">Why doesn&rsquo;t this work?</div>
+            <div className="mb-2 flex flex-col gap-1">
+              {REJECT_REASONS.map((r) => (
+                <button
+                  key={r.value}
+                  type="button"
+                  onClick={() => setReason(r.value)}
+                  className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs ${
+                    reason === r.value ? 'bg-accent font-semibold text-foreground' : 'text-muted-foreground hover:bg-accent'
+                  }`}
+                >
+                  <span className={`h-3 w-3 shrink-0 rounded-full border ${reason === r.value ? 'border-primary bg-primary' : 'border-border'}`} />
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Optional note — what would make this right?"
+              rows={2}
+              className="mb-2 w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button
+                size="sm"
+                disabled={!reason || busy}
+                loading={busy}
+                onClick={submit}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Reject
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function MenuItem({ icon: Icon, title, sub, onClick }) {
   return (
     <button
@@ -207,6 +296,31 @@ export default function EditorWorkflowBar({ piece }) {
           Published
           {piece.published_at && (
             <span className="font-normal text-muted-foreground">· {formatWhen(piece.published_at)}</span>
+          )}
+        </span>
+      )}
+
+      {/* Rejected — terminal, but reversible (misclick recovery). T4 learning
+          loop: the reason + note are captured server-side for the weekly
+          "Bernard learned" digest; nothing more to do here. */}
+      {status === 'rejected' && (
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1.5 text-xs font-semibold text-destructive">
+          <ThumbsDown className="h-3.5 w-3.5" />
+          Rejected
+          {piece.reject_reason && (
+            <span className="font-normal opacity-80">
+              · {REJECT_REASONS.find((r) => r.value === piece.reject_reason)?.label || piece.reject_reason}
+            </span>
+          )}
+          {wf.canReview && (
+            <button
+              type="button"
+              onClick={() => wf.updateStatus.mutateAsync({ id: piece.id, status: wf.skipReview ? 'draft' : 'in_review' })}
+              disabled={wf.statusPending}
+              className="ml-0.5 font-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
+            >
+              restore to draft
+            </button>
           )}
         </span>
       )}
@@ -294,6 +408,7 @@ export default function EditorWorkflowBar({ piece }) {
             {!wf.statusPending && <Check className="mr-1.5 h-3.5 w-3.5" />}
             Approve
           </Button>
+          <RejectControl wf={wf} />
           <PublishControl wf={wf} piece={piece} enabled={false} />
         </>
       )}
@@ -301,6 +416,7 @@ export default function EditorWorkflowBar({ piece }) {
       {/* Review-workflow shops: a draft goes to a reviewer first */}
       {!canApproveNow && canSendForReview && (
         <>
+          <RejectControl wf={wf} />
           <Button
             size="sm"
             variant="outline"

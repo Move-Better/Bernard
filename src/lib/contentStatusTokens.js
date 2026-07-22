@@ -17,6 +17,7 @@ export const CONTENT_STATUS_TOKENS = {
   scheduled: { label: 'Scheduled',           badge: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', accent: 'border-scheduled/30' },
   published: { label: 'Published',           badge: 'bg-success/10 text-success',      accent: 'border-success/30'  },
   failed:    { label: 'Failed',              badge: 'bg-destructive/10 text-destructive', accent: 'border-destructive/30' },
+  rejected:  { label: 'Rejected',            badge: 'bg-destructive/10 text-destructive', accent: 'border-destructive/30' },
 }
 
 /** @param {string} status @returns {{ label: string, badge: string, accent: string }} */

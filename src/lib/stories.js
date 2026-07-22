@@ -68,10 +68,10 @@ function summarizePiece(row) {
   }
 }
 
-const PIECE_STATUS_BUCKETS = ['draft', 'in_review', 'approved', 'scheduled', 'published', 'failed']
+const PIECE_STATUS_BUCKETS = ['draft', 'in_review', 'approved', 'scheduled', 'published', 'failed', 'rejected']
 
 function emptyStatusBuckets() {
-  return { draft: 0, in_review: 0, approved: 0, scheduled: 0, published: 0, failed: 0 }
+  return { draft: 0, in_review: 0, approved: 0, scheduled: 0, published: 0, failed: 0, rejected: 0 }
 }
 
 function maxTimestamp(values) {

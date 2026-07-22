@@ -12,7 +12,7 @@ import {
   Instagram, Facebook, Linkedin, FileText, Mail,
   MapPin, Clock, CheckCircle2, Send, CalendarDays,
   MousePointer2, LayoutTemplate, Youtube, Music2, Megaphone,
-  Archive, AlertTriangle, Twitter, AtSign, Cloud, Hash,
+  Archive, AlertTriangle, Twitter, AtSign, Cloud, Hash, ThumbsDown,
 } from 'lucide-react'
 
 // CANONICAL platform registry — the single source of truth for per-platform
@@ -91,6 +91,7 @@ export const STATUS_META = {
   scheduled:  { label: 'Scheduled',  color: 'bg-[hsl(var(--scheduled)/0.12)] text-scheduled', icon: CalendarDays },
   published:  { label: 'Published',  color: 'bg-success/10 text-success', icon: Send },
   failed:     { label: 'Failed',     color: 'bg-destructive/10 text-destructive', icon: AlertTriangle },
+  rejected:   { label: 'Rejected',   color: 'bg-destructive/10 text-destructive', icon: ThumbsDown },
   archived:   { label: 'Archived',   color: 'bg-muted text-muted-foreground', icon: Archive },
 }
 
