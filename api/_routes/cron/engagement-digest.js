@@ -116,7 +116,7 @@ async function handler(req, res) {
       //                   query would have missed. Anything older than 30
       //                   days is assumed effectively abandoned.
       const triageWindow = isoDaysAgo(30)
-      const [publishedRes, weekPackageRes, triagePoolRes, queuedRes] = await Promise.all([
+      const [publishedRes, weekPackageRes, triagePoolRes, queuedRes, rejectedRes, editDiffRes] = await Promise.all([
         sb(
           `content_items?workspace_id=eq.${ws.id}` +
           `&published_at=gte.${encodeURIComponent(weekStart)}` +
@@ -139,12 +139,27 @@ async function handler(req, res) {
           `&select=id,topic,similarity,staff_id,created_at` +
           `&order=created_at.desc&limit=20`
         ),
+        // T4 learning loop — "what Bernard learned" this week.
+        sb(
+          `content_items?workspace_id=eq.${ws.id}` +
+          `&rejected_at=gte.${encodeURIComponent(weekStart)}` +
+          `&select=id,topic,platform,reject_reason,reject_note,rejected_at` +
+          `&order=rejected_at.desc&limit=50`
+        ),
+        sb(
+          `content_items?workspace_id=eq.${ws.id}` +
+          `&approved_at=gte.${encodeURIComponent(weekStart)}&edit_diff=not.is.null` +
+          `&select=id,topic,platform,edit_diff,approved_at` +
+          `&order=approved_at.desc&limit=50`
+        ),
       ])
 
       const published    = publishedRes.ok    ? await publishedRes.json()    : []
       const weekPackages = weekPackageRes.ok  ? await weekPackageRes.json()  : []
       const triagePool   = triagePoolRes.ok   ? await triagePoolRes.json()   : []
       const queued       = queuedRes.ok       ? await queuedRes.json()       : []
+      const rejected     = rejectedRes.ok     ? await rejectedRes.json()     : []
+      const editDiffs    = editDiffRes.ok     ? await editDiffRes.json()     : []
 
       // Resolve clinician names for queued packages (small fetch).
       const UUID_RE_DIG = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -231,6 +246,8 @@ async function handler(req, res) {
         momentStats,
         triage,
         queued: queuedWithNames,
+        rejected,
+        editDiffs,
         weekStart,
         weekEnd,
       })
