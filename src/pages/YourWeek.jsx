@@ -345,9 +345,19 @@ function DayPlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approv
   const showOpen = readOnly
     ? (!!item.contentPieceId || !!item.interviewId)
     : (state.action === 'open' || state.action === 'schedule')
+  // Same rule as PlanCard: the body goes where this card's own "Open" goes.
+  const drillHref = showOpen ? drillTo(item) : null
 
   return (
-    <div className="relative flex gap-3.5 overflow-hidden rounded-xl border border-border bg-card p-4 pl-5 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_18px_-12px_rgba(15,23,42,0.24)] transition-shadow hover:shadow-md">
+    <div className={`relative flex gap-3.5 overflow-hidden rounded-xl border border-border bg-card p-4 pl-5 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_18px_-12px_rgba(15,23,42,0.24)] ${drillHref ? 'transition-shadow hover:shadow-md' : ''}`}>
+      {/* Stretched card link — see PlanCard for why an overlay and not a wrapper. */}
+      {drillHref && (
+        <Link
+          to={drillHref}
+          aria-label={`Open ${contentLabel(item)}`}
+          className="absolute inset-0 z-10 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+        />
+      )}
       <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1.5 ${state.rail}`} />
       {/* Media thumbnail — the drafted post's first image (a video shows its
           poster + play badge); a muted placeholder when there's no media yet. */}
@@ -395,7 +405,7 @@ function DayPlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approv
           <span className="text-2xs text-action">{item.voiceFlag ? `Voice flag: ${item.voiceFlag}` : 'Voice — open draft to review'}</span>
         </div>
       )}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="relative z-20 mt-3 flex flex-wrap items-center gap-2">
         {!readOnly && state.action === 'draft' && (
           <button
             type="button"
