@@ -250,15 +250,29 @@ export async function publishAndTrack(item, userId) {
   const dueAt = result.buffer?.scheduledAt || null
   const willBeScheduled = !!item.scheduledAt || !!item.useQueue
 
+  // The bundle path commits the row's status server-side, inside the same
+  // dispatch claim that prevents a double-post, and reports it back here.
+  // Honor it rather than overwriting: bundle has only ACCEPTED the post at this
+  // point (it goes live ~a minute later and confirms by webhook), so writing
+  // 'published' would be a claim we can't back — and it would block the
+  // post.published webhook from ever promoting the row, since that promote is
+  // guarded on status='scheduled'. The Buffer path sends no committedStatus and
+  // keeps its original behaviour untouched.
+  const committedStatus = result.buffer?.committedStatus
+
   await updateContentItem(item.id, {
-    status: willBeScheduled ? 'scheduled' : 'published',
-    publishedAt: willBeScheduled ? null : new Date().toISOString(),
+    ...(committedStatus
+      ? { status: committedStatus, ...(dueAt ? { scheduledAt: dueAt } : {}) }
+      : {
+          status: willBeScheduled ? 'scheduled' : 'published',
+          publishedAt: willBeScheduled ? null : new Date().toISOString(),
+          // When Buffer assigned the slot (queue mode), echo it back to the row
+          // so the calendar shows the right time without a webhook round-trip.
+          ...(item.useQueue && dueAt ? { scheduledAt: dueAt } : {}),
+        }),
     platformPostId: postId,
     bufferUpdateId: result.buffer?.bufferId,
     approvedBy: userId,
-    // When Buffer assigned the slot (queue mode), echo it back to the row so the
-    // calendar shows the right time without waiting for a webhook round-trip.
-    ...(item.useQueue && dueAt ? { scheduledAt: dueAt } : {}),
   })
 
   return result
