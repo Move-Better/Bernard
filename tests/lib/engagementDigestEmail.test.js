@@ -67,4 +67,26 @@ describe('buildDigest — What Bernard learned section (T4)', () => {
     expect(html).toContain('1 draft edited before approving')
     expect(html).not.toContain('X — ')
   })
+
+  it('surfaces a pending day/time cadence proposal (T4 part 3) with a link to Cadence settings', () => {
+    const { html, text } = buildDigest({
+      ...BASE,
+      dayProposal: { day: 'sat', sampleCount: 3, avgScore: 340, baselineAvgScore: 210, baselineCount: 12 },
+    })
+    expect(html).toContain('What Bernard learned')
+    expect(html).toContain('Saturday is quiet, but worth a look')
+    expect(html).toContain('340')
+    expect(html).toContain('210')
+    expect(html).toContain('https://movebetter.withbernard.ai/settings/workspace/channels')
+    expect(text).toContain('Cadence proposal: Saturday — 340 vs 210 baseline')
+  })
+
+  it('renders the day-proposal callout even when nothing was rejected or edited this week', () => {
+    const { html } = buildDigest({
+      ...BASE,
+      dayProposal: { day: 'sun', sampleCount: 3, avgScore: 50, baselineAvgScore: 200, baselineCount: 10 },
+    })
+    expect(html).toContain('What Bernard learned')
+    expect(html).toContain('Sunday is quiet')
+  })
 })

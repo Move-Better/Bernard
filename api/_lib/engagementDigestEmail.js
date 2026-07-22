@@ -57,12 +57,13 @@ function pluralize(n, singular, plural) {
  *   queued:        Array<{ id, topic, similarity?, staff_name?, created_at }>,
  *   rejected:      Array<{ id, topic, platform, reject_reason, reject_note?, rejected_at }>,
  *   editDiffs:     Array<{ id, topic, platform, edit_diff, approved_at }>,
+ *   dayProposal:   null | { day, sampleCount, avgScore, baselineAvgScore, baselineCount },
  *   weekStart:     string  // ISO start of the reporting week
  *   weekEnd:       string  // ISO end of the reporting week
  * }} input
  * @returns {{ subject: string, html: string, text: string }}
  */
-export function buildDigest({ workspace, published, momentStats, triage, queued, rejected = [], editDiffs = [], weekStart, weekEnd }) {
+export function buildDigest({ workspace, published, momentStats, triage, queued, rejected = [], editDiffs = [], dayProposal = null, weekStart, weekEnd }) {
   const wsName = workspace.display_name || workspace.name || 'your workspace'
   const accent = (workspace.colors?.primary) || '#e36525'
   const ribbonGradient = `linear-gradient(135deg, ${accent}, ${shade(accent, -22)})`
@@ -108,7 +109,7 @@ export function buildDigest({ workspace, published, momentStats, triage, queued,
         ${section('Published last week', publishedSection(published, baseUrl))}
         ${section('Ready for your review', queuedSection(queued, momentsUrl, queuedCount))}
         ${triageTotal > 0 ? section('Triage queue', triageSection(triage, momentsUrl)) : ''}
-        ${(rejected.length > 0 || editDiffs.length > 0) ? section('What Bernard learned', learnedSection(rejected, editDiffs)) : ''}
+        ${(rejected.length > 0 || editDiffs.length > 0 || dayProposal) ? section('What Bernard learned', learnedSection(rejected, editDiffs, dayProposal, baseUrl)) : ''}
         ${section('Moment Miner this week', momentRecap(momentStats))}
 
         <!-- CTA -->
@@ -141,6 +142,7 @@ export function buildDigest({ workspace, published, momentStats, triage, queued,
     `Need attention (triage): ${triageTotal}`,
     ...(rejected.length > 0 ? [`Rejected: ${rejected.length}`] : []),
     ...(editDiffs.length > 0 ? [`Edited before approving: ${editDiffs.length}`] : []),
+    ...(dayProposal ? [`Cadence proposal: ${DAY_FULL_LABEL[dayProposal.day] || dayProposal.day} — ${dayProposal.avgScore} vs ${dayProposal.baselineAvgScore} baseline`] : []),
     ``,
     `Open Moment Miner: ${momentsUrl}`,
   ].join('\n')
@@ -212,11 +214,15 @@ function triageSection(triage, momentsUrl) {
     </div>`
 }
 
-// T4 learning loop — reject reasons (grouped + counted) and a few edit-diff
-// highlights. Day/time cadence proposals (T4 part 3) are a separate,
-// not-yet-built callout — this section covers the reject + edit-diff signal
-// only (see .claude/decisions.md 2026-07-21 T4 scoping).
-function learnedSection(rejected, editDiffs) {
+const DAY_FULL_LABEL = {
+  sun: 'Sunday', mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday',
+  thu: 'Thursday', fri: 'Friday', sat: 'Saturday',
+}
+
+// T4 learning loop — reject reasons (grouped + counted), edit-diff
+// highlights, and a pending day/time cadence proposal (T4 part 3) if one is
+// waiting for a decision.
+function learnedSection(rejected, editDiffs, dayProposal, baseUrl) {
   const parts = []
 
   if (rejected.length > 0) {
@@ -253,6 +259,16 @@ function learnedSection(rejected, editDiffs) {
           ${escapeHtml(it.topic || it.platform || '')} — ${escapeHtml(summary)}
         </div>`)
     }
+  }
+
+  if (dayProposal) {
+    const dayLabel = DAY_FULL_LABEL[dayProposal.day] || dayProposal.day
+    const cadenceUrl = `${baseUrl}/settings/workspace/channels`
+    parts.push(`
+      <div style="background:#fef7f0;border:1px solid #f5d9b3;border-radius:8px;padding:11px 14px;font-size:13px;color:#7c2d12;margin-top:${(rejected.length > 0 || editDiffs.length > 0) ? 10 : 0}px;">
+        <strong>${escapeHtml(dayLabel)} is quiet, but worth a look</strong> — Bernard's test posts there (${dayProposal.sampleCount}) averaged ${dayProposal.avgScore} engagement vs. ${dayProposal.baselineAvgScore} on your open days.
+        <a href="${escapeHtml(cadenceUrl)}" style="color:#7c2d12;font-weight:600;">Review in Cadence settings</a>
+      </div>`)
   }
 
   return parts.join('')
