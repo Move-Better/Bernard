@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { UserButton, useAuth, useClerk } from '@clerk/react'
+import { UserButton, useAuth, useClerk, useUser } from '@clerk/react'
 import { useQuery } from '@tanstack/react-query'
 import CommandPalette from '@/components/CommandPalette'
 import { useSelfStaffId } from '@/lib/useSelfStaffId'
@@ -461,6 +461,30 @@ function WorkspaceSwitcher({ inSidebar = false }) {
   const { isSignedIn, getToken } = useAuth()
   const { setActive } = useClerk()
 
+  // This component renders nothing for a user who belongs to a single workspace
+  // (the length <= 1 bail below) — but we used to spend a full round trip
+  // discovering that on EVERY page load of EVERY route, since the switcher
+  // lives in the app shell. /api/workspace/list makes a Clerk membership API
+  // call plus a Supabase query (~400ms warm, multiple seconds when the function
+  // is cold), and for a single-workspace tenant every bit of it is discarded.
+  //
+  // Clerk's user object already carries organizationMemberships and is fully
+  // loaded before the shell renders (App.jsx blocks on isLoaded), so the count
+  // costs nothing. Verified on prod 2026-07-22: clerk_org_id -> workspace is
+  // strictly 1:1 (7 active workspaces, 7 distinct orgs, none with more than
+  // one), so fewer than 2 memberships means there is nothing to switch between
+  // and the request cannot change what renders.
+  //
+  // If organizationMemberships is missing (Clerk shape change, not yet
+  // materialized), orgCount is undefined and we still fetch — an unexpected
+  // shape degrades to today's behavior rather than silently hiding the switcher
+  // from someone who needs it.
+  // via the hook, not window.Clerk, so this re-evaluates when Clerk's user
+  // resolves instead of being read once off a non-reactive global.
+  const { user } = useUser()
+  const orgCount = user?.organizationMemberships?.length
+  const couldSwitch = orgCount === undefined || orgCount > 1
+
   const { data: workspaces = [] } = useQuery({
     queryKey: ['workspace-list'],
     queryFn: async () => {
@@ -470,7 +494,7 @@ function WorkspaceSwitcher({ inSidebar = false }) {
       if (!r.ok) return []
       return r.json().catch(() => [])
     },
-    enabled: !!isSignedIn,
+    enabled: !!isSignedIn && couldSwitch,
     staleTime: 5 * 60_000,
     retry: false,
   })
