@@ -36,24 +36,17 @@
 
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
-import { put as blobPut } from '@vercel/blob'
 import { waitUntil } from '@vercel/functions'
 import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
 import { workspaceContext } from '../_lib/workspaceContext.js'
-import { renderVideoChannel } from '../_lib/brandRenderVideo.js'
-import { sliceWordsToWindow } from '../_lib/karaokeCaptions.js'
-import { generateCaption } from '../_lib/captionGen.js'
-import { saveBroll } from '../_lib/saveBroll.js'
-import { createClipDraft } from '../_lib/clipDraft.js'
+// The render body lives in reelFactory so this manual path and the auto-reel
+// cron cannot drift apart — one renderer, one caption, one output shape.
+import { renderSegmentToReel } from '../_lib/reelFactory.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
-
-// One clip → one reel-format b-roll asset. Mirrors the reel editor's
-// DEFAULT_CHANNEL so the AI path and the manual workshop produce the same shape.
-const CLIP_CHANNEL = 'instagram_reel'
 
 async function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -66,121 +59,6 @@ async function sb(path, init = {}) {
       ...init.headers,
     },
   })
-}
-
-/**
- * Render one kept segment into a media_assets b-roll clip, off the request path.
- * Never throws — on failure the segment is reset to 'proposed' so the clinician
- * can re-select and retry, and the error is logged. (video_segments has no
- * per-row error column; reverting to 'proposed' keeps the suggestion intact and
- * re-renderable. A hard-killed render — SIGKILL at the 300s wall — runs no
- * catch, leaving the row stuck in 'rendering'; the sweep-stuck-segment-renders
- * cron resets those to 'proposed' after ~10 min.)
- */
-async function renderSegmentToBroll({ ws, seg, asset, staffName, createDraft = false }) {
-  const startSec = Number(seg.start_sec) || 0
-  const durationSec = Math.max(1, (Number(seg.end_sec) || 0) - startSec)
-  const hook = String(seg.hook || '').slice(0, 500)
-  const transcriptExcerpt = String(seg.transcript_excerpt || '').trim()
-
-  try {
-    // Voice-faithful caption from the segment's OWN transcript + the staff
-    // member's voice phrases. Best-effort: fall back to the hook so a clip never
-    // fails to render because captioning hiccuped.
-    let captionText = hook
-    try {
-      const generated = await generateCaption({
-        topic: hook || 'Clip',
-        clip: {},
-        workspace: ws,
-        staffId: seg.staff_id || null,
-        clipTranscript: transcriptExcerpt,
-      })
-      if (generated && generated.trim()) captionText = generated.trim().slice(0, 500)
-    } catch (e) {
-      console.error('[render-segments] caption gen failed, using hook:', e?.stack || e?.message)
-    }
-
-    // Persisted captions (migration 137): slice the source's stored words to this
-    // segment's window so the render reuses them instead of re-transcribing.
-    const captionWords = Array.isArray(asset.transcript_words) && asset.transcript_words.length
-      ? sliceWordsToWindow(asset.transcript_words, startSec, durationSec)
-      : null
-
-    // Render the ≤60s window as a reel-format clip with the caption burned in.
-    const { buffer, width, height } = await renderVideoChannel({
-      videoUrl: asset.blob_url,
-      channel: CLIP_CHANNEL,
-      captionText,
-      workspace: ws,
-      staffName,
-      startSec,
-      durationSec,
-      subtitles: true,
-      ...(captionWords && captionWords.length ? { captionWords } : {}),
-    })
-
-    const safeFilename = (asset.filename || 'clip')
-      .replace(/[^\w.-]/g, '_')
-      .replace(/\.\w+$/, '')
-    // Key by segment id so multiple segments off one source never clobber.
-    const pathname = `media/clips/${ws.id}/${asset.id}/${seg.id}-${safeFilename}.mp4`
-    const blob = await blobPut(pathname, buffer, {
-      access: 'public',
-      contentType: 'video/mp4',
-      addRandomSuffix: false,
-      allowOverwrite: true,
-    })
-
-    // Insert the b-roll media_assets row (parent_asset_id = source) + index it.
-    const saved = await saveBroll({
-      ws,
-      renders: [{ blobUrl: blob.url, width, height, sizeBytes: buffer.length }],
-      staffId: seg.staff_id || null,
-      notes: `AI clip from asset ${asset.id}${hook ? ` — "${hook.slice(0, 80)}"` : ''}`,
-      parentAssetId: asset.id,
-    })
-    const newAssetId = saved?.[0]?.id || null
-
-    // The missing step: land the rendered reel as an approvable draft, not just
-    // a Library b-roll row. Best-effort — a draft-insert failure must not undo a
-    // successful render (the clip is already saved and re-draftable by hand), so
-    // it is logged and swallowed rather than triggering the reset-to-'proposed'
-    // path below.
-    if (createDraft) {
-      try {
-        const draftId = await createClipDraft({
-          ws,
-          videoUrl: blob.url,
-          assetId: newAssetId,
-          filename: `${safeFilename}.mp4`,
-          durationS: durationSec,
-          caption: captionText,
-          staffId: seg.staff_id || null,
-          platform: 'instagram',
-          notes: `Auto-drafted reel from moment ${seg.id} (asset ${asset.id})`,
-        })
-        if (!draftId) {
-          console.error('[render-segments] draft insert returned no id for segment', seg.id)
-        }
-      } catch (e) {
-        console.error('[render-segments] draft creation failed for segment', seg.id, e?.stack || e?.message)
-      }
-    }
-
-    await sb(`video_segments?id=eq.${seg.id}&workspace_id=eq.${ws.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'rendered', rendered_asset_id: newAssetId }),
-    }).catch(() => {})
-  } catch (e) {
-    console.error('[render-segments] render failed for segment', seg.id, e?.stack || e?.message)
-    // Only reset to 'proposed' if still in 'rendering' state — don't clobber a
-    // user edit (discarded/kept) that arrived during the render window.
-    await sb(`video_segments?id=eq.${seg.id}&workspace_id=eq.${ws.id}&status=eq.rendering`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'proposed' }),
-    }).catch(() => {})
-  }
 }
 
 export default async function handler(req, res) {
@@ -288,7 +166,7 @@ export default async function handler(req, res) {
         async function worker() {
           while (next < toRender.length) {
             const { seg, asset } = toRender[next++]
-            await renderSegmentToBroll({
+            await renderSegmentToReel({
               ws,
               seg,
               asset,
