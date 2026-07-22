@@ -5,11 +5,25 @@
 //   • Moment Miner stats (generated / approved / skipped / failed)
 //   • Triage queue at time-of-send (failed + low-confidence + stale)
 //   • What's queued — complete packages awaiting approval
+//   • What Bernard learned — T4 learning loop: reject reasons + edit-diff
+//     highlights from the last 7 days. An invisible feedback loop stops
+//     getting fed — this section is what makes staff keep giving signal
+//     (see .claude/social-adoption-strategy-2026-07-21.md, disease D4).
 //
 // Keep HTML inline-style only (some email clients strip <style>). Use a
 // container max-width of 600px (standard email-safe width). No external
 // images beyond the workspace logo (which the workspace already serves
 // publicly).
+
+import { summarizeEditDiff } from './editDiffMining.js'
+
+const REASON_LABELS = {
+  wrong_visuals: 'wrong visuals',
+  wrong_words:   'wrong words',
+  wrong_topic:   'wrong topic',
+  wrong_timing:  'wrong timing',
+  other:         'other',
+}
 
 function fmtDate(iso) {
   if (!iso) return ''
@@ -41,12 +55,15 @@ function pluralize(n, singular, plural) {
  *   momentStats:    { generated, approved, skipped, failed, complete_awaiting: number },
  *   triage:        { failed, lowConfidence, stale: number },
  *   queued:        Array<{ id, topic, similarity?, staff_name?, created_at }>,
+ *   rejected:      Array<{ id, topic, platform, reject_reason, reject_note?, rejected_at }>,
+ *   editDiffs:     Array<{ id, topic, platform, edit_diff, approved_at }>,
+ *   dayProposal:   null | { day, sampleCount, avgScore, baselineAvgScore, baselineCount },
  *   weekStart:     string  // ISO start of the reporting week
  *   weekEnd:       string  // ISO end of the reporting week
  * }} input
  * @returns {{ subject: string, html: string, text: string }}
  */
-export function buildDigest({ workspace, published, momentStats, triage, queued, weekStart, weekEnd }) {
+export function buildDigest({ workspace, published, momentStats, triage, queued, rejected = [], editDiffs = [], dayProposal = null, weekStart, weekEnd }) {
   const wsName = workspace.display_name || workspace.name || 'your workspace'
   const accent = (workspace.colors?.primary) || '#e36525'
   const ribbonGradient = `linear-gradient(135deg, ${accent}, ${shade(accent, -22)})`
@@ -92,6 +109,7 @@ export function buildDigest({ workspace, published, momentStats, triage, queued,
         ${section('Published last week', publishedSection(published, baseUrl))}
         ${section('Ready for your review', queuedSection(queued, momentsUrl, queuedCount))}
         ${triageTotal > 0 ? section('Triage queue', triageSection(triage, momentsUrl)) : ''}
+        ${(rejected.length > 0 || editDiffs.length > 0 || dayProposal) ? section('What Bernard learned', learnedSection(rejected, editDiffs, dayProposal, baseUrl)) : ''}
         ${section('Moment Miner this week', momentRecap(momentStats))}
 
         <!-- CTA -->
@@ -122,6 +140,9 @@ export function buildDigest({ workspace, published, momentStats, triage, queued,
     `Approved from Moment Miner: ${momentStats.approved}`,
     `Queued for review: ${queuedCount}`,
     `Need attention (triage): ${triageTotal}`,
+    ...(rejected.length > 0 ? [`Rejected: ${rejected.length}`] : []),
+    ...(editDiffs.length > 0 ? [`Edited before approving: ${editDiffs.length}`] : []),
+    ...(dayProposal ? [`Cadence proposal: ${DAY_FULL_LABEL[dayProposal.day] || dayProposal.day} — ${dayProposal.avgScore} vs ${dayProposal.baselineAvgScore} baseline`] : []),
     ``,
     `Open Moment Miner: ${momentsUrl}`,
   ].join('\n')
@@ -191,6 +212,66 @@ function triageSection(triage, momentsUrl) {
     <div style="background:#fef7f0;border:1px solid #f5d9b3;border-radius:8px;padding:11px 14px;font-size:13px;color:#92400e;">
       ${lines.join(' · ')} — <a href="${escapeHtml(momentsUrl)}?view=triage" style="color:#7c2d12;font-weight:600;">open triage</a>
     </div>`
+}
+
+const DAY_FULL_LABEL = {
+  sun: 'Sunday', mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday',
+  thu: 'Thursday', fri: 'Friday', sat: 'Saturday',
+}
+
+// T4 learning loop — reject reasons (grouped + counted), edit-diff
+// highlights, and a pending day/time cadence proposal (T4 part 3) if one is
+// waiting for a decision.
+function learnedSection(rejected, editDiffs, dayProposal, baseUrl) {
+  const parts = []
+
+  if (rejected.length > 0) {
+    const counts = {}
+    for (const r of rejected) counts[r.reject_reason] = (counts[r.reject_reason] || 0) + 1
+    const reasonLine = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([reason, n]) => `${n} ${REASON_LABELS[reason] || reason}`)
+      .join(', ')
+    parts.push(`
+      <div style="font-size:13px;color:#18181b;line-height:1.5;">
+        <strong>${pluralize(rejected.length, 'draft')} rejected</strong> — ${escapeHtml(reasonLine)}
+      </div>`)
+    for (const ex of rejected.filter((r) => r.reject_note?.trim()).slice(0, 2)) {
+      parts.push(`
+        <div style="font-size:12px;color:#71717a;margin:3px 0 0 12px;">
+          &ldquo;${escapeHtml(ex.reject_note)}&rdquo; — ${escapeHtml(ex.topic || ex.platform || '')}
+        </div>`)
+    }
+  }
+
+  if (editDiffs.length > 0) {
+    parts.push(`
+      <div style="font-size:13px;color:#18181b;line-height:1.5;margin-top:${rejected.length > 0 ? 10 : 0}px;">
+        <strong>${pluralize(editDiffs.length, 'draft')} edited before approving</strong>
+      </div>`)
+    const highlights = editDiffs
+      .map((it) => ({ it, summary: summarizeEditDiff(it.edit_diff) }))
+      .filter((x) => x.summary)
+      .slice(0, 3)
+    for (const { it, summary } of highlights) {
+      parts.push(`
+        <div style="font-size:12px;color:#71717a;margin:3px 0 0 12px;">
+          ${escapeHtml(it.topic || it.platform || '')} — ${escapeHtml(summary)}
+        </div>`)
+    }
+  }
+
+  if (dayProposal) {
+    const dayLabel = DAY_FULL_LABEL[dayProposal.day] || dayProposal.day
+    const cadenceUrl = `${baseUrl}/settings/workspace/channels`
+    parts.push(`
+      <div style="background:#fef7f0;border:1px solid #f5d9b3;border-radius:8px;padding:11px 14px;font-size:13px;color:#7c2d12;margin-top:${(rejected.length > 0 || editDiffs.length > 0) ? 10 : 0}px;">
+        <strong>${escapeHtml(dayLabel)} is quiet, but worth a look</strong> — Bernard's test posts there (${dayProposal.sampleCount}) averaged ${dayProposal.avgScore} engagement vs. ${dayProposal.baselineAvgScore} on your open days.
+        <a href="${escapeHtml(cadenceUrl)}" style="color:#7c2d12;font-weight:600;">Review in Cadence settings</a>
+      </div>`)
+  }
+
+  return parts.join('')
 }
 
 function momentRecap(stats) {

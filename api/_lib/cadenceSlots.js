@@ -152,3 +152,34 @@ export function slotsByPlatformFromCadence(cadence) {
   }
   return out
 }
+
+/**
+ * T4 tie-in — inject a single, EPHEMERAL exploration slot for the given
+ * weekday into the workspace's highest-target enabled channel. Pure, never
+ * persisted: called fresh every planning run from the same call site T4's
+ * applyExplorationSlots() runs from (strategistPlan.js getWeekInputs).
+ *
+ * Why this exists: T4's day/time learner (api/_lib/cadenceAdaptive.js)
+ * un-quiets one rotating day per week by returning an `effectiveQuietDays`
+ * set for that run — a mechanism built around the LEGACY even-spread
+ * scheduler (assignEvenSpread in strategist.js), which honors quietDays. But
+ * a channel with PINNED slots (the common case after the T3 seed) is placed
+ * by assignToPinnedSlots instead, which never consults quietDays at all — so
+ * without this, T4's whole exploration mechanism silently no-ops for any
+ * channel that has persisted slots. This closes that gap by adding a real
+ * slot for the exploring day, matching the signed-off mockup (an "exploration
+ * slot" tile on the highest-volume channel — Instagram Reel for movebetter).
+ *
+ * No-ops if some slot already covers that weekday for the chosen channel
+ * (nothing to explore — it's already a normal posting day there).
+ */
+export function withExplorationSlot(cadence, exploringDay) {
+  if (!exploringDay) return cadence
+  const entries = Object.entries(cadence || {}).filter(([, cfg]) => cfg?.enabled && cfg.target_per_week > 0)
+  if (!entries.length) return cadence
+  const [platform, cfg] = entries.reduce((best, cur) => (cur[1].target_per_week > best[1].target_per_week ? cur : best))
+  if ((cfg.slots || []).some((s) => s.weekday === exploringDay)) return cadence
+  const format = platform === 'instagram' ? 'reel' : defaultFormatForPlatform(platform)
+  const explorationSlot = { weekday: exploringDay, hour: BEST_HOUR[platform] ?? 11, format, enabled: true, exploring: true }
+  return { ...cadence, [platform]: { ...cfg, slots: [...(cfg.slots || []), explorationSlot] } }
+}

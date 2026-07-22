@@ -13,6 +13,7 @@ import { extractConcepts } from '../../_lib/conceptExtractor.js'
 import { extractVoicePhrases } from '../../_lib/voicePhraseExtractor.js'
 import { indexContentItem } from '../../_lib/practiceMemoryRag.js'
 import { mondayOf } from '../../_lib/strategist.js'
+import { computeEditDiff } from '../../_lib/editDiffMining.js'
 import { waitUntil } from '@vercel/functions'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -67,7 +68,7 @@ async function dbErr(res, r, msg = 'Database error', status = 500) {
   return res.status(status).json({ error: msg })
 }
 
-const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,content,overlay_text,slides,text_card,status,publish_error,scheduled_at,published_at,media_urls,platform_post_id,buffer_update_id,resolved_url,target_locations,location_id,location_overrides,notes,reviewed_by,approved_by,approved_at,reject_reason,reject_note,rejected_at,rejected_by,performed_well,archived_at,hashtag_suggestions,buffer_metrics,buffer_metrics_fetched_at,provenance,voice_fidelity_score,voice_audit,length_preset,series_id,series_part,series_total,photo_treatment,photo_composite_url,photo_template_id,aspect_ratio,seo_title,meta_description,created_at,updated_at'
+const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,content,overlay_text,slides,text_card,status,publish_error,scheduled_at,published_at,media_urls,platform_post_id,buffer_update_id,resolved_url,target_locations,location_id,location_overrides,notes,reviewed_by,approved_by,approved_at,reject_reason,reject_note,rejected_at,rejected_by,edit_diff,performed_well,archived_at,hashtag_suggestions,buffer_metrics,buffer_metrics_fetched_at,provenance,voice_fidelity_score,voice_audit,length_preset,series_id,series_part,series_total,photo_treatment,photo_composite_url,photo_template_id,aspect_ratio,seo_title,meta_description,created_at,updated_at'
 
 // Slim shape for the Stories list (Cards / Pipeline / Calendar / Themes views).
 // Drops heavy columns (`content`, `media_urls`, `buffer_metrics`, `notes`, etc.)
@@ -375,6 +376,21 @@ export default async function handler(req, res) {
           staffId: updated.staff_id,
           content:     updated.content,
         }))
+      }
+      // T4 learning loop, part 2 — persist the diff between the AI's original
+      // draft and what staff actually approved. Digest-only today (see
+      // api/_lib/editDiffMining.js); not read by any generation path. Same
+      // fire-and-forget waitUntil discipline as the enrichment calls above —
+      // must never delay the approve response.
+      const editDiff = computeEditDiff(updated.ai_original_content, updated.content)
+      if (editDiff.changed) {
+        waitUntil(
+          sb(`content_items?id=eq.${updated.id}&${wsFilter}`, {
+            method: 'PATCH',
+            headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify({ edit_diff: editDiff }),
+          }).catch((e) => console.error('[db/content] edit_diff persist failed:', e?.message))
+        )
       }
     } else if (updated && patch.status === 'in_review' && patch.notes?.trim() && updated.content?.trim()) {
       // Change request returned — mild negative signal on the rejected draft.

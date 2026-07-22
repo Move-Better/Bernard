@@ -10,7 +10,8 @@
 import { composeWeeklyPlan, RECOMMENDED_CADENCE, mondayOf } from './strategist.js'
 import { getCadencePrior, computeCadenceChannels } from './cadenceDefaults.js'
 import { getActiveCampaigns, campaignWeight } from './activeCampaigns.js'
-import { mergeSlotsIntoCadence } from './cadenceSlots.js'
+import { applyExplorationSlots, computeDayProposal } from './cadenceAdaptive.js'
+import { mergeSlotsIntoCadence, withExplorationSlot } from './cadenceSlots.js'
 
 // P3 promo lane: how much of the feed campaign-attributed pieces may claim.
 // Ramps with event proximity — a far-off (or evergreen) campaign gets the floor,
@@ -128,14 +129,64 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
     cadence = policy?.channels || {}
   }
   if (!cadence || Object.keys(cadence).length === 0) cadence = RECOMMENDED_CADENCE
-  const quietDays = policy?.quiet_days || ['sat', 'sun']
+
+  // T4 learning loop, part 3 — day/time ("when") learning. quiet_days is a
+  // frozen author default that can never self-correct on its own: no weekend
+  // inventory ⇒ no weekend engagement data ⇒ Auto can never learn a weekend
+  // works. applyExplorationSlots() rotates one currently-quiet, not-dismissed
+  // day open per week (deterministically, by weekMonday) so real posts land
+  // there and produce real engagement_snapshots for computeDayProposal()
+  // (called from replanWorkspaceWeek below) to eventually act on. See
+  // api/_lib/cadenceAdaptive.js and .claude/decisions.md 2026-07-21 T4 scoping.
+  const configuredQuietDays = policy?.quiet_days || ['sat', 'sun']
+  const dismissedDays = policy?.day_time_dismissed || []
+  const { effectiveQuietDays, exploring } = applyExplorationSlots(configuredQuietDays, dismissedDays, weekMonday)
+
   // T3: attach each channel's pinned posting slots (persisted, or a computed
   // default when absent) — orthogonal to the Auto/Manual/Adaptive "how many"
   // resolution above, since Auto mode recomputes `cadence` fresh every call
-  // and never itself carries slots. See cadenceSlots.js.
-  cadence = mergeSlotsIntoCadence(cadence, policy?.channels || {}, quietDays)
+  // and never itself carries slots. Uses the CONFIGURED quiet days (not
+  // effectiveQuietDays) so a channel's default slot layout stays stable week
+  // to week rather than shifting with T4's weekly exploration rotation. See
+  // cadenceSlots.js.
+  cadence = mergeSlotsIntoCadence(cadence, policy?.channels || {}, configuredQuietDays)
 
-  return { interviews, cadence, quietDays, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, backlog }
+  // T4's exploration mechanism assumes a channel falls back to assignSlots'
+  // legacy even-spread (which honors effectiveQuietDays) — but a channel with
+  // PINNED slots (the common case after the T3 seed) ignores quietDays
+  // entirely and would never place anything on the exploring day. Inject a
+  // real, ephemeral (never persisted) exploration slot so pinned-slot
+  // channels participate in exploration too.
+  if (exploring) cadence = withExplorationSlot(cadence, exploring)
+
+  return { interviews, cadence, quietDays: effectiveQuietDays, exploring, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, backlog }
+}
+
+// T4 learning loop, part 3 — evaluate whether the workspace's quiet days have
+// accumulated enough exploration evidence to say anything, and persist it as
+// a proposal Q can Accept/Dismiss (Settings → Channels → Cadence). Cheap and
+// idempotent: a no-op once a proposal is already pending, and safe to call on
+// every replan (the interview-completion trigger fires often — see file
+// header). Never throws — a failure here must not block the actual replan.
+async function maybeProposeDayChange({ workspace, sb }) {
+  try {
+    const policy = workspace.cadence_policy || {}
+    if (policy.day_time_proposal) return // already have one pending — don't overwrite
+    const quietDays = policy.quiet_days || ['sat', 'sun']
+    const dismissedDays = policy.day_time_dismissed || []
+    const timezone = policy.timezone || 'America/Los_Angeles'
+    const proposal = await computeDayProposal(workspace.id, quietDays, dismissedDays, timezone, sb)
+    if (!proposal) return
+    const nextPolicy = { ...policy, day_time_proposal: { ...proposal, computed_at: new Date().toISOString() } }
+    const r = await sb(`workspaces?id=eq.${workspace.id}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ cadence_policy: nextPolicy }),
+    })
+    if (!r.ok) console.error('[strategistPlan] day-proposal persist failed:', r.status)
+  } catch (e) {
+    console.error('[strategistPlan] day-proposal check failed:', e?.message)
+  }
 }
 
 /**
@@ -209,16 +260,22 @@ async function persistPlan({ ops, sb = defaultSb, workspaceId }) {
  */
 export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultSb, generate }) {
   const planWeek = weekMonday || mondayOf(new Date().toISOString())
-  const { interviews, cadence, quietDays, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, backlog } = await getWeekInputs({
+  const { interviews, cadence, quietDays, exploring, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, backlog } = await getWeekInputs({
     workspace,
     weekMonday: planWeek,
     sb,
   })
+
+  // T4 learning loop, part 3 — evaluate (and persist, if new) a day/time
+  // proposal from prior weeks' exploration data. Independent of whether THIS
+  // week composes a plan, so it runs before the no-inputs early return.
+  await maybeProposeDayChange({ workspace, sb })
+
   // Compose when there are fresh captures this week OR banked backlog to drip
   // out. A week with no new interviews but a non-empty backlog still produces a
   // plan: allocateToCadence promotes backlog atoms up to each channel's
   // target_per_week, so /week stays populated between capture weeks.
-  if (!interviews.length && !backlog.length) return { weekMonday: planWeek, skipped: 'no-inputs' }
+  if (!interviews.length && !backlog.length) return { weekMonday: planWeek, skipped: 'no-inputs', exploring }
 
   const plan = await composeWeeklyPlan({
     workspaceId: workspace.id,
@@ -250,5 +307,6 @@ export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultS
     ...plan.stats,
     replaced: ops.toDelete.length,
     promoted: ops.toUpdate.length,
+    exploring,
   }
 }

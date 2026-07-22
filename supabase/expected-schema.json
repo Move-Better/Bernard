@@ -268,6 +268,7 @@
     "created_at",
     "dispatch_state",
     "dispatching_at",
+    "edit_diff",
     "gbp_post_name",
     "hashtag_suggestions",
     "held_at",

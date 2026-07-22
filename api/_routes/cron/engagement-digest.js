@@ -25,6 +25,7 @@ import { withSentry } from '../../_lib/sentry.js'
 import { createClerkClient } from '@clerk/backend'
 import { buildDigest } from '../../_lib/engagementDigestEmail.js'
 import { verifyCronSecret } from '../../_lib/auth.js'
+import { computeTrustMetrics } from '../../_lib/trustMetrics.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -81,7 +82,7 @@ async function handler(req, res) {
   const wsRes = await sb(
     'workspaces?engagement_digest_enabled=eq.true&status=eq.active' +
     '&select=id,slug,display_name,name,primary_logo_url,colors,clerk_org_id,' +
-    'engagement_digest_recipients,engagement_digest_last_sent_at'
+    'engagement_digest_recipients,engagement_digest_last_sent_at,cadence_policy'
   )
   if (!wsRes.ok) {
     const text = await wsRes.text().catch(() => '')
@@ -96,6 +97,26 @@ async function handler(req, res) {
 
   for (const ws of workspaces) {
     try {
+      // T4 learning loop — instrument per-lane trust metrics (reject-rate,
+      // edit-rate) independent of whether the digest email itself sends this
+      // run. "Capture the metric now even if graduation ships later" — see
+      // .claude/decisions.md 2026-07-21 T4 scoping. Never blocks the digest:
+      // logged, not thrown, on failure.
+      try {
+        const trustMetrics = await computeTrustMetrics(ws.id, sb)
+        if (Object.keys(trustMetrics).length > 0) {
+          const nextPolicy = { ...(ws.cadence_policy || {}), trust_metrics: trustMetrics }
+          const tmRes = await sb(`workspaces?id=eq.${ws.id}`, {
+            method: 'PATCH',
+            headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify({ cadence_policy: nextPolicy }),
+          })
+          if (tmRes.ok) ws.cadence_policy = nextPolicy
+        }
+      } catch (e) {
+        console.error(`[engagement-digest] trust-metrics failed for ${ws.slug}:`, e?.message)
+      }
+
       // Skip if we sent recently (covers schedule drift / cron rerun).
       const since = daysSince(ws.engagement_digest_last_sent_at)
       if (since < MIN_RESEND_INTERVAL_DAYS) {
@@ -116,7 +137,7 @@ async function handler(req, res) {
       //                   query would have missed. Anything older than 30
       //                   days is assumed effectively abandoned.
       const triageWindow = isoDaysAgo(30)
-      const [publishedRes, weekPackageRes, triagePoolRes, queuedRes] = await Promise.all([
+      const [publishedRes, weekPackageRes, triagePoolRes, queuedRes, rejectedRes, editDiffRes] = await Promise.all([
         sb(
           `content_items?workspace_id=eq.${ws.id}` +
           `&published_at=gte.${encodeURIComponent(weekStart)}` +
@@ -139,12 +160,27 @@ async function handler(req, res) {
           `&select=id,topic,similarity,staff_id,created_at` +
           `&order=created_at.desc&limit=20`
         ),
+        // T4 learning loop — "what Bernard learned" this week.
+        sb(
+          `content_items?workspace_id=eq.${ws.id}` +
+          `&rejected_at=gte.${encodeURIComponent(weekStart)}` +
+          `&select=id,topic,platform,reject_reason,reject_note,rejected_at` +
+          `&order=rejected_at.desc&limit=50`
+        ),
+        sb(
+          `content_items?workspace_id=eq.${ws.id}` +
+          `&approved_at=gte.${encodeURIComponent(weekStart)}&edit_diff=not.is.null` +
+          `&select=id,topic,platform,edit_diff,approved_at` +
+          `&order=approved_at.desc&limit=50`
+        ),
       ])
 
       const published    = publishedRes.ok    ? await publishedRes.json()    : []
       const weekPackages = weekPackageRes.ok  ? await weekPackageRes.json()  : []
       const triagePool   = triagePoolRes.ok   ? await triagePoolRes.json()   : []
       const queued       = queuedRes.ok       ? await queuedRes.json()       : []
+      const rejected     = rejectedRes.ok     ? await rejectedRes.json()     : []
+      const editDiffs    = editDiffRes.ok     ? await editDiffRes.json()     : []
 
       // Resolve clinician names for queued packages (small fetch).
       const UUID_RE_DIG = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -231,6 +267,9 @@ async function handler(req, res) {
         momentStats,
         triage,
         queued: queuedWithNames,
+        rejected,
+        editDiffs,
+        dayProposal: ws.cadence_policy?.day_time_proposal || null,
         weekStart,
         weekEnd,
       })

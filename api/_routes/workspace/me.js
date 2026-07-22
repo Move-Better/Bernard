@@ -313,6 +313,22 @@ function sanitizeCadencePolicy(value) {
     out.timezone = value.timezone
   }
 
+  // T4 learning loop, part 3 — day/time proposal (day_time_proposal) is
+  // computed + written server-side only, via the direct service-role PATCH in
+  // strategistPlan.js's maybeProposeDayChange(). The client (Accept/Dismiss in
+  // CadenceCard) may only CLEAR it through this route, never set content.
+  if ('day_time_proposal' in value) {
+    if (value.day_time_proposal !== null) return null
+    out.day_time_proposal = null
+  }
+  if ('day_time_dismissed' in value) {
+    if (!Array.isArray(value.day_time_dismissed)) return null
+    for (const d of value.day_time_dismissed) {
+      if (!CADENCE_QUIET_DAYS.has(d)) return null
+    }
+    out.day_time_dismissed = [...new Set(value.day_time_dismissed)]
+  }
+
   return out
 }
 

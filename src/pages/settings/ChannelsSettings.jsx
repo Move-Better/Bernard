@@ -3,6 +3,7 @@ import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
 import {
   Loader2, Instagram, Youtube, Megaphone, Radio, Film, Puzzle, SlidersHorizontal, Send,
+  Sparkles, Check, X,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -117,6 +118,11 @@ const WEEK_DAYS = [
   { id: 'sat', label: 'Sa' },
 ]
 
+const DAY_FULL_LABEL = {
+  sun: 'Sunday', mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday',
+  thu: 'Thursday', fri: 'Friday', sat: 'Saturday',
+}
+
 const TIMEZONE_OPTIONS = [
   { value: 'America/Los_Angeles', label: 'Pacific (LA / Vancouver)' },
   { value: 'America/Denver',      label: 'Mountain (Denver / Calgary)' },
@@ -154,11 +160,49 @@ const NEWSLETTER_OPTIONS = [
   { value: 'skip',    label: 'No newsletter',     desc: 'Hides the email channel' },
 ]
 
-function CadenceCard({ cadence, onChange, enabledOutputs, prior }) {
+function CadenceCard({ cadence, onChange, onProposalResolved, enabledOutputs, prior }) {
   const isAuto = (cadence?.provenance ?? 'bernard') !== 'user'
   const channels = cadence?.channels || {}
   const quietDays = Array.isArray(cadence?.quiet_days) ? cadence.quiet_days : ['sat', 'sun']
   const timezone = cadence?.timezone || 'America/Los_Angeles'
+  const dayProposal = cadence?.day_time_proposal || null
+  const [proposalBusy, setProposalBusy] = useState(false)
+
+  // T4 learning loop, part 3 — Accept un-quiets the proposed day; Dismiss
+  // permanently excludes it from future exploration. Both PATCH immediately
+  // (not staged in the page's own Save flow — a proposal card that says
+  // "click Accept" should actually do something on click) and hand the new
+  // baseline back up via onProposalResolved so the page's dirty-check stays
+  // accurate. Works regardless of Auto/Manual — this is Bernard's own
+  // evidence-based suggestion, not a manual cadence override.
+  async function resolveDayProposal(action) {
+    if (!dayProposal || proposalBusy) return
+    setProposalBusy(true)
+    const nextQuietDays = action === 'accept'
+      ? quietDays.filter((d) => d !== dayProposal.day)
+      : quietDays
+    const nextDismissed = action === 'dismiss'
+      ? [...new Set([...(cadence?.day_time_dismissed || []), dayProposal.day])]
+      : (cadence?.day_time_dismissed || [])
+    const nextPolicy = {
+      ...(cadence || DEFAULT_CADENCE_POLICY),
+      quiet_days: nextQuietDays,
+      day_time_dismissed: nextDismissed,
+      day_time_proposal: null,
+    }
+    try {
+      const updated = await apiFetch('/api/workspace/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cadence_policy: nextPolicy }),
+      })
+      onProposalResolved(updated?.cadence_policy || nextPolicy)
+    } catch {
+      // apiFetch already toasts the error — leave the card up so they can retry.
+    } finally {
+      setProposalBusy(false)
+    }
+  }
 
   // Rows = the cadence-bearing atom platforms the workspace has enabled, in
   // registry order. In Auto, values are COMPUTED from the prior (read-only). In
@@ -216,6 +260,9 @@ function CadenceCard({ cadence, onChange, enabledOutputs, prior }) {
         <p className="text-xs text-muted-foreground -mt-1">
           Bernard manages cadence automatically. Turn off to edit targets.
         </p>
+      )}
+      {dayProposal && (
+        <DayProposalCard proposal={dayProposal} busy={proposalBusy} onResolve={resolveDayProposal} />
       )}
       <div className={`space-y-5 ${isAuto ? 'pointer-events-none opacity-60' : ''}`}>
         {isAuto && (
@@ -306,6 +353,52 @@ function CadenceCard({ cadence, onChange, enabledOutputs, prior }) {
         </div>
       </div>
     </Room>
+  )
+}
+
+// T4 learning loop, part 3 — "Bernard suggests" evidence card. Appears when
+// applyExplorationSlots() has generated enough real engagement data on a
+// currently-quiet day to say something (api/_lib/cadenceAdaptive.js
+// computeDayProposal, persisted server-side via strategistPlan.js
+// maybeProposeDayChange). Evidence only — Bernard never mutates quiet_days
+// on its own; Accept/Dismiss is the human decision.
+function DayProposalCard({ proposal, busy, onResolve }) {
+  const dayLabel = DAY_FULL_LABEL[proposal.day] || proposal.day
+  const better = proposal.avgScore >= proposal.baselineAvgScore
+  return (
+    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3.5 space-y-2.5">
+      <div className="flex items-start gap-2.5">
+        <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground">
+            {dayLabel} is quiet, but the {proposal.sampleCount} test post{proposal.sampleCount === 1 ? '' : 's'} Bernard tried there {better ? 'did about as well as' : 'did somewhat worse than'} usual.
+          </p>
+          <p className="text-2xs text-muted-foreground mt-1">
+            {dayLabel}: avg {proposal.avgScore} engagement ({proposal.sampleCount} post{proposal.sampleCount === 1 ? '' : 's'}) · Your open days: avg {proposal.baselineAvgScore} ({proposal.baselineCount} posts)
+          </p>
+        </div>
+      </div>
+      <div className="flex gap-2 pl-6">
+        <Button
+          size="sm"
+          disabled={busy}
+          loading={busy}
+          onClick={() => onResolve('accept')}
+        >
+          {!busy && <Check className="mr-1.5 h-3.5 w-3.5" />}
+          Open up {dayLabel}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={() => onResolve('dismiss')}
+        >
+          {!busy && <X className="mr-1.5 h-3.5 w-3.5" />}
+          Keep it quiet
+        </Button>
+      </div>
+    </div>
   )
 }
 
@@ -486,6 +579,15 @@ export default function ChannelsSettings() {
   function setCadence(cadence) {
     setForm(f => ({ ...f, cadence_policy: cadence }))
   }
+  // T4 learning loop, part 3 — Accept/Dismiss on a day/time proposal save
+  // IMMEDIATELY (CadenceCard PATCHes directly, not via the page's Save
+  // button), so update both form AND pristine to the new baseline. Otherwise
+  // the SaveBar would falsely show "unsaved changes" for a change that's
+  // already persisted.
+  function handleCadenceProposalResolved(nextCadencePolicy) {
+    setForm(f => ({ ...f, cadence_policy: nextCadencePolicy }))
+    setPristine(p => ({ ...p, cadence_policy: nextCadencePolicy }))
+  }
   function setPublishIntent(intent) {
     setForm(f => ({ ...f, publish_intent: intent }))
   }
@@ -578,6 +680,7 @@ export default function ChannelsSettings() {
       <CadenceCard
         cadence={form.cadence_policy}
         onChange={setCadence}
+        onProposalResolved={handleCadenceProposalResolved}
         enabledOutputs={form.enabled_outputs}
         prior={ws?.cadence_defaults || FALLBACK_CADENCE_PRIOR}
       />

@@ -294,6 +294,27 @@ before it could reach its own `catch` (which reverts status + records an error) 
 in a `'tagging'`-equivalent pending state forever with no error ever surfaced. Fix: keep
 `maxDuration` sized for the ACTUAL background work, not the response.
 
+### Verifying a new cron handler before it ships — invoke it directly, don't wait for the schedule
+
+Every `api/_routes/cron/*.js` handler is a plain Node `(req, res)` function gated by
+`verifyCronSecret(req)` (Bearer `CRON_SECRET`). That means it can be exercised end-to-end —
+real Supabase reads/writes, real third-party API calls — from a throwaway local script, with no
+deploy and no waiting for the actual schedule to fire:
+
+```js
+process.env.CRON_SECRET = 'local-verify-' + process.pid
+const { default: handler } = await import('./api/_routes/cron/<name>.js')
+const req = { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } }
+const res = { status(n) { this._s = n; return this }, json(b) { console.log(this._s, JSON.stringify(b, null, 2)) } }
+await handler(req, res)
+```
+
+Run with real env (`SUPABASE_URL`/`SUPABASE_SERVICE_KEY`/whatever third-party key, sourced per
+the 1Password-mount rules) and it produces the exact same rows the scheduled run would — the
+cheapest way to confirm auth, query shape, and any external API call all actually work before
+merging, rather than trusting build/lint alone. Delete the script when done. Used to verify
+`cron/snapshot-social-posts.js` (PR #2220) — seeded real rows against prod on the first call.
+
 ---
 
 ## Social-publishing provider adapter (Buffer / bundle.social)
