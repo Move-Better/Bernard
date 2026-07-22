@@ -35,6 +35,51 @@ import { verifyCronSecret } from '../../_lib/auth.js'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+// This cron runs hourly, and a footage shortfall persists until someone films
+// something — so without this guard the ask would be re-recorded 24x a day and
+// the workday ledger would become unreadable. One ask per day is a reminder;
+// twenty-four is nagging.
+const ASK_COOLDOWN_MS = 20 * 60 * 60 * 1000
+
+async function askedRecently(wsId) {
+  try {
+    const since = new Date(Date.now() - ASK_COOLDOWN_MS).toISOString()
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/agent_actions?workspace_id=eq.${wsId}` +
+        `&kind=eq.footage_needed&created_at=gte.${since}&select=id&limit=1`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    )
+    if (!r.ok) return true // can't tell → stay quiet rather than risk spamming
+    return ((await r.json().catch(() => [])) || []).length > 0
+  } catch {
+    return true
+  }
+}
+
+// What to actually ask someone to film. An ask of "record more videos" is easy
+// to ignore; "film 30 seconds on plantar fasciitis" is a task. The open topic
+// backlog is already the workspace's own list of what it wants to say and
+// hasn't, so it is the honest source — no invented topics.
+// Returns [] when the backlog is empty; the ask then degrades to the generic
+// "more footage" form rather than making something up.
+async function suggestFootageTopics(wsId, limit = 3) {
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/topic_backlog?workspace_id=eq.${wsId}&status=eq.open` +
+        `&select=topic,rationale,priority&order=priority.desc,created_at.asc&limit=${limit}`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
+    )
+    if (!r.ok) return []
+    const rows = (await r.json().catch(() => [])) || []
+    return rows
+      .map((t) => ({ topic: String(t.topic || '').trim(), why: String(t.rationale || '').trim().slice(0, 140) }))
+      .filter((t) => t.topic)
+  } catch (e) {
+    console.error('[cron/auto-reel-week] topic suggest failed:', e?.message)
+    return []
+  }
+}
+
 async function handler(req, res) {
   if (!verifyCronSecret(req)) return res.status(401).json({ error: 'Unauthorized' })
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'Supabase env not configured' })
@@ -42,7 +87,14 @@ async function handler(req, res) {
   // Only workspaces with the video pipeline on can have reels at all.
   const wsRes = await fetch(
     `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&video_pipeline_enabled=is.true` +
-      `&select=id,slug,cadence_policy,enabled_outputs,video_pipeline_enabled,brand_style,brand_voice,name,producer_config`,
+      // select=* deliberately: the render path (renderVideoChannel + generateCaption)
+      // consumes the same broad workspace shape workspaceContext() hands the manual
+      // path, so an explicit column list here is a standing trap — one wrong or
+      // newly-required name and PostgREST 400s the whole query. It did exactly
+      // that: `name` does not exist on workspaces (it is display_name/app_name),
+      // so this cron returned 500 'workspace fetch failed' on every run from the
+      // moment it shipped and never rendered anything. 7 rows, once an hour.
+      `&select=*`,
     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
   )
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })
@@ -63,6 +115,22 @@ async function handler(req, res) {
           kind: 'reels_drafted',
           title: `Cut ${stats.rendered} Reel${stats.rendered === 1 ? '' : 's'} from your videos — ready for your approval`,
           detail: { ...stats, weekMonday },
+        })
+      }
+
+      // The footage-ask. A shortfall means the week WANTS reels and the clip
+      // library cannot supply them — the one gap Bernard genuinely cannot close
+      // on its own, because it needs someone to point a camera at themselves.
+      // Recorded (deduped per week) so /week can turn it into a concrete "film
+      // this" ask rather than silently under-filling the week.
+      if (stats.shortfall > 0 && !(await askedRecently(ws.id))) {
+        const topics = await suggestFootageTopics(ws.id)
+        await recordAgentAction({
+          workspaceId: ws.id,
+          producerConfig: ws.producer_config,
+          kind: 'footage_needed',
+          title: `Need ${stats.shortfall} more short video${stats.shortfall === 1 ? '' : 's'} to fill this week's Reels`,
+          detail: { ...stats, weekMonday, topics },
         })
       }
     } catch (e) {
