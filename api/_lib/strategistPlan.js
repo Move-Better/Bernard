@@ -10,6 +10,7 @@
 import { composeWeeklyPlan, RECOMMENDED_CADENCE, mondayOf } from './strategist.js'
 import { getCadencePrior, computeCadenceChannels } from './cadenceDefaults.js'
 import { getActiveCampaigns, campaignWeight } from './activeCampaigns.js'
+import { mergeSlotsIntoCadence } from './cadenceSlots.js'
 
 // P3 promo lane: how much of the feed campaign-attributed pieces may claim.
 // Ramps with event proximity — a far-off (or evergreen) campaign gets the floor,
@@ -128,6 +129,11 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
   }
   if (!cadence || Object.keys(cadence).length === 0) cadence = RECOMMENDED_CADENCE
   const quietDays = policy?.quiet_days || ['sat', 'sun']
+  // T3: attach each channel's pinned posting slots (persisted, or a computed
+  // default when absent) — orthogonal to the Auto/Manual/Adaptive "how many"
+  // resolution above, since Auto mode recomputes `cadence` fresh every call
+  // and never itself carries slots. See cadenceSlots.js.
+  cadence = mergeSlotsIntoCadence(cadence, policy?.channels || {}, quietDays)
 
   return { interviews, cadence, quietDays, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, backlog }
 }

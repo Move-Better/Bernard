@@ -8,6 +8,7 @@ import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { mondayOf } from '../../_lib/strategist.js'
+import { mergeSlotsIntoCadence } from '../../_lib/cadenceSlots.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -201,12 +202,21 @@ export default async function handler(req, res) {
       }
     : null
 
+  // T3: enrich each channel with its pinned posting slots (persisted, or a
+  // computed default when a channel has none yet) so the client can diff
+  // scheduled atoms against the full slot list and render true empty tiles —
+  // not just what happened to get planned this week. Additive-only (existing
+  // consumers of cadence[platform].target_per_week/.enabled are unaffected).
+  const rawChannels = ws.cadence_policy?.channels || {}
+  const cadenceQuietDays = ws.cadence_policy?.quiet_days || ['sat', 'sun']
+  const cadenceWithSlots = mergeSlotsIntoCadence(rawChannels, rawChannels, cadenceQuietDays)
+
   return res.status(200).json({
     weekMonday,
     hasPlan: scheduled.length > 0,
     trustStage: ws.cadence_policy?.trust_stage || 'approve_all',
-    cadence: ws.cadence_policy?.channels || null,
-    quietDays: ws.cadence_policy?.quiet_days || ['sat', 'sun'],
+    cadence: Object.keys(rawChannels).length ? cadenceWithSlots : null,
+    quietDays: cadenceQuietDays,
     timezone: ws.cadence_policy?.timezone || 'America/Los_Angeles',
     scheduledTotal: scheduled.length,
     byPlatform,

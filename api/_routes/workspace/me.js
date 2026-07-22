@@ -250,7 +250,31 @@ const CADENCE_PLATFORMS = new Set([
 ])
 const CADENCE_QUIET_DAYS = new Set(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'])
 
-// Shape: { channels: { [platform]: { target_per_week, enabled } }, quiet_days, timezone, ...rest }
+// T3 — posting-schedule slots (see api/_lib/cadenceSlots.js). One channel can
+// carry slots of more than one format (Instagram: post + reel), so format
+// lives per-slot, not per-channel.
+const SLOT_FORMATS = new Set(['post', 'reel', 'story'])
+const MAX_SLOTS_PER_CHANNEL = 30
+
+// Shape: [{ weekday, hour, format?, enabled? }]. Returns the cleaned array on
+// success, null on shape violation, undefined when the key is absent (caller
+// then leaves the channel's slots untouched rather than clearing them).
+function sanitizeChannelSlots(value) {
+  if (value === undefined) return undefined
+  if (!Array.isArray(value) || value.length > MAX_SLOTS_PER_CHANNEL) return null
+  const out = []
+  for (const raw of value) {
+    if (!isPlainObject(raw)) return null
+    if (!CADENCE_QUIET_DAYS.has(raw.weekday)) return null
+    const hour = Number.isInteger(raw.hour) ? raw.hour : parseInt(raw.hour, 10)
+    if (!Number.isInteger(hour) || hour < 0 || hour > 23) return null
+    const format = SLOT_FORMATS.has(raw.format) ? raw.format : 'post'
+    out.push({ weekday: raw.weekday, hour, format, enabled: raw.enabled !== false })
+  }
+  return out
+}
+
+// Shape: { channels: { [platform]: { target_per_week, enabled, slots? } }, quiet_days, timezone, ...rest }
 // Merges over the existing row — unknown top-level keys are preserved (version, provenance, etc.)
 // so a partial PATCH from the UI doesn't clobber strategist-managed fields.
 function sanitizeCadencePolicy(value) {
@@ -267,6 +291,11 @@ function sanitizeCadencePolicy(value) {
       const tpw = entry.target_per_week != null ? parseInt(entry.target_per_week, 10) : 0
       if (!Number.isInteger(tpw) || tpw < 0 || tpw > 28) return null
       cleanChannels[platform] = { target_per_week: tpw, enabled }
+      if ('slots' in entry) {
+        const cleanSlots = sanitizeChannelSlots(entry.slots)
+        if (cleanSlots === null) return null
+        cleanChannels[platform].slots = cleanSlots
+      }
     }
     out.channels = cleanChannels
   }

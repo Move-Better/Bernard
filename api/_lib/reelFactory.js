@@ -32,6 +32,7 @@ import { saveBroll } from './saveBroll.js'
 import { createClipDraft } from './clipDraft.js'
 import { assignSlots } from './strategist.js'
 import { ATOM_FORMATS } from './atomPlan.js'
+import { mergeSlotsIntoCadence, slotsByPlatformFromCadence } from './cadenceSlots.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -355,10 +356,15 @@ export async function fillReelSlots({ ws, weekMonday }) {
   if (!atomRows.length) return { target, existing, rendered: 0, failed, shortfall: gap }
 
   // Reuse the Strategist's own slot assigner so reels land on the same best-hour
-  // grid as everything else and respect the workspace's quiet days.
+  // grid as everything else and respect the workspace's quiet days. T3: place
+  // into the workspace's pinned Instagram slots (reel-format ones specifically
+  // — assignToPinnedSlots matches by atom.format) when present, falling back
+  // to a computed default otherwise, same as the weekly planner.
   const quietDays = Array.isArray(ws.cadence_policy?.quiet_days) ? ws.cadence_policy.quiet_days : []
   const timezone = ws.cadence_policy?.timezone || 'UTC'
-  const scheduled = assignSlots(atomRows, weekMonday, quietDays, timezone)
+  const channels = ws.cadence_policy?.channels || {}
+  const slotsByPlatform = slotsByPlatformFromCadence(mergeSlotsIntoCadence(channels, channels, quietDays))
+  const scheduled = assignSlots(atomRows, weekMonday, quietDays, timezone, slotsByPlatform)
 
   const insertRes = await sb('content_plan_atoms', {
     method: 'POST',
