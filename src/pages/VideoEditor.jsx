@@ -1257,10 +1257,47 @@ export default function VideoEditor() {
         start: +(l.start + span * k / parts.length).toFixed(2),
         end: +(l.start + span * (k + 1) / parts.length).toFixed(2),
       }))
-      return { ...l, text, words: w }
+      // Mark the line as user-authored so per-word transcript corrections skip
+      // it (see the `lines` memo). Timing alone cannot discriminate: a rewritten
+      // line's words are redistributed across the ORIGINAL line span, so its
+      // first word always starts exactly at the first transcript word's start
+      // and would collide with that word's correction key.
+      return { ...l, text, words: w, userEdited: true }
     }))
   }, [])
-  const lines = captionLines
+  // Apply per-word corrections to the caption lines themselves, not just to the
+  // Script list. The re-seed effect above is the ONLY route a word fix used to
+  // take into the captions, and it bails once captionsEditedRef is set — so as
+  // soon as a user hand-edited any one line, every later word correction showed
+  // underlined in the Script tab but never reached the caption or the export.
+  // That is the original "script not allowing change of words" report in a
+  // narrower form, and the only escape was "Reset captions to transcript", which
+  // throws away all their line edits.
+  //
+  // Lines the user rewrote themselves are skipped outright (l.userEdited) — their
+  // typed text wins. Timing alone cannot make that call: editLine() redistributes
+  // a rewritten line's words across the ORIGINAL line span, so its first word
+  // always starts exactly at the first transcript word's start and would collide
+  // with that word's correction key.
+  const lines = useMemo(() => {
+    if (!wordEdits || !Object.keys(wordEdits).length) return captionLines
+    const s = Math.max(0, startSec || 0)
+    let anyChanged = false
+    const next = captionLines.map((l) => {
+      if (l?.userEdited || !Array.isArray(l?.words)) return l
+      let lineChanged = false
+      const w = l.words.map((word) => {
+        const fix = wordEdits[(word.start + s).toFixed(2)]
+        if (fix == null || fix === word.word) return word
+        lineChanged = true
+        return { ...word, word: fix, edited: true }
+      })
+      if (!lineChanged) return l
+      anyChanged = true
+      return { ...l, words: w, text: w.map((x) => x.word).join(' ') }
+    })
+    return anyChanged ? next : captionLines
+  }, [captionLines, wordEdits, startSec])
 
   // playback: keep <video> within the trim window
   const togglePlay = useCallback(() => {
