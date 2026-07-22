@@ -19,6 +19,14 @@
 //
 // Body:
 //   { segmentIds: string[] }   // 1..12 video_segments ids to render
+//   { createDraft?: boolean }  // ALSO create an approvable content_items draft
+//
+// createDraft (T2, reel spine) defaults to FALSE so the manual "Find clips →
+// render" path is byte-for-byte unchanged — a clinician exploring 12 candidate
+// moments should not get 12 drafts in their week. The auto-reel path passes
+// true: that is the whole point of the golden path (upload → captioned reel →
+// draft sitting in a reel slot, zero editor opens). Drafts are drafts; a human
+// still approves every publish.
 //
 // Auth: Clerk JWT + workspace org-id + video_pipeline_enabled.
 //
@@ -38,6 +46,7 @@ import { renderVideoChannel } from '../_lib/brandRenderVideo.js'
 import { sliceWordsToWindow } from '../_lib/karaokeCaptions.js'
 import { generateCaption } from '../_lib/captionGen.js'
 import { saveBroll } from '../_lib/saveBroll.js'
+import { createClipDraft } from '../_lib/clipDraft.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -68,7 +77,7 @@ async function sb(path, init = {}) {
  * catch, leaving the row stuck in 'rendering'; the sweep-stuck-segment-renders
  * cron resets those to 'proposed' after ~10 min.)
  */
-async function renderSegmentToBroll({ ws, seg, asset, staffName }) {
+async function renderSegmentToBroll({ ws, seg, asset, staffName, createDraft = false }) {
   const startSec = Number(seg.start_sec) || 0
   const durationSec = Math.max(1, (Number(seg.end_sec) || 0) - startSec)
   const hook = String(seg.hook || '').slice(0, 500)
@@ -133,6 +142,32 @@ async function renderSegmentToBroll({ ws, seg, asset, staffName }) {
     })
     const newAssetId = saved?.[0]?.id || null
 
+    // The missing step: land the rendered reel as an approvable draft, not just
+    // a Library b-roll row. Best-effort — a draft-insert failure must not undo a
+    // successful render (the clip is already saved and re-draftable by hand), so
+    // it is logged and swallowed rather than triggering the reset-to-'proposed'
+    // path below.
+    if (createDraft) {
+      try {
+        const draftId = await createClipDraft({
+          ws,
+          videoUrl: blob.url,
+          assetId: newAssetId,
+          filename: `${safeFilename}.mp4`,
+          durationS: durationSec,
+          caption: captionText,
+          staffId: seg.staff_id || null,
+          platform: 'instagram',
+          notes: `Auto-drafted reel from moment ${seg.id} (asset ${asset.id})`,
+        })
+        if (!draftId) {
+          console.error('[render-segments] draft insert returned no id for segment', seg.id)
+        }
+      } catch (e) {
+        console.error('[render-segments] draft creation failed for segment', seg.id, e?.stack || e?.message)
+      }
+    }
+
     await sb(`video_segments?id=eq.${seg.id}&workspace_id=eq.${ws.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ status: 'rendered', rendered_asset_id: newAssetId }),
@@ -175,6 +210,7 @@ export default async function handler(req, res) {
   if (rawIds.some((id) => !UUID_RE.test(id))) return res.status(400).json({ error: 'invalid_segment_id' })
   const segmentIds = rawIds
   if (segmentIds.length > 12) return res.status(400).json({ error: 'too_many_segments', max: 12 })
+  const createDraft = body.createDraft === true
 
   // Fetch the requested segments (workspace-scoped) + their source asset so we
   // have the blob url + filename + staff for the render. Consent is enforced on
@@ -252,7 +288,13 @@ export default async function handler(req, res) {
         async function worker() {
           while (next < toRender.length) {
             const { seg, asset } = toRender[next++]
-            await renderSegmentToBroll({ ws, seg, asset, staffName: staffNames[seg.staff_id] || '' })
+            await renderSegmentToBroll({
+              ws,
+              seg,
+              asset,
+              staffName: staffNames[seg.staff_id] || '',
+              createDraft,
+            })
           }
         }
         await Promise.all(
