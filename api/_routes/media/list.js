@@ -132,7 +132,51 @@ async function handler(req, res) {
 
   const r = await sb(qs)
   if (!r.ok) return res.status(500).json({ error: 'Database error' })
-  return res.status(200).json(await r.json())
+  const rows = await r.json()
+
+  return res.status(200).json(await withUsage(rows, scope))
+}
+
+// Attach the reuse counter to each asset: how many posts it is already in.
+//
+// Derived from the media_asset_usage view (migration 185) rather than the
+// media_assets.content_item_ids column, which no writer has ever populated —
+// see the migration header. Assets with no usage have no view row, so they
+// default to zero here instead of the view carrying a row per unused asset.
+//
+// One extra query for the whole page, scoped to the ids actually being
+// returned; a failure degrades to zeros rather than failing the list, since
+// a missing badge is far better than an empty library.
+async function withUsage(rows, scope) {
+  const zero = { total: 0, published: 0, lastUsedAt: null }
+  if (!Array.isArray(rows) || rows.length === 0) return rows
+
+  const ids = rows.map((a) => a.id).filter(Boolean)
+  if (ids.length === 0) return rows.map((a) => ({ ...a, usage: zero }))
+
+  const byId = new Map()
+  try {
+    const uRes = await sb(
+      `media_asset_usage?select=asset_id,use_count,published_count,last_used_at` +
+      `&${scope.column}=eq.${scope.id}` +
+      `&asset_id=in.(${ids.map(encodeURIComponent).join(',')})`
+    )
+    if (uRes.ok) {
+      for (const u of await uRes.json()) {
+        byId.set(u.asset_id, {
+          total:      u.use_count || 0,
+          published:  u.published_count || 0,
+          lastUsedAt: u.last_used_at || null,
+        })
+      }
+    } else {
+      console.error('[media/list] usage lookup failed:', uRes.status)
+    }
+  } catch (e) {
+    console.error('[media/list] usage lookup failed:', e?.message)
+  }
+
+  return rows.map((a) => ({ ...a, usage: byId.get(a.id) || zero }))
 }
 
 export default withSentry(handler)

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Archive, ArchiveRestore, X, Trash2, Loader2, Plus, Sparkles, AlertTriangle, FilePlus2, Wand2, Link2, Download, Check, Image as ImageIcon, Crop, Expand, Minimize, RotateCw, RotateCcw, FileDown, Scissors, Megaphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,7 @@ import {
   editMediaAsset,
 } from '@/lib/mediaLib'
 import { listContentPieces, createContentPiece, segmentMediaAsset } from '@/lib/contentLib'
+import { PLATFORM_META, statusMetaFor } from '@/lib/contentMeta'
 import { useStaffSummaries } from '@/lib/queries'
 import { useUserRole } from '@/lib/useUserRole'
 import { toast, runWithToast } from '@/lib/toast'
@@ -31,6 +32,69 @@ import MediaVideoPlayer from './MediaVideoPlayer'
 import AdExportModal from './AdExportModal'
 import { downloadFromUrl } from '@/lib/download'
 import { useConfirm } from '@/lib/useConfirm'
+
+// "Used in posts" — the reuse counter expanded into the posts behind it.
+//
+// Module scope, not nested in MediaDetail: a component defined inside another
+// component's render remounts (and loses state) every render, which the
+// react-hooks/static-components rule errors on.
+//
+// `usage` is absent when the server-side lookup degraded, which is NOT the same
+// as zero uses — showing "not used yet" there would be a confident lie, so we
+// render nothing at all in that case.
+function MediaUsageSection({ usage }) {
+  if (!usage) return null
+  const posts = Array.isArray(usage.posts) ? usage.posts : []
+
+  return (
+    <div className="rounded-md border p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-medium flex items-center gap-1.5">
+          <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+          Used in posts
+        </div>
+        <Badge variant="secondary" className="text-3xs">
+          {usage.total || 0}
+        </Badge>
+      </div>
+
+      {posts.length === 0 ? (
+        <p className="text-2xs text-muted-foreground">
+          Not used in any post yet — this one is fresh.
+        </p>
+      ) : (
+        <>
+          <p className="text-2xs text-muted-foreground">
+            {usage.published > 0
+              ? `${usage.published} of these ${usage.published === 1 ? 'has' : 'have'} already been published.`
+              : 'None published yet.'}
+          </p>
+          <ul className="space-y-1">
+            {posts.map((p) => {
+              const platform = PLATFORM_META[p.platform] || { label: p.platform || 'Post' }
+              const status   = statusMetaFor(p)
+              const when     = p.published_at || p.created_at
+              return (
+                <li key={p.id}>
+                  <Link
+                    to={`/publish/${p.id}`}
+                    className="flex items-center gap-2 rounded px-1.5 py-1 -mx-1.5 hover:bg-accent/50 transition-colors"
+                  >
+                    <span className="text-2xs font-medium text-foreground shrink-0">{platform.label}</span>
+                    <span className={`text-3xs px-1.5 py-0.5 rounded shrink-0 ${status.color}`}>{status.label}</span>
+                    <span className="text-3xs text-muted-foreground truncate">
+                      {p.topic || (when ? new Date(when).toLocaleDateString() : '')}
+                    </span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
+    </div>
+  )
+}
 
 // The three live statuses. 'rendered' and 'approved' were retired (see
 // MediaHub's STATUS_FILTERS note); offering them here let an admin hand-set a
@@ -931,6 +995,13 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 </Button>
               </div>
             </div>
+
+            {/* Used in posts — the reuse counter, expanded into the actual
+                posts so "used ×3" is answerable rather than just alarming.
+                Derived from content_items.media_urls server-side (migration
+                185); absent on a degraded lookup, in which case we show
+                nothing rather than an untrue "not used yet". */}
+            <MediaUsageSection usage={a.usage} />
 
             {/* Collections — editorial groupings (campaigns, series, etc.) */}
             <CollectionPicker assetId={asset.id} onChange={() => onChange?.()} />
