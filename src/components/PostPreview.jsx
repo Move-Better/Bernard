@@ -57,6 +57,38 @@ function mediaSrc(m) {
   return m.url || m.thumbnailUrl || null
 }
 
+// A real, playable video frame. Every video preview renders through here, so
+// none of them can drift back to the two bugs four hand-rolled copies each had:
+//
+//   1. An <img> pointed at the entry's `url`. That url is the raw .mp4 — the
+//      image never loads, onError hides it, and you get an empty black
+//      rectangle. (MediaPanel in UnifiedEditor already guarded this way; the
+//      previews never did.) Only `thumbnailUrl` is ever safe in an <img>.
+//   2. A decorative <Play> glyph over that frame, promising playback nothing
+//      implemented. It is the first thing anyone clicks.
+//
+// Native `controls` keeps the affordance honest and keyboard-accessible for
+// free. `preload="metadata"` plus the `#t=0.1` media fragment paints the real
+// first frame when the entry has no poster — which today is EVERY video entry
+// in prod, because media_urls is snapshotted when the draft is created and the
+// asset's thumbnail is generated asynchronously some time after that.
+function VideoFrame({ video, className = '' }) {
+  const src = mediaSrc(video)
+  if (!src) return null
+  const poster = video?.thumbnailUrl || undefined
+  return (
+    <video
+      src={poster ? src : `${src}#t=0.1`}
+      poster={poster}
+      className={className}
+      controls
+      playsInline
+      preload="metadata"
+      aria-label={video.name || 'Attached video'}
+    />
+  )
+}
+
 // ── Carousel — shared by Instagram and Facebook ───────────────────────────────
 // Per-slide canvas — draws photo + freeform text blocks via the renderer.
 // `theme` MUST be passed: renderFreeformSlide keys layout/palette/per-block
@@ -194,10 +226,16 @@ function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square', trueFrame = f
 
   const m   = mediaUrls[idx]
   const src = mediaSrc(m)
+  // Branch on the canonical predicate, not a bare `type` check: an entry that
+  // carries only `kind: 'video'` would otherwise fall through to the photo
+  // branch and put the raw .mp4 in an <img> — the black-rectangle bug again.
+  // (Unlike slidePhotos(), this is a render branch, so widening it renumbers
+  // nothing.)
+  const mIsVideo = isVideoEntry(m)
 
   // Null until the photo has loaded and been measured; the placeholder aspect
   // holds the layout until then.
-  const frame = trueFrame && m.type !== 'video' && natural
+  const frame = trueFrame && !mIsVideo && natural
     ? instagramFeedFrame(natural.w, natural.h)
     : null
 
@@ -208,17 +246,9 @@ function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square', trueFrame = f
       style={frame ? { aspectRatio: String(frame.aspect) } : undefined}
     >
       {/* Slide */}
-      {m.type === 'video' ? (
+      {mIsVideo ? (
         <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center gap-2">
-          {src ? (
-            <img src={src} alt={m.name} className="w-full h-full object-cover opacity-70" loading="lazy" decoding="async" onError={(e) => { e.target.style.display = 'none' }} />
-          ) : null}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-12 w-12 rounded-full bg-black/50 flex items-center justify-center">
-              <Play className="h-6 w-6 text-white ml-1" />
-            </div>
-          </div>
-          <p className="absolute bottom-2 left-0 right-0 text-center text-3xs text-white/60 px-4 line-clamp-1">{m.name}</p>
+          <VideoFrame video={m} className="h-full w-full object-cover" />
         </div>
       ) : src ? (
         <img
@@ -298,36 +328,15 @@ function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square', trueFrame = f
 
 // A single video attached to an Instagram post publishes as a Reel (9:16),
 // not a photo carousel — Instagram/Buffer can't mix photo + video in one post.
-// Shows the video in portrait with a Reel marker; the play-over-thumbnail
-// treatment matches MediaCarousel (real inline playback isn't needed for a
-// preview, and any on-clip text was already baked upstream in Moment Miner).
+// Shows the video in portrait with a Reel marker, and plays inline: on-clip text
+// was already baked upstream in Moment Miner, so what plays here is what ships.
 function ReelPreview({ video }) {
-  const src = mediaSrc(video)
   return (
     <div className="relative mx-auto aspect-[9/16] max-h-[70vh] overflow-hidden bg-slate-900 select-none">
-      {src ? (
-        <img
-          src={video.thumbnailUrl || src}
-          alt={video.name || ''}
-          className="absolute inset-0 h-full w-full object-cover opacity-80"
-          loading="lazy"
-          decoding="async"
-          onError={(e) => { e.target.style.display = 'none' }}
-        />
-      ) : null}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50">
-          <Play className="ml-1 h-7 w-7 text-white" />
-        </div>
-      </div>
-      <span className="absolute right-2 top-2 z-10 rounded-full bg-black/55 px-2 py-0.5 text-3xs font-medium text-white">
+      <VideoFrame video={video} className="absolute inset-0 h-full w-full object-cover" />
+      <span className="pointer-events-none absolute right-2 top-2 z-10 rounded-full bg-black/55 px-2 py-0.5 text-3xs font-medium text-white">
         Reel
       </span>
-      {video.name && (
-        <p className="absolute bottom-2 left-0 right-0 line-clamp-1 px-4 text-center text-3xs text-white/60">
-          {video.name}
-        </p>
-      )}
     </div>
   )
 }
@@ -970,23 +979,17 @@ function YouTubePreview({ content, mediaUrls = [], short = false }) {
       {/* Video thumbnail */}
       <div className={`relative overflow-hidden bg-slate-900 flex items-center justify-center ${short ? 'aspect-[9/16] max-h-[360px]' : 'aspect-video'}`}>
         {video ? (
-          <img
-            src={video.thumbnailUrl || mediaSrc(video)}
-            alt={video.name || ''}
-            className="absolute inset-0 w-full h-full object-cover opacity-80"
-            loading="lazy"
-            decoding="async"
-            onError={(e) => { e.target.style.display = 'none' }}
-          />
+          <VideoFrame video={video} className="absolute inset-0 w-full h-full object-cover" />
         ) : (
-          <span className="text-slate-600 text-sm">{short ? '9:16 video' : '16:9 video'}</span>
+          <>
+            <span className="text-slate-600 text-sm">{short ? '9:16 video' : '16:9 video'}</span>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-14 w-14 bg-[#ff0000] rounded-full flex items-center justify-center opacity-90">
+                <Play className="h-6 w-6 text-white ml-1" />
+              </div>
+            </div>
+          </>
         )}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="h-14 w-14 bg-[#ff0000] rounded-full flex items-center justify-center opacity-90">
-            <Play className="h-6 w-6 text-white ml-1" />
-          </div>
-        </div>
-        <span className="absolute bottom-2 right-2 bg-black/80 text-white text-3xs font-bold px-1.5 py-0.5 rounded">2:34</span>
       </div>
 
       {/* Video meta */}
@@ -1043,14 +1046,18 @@ function InstagramStoryPreview({ content, mediaUrls = [], overlayText = null, te
   const media = Array.isArray(mediaUrls) ? mediaUrls : []
   const first = media[0] || null
   const isVideo = first ? isVideoEntry(first) : false
-  const src = first ? (photoSourceUrl(first) || mediaSrc(first)) : null
+  // photoSourceUrl() hands back a video entry's raw .mp4, which an <img> can
+  // only render as a black rectangle — videos go through VideoFrame instead.
+  const src = first && !isVideo ? (photoSourceUrl(first) || mediaSrc(first)) : null
   const logoSrc = useWorkspaceLogo()
 
   return (
     <div className="mx-auto w-full max-w-[280px]">
       <div className="relative aspect-[9/16] overflow-hidden rounded-2xl bg-slate-900 shadow-md select-none">
         {/* Background: media, or a branded gradient card when none attached */}
-        {src ? (
+        {isVideo ? (
+          <VideoFrame video={first} className="absolute inset-0 h-full w-full object-cover" />
+        ) : src ? (
           <img
             src={src}
             alt={first?.name || 'Story media'}
@@ -1065,27 +1072,22 @@ function InstagramStoryPreview({ content, mediaUrls = [], overlayText = null, te
           </div>
         )}
 
+        {/* Story chrome sits ON TOP of the media, so every layer below must stay
+            pointer-transparent or it swallows clicks meant for the video's own
+            controls. */}
+
         {/* Scrim so overlay text stays legible over any photo */}
-        <div className="absolute inset-0 bg-black/30" aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-0 bg-black/30" aria-hidden="true" />
 
         {/* Top progress bar (story chrome) */}
-        <div className="absolute inset-x-0 top-0 flex items-center gap-2 px-3 pt-2.5">
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2 px-3 pt-2.5">
           <div className="h-0.5 flex-1 rounded-full bg-white/90" />
           <span className="text-3xs font-medium text-white/80">{MB_HANDLE}</span>
         </div>
 
-        {/* Video affordance */}
-        {isVideo && (
-          <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm ring-1 ring-white/25">
-              <Play className="ml-0.5 h-6 w-6 text-white" />
-            </div>
-          </div>
-        )}
-
         {/* Overlay headline */}
         {overlay && (
-          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-5 text-center">
+          <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 px-5 text-center">
             <p className="text-lg font-extrabold uppercase leading-tight tracking-wide text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
               {overlay}
             </p>
@@ -1094,7 +1096,7 @@ function InstagramStoryPreview({ content, mediaUrls = [], overlayText = null, te
 
         {/* Link sticker */}
         {sticker && (
-          <div className="absolute inset-x-0 bottom-10 flex justify-center">
+          <div className="pointer-events-none absolute inset-x-0 bottom-10 flex justify-center">
             <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-2xs font-bold text-slate-900 shadow">
               {sticker}
               <ChevronRight className="h-3 w-3" aria-hidden="true" />
