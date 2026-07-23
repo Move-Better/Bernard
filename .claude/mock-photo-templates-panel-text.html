@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Photo Templates — panel text placement</title>
+<style>
+  :root{--navy:#0c1a2e;--accent:#e36525;--ink:#0c1a2e}
+  *{box-sizing:border-box}
+  body{margin:0;background:#eef1f4;color:#0c1a2e;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif;padding:32px 40px 80px}
+  h1{font-size:22px;margin:0 0 4px}
+  .sub{color:#5b6675;font-size:14px;margin:0 0 24px;max-width:820px;line-height:1.55}
+  h2{font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#5b6675;margin:34px 0 14px;border-bottom:1px solid #d7dde3;padding-bottom:8px}
+  .row{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
+  .opt{width:330px}
+  .tag{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:8px}
+  .pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+  .cur{background:#fde2e1;color:#b42318}
+  .pro{background:#dcfae6;color:#067647}
+  .legend{margin-top:10px;font-size:12px;color:#5b6675;border-left:3px dashed #b9c2cc;padding:6px 0 6px 12px;line-height:1.5;max-width:330px}
+
+  .card{position:relative;width:330px;height:330px;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.12);background:#111}
+  .card .photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .label{position:absolute;top:14px;left:16px;font-size:10px;font-weight:700;letter-spacing:.14em;color:rgba(255,255,255,.85)}
+  .brand{position:absolute;font-size:10px;font-weight:600}
+  .rule{position:absolute;left:0;right:0;height:3px;background:var(--accent)}
+
+  /* SPLIT geometry: photo 67%, navy panel 33% */
+  .split-panel{position:absolute;left:0;right:0;bottom:0;height:33%;background:var(--navy)}
+  /* LIGHT BADGE: full photo + translucent white panel 42% */
+  .lb-fade{position:absolute;left:0;right:0;bottom:42%;height:20%;background:linear-gradient(to bottom,rgba(255,255,255,0),rgba(255,255,255,.62))}
+  .lb-panel{position:absolute;left:0;right:0;bottom:0;height:42%;background:rgba(255,255,255,.72)}
+  /* DARK BADGE: full photo + dark scrim */
+  .db-scrim{position:absolute;left:0;right:0;bottom:0;height:58%;background:linear-gradient(to bottom,rgba(12,26,46,0),rgba(12,26,46,.82) 55%,rgba(12,26,46,.97))}
+
+  /* CURRENT floating bubble */
+  .bubble{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(12,26,46,.82);
+    border-radius:30px;padding:10px 26px;color:#fff;font-size:25px;font-weight:800;white-space:nowrap}
+
+  /* text sitting IN the zone, no bubble */
+  .zonetext{position:absolute;left:0;right:0;text-align:center;padding:0 24px;font-weight:800;line-height:1.12}
+</style>
+</head>
+<body>
+  <h1>Photo Templates — fixing the floating text bubble on panel layouts</h1>
+  <p class="sub">On <b>split</b> and <b>badge</b> layouts the headline is anchored to canvas-center, so it floats in the <i>photo</i> as a dark bubble while the panel below sits empty (your screenshot). The layouts already have a dedicated text surface — the panel / scrim — so the text should live <b>in that surface with no bubble</b> (the surface is the contrast). Confirm the direction below; it applies to all six WHOOP layouts.</p>
+
+  <!-- SECTION 1 — the reported case -->
+  <h2>1 · Dark Split — cover headline</h2>
+  <div class="row">
+    <div class="opt">
+      <div class="tag">A <span class="pill cur">CURRENT (live now)</span></div>
+      <div class="card">
+        <img class="photo" src="https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/05a3288c-d368-4d7c-a91e-4fc3abe7b901-rUKgBmK5M2QgTQ2IaLNm2en0q9Tz5n.jpg" referrerpolicy="no-referrer">
+        <div class="split-panel"></div>
+        <div class="rule" style="bottom:33%"></div>
+        <div class="label">MOBILITY</div>
+        <div class="bubble">Why your hips lie</div>
+        <div class="brand" style="bottom:14px;left:16px;color:#fff">Move Better</div>
+      </div>
+      <div class="legend">Dark bubble floats over the photo near the seam; the navy panel below is empty. This is what you flagged.</div>
+    </div>
+
+    <div class="opt">
+      <div class="tag">B <span class="pill pro">PROPOSED · headline in panel</span></div>
+      <div class="card">
+        <img class="photo" src="https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/05a3288c-d368-4d7c-a91e-4fc3abe7b901-rUKgBmK5M2QgTQ2IaLNm2en0q9Tz5n.jpg" referrerpolicy="no-referrer">
+        <div class="split-panel"></div>
+        <div class="rule" style="bottom:33%"></div>
+        <div class="label">MOBILITY</div>
+        <div class="zonetext" style="bottom:16.5%;color:#fff;font-size:25px">Why your hips lie</div>
+        <div class="brand" style="bottom:14px;left:16px;color:rgba(255,255,255,.85)">Move Better</div>
+      </div>
+      <div class="legend"><b>Recommended.</b> Headline sits centered in the navy panel, no bubble — the panel is the contrast. Photo stays clean, panel is used.</div>
+    </div>
+
+    <div class="opt">
+      <div class="tag">C <span class="pill pro">ALT · over photo, no bubble</span></div>
+      <div class="card">
+        <img class="photo" src="https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/05a3288c-d368-4d7c-a91e-4fc3abe7b901-rUKgBmK5M2QgTQ2IaLNm2en0q9Tz5n.jpg" referrerpolicy="no-referrer">
+        <div class="split-panel"></div>
+        <div class="rule" style="bottom:33%"></div>
+        <div class="label">MOBILITY</div>
+        <div class="zonetext" style="bottom:40%;color:#fff;font-size:25px;text-shadow:0 2px 10px rgba(0,0,0,.7)">Why your hips lie</div>
+        <div class="brand" style="bottom:14px;left:16px;color:rgba(255,255,255,.85)">Move Better</div>
+      </div>
+      <div class="legend">Headline over the photo just above the rule, shadow for legibility, no bubble. Keeps the photo dominant but the panel is still empty.</div>
+    </div>
+  </div>
+
+  <!-- SECTION 2 — same no-bubble rule on the other panel layouts -->
+  <h2>2 · Same treatment across the other panel layouts (proposed)</h2>
+  <div class="row">
+    <div class="opt">
+      <div class="tag">Light badge <span class="pill pro">text in panel · no bubble</span></div>
+      <div class="card">
+        <img class="photo" src="https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/061ea516-c282-4905-a127-0f67ba1a082e-THJcHRAsDPjwG7jnzWtfElC8edvfMS.jpg" referrerpolicy="no-referrer">
+        <div class="lb-fade"></div>
+        <div class="lb-panel"></div>
+        <div class="rule" style="bottom:42%"></div>
+        <div class="label">MOBILITY</div>
+        <div class="zonetext" style="bottom:21%;color:var(--ink);font-size:23px">Why your hips lie</div>
+        <div class="brand" style="bottom:14px;left:16px;color:var(--ink)">Move Better</div>
+      </div>
+      <div class="legend">Navy text centered in the translucent panel. No chip.</div>
+    </div>
+
+    <div class="opt">
+      <div class="tag">Dark badge <span class="pill pro">text in scrim · no bubble</span></div>
+      <div class="card">
+        <img class="photo" src="https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/061ea516-c282-4905-a127-0f67ba1a082e-THJcHRAsDPjwG7jnzWtfElC8edvfMS.jpg" referrerpolicy="no-referrer">
+        <div class="db-scrim"></div>
+        <div class="rule" style="bottom:38%"></div>
+        <div class="label">MOBILITY</div>
+        <div class="zonetext" style="bottom:17%;color:#fff;font-size:23px">Why your hips lie</div>
+        <div class="brand" style="bottom:14px;left:16px;color:#fff">Move Better</div>
+      </div>
+      <div class="legend">White text in the lower scrim. No chip. (Already close to this — bubble removed for consistency.)</div>
+    </div>
+
+    <div class="opt">
+      <div class="tag">Note <span class="pill cur">unchanged</span></div>
+      <div class="legend" style="border-color:#c8a45e;margin-top:34px">
+        The dark/clean <b>text bubble stays ONLY for plain-photo overlays</b> that have no WHOOP panel (custom templates, free-positioned text in the slide editor over a bare photo) — there the bubble is the only thing providing contrast. The six built-in WHOOP layouts all drop it.
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

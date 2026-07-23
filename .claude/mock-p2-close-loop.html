@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bernard — P2 "Close the Loop" (all on Home)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:220 22% 97%;
+    --foreground:222 47% 8%;
+    --card:0 0% 100%;
+    --primary:20 76% 52%;        /* Move Better Orange #E36525 */
+    --primary-foreground:0 0% 100%;
+    --secondary:220 14% 96%;
+    --muted:220 14% 96%;
+    --muted-foreground:215 16% 47%;
+    --accent:20 60% 95%;
+    --accent-foreground:20 76% 38%;
+    --destructive:0 84% 60%;
+    --border:214 32% 91%;
+    --radius:0.625rem;
+    --success:152 76% 40%;
+    --warning:38 92% 50%;
+    --info:199 95% 40%;
+  }
+  body{background:hsl(var(--background));color:hsl(var(--foreground));font-family:'Geist','Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,h4{font-weight:700;letter-spacing:-0.025em;}
+  .nx-grad-ribbon{background:linear-gradient(100deg,#e36525 0%,#f0883e 55%,#f6a96b 100%);color:#fff;border-radius:14px;padding:18px 22px;}
+  .nx-card{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:var(--radius);}
+  .pill{display:inline-flex;align-items:center;gap:5px;border-radius:9999px;padding:3px 9px;font-size:11px;font-weight:600;line-height:1.4;white-space:nowrap;}
+  .pill-emerald{background:#ecfdf5;color:#059669;}
+  .pill-amber{background:#fff7ed;color:#d97706;}
+  .pill-sky{background:#e0f2fe;color:#0284c7;}
+  .pill-ink{background:#f1f5f9;color:#475569;}
+  .pill-tint{background:#fff7f0;color:#c04d18;border:1px solid #fde0d2;}
+  .legend-chip{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:2px 8px;border-radius:6px;}
+  .legend-change{background:hsl(var(--accent));color:hsl(var(--accent-foreground));}
+  .diff-change{outline:2px dashed hsl(var(--primary));outline-offset:3px;border-radius:14px;}
+  @keyframes slideIn{from{transform:translateY(-12px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .toast-in{animation:slideIn .45s cubic-bezier(.2,.8,.2,1);}
+  @keyframes confettiFall{0%{transform:translateY(-10px) rotate(0);opacity:1;}100%{transform:translateY(160px) rotate(320deg);opacity:0;}}
+  .confetti{position:fixed;width:9px;height:9px;border-radius:1px;z-index:60;animation:confettiFall 1.5s ease-in forwards;}
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ════ App bar (mock Bernard chrome) — now carries the bell ════ -->
+<div class="sticky top-0 z-40 bg-white border-b border-slate-200">
+  <div class="max-w-[1080px] mx-auto px-6 py-3 flex items-center gap-4">
+    <div class="flex items-center gap-2 font-extrabold text-lg">
+      <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg" style="background:hsl(var(--primary));color:#fff;">N</span>
+      Bernard <span class="text-xs font-medium text-slate-400 hidden sm:inline">· P2 Close-the-Loop · everything on Home</span>
+    </div>
+    <div class="ml-auto flex items-center gap-3">
+      <!-- No bell. People are drowning in notifications — the payoff lives on Home,
+           and the only push is one weekly email digest. -->
+      <div class="h-8 w-8 rounded-full bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center">WH</div>
+    </div>
+  </div>
+</div>
+
+<!-- toast lives over the page, fires on "publish" -->
+<div id="toast-wrap" class="fixed top-20 left-1/2 -translate-x-1/2 z-[55] w-[92%] max-w-md pointer-events-none">
+  <div id="live-toast" class="toast-in rounded-xl shadow-lg border border-emerald-200 bg-white p-4 flex items-start gap-3 pointer-events-auto">
+    <div class="shrink-0 h-10 w-10 rounded-full flex items-center justify-center text-xl" style="background:#ecfdf5;">🎉</div>
+    <div class="flex-1 min-w-0">
+      <p class="font-bold text-sm">It's live! Your story is out in the world.</p>
+      <p class="text-xs text-slate-500 mt-0.5">"Why your low back locks up after travel" → <b>Instagram</b> & <b>Facebook</b>.</p>
+      <div class="mt-2 flex gap-2"><button class="text-xs font-semibold px-2.5 py-1 rounded-md text-white" style="background:hsl(var(--primary));">View the post</button></div>
+    </div>
+    <button onclick="document.getElementById('toast-wrap').style.display='none'" class="text-slate-300 hover:text-slate-500"><i data-lucide="x" class="w-4 h-4"></i></button>
+  </div>
+</div>
+
+<div class="max-w-[1080px] mx-auto px-6 py-7">
+
+  <!-- intro note -->
+  <div class="mb-6 flex items-start gap-3 text-sm">
+    <span class="legend-chip legend-change mt-0.5">P2 · on Home</span>
+    <p class="text-slate-500 max-w-3xl">Everything that closes the loop lives on the Home page a clinician already lands on — a quick reward, no clicking around. <b>No notification bell</b> (people are drowning in notifications) and <b>just one email a week</b>. Dashed outlines mark <b>what's new vs. today's Home</b>. <button onclick="fireConfetti()" class="font-semibold text-[hsl(var(--primary))] hover:underline">▶ replay a publish</button></p>
+  </div>
+
+  <div class="flex flex-col gap-5 lg:flex-row lg:gap-6">
+    <!-- main column -->
+    <div class="flex flex-col gap-5 flex-1 min-w-0">
+
+      <!-- greeting ribbon (existing) -->
+      <div class="nx-grad-ribbon flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-widest opacity-85">Welcome back</p>
+          <h1 class="text-xl sm:text-2xl font-extrabold">Good afternoon, Whitney</h1>
+        </div>
+        <button class="bg-white text-slate-800 font-semibold px-4 py-2 rounded-lg shadow text-sm inline-flex items-center gap-2"><i data-lucide="send" class="w-4 h-4"></i>Start an interview</button>
+      </div>
+
+      <!-- ★ NEW #1 — "Your posts are live" reward card (the payoff moment, persistent) -->
+      <div class="diff-change">
+        <div class="rounded-xl overflow-hidden border border-emerald-200" style="background:linear-gradient(180deg,#f0fdf4 0%,#ffffff 55%);">
+          <div class="px-4 py-3 flex items-center gap-2 border-b border-emerald-100">
+            <span class="text-lg">🎉</span>
+            <h3 class="font-bold text-sm text-emerald-800">Your posts are live</h3>
+            <span class="pill pill-emerald ml-1">2 this week</span>
+            <a class="ml-auto text-xs font-medium text-emerald-700 hover:underline" href="#">See all →</a>
+          </div>
+          <div class="divide-y divide-emerald-50">
+            <div class="px-4 py-3 flex items-center gap-3">
+              <div class="h-11 w-11 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0"><i data-lucide="image" class="w-5 h-5"></i></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold truncate">Why your low back locks up after travel</p>
+                <p class="text-xs text-slate-500">Live 2h ago · Instagram, Facebook · from your Apr 2 interview</p>
+              </div>
+              <button class="text-xs font-semibold px-3 py-1.5 rounded-md text-white shrink-0" style="background:hsl(var(--primary));">View post</button>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-3">
+              <div class="h-11 w-11 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0"><i data-lucide="play" class="w-5 h-5"></i></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold truncate">The 30-second hip reset I show every runner</p>
+                <p class="text-xs text-slate-500">Live yesterday · GBP, Instagram Reel</p>
+              </div>
+              <button class="text-xs font-semibold px-3 py-1.5 rounded-md text-white shrink-0" style="background:hsl(var(--primary));">View post</button>
+            </div>
+          </div>
+          <div class="px-4 py-2.5 bg-emerald-50/60 text-[11px] text-emerald-700 flex items-center gap-1.5">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Reach &amp; "how'd you hear about us?" will land here next — closing the outcome loop.
+          </div>
+        </div>
+      </div>
+
+      <!-- ★ NEW #2 — "My work & where it stands" tracker (replaces the thin "My recent stories" list) -->
+      <div class="diff-change">
+        <div class="nx-card overflow-hidden">
+          <div class="px-4 py-3.5 border-b border-slate-100 flex items-center gap-2 flex-wrap">
+            <h3 class="font-bold text-sm">My work &amp; where it stands</h3>
+            <span class="pill pill-ink">5 pieces</span>
+            <div class="ml-auto hidden md:flex items-center gap-1 text-[11px]">
+              <span class="pill pill-ink">Capturing</span><i data-lucide="chevron-right" class="w-3 h-3 text-slate-300"></i>
+              <span class="pill pill-amber">Drafting</span><i data-lucide="chevron-right" class="w-3 h-3 text-slate-300"></i>
+              <span class="pill pill-tint">In review</span><i data-lucide="chevron-right" class="w-3 h-3 text-slate-300"></i>
+              <span class="pill pill-sky">Scheduled</span><i data-lucide="chevron-right" class="w-3 h-3 text-slate-300"></i>
+              <span class="pill pill-emerald">Live</span>
+            </div>
+          </div>
+          <div class="divide-y divide-slate-100">
+            <div class="px-4 py-3 flex items-center gap-3 hover:bg-slate-50">
+              <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">Why your low back locks up after travel</p><p class="text-xs text-slate-500">Blog · Instagram · Facebook</p></div>
+              <span class="pill pill-emerald shrink-0">🎉 Live</span>
+              <div class="w-32 shrink-0 text-xs text-slate-500 hidden sm:block">Published 2h ago</div>
+              <button class="text-xs font-semibold px-3 py-1.5 rounded-md bg-slate-100 text-slate-600 shrink-0">View</button>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-3 hover:bg-slate-50">
+              <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">The 30-second hip reset I show every runner</p><p class="text-xs text-slate-500">Instagram Reel · GBP</p></div>
+              <span class="pill pill-sky shrink-0">Scheduled</span>
+              <div class="w-32 shrink-0 text-xs text-slate-500 hidden sm:block">Goes live Thu 9 AM</div>
+              <button class="text-xs font-semibold px-3 py-1.5 rounded-md bg-slate-100 text-slate-600 shrink-0">Preview</button>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-3 hover:bg-slate-50">
+              <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">What "good posture" actually means</p><p class="text-xs text-slate-500">Blog · LinkedIn</p></div>
+              <span class="pill pill-tint shrink-0">In review</span>
+              <div class="w-32 shrink-0 text-xs text-slate-500 hidden sm:flex items-center gap-1.5"><span class="h-5 w-5 rounded-full bg-violet-100 text-violet-700 text-[10px] font-bold flex items-center justify-center">AL</span>with Alli</div>
+              <button class="text-xs font-semibold px-3 py-1.5 rounded-md bg-slate-100 text-slate-500 shrink-0">Nudge</button>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-3 hover:bg-slate-50">
+              <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">Why we screen before we adjust</p><p class="text-xs text-slate-500">3 drafts spawned from your interview</p></div>
+              <span class="pill pill-amber shrink-0">Drafting</span>
+              <div class="w-32 shrink-0 text-xs text-slate-500 hidden sm:block">Ready for edits</div>
+              <button class="text-xs font-semibold px-3 py-1.5 rounded-md text-white shrink-0" style="background:hsl(var(--primary));">Edit text</button>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-3 hover:bg-slate-50">
+              <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">Recovery after a long ride <span class="text-[11px] font-normal text-amber-600">· paused</span></p><p class="text-xs text-slate-500">Voice interview · 4 min in</p></div>
+              <span class="pill pill-ink shrink-0">Capturing</span>
+              <div class="w-32 shrink-0 text-xs text-slate-500 hidden sm:block">Paused 1h ago</div>
+              <button class="text-xs font-semibold px-3 py-1.5 rounded-md text-white shrink-0" style="background:hsl(var(--primary));">Resume</button>
+            </div>
+          </div>
+          <a href="#" class="block px-4 py-2.5 text-xs font-medium text-slate-500 hover:text-[hsl(var(--primary))] bg-slate-50/60">See all my work →</a>
+        </div>
+      </div>
+
+      <!-- existing task buckets (unchanged) shown muted so the diff reads clearly -->
+      <div class="nx-card p-4 opacity-70">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Ready for content · Due for an interview …</p>
+        <p class="text-xs text-slate-400">(existing Home task buckets — unchanged, shown muted for contrast)</p>
+      </div>
+    </div>
+
+    <!-- right rail (existing) -->
+    <div class="w-full lg:w-64 lg:flex-shrink-0">
+      <div class="nx-card p-4">
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">Your week at a glance</p>
+        <p class="text-xs text-slate-400">(existing right rail — unchanged)</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- the one off-Home piece: ONE weekly digest email -->
+  <div class="mt-8">
+    <div class="mb-3 flex items-center gap-2"><span class="legend-chip legend-change">Off-Home · 1× / week</span><span class="text-xs text-slate-500">The only piece that <i>isn't</i> on Home — a single weekly recap (Monday 8 AM), not a stream of per-event pings. One gentle nudge back to the app.</span></div>
+    <div class="max-w-xl rounded-xl border border-slate-200 overflow-hidden bg-white">
+      <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-100 text-xs text-slate-500"><span class="font-semibold text-slate-700">To:</span> whitney@movebetter.co · <span class="font-semibold text-slate-700">Subject:</span> 🎉 Your week at Move Better — 2 posts went live</div>
+      <div class="p-5">
+        <div class="text-3xl mb-2">🎉</div>
+        <h4 class="font-bold text-lg mb-1">Nice week, Whitney.</h4>
+        <p class="text-sm text-slate-600 mb-4">Here's what your stories did over the last 7 days.</p>
+
+        <!-- went live -->
+        <div class="rounded-lg border border-emerald-100 bg-emerald-50/50 p-3 mb-3">
+          <p class="text-xs font-bold uppercase tracking-wide text-emerald-700 mb-2">🎉 Went live (2)</p>
+          <p class="text-sm text-slate-700">• <b>Why your low back locks up after travel</b> — Instagram, Facebook</p>
+          <p class="text-sm text-slate-700">• <b>The 30-second hip reset I show every runner</b> — GBP, Instagram Reel</p>
+        </div>
+
+        <!-- needs you -->
+        <div class="rounded-lg border border-orange-100 bg-orange-50/50 p-3 mb-4">
+          <p class="text-xs font-bold uppercase tracking-wide text-[hsl(var(--accent-foreground))] mb-2">⏳ Waiting on you (2)</p>
+          <p class="text-sm text-slate-700">• <b>What "good posture" actually means</b> — in review with Alli</p>
+          <p class="text-sm text-slate-700">• <b>Why we screen before we adjust</b> — a draft is ready for your edits</p>
+        </div>
+
+        <a class="inline-block text-sm font-semibold px-4 py-2 rounded-lg text-white" style="background:hsl(var(--primary));" href="#">Open Bernard →</a>
+        <p class="text-[11px] text-slate-400 mt-4">You're getting this weekly recap every Monday. One email a week — change the day or turn it off in Settings.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  lucide.createIcons();
+  function fireConfetti(){
+    const t=document.getElementById('toast-wrap'); t.style.display='block';
+    const lt=document.getElementById('live-toast'); lt.classList.remove('toast-in'); void lt.offsetWidth; lt.classList.add('toast-in');
+    const colors=['#e36525','#f0883e','#10b981','#0284c7','#f6a96b'];
+    for(let i=0;i<28;i++){const c=document.createElement('div');c.className='confetti';c.style.left=(42+Math.random()*16)+'%';c.style.top='70px';c.style.background=colors[i%colors.length];c.style.animationDelay=(Math.random()*0.25)+'s';document.body.appendChild(c);setTimeout(()=>c.remove(),1800);}
+  }
+  function toggleBell(){ document.getElementById('bell-panel').classList.toggle('hidden'); }
+  setTimeout(fireConfetti, 400);
+</script>
+</body>
+</html>
