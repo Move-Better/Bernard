@@ -238,6 +238,23 @@ export function buildDataBlock({ platform, type, text, uploads = [], coverUrl = 
 // Networks whose Reel format accepts a separate cover image.
 const REEL_COVER_TYPES = new Set(['INSTAGRAM', 'FACEBOOK'])
 
+// Pick the cover-frame source from our own media_urls entries. Pure — takes the
+// raw entries (not bundle's resolved uploads) — so it's unit-testable and reused
+// by _uploadCover.
+//
+// Identify the video by our own type/kind field, NOT by `thumbnailUrl !== url`.
+// That mismatch used to be the only signal ("a photo entry's thumbnailUrl is
+// just its own url"), but it stopped being reliable once photo entries could
+// carry a REAL thumbnailUrl that differs from url (week-summary's small-tile
+// fix, PR #2318) — under the old check, a photo with a real thumbnail ahead of
+// a video in the array would have been mistaken for the Reel's cover source.
+export function selectCoverEntry(mediaUrls) {
+  const entry = (mediaUrls || []).find(
+    (m) => m && (m.type === 'video' || m.kind === 'video') && m.thumbnailUrl,
+  )
+  return entry || null
+}
+
 export class BundlePublisher extends SocialPublisher {
   /**
    * @param {Object} workspace Full `workspaces` row.
@@ -504,10 +521,9 @@ export class BundlePublisher extends SocialPublisher {
 
   // Upload the video's poster frame so the Reel ships with the cover the editor
   // showed. `thumbnail` must be a bundle-hosted URL, so our blob URL goes
-  // through uploadCreateFromUrl first. A photo entry's thumbnailUrl is just its
-  // own url (see mediaEntry.js), so require the two to differ.
+  // through uploadCreateFromUrl first.
   async _uploadCover(mediaUrls) {
-    const entry = (mediaUrls || []).find((m) => m?.thumbnailUrl && m.thumbnailUrl !== m.url)
+    const entry = selectCoverEntry(mediaUrls)
     if (!entry) return null
     try {
       const up = await this.sdk.upload.uploadCreateFromUrl({
