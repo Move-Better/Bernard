@@ -1,81 +1,86 @@
-# Weekly Stack & AI Review — 2026-06-24
+# Bernard — Weekly Stack & AI Review
+**2026-07-23**
 
-**Scope:** One project detected — **Bernard** (`/Users/qbook/Claude Projects/Bernard`). Research window ~June 14–24, 2026.
-
-**Detected stack (what's actually in the code):**
-- **Frontend:** React 18.2, Vite 5, React Router 6, Tailwind 3, Radix UI, TanStack Query 5 (`package.json`)
-- **Hosting:** Vercel — Node functions, `regions: pdx1`, 12 crons, `includeFiles` for ffmpeg (`vercel.json`)
-- **AI:** Vercel **AI SDK v6** (`ai@^6.0.175`) via **Vercel AI Gateway** (`AI_GATEWAY_API_KEY`, `api/stream.js:43`); models = Claude 4.x family + `google/gemini-2.5-flash` + OpenAI Realtime (`gpt-realtime`)
-- **Data/Auth/Infra:** Supabase (PostgREST REST + `pg` in scripts only), **Clerk** auth, Upstash Redis (rate limiting), Vercel Blob, Sentry, PostHog, bundle.social
-- **Not present (so not researched):** Railway, Ably/Pusher/Supabase Realtime, AWS runtime SDK in request path, Supabase Auth, Supabase RLS (0 policies — isolation is API-layer, by design per `CLAUDE.md`)
+## Since last week (2026-07-16) — prior action items, re-checked
+- **Resolved:** `api/_lib/brandVisualAnalyzer.js:30` now reads `const ANALYSIS_MODEL = 'anthropic/claude-sonnet-4-6'` — the off-pattern bare `claude-sonnet-4-5` flagged last week is gone; all Sonnet call sites are consistent again.
+- **Resolved:** `api/realtime-session.js:42` and `api/_lib/twilioSip.js:30` both now read `const REALTIME_MODEL = 'gpt-realtime-2.1'` — the upgrade from bare `gpt-realtime` recommended last week has shipped.
+- **Resolved:** `@clerk/backend` is `^3.11.7` and `@clerk/react` is `^6.12.5` in `package.json:30-31` — matches the version bump suggested last week.
+- Last week's `/publish/:id` UX-dead-click item belongs to the separate weekly PostHog UX-pain routine, not this stack review — not re-checked here.
 
 ---
 
-## 1) This Week's Changes
+## This Week's Changes
 
-### Anthropic / Claude (weighted first)
+### Platforms detected in this repo
+Vercel (Functions, Blob, Cron ×22, AI Gateway, Routing Middleware) · Supabase (Postgres 17.6, via PostgREST — no RLS, Clerk is the auth layer) · Clerk · Sentry · PostHog · Upstash Redis (`@upstash/ratelimit`) · bundle.social · OpenAI (Realtime voice + transcription, direct API) · Anthropic + Google Gemini (both via Vercel AI Gateway) · Twilio (SIP calling) · Mux (video webhooks) · TypeScript 6.0.3.
 
-- **Model retirements — June 15, 2026 (BREAKING in general; does NOT hit this code).** `claude-sonnet-4-20250514` and `claude-opus-4-20250514` (the bare "Sonnet 4 / Opus 4" IDs) are now **Retired** — requests fail with no grace period. — *Maturity: retired.* [Anthropic model deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations)
-- **Claude Opus 4.1 deprecated (June 5), retires Aug 5, 2026.** `claude-opus-4-1-20250805` → replace with `claude-opus-4-8`. — *Maturity: deprecated.* [source](https://platform.claude.com/docs/en/about-claude/model-deprecations)
-- **API parameter deprecation: `temperature` / `top_p` / `top_k` return a 400 on Opus 4.7 and later** (incl. 4.8) when set to a non-default value. — *Maturity: active/breaking-for-param.* [source](https://platform.claude.com/docs/en/about-claude/model-deprecations)
-- **All current 4.x models Active:** `claude-opus-4-8`, `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-sonnet-4-5-20250929`, `claude-haiku-4-5-20251001` all listed Active with retirement dates in 2027 (or late 2026 for the dated 4.5s). — *Maturity: GA.* [source](https://platform.claude.com/docs/en/about-claude/model-deprecations)
-- **Claude Code (June 2026):** `sandbox.credentials` setting to block sandboxed commands from reading secrets/credential files; org-configured model restrictions; hierarchical sub-agents (up to 3 levels); `fallbackModel` chains; doubled rate limits; structured-output fixes. — *Maturity: shipped.* [Claude Code changelog](https://code.claude.com/docs/en/changelog)
+### Anthropic / Claude
+- **Official model-lifecycle table** (fetched directly): every model Bernard actually calls — `claude-sonnet-4-6`, `claude-opus-4-7`, `claude-haiku-4-5-20251001` — is **Active**, none sooner than Feb 2027 retirement. **Maturity: stable.** [Anthropic model deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations).
+- **Claude Sonnet 5** (`claude-sonnet-5`) is GA as of June 30, 2026 and now live on the Vercel AI Gateway — "near-Opus intelligence at Sonnet cost," launch pricing $2/$10 per M tokens through Aug 31, 2026 (standard list $3/$15). **Maturity: GA.** [Vercel changelog](https://vercel.com/changelog/claude-sonnet-5-ai-gateway), [PYMNTS coverage](https://www.pymnts.com/news/artificial-intelligence/2026/anthropic-cuts-ai-agent-costs-with-claude-sonnet-5-rollout/).
+- **Claude Code** shipped daily point releases this week (2.1.214 → 2.1.218, July 18–22): permission-check hardening (oversized Bash commands, PowerShell bypass, `docker` daemon-redirect flags), a new `EndConversation` tool, emoji-shortcode autocomplete, and `/code-review` now running as a background subagent. **Breaking, tool-level (not code-level):** as of 2.1.215 (July 19), Claude no longer auto-runs `/verify`/`/code-review` after edits — they must be invoked explicitly. Doesn't touch Bernard's CI (`pr.yml`'s `review` job calls `claude-code-action` with an inline prompt, not the interactive skill), but worth knowing for anyone relying on the old auto-invoke habit interactively. **Maturity: stable, incremental.** [Claude Code changelog](https://code.claude.com/docs/en/changelog).
+- **Model Context Protocol** — a major spec revision (`2026-07-28`, currently a Release Candidate, not yet final) moves MCP to a stateless architecture and adds an Enterprise-Managed Authorization extension. **Maturity: RC, upcoming.** Not applicable to Bernard today (no MCP servers in this codebase) — informational only. [MCP blog](https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/).
 
-### AI — other labs
+### OpenAI
+- **Legacy realtime/transcription model families deprecated** (announced July 20, 2026, shutdown Jan 20, 2027): bare `gpt-realtime`, `gpt-4o-realtime`, and dated transcription snapshots are being retired in favor of `gpt-realtime-2.1`/`gpt-realtime-2.1-mini`. **Bernard is already on the recommended replacement** (see "Since last week"). **Maturity: deprecation notice, GA replacement.** [OpenAI deprecations](https://developers.openai.com/api/docs/deprecations).
+- Same notice lists `gpt-5-mini-2025-08-07` (dated snapshot) as deprecated, shutdown Dec 11, 2026, replacement `gpt-5.6-terra` — see Action Items (Bernard calls bare `gpt-5-mini`, not the dated snapshot).
 
-- **Google Gemini 2.5 Pro "Deep Think"** launched June 22, 2026 (reasoning mode). **Gemini 3.5 Flash** is GA (since May 19, ~$1.50/$9.00 per Mtok). — *Maturity: GA / new.* [Gemini changelog](https://ai.google.dev/gemini-api/docs/changelog), [llm-stats](https://llm-stats.com/llm-updates)
-- **OpenAI GPT-5.5** family (incl. Pro / Instant) tracked in June 2026 updates. — *Maturity: tracked/GA.* [llm-stats](https://llm-stats.com/llm-updates)
+### Google Gemini
+- **`gemini-2.5-pro`, `gemini-2.5-flash`, and `gemini-2.5-flash-lite` are deprecated, shutdown date October 16, 2026** (Google's own deprecations page). Recommended replacements: `gemini-3.1-pro-preview` (for `-pro`), `gemini-3.6-flash` (for `-flash`). **Maturity: deprecated, ~3 months of runway.** Directly relevant — Bernard calls both retiring models. See Action Items. [Google Gemini API deprecations](https://ai.google.dev/gemini-api/docs/deprecations).
+- Gemini 3.x is already live on the Vercel AI Gateway Bernard already uses for these calls — `google/gemini-3-flash`, `google/gemini-3.1-pro-preview`, `google/gemini-3.1-flash-lite-preview` are all confirmed available with no new provider account needed. [Vercel: Gemini 3.1 Pro on AI Gateway](https://vercel.com/changelog/gemini-3-1-pro-is-live-on-ai-gateway).
 
 ### Vercel
-*(Date labels read from the live changelog; the fetch mis-stamped the page year, so treat exact dates as approximate — entries themselves are current.)*
-- **Custom OIDC Token Audiences** — define custom audiences for OIDC token federation (runtime credentials instead of long-lived secrets). — *Maturity: shipped.* [Vercel changelog](https://vercel.com/changelog)
-- **Deploy Node servers with zero configuration.** — *Maturity: shipped.* [source](https://vercel.com/changelog)
-- **Deploy from Claude Design to Vercel** + **redesigned Workflows trace viewer** + **GLM 5.2 Fast on AI Gateway**. — *Maturity: shipped.* [source](https://vercel.com/changelog)
-- **AI Gateway: service tiers + provider routing** (`order`/`only`/`sort` in `providerOptions.gateway`); supports OpenAI Responses API. — *Maturity: GA.* [AI Gateway docs](https://vercel.com/docs/ai-gateway/models-and-providers/service-tiers)
+- **AI Gateway now routes realtime voice, STT, and TTS** (OpenAI + xAI Grok models), with the same routing/observability/spend-control layer as text models. **Maturity: beta.** Bernard's realtime voice interview feature calls OpenAI's Realtime API directly today rather than through the Gateway — see Action Items (Investigate). [Vercel changelog](https://vercel.com/changelog/realtime-voice-speech-and-transcription-now-supported-on-ai-gateway).
+- **Vercel Private Blob reached GA June 30, 2026** — private stores, signed URLs, and short-lived auto-rotating OIDC tokens for function-to-Blob auth all graduated from beta, replacing a static `BLOB_READ_WRITE_TOKEN`. **Maturity: GA.** Bernard's blob store is `access: 'public'` by design (served media needs direct public URLs) — see Action Items (Investigate, not a quick swap). [Vercel changelog](https://vercel.com/changelog/vercel-private-blob-is-now-generally-available).
+- Build logs now redact Sensitive env var values ≥32 chars (July 9, 2026) — security-positive, no action needed. [Vercel community digest](https://community.vercel.com/t/vercel-weekly-2026-07-06/45111).
+- AI SDK `ai@7.0.19` (July 9, 2026) added `fingerprintTools`/`detectToolDrift` to detect MCP "rug pull" tool-definition drift. **Not applicable** — Bernard's `generateText`/`generateObject` calls don't wire in MCP tool servers. [AI SDK changelog](https://github.com/vercel/ai/blob/main/packages/ai/CHANGELOG.md).
 
-### Supabase (Launch Week, June 2026)
-- **Passkey auth** (WebAuthn) for Supabase Auth. — *Maturity: new.* [Supabase Developer Update, June 2026](https://supabase.com/changelog/46689-developer-update-june-2026)
-- **pg-delta** schema-diffing engine (tables, columns, RLS, functions, triggers, indexes, extensions). — *Maturity: new.* [source](https://supabase.com/changelog/46689-developer-update-june-2026)
-- **Multigres v0.1 alpha** (sharding, connection pooling, failover). **Metered logs pricing** (Pro/Team: 5 GB ingest + 1,000 GB query/mo, overage $0.50/GB & $0.002/GB). **Supabase AI Agent plugin** (MCP + skills). — *Maturity: alpha / GA.* [source](https://supabase.com/changelog/46689-developer-update-june-2026)
+### Supabase
+- Bernard's prod DB is confirmed on **PostgreSQL 17.6** (checked directly via the Supabase MCP) — the widely-reported "Postgres 14 support ended July 1, 2026" deprecation does not apply.
+- No other material Supabase changes this week affect anything Bernard actually uses (no RLS, no Supabase Realtime, no Supabase Auth in this codebase).
 
-### Clerk
-- **`<OAuthConsent />`** — host the OAuth consent screen on your own domain; org selector for `user:org:read`. (2026-06-22) — *Maturity: shipped.* [Clerk changelog](https://clerk.com/changelog)
-- **Multi-value SAML custom attribute mapping** → arrays on `publicMetadata`. (2026-06-12) — *Maturity: shipped.* [source](https://clerk.com/changelog)
+### TypeScript
+- **TypeScript 7.0 went stable July 8, 2026** — a full Go-native compiler rewrite, reported 8–12× faster full builds. Bernard is on 6.0.3 (`package.json:99`). **Maturity: GA, but 2 weeks old** — ecosystem tooling (ESLint plugins, ts-node-style tooling) is still catching up. See Action Items (Investigate, not urgent). [TypeScript 7.0 announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/).
 
-### Dev tooling / workflows
-- **Cursor (June 2026):** Automations / always-on agents, `/automate` skill, Auto-review autonomy "dial", Background Agent, Cursor SDK for deployable agents. — *Maturity: shipped.* [Cursor releasebot](https://releasebot.io/updates/cursor)
-- **Real-world workflow:** a documented 100-developer rollout reported a **28% productivity lift sustained over 6 months**, anchored by a 32-entry shared skill library. — [case study](https://www.digitalapplied.com/blog/case-study-ai-coding-rollout-100-dev-team-quarterly-data-2026)
-- **Counterpoint (worth knowing):** industry data shows AI-generated PRs wait ~4.6× longer in review and carry 15–18% more security findings — review capacity, not generation, is the bottleneck. — [Opsera 2026 benchmark](https://opsera.ai/resources/report/ai-coding-impact-2026-benchmark-report/)
+### Real-world workflows (named team, measurable outcome)
+- **Duolingo** cut median code-review time from 3 hours to 1 hour after adopting AI-assisted review tooling — a concrete, measurable process win from making review (not just generation) part of the agentic loop.
+- **Picnic** (grocery delivery) is a useful cautionary counterpoint: perceived productivity rose sharply in the first weeks of AI-assisted development, then declined once code shipped faster than it could be reviewed, forcing repeated rework on the same features — a reminder that generation speed without review capacity is a net negative, not a win.
+
+Sources: [ZenML LLMOps case study writeup](https://www.zenml.io/llmops-database/building-production-ai-agents-lessons-from-claude-code-and-enterprise-deployments), [AI coding agents July 2026 roundup](https://chatgptaihub.com/the-big-ai-coding-agents-story-what-july-16-s-news-means-for-developers/).
 
 ---
 
-## 2) Action Items for My Projects
+## Action Items for My Projects
 
-### 🔴 BREAKING (do now)
-**None.** Every model string in the code is on the **Active** list. The June 15 retirements were the bare `claude-sonnet-4` / `claude-opus-4` IDs (the `…-20250514` builds) — a full-repo grep found **zero** of those. The code uses `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-sonnet-4-5`, `claude-haiku-4-5(-20251001)`, all Active. No call needs to change to keep working.
+### BREAKING (do now)
+*None.* No retired or bare-deprecated model strings found in `src/`, `api/`, or `scripts/` (checked for `claude-3*`, bare `claude-sonnet-4`/`claude-opus-4`, `gpt-3.5`, `text-davinci`). No `temperature`/`top_p`/`top_k` passed on any `claude-opus-4-7` call site (checked all 7 call sites against every file that also sets a sampling param — none overlap).
 
-### 🟡 WORTH DOING
-- **Bernard — guard against the Opus 4.7+ `temperature` 400.** Today **no Opus 4.7 call site passes `temperature`/`top_p`** (verified across `api/stream.js`, `api/_lib/bookSynthesis.js:22`, `api/_routes/content-items/blog-regen-prepare.js:187`, `api/_routes/content-items/split-into-series.js:278`, `src/pages/CaptureReview.jsx:145`), so nothing breaks now. **Risk:** several Sonnet/Haiku call sites *do* set `temperature` (e.g. `api/_routes/editorial/propose-grade.js:57`, `api/_routes/photo-templates/generate.js:167`, `api/_lib/voiceAudit.js:179`) — if any are ever bumped to Opus 4.7/4.8, they'll 400. **Rec:** add a tiny lint/helper note so an Opus model + `temperature` can't ship together. *Effort: low.* [source](https://platform.claude.com/docs/en/about-claude/model-deprecations)
+### WORTH DOING
+| Project | Evidence | Recommendation | Effort |
+|---|---|---|---|
+| Bernard | `api/_lib/analyzeVideoWindow.js:41` (`DEFAULT_VIDEO_MODEL = 'google/gemini-2.5-pro'`), `api/_lib/tagAsset.js:27`, `api/_lib/topicRegion.js:43` (both `google/gemini-2.5-flash`) | Google's own deprecation page sets an **October 16, 2026** shutdown for gemini-2.5-pro/flash/flash-lite. Confirmed 2026-07-23: both replacements are already live on Bernard's Vercel AI Gateway — `google/gemini-3.6-flash` ($1.50/$7.50 per M, vs $0.30/$2.50 today — 5×/3× cost) and `google/gemini-3.1-pro-preview` ($2/$12 per M, vs $1.25/$10 — still **Preview**, not GA). **Decision: wait, don't migrate yet** — these are commodity tagging/classification/summarization tasks on the flash tier by design, no quality problem to fix today, so switching early just means paying 3–5× longer than necessary for no functional gain. Re-check pricing + `gemini-3.1-pro-preview`'s GA status in early September, then swap + verify with time to spare before Oct 16. | Medium |
+| Bernard | `package.json:56` (`"ai": "^7.0.2"`), `package-lock.json` pinned at exactly `7.0.2` | Installed AI SDK is 3 patch-tiers behind the current `7.0.19` (bug fixes, `streamTranscribe`). Caret range already permits it — just needs `npm update ai` + a re-verify of the three `streamText`/`generateObject` call paths (`api/stream.js`, `api/demo/generate.js`, and a couple of `generateObject` sites) since it's a real dependency bump, not a no-op. | Low |
 
-### 🔵 INVESTIGATE
-- **Bernard — Supabase metered logs + 12 crons = cost exposure.** `vercel.json` runs frequent crons (`*/5`, `*/10`, `5-59/10`) and the codebase logs verbosely (`console.error` is the documented debugging pattern). Supabase now meters logs (overage $0.50/GB ingest). **Rec:** sample current log volume before it's billable; trim hot-path `console.error` in the `*/5`–`*/10` cron handlers. *Effort: low.* [Supabase June 2026](https://supabase.com/changelog/46689-developer-update-june-2026)
-- **Bernard — schema-drift detection (the real recurring prod-500 risk).** `CLAUDE.md` documents there is **no migration tracker** (`scripts/apply-multitenant-migrations.mjs` just applies whatever you pass; 158 files in `supabase/multitenant/migrations`), and the existing `scripts/verify-multitenant-schema.mjs` only *prints* the table/workspace list — it does **not** compare against an expected schema, so it can't catch the "merged a column reference before the migration applied → 500" failure mode. **Supabase's new `pg-delta` is the canonical fix but does NOT fit today:** it's **Public Alpha** ("things will break, incomplete coverage") and routes through the **Supabase CLI declarative workflow**, which Bernard isn't set up for (no `supabase/config.toml`, no CLI linkage). **Rec:** rather than adopt an alpha CLI workflow, extend `verify-multitenant-schema.mjs` into a real drift check (diff `information_schema` columns vs. the union parsed from the 158 migration files, or vs. a committed expected-columns snapshot) and run it in CI. *Effort: med.* [pg-delta alpha](https://supabase.com/changelog/44938-public-alpha-declarative-schema-management-with-pg-delta)
-- **Bernard — Gemini 3.5 Flash GA for vision tagging.** `api/_lib/tagAsset.js:27` uses `google/gemini-2.5-flash`. 3.5 Flash is now GA via AI Gateway. **Rec:** A/B 2.5 → 3.5 Flash on real asset-tagging inputs for quality/cost. *Effort: low.* [Gemini changelog](https://ai.google.dev/gemini-api/docs/changelog)
-- **Bernard — optional `claude-opus-4-7` → `claude-opus-4-8`.** 4.7 is Active until ~Apr 2027 (no urgency), but 4.8 is the current top model and the named successor to the retiring 4.1. Sites: `api/_lib/bookSynthesis.js:22`, `api/_routes/content-items/blog-regen-prepare.js:187`, `api/_routes/content-items/split-into-series.js:278`/`:337`, `src/pages/CaptureReview.jsx:145`, and the allow-list `api/stream.js:50`. **Rec:** test quality on book/blog synthesis before switching. *Effort: low.* [source](https://platform.claude.com/docs/en/about-claude/model-deprecations)
+### INVESTIGATE
+| Project | Evidence | Recommendation | Effort |
+|---|---|---|---|
+| Bernard | `api/_lib/citationProbe.js:22` — `const OPENAI_MODEL = 'gpt-5-mini'` (bare, called directly against OpenAI's Responses API, not through the Gateway) | OpenAI's deprecations page lists the dated `gpt-5-mini-2025-08-07` as deprecated (shutdown Dec 11, 2026, replacement `gpt-5.6-terra`); unclear whether the bare, undated `gpt-5-mini` alias is affected or auto-tracks forward. Confirm on OpenAI's model page before it matters — low risk today since it's been running fine, but worth a 5-minute check given a firm date exists. | Low |
+| Bernard | `api/realtime-session.js` + `api/_lib/twilioSip.js` call OpenAI's Realtime API directly; Vercel AI Gateway now routes realtime voice/STT/TTS with the same observability/spend controls as text calls (beta) | Architecture question, not a quick swap: would routing F1's realtime voice calls through the Gateway add useful cost/latency observability, or just add a hop for a latency-sensitive path? Worth a scoping conversation once the Gateway's realtime routing is out of beta, not immediate action. | High |
+| Bernard | 13 files reference `BLOB_READ_WRITE_TOKEN`; every `put()` call site checked uses `access: 'public'` (e.g. `api/voice-memo.js:131`, `api/capture/upload.js:149`) | Vercel Private Blob (GA) replaces the static token with short-lived OIDC auth — but it requires the store to be private, and Bernard's media (photos, videos, thumbnails) needs direct public URLs for browsers/video players. Not a drop-in win; only worth it if a future feature needs a genuinely private blob segment (e.g. pre-processing originals) that could live in a second, private store while the public-serving store stays as-is. | High |
+| Bernard | `package.json:99` — `"typescript": "^6.0.3"` | TypeScript 7.0 (Go-native compiler, stable July 8, 2026) is a major architecture change, not a routine minor bump. Worth a scoped local trial of `tsc --noEmit` under 7.0 once the ecosystem (ESLint's TS parser, ts-related tooling) has a few more weeks to stabilize — no rush given 6.0.3 is still fully supported. | Low (trial) / Medium (adopt) |
 
-### ⚪ IGNORE / FYI
-- **Vercel OIDC federation — does NOT apply to Bernard's secrets (investigated 2026-06-24).** OIDC only works with consumers that trust Vercel's IdP — AWS / GCP / Azure / your own API. Bernard's credential consumers don't qualify: Supabase Postgres (`MULTITENANT_DATABASE_URL`) uses password auth, `SUPABASE_SERVICE_ROLE_KEY` is a static JWT, and `OPENAI_API_KEY` is OpenAI's own — none accept OIDC exchange. `BLOB_READ_WRITE_TOKEN` + `AI_GATEWAY_API_KEY` are Vercel-native (OIDC is for *external* clouds), and `WORKSPACE_CREDENTIALS_KEY` is a local encryption key, not a connection credential. OIDC would only help if Bernard added AWS/GCP/Azure resources to the request path (`@aws-sdk/client-s3` is a devDependency, not used at runtime). **Real secret-hygiene lever here is rotation discipline + the Sensitive flag, both already documented in `CLAUDE.md`** — not OIDC. [Vercel OIDC docs](https://vercel.com/docs/oidc)
-- **Supabase & Clerk passkeys — not applicable.** Auth is **Clerk**, not Supabase Auth, so Supabase passkeys don't apply. Clerk passkeys exist but no action needed now.
-- **Supabase Multigres / connection pooling — not applicable to the request path.** Serverless functions talk to Supabase over **PostgREST REST**, not direct Postgres; direct `pg` (`new Pool`/`new Client`) appears **only in `scripts/`** (migrations/backups), which aren't high-concurrency. No serverless pooling problem to solve.
-- **Supabase Realtime / native websockets — not in use.** No `.channel()`/Ably/Pusher in `src` or `api`; nothing to migrate.
-- **Claude Code features** (hierarchical sub-agents, `sandbox.credentials`, doubled rate limits) — workflow niceties for your own dev loop, not app changes.
-- **Railway** — appears in `CLAUDE.md`/memory for a *different* project (Practice Brain) but not in Bernard's code, so its changelog was not researched per instructions.
+### IGNORE-FYI
+- Postgres 14 deprecation — confirmed not applicable, Bernard's prod DB is PostgreSQL 17.6.
+- MCP 2026-07-28 stateless spec revision — not applicable, no MCP servers in this codebase; still an RC, not final.
+- AI SDK `fingerprintTools`/`detectToolDrift` (MCP rug-pull defense) — not applicable, Bernard's AI calls don't wire in MCP tool servers.
+- Vercel build-log Sensitive-var redaction — pure upside, no action needed.
+- Sentry's new GitLab support for Seer — not applicable, Bernard is on GitHub.
+- Clerk's July 2026 UI changes (elevation appearance option, subscription-button fix) — Bernard doesn't use Clerk Billing components; cosmetic to Clerk-hosted UI Bernard doesn't render.
+- Twilio's July 13 Conference-list endpoint default change — not applicable, Bernard's Twilio usage is SIP calling only, no Conference resource in the codebase.
+- General accumulated npm drift (React 18→19, Vite 5→8, Tailwind 3→4, react-router-dom 6→7, zod 3→4, ESLint 9→10) — standing maintenance backlog, nothing changed about it this week specifically.
 
 ---
 
-### 🏁 Highest-priority action across all projects
-**Add real schema-drift detection** (extend `scripts/verify-multitenant-schema.mjs` and gate it in CI). With no migration tracker across 158 migrations, the "column referenced before migration applied → prod 500" failure mode is documented as recurring — this is the one item that removes a standing source of prod incidents. (My earlier draft named Vercel OIDC as #1; investigation on 2026-06-24 showed OIDC doesn't apply to any of Bernard's secrets — see IGNORE/FYI.) There is no urgent breaking change forcing work this week.
+## Highest-priority action this week
+**Nothing urgent.** The Gemini 2.5 deadline (Oct 16, 2026) was the only item with a hard external date; priced out the migration this session (see WORTH DOING) and deliberately deferred it — early switching costs 3–5× more per call with no quality upside for these commodity tasks. Revisit in early September. Everything else this week is either already fixed or genuinely not urgent.
 
-### ⚠️ Couldn't verify
-- **Exact Vercel changelog dates:** the fetched page mis-stamped its year, so the Vercel entries above are confirmed *current* but their day-level dates are approximate — confirm at [vercel.com/changelog](https://vercel.com/changelog) before acting.
-- **Upstash & Sentry June 2026 specifics:** search surfaced the changelog index pages but no concrete dated entries, so nothing is reported for them rather than guessing.
+**Couldn't verify:** the exact shipped Vercel changelog slug/date for the July 9 build-log redaction feature (only found it via a community weekly-digest post, not a direct `vercel.com/changelog/...` URL); and whether `gemini-3.6-flash` (Google's stated replacement for `gemini-2.5-flash`) is the exact model slug already live on the Vercel AI Gateway today — confirmed `gemini-3-flash` and `gemini-3.1-flash-lite-preview` are live, but did not find a source explicitly confirming a `gemini-3.6-flash` gateway listing, so re-check the exact slug at migration time rather than trusting this report's naming.

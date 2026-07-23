@@ -66,6 +66,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8751", "--directory", "/Users/qbook/Claude Projects/Bernard/.claude/worktrees/optimistic-neumann-08d97a/.claude/mockups"],
       "port": 8751
+    },
+    {
+      "name": "gracious-kalam-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "/Users/qbook/Claude Projects/Bernard/.claude/worktrees/gracious-kalam-752b30", "run", "dev", "--", "--port", "5183", "--strictPort"],
+      "port": 5183
     }
   ]
 }
