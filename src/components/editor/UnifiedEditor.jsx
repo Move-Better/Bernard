@@ -306,7 +306,13 @@ function MediaPanel({ piece, updateItem }) {
     setAttaching(key)
     try {
       const next = singleMedia ? [entry] : [...media, entry]
-      await updateItem.mutateAsync({ id: piece.id, patch: { media_urls: next } })
+      // `mediaUrls`, NOT `media_urls` — api/_routes/db/content.js maps the PATCH
+      // body camelCase→snake_case (`media_urls: patch.mediaUrls`). A snake_case
+      // key is silently ignored, and because that handler always stamps
+      // `updated_at`, the request still 200s with a bumped timestamp and an
+      // unchanged row — so the mutation resolves, the success toast fires, and
+      // nothing was saved.
+      await updateItem.mutateAsync({ id: piece.id, patch: { mediaUrls: next } })
       if (singleMedia && media.length > 0) {
         toast.success('Media replaced', { description: 'This platform supports one video/image — the previous one was removed.' })
       }
@@ -328,7 +334,8 @@ function MediaPanel({ piece, updateItem }) {
   async function removeAt(idx) {
     const next = media.filter((_, i) => i !== idx)
     try {
-      await updateItem.mutateAsync({ id: piece.id, patch: { media_urls: next } })
+      // camelCase — see the note in attachEntry above.
+      await updateItem.mutateAsync({ id: piece.id, patch: { mediaUrls: next } })
     } catch (e) {
       toast.error('Could not remove media', { description: e.message })
     }
