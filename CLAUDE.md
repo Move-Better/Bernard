@@ -126,11 +126,44 @@ The weekly Bernard staff summary (`.claude/scheduled-tasks/bernard-weekly-staff-
 
 **When to capture:** Any time you merge a UI change to `main`. Backend-only changes, refactors, CI/test updates, and docs changes need no screenshot.
 
-**What to capture — ZOOMED CROPS, never full pages.** Grab a tight crop of just the ONE component the change is about (a card, a control, a few table rows), not the whole screen. A full-page screenshot downscaled to fit the PDF becomes an unreadable blur — this is the #1 failure mode (hit 2026-07-16: the first Bernard PDF captured whole-`main` pages and had to be fully redone as element-level crops at `scale: 2`). The quality bar is the Deep Thought reference PDF (`/Users/qbook/Claude Projects/Deep Thought/.staff-update-screenshots/`): a colored title + tight per-feature crops (its "My voice" card, its Cmd-K box, its two thumb buttons). The isolation + `scale: 2` steps below produce exactly this — do NOT skip the isolation and `html2canvas(document.querySelector('main'))` wholesale. One representative element per bullet; for a long table hide all but the first ~5 rows, for a card grid capture 2–3 cards, for a form keep the input + the new control and hide the rest.
+**What to capture — ZOOMED CROPS, never full pages.** Grab a tight crop of just the ONE component the change is about (a card, a control, a few table rows), not the whole screen. A full-page screenshot downscaled to fit the PDF becomes an unreadable blur — this is the #1 failure mode (hit 2026-07-16: the first Bernard PDF captured whole-`main` pages and had to be fully redone as element-level crops at `scale: 2`). The quality bar is the Deep Thought reference PDF (`/Users/qbook/Claude Projects/Deep Thought/.staff-update-screenshots/`): a colored title + tight per-feature crops (its "My voice" card, its Cmd-K box, its two thumb buttons). `--selector` (plus `--hide` for stray distractions) at `--scale 2`+ produces exactly this — do NOT point `--selector` at `main` and capture the page wholesale. One representative element per bullet; for a long table hide all but the first ~5 rows, for a card grid capture 2–3 cards, for a form keep the input + the new control and hide the rest.
 
-**How to capture (working pipeline):**
+**How to capture — use `scripts/capture-screenshot.mjs` (local Playwright). Do NOT use the Chrome MCP for this.**
 
-The "what doesn't work" list from Deep Thought (claude-in-chrome `zoom`/`upload_image` return unusable IDs, `javascript_tool` dataURL is blocked, `computer-use` requires interactive approval) applies here. **Use the proven working path:**
+The whole Chrome-MCP capture pipeline (html2canvas → blob URL → `~/Downloads` → `cp`) is **dead in the agent environment** and cannot be fixed from the page side — see "Why the Chrome-MCP pipeline can't work here" below. The working path drives a **local headless Chromium via Playwright**, which writes files directly with `fs`, needs no downloads/clipboard/network bridge, and authenticates with the same Clerk sign-in-ticket trick as `tests/e2e/auth.setup.ts`. Verified end-to-end 2026-07-22 (authed `/week` + a Library media tile → PNG on disk → embedded in a PIL PDF).
+
+```bash
+cd "/Users/qbook/Claude Projects/Bernard" && T=$(mktemp) && cat .env.bernard.1pw > "$T" && export CLERK_SECRET_KEY="$(awk -F= '/^CLERK_SECRET_KEY=/{print substr($0,index($0,"=")+1)}' "$T" | tr -d '\r')" && rm -f "$T" && node scripts/capture-screenshot.mjs \
+  --url https://movebetter.withbernard.ai/library \
+  --selector 'button.rounded-lg.overflow-hidden:has-text("used ×")' \
+  --scale 4 --delay 4000 \
+  --out ".staff-update-screenshots/$(date +%F)_PR0000_slug.png"
+```
+
+Flags: `--url` `--out` (required); `--selector` (CSS or Playwright `:has-text()`; omit for a viewport shot); `--last` (pick the innermost `:has-text` match — ancestors match too); `--click 'sel,sel'` (click a tab/filter first); `--hide 'sel,sel'` (`display:none` distractions — this replaces the old manual DOM-isolation walk); `--wait-for`; `--delay`; `--scale` (default 2); `--width`/`--height`; `--full-page`; `--email` (defaults to the `e2e@movebetter.co` fixture user).
+
+Notes that matter in practice:
+- **Pick `--scale` so the raw crop is ≥ 950px wide**, the PDF's `MAX_IMAGE_WIDTH`. A 256px-CSS tile at `--scale 2` is only 512px and gets *upscaled* (soft) in the PDF; `--scale 4` gives 1024px. Widen `--width` to change how many grid columns render.
+- **Only `CLERK_SECRET_KEY` is needed.** Do NOT use `E2E_TEST_USER_EMAIL` from 1Password — that entry is **corrupt** (a 15-char random string, not an address). The real fixture account is `e2e@movebetter.co`, which the script hardcodes as its default. Worth fixing the 1Password item separately.
+- The script suppresses the first-visit help overlays (`pagehelp:*` **and** the Library's separate `mediahub:welcomed:v1`) and presses Escape. If a new overlay ever paints over a crop, add its key there — the symptom is a capture showing a numbered "How it works" list instead of your component.
+- rAF animations (NumberTicker) run correctly here, because the page is genuinely visible to its own browser — this sidesteps the documented backgrounded-tab ticker freeze entirely.
+- It signs in as a **fixture user, not Q**, so it is safe to run repeatedly; but it is a real authenticated session, so the read-only discipline still applies — don't point `--click` at Approve/Publish/Delete.
+
+**Why the Chrome-MCP pipeline can't work here (2026-07-22, root-caused):** the MCP tab is **never visible** — `document.visibilityState` is permanently `"hidden"`. Every file-out route depends on something that Chrome gates on visibility, so all of them fail, and they fail *silently* rather than erroring:
+
+| Route | Result |
+|---|---|
+| blob URL + appended anchor | `a.click()` throws nothing; `~/Downloads/` gets no new entry at all |
+| `computer` screenshot `save_to_disk: true` | reports success, writes no file findable anywhere under `$HOME` |
+| dataURL back through `javascript_tool` | tool result truncates long strings; chunking is unusable |
+| `fetch` to a local receiver | never leaves Chrome — the receiver logs zero requests, the promise just hangs until aborted |
+| `navigator.clipboard.writeText` + `pbpaste` | rejects `NotAllowedError: Document is not focused`; after a click gives focus, it **hangs forever unresolved** because the tab is still `hidden` |
+
+A `computer` screenshot does **not** front the tab (it captures via CDP), and a `computer` click sets `document.hasFocus() === true` but leaves `visibilityState: "hidden"` — so focus alone is not enough. Two supporting gotchas found the same way: a receiver on `socketserver.TCPServer` is single-threaded and **wedges permanently** once a browser opens a keep-alive connection (even `curl` then times out, which looks like "server never started" — use `ThreadingHTTPServer` with `daemon_threads`); and `computer` `zoom`'s `region` doesn't map reliably to screenshot pixels (~60px off), so prefer a generous region.
+
+**Don't re-litigate this.** The blocker is the tab's visibility, which the page cannot change. If a future harness makes the MCP tab visible, the old path may work again — but Playwright is better regardless (element crops at arbitrary scale, no CDN dependency, no CSP surface, scriptable from Bash). When the user only wants to *see* a screenshot, the `computer` tool is still fine — it renders in the transcript and needs no filesystem.
+
+<details><summary>Historical: the Chrome-MCP pipeline (kept for context — does not produce files here)</summary>
 
 1. **Navigate in Q's real Chrome** via claude-in-chrome MCP (`tabs_context_mcp` → `navigate` to `https://<slug>.withbernard.ai/<page>`). This uses his logged-in session; no auth needed.
 
@@ -171,18 +204,14 @@ The "what doesn't work" list from Deep Thought (claude-in-chrome `zoom`/`upload_
 
    **The older `link.href = canvas.toDataURL('image/png')` + never-appended anchor fails silently and looks like success.** The canvas renders fine (you can log correct `canvas.width/height`), `a.click()` throws nothing, and the javascript_tool result is the usual `{}` from an async block — but no file ever lands in `~/Downloads/`. Chrome declines the navigation-to-download for a large `data:` URL from a detached anchor; a `blob:` URL on an appended anchor is honoured immediately. (2026-07-22, capturing the /week schedule strip: first attempt produced `ok 2962x86` from the canvas and zero files on disk; the blob form worked on the first try with no other change.) **Tell it apart from a slow write:** `ls -t ~/Downloads/*.png | head` a few seconds later — if the canvas dimensions logged fine but nothing is on disk, it's this, not a timing issue. Don't re-run the identical call hoping for a different result.
 
-   **CORRECTION (2026-07-22, later same day): the blob form does NOT always work — in at least one environment NO file-out path from the browser works at all, and there is currently no way to get an image from the Chrome MCP onto disk. Budget for this before promising screenshot files.** Capturing the media usage-counter surfaces, all four routes failed:
-   - **blob URL + appended anchor** — canvas rendered correctly (`2962x580`), `a.click()` threw nothing, and `~/Downloads/` stayed EMPTY (not just missing the file — the whole directory had no new entries). So the "honoured immediately" claim above holds only where Chrome downloads are enabled for the profile; in this session they were silently blocked.
-   - **`computer` screenshot with `save_to_disk: true`** — returns success and an image, but writes nothing findable (`find` across `~`, the scratchpad, and the session `tasks/` dir turned up zero image files).
-   - **reading the dataURL back through `javascript_tool`** — the tool result TRUNCATES long strings, so even a 20 KB base64 comes back cut off. Chunked extraction can't be made reliable.
-   - **POSTing the dataURL to a local receiver** — Chrome's Private Network Access blocks an `https://` page from reaching `http://localhost`; the `fetch` neither resolves nor rejects, it hangs forever (`window.__err` stays `'pending'`), which reads as a hung tool rather than a blocked request.
-   **What this means practically: screenshots taken via the Chrome MCP are visible in the transcript but cannot be saved as files here — so the weekly staff-update PDF pipeline (which needs files in `.staff-update-screenshots/`) is BROKEN in this environment, not just fiddly.** If the routine matters, fix the file-out path first rather than discovering it mid-run. When the user just wants to *see* the screenshots, take them with the `computer` tool and present them as a clearly-labeled set in consecutive turns — that renders and needs no filesystem. Don't spend a dozen calls re-trying transfer tricks (this cost ~15).
-   Two supporting gotchas found the same way: a local receiver built on `socketserver.TCPServer` is single-threaded and **wedges permanently** the moment a browser opens a keep-alive connection to it — even `curl` then times out, which looks like "server never started" (use `ThreadingTCPServer` with `daemon_threads`); and the `computer` `zoom` action's `region` did not map to screenshot pixel coordinates reliably (crops landed ~60px off target repeatedly), so prefer a generous region or a full screenshot over chasing a tight crop.
+   **This step does not work in the agent environment** — the tab is never visible, so the download is silently dropped. Root cause and the full failure table are above; use the Playwright script instead.
 
 6. **Move the file into the repo** via Bash:
    ```bash
    cp ~/Downloads/screenshot.png "/Users/qbook/Claude Projects/Bernard/.staff-update-screenshots/YYYY-MM-DD_PR###_slug.png"
    ```
+
+</details>
 
 **Storage convention:**
 
@@ -201,7 +230,8 @@ The "what doesn't work" list from Deep Thought (claude-in-chrome `zoom`/`upload_
 - Document in a README in that folder (for future sessions) if you'd like.
 
 **Gotchas & testing:**
-- html2canvas requires the CSP not to block CDN scripts. Bernard's CSP currently allows it; verify if that changes.
+- The Playwright script needs the repo's `node_modules` (`@playwright/test`, `@clerk/backend`). A session worktree has no `node_modules` of its own, but Node resolves upward and finds the project root's — so running it from a worktree works. Playwright's Chromium is already installed in `~/Library/Caches/ms-playwright`.
+- A capture that comes back showing a numbered "How it works" list instead of your component means a first-visit help overlay auto-opened for the fixture user; add its localStorage key to the suppression block in the script.
 - On some Pillow/PIL installs, `image.save(..., "PDF")` throws `KeyError: 'JPEG'` even though JPEG save works. The routine includes a workaround; only matters when building the PDF.
 - Screenshots are not required for the routine to work — if a bullet has no matching screenshot, the PDF just renders the text. Capture what's relevant; don't force every change.
 
