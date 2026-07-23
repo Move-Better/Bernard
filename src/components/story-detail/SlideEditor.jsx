@@ -40,6 +40,7 @@ import ObjectDragLayer from './slide-editor/ObjectDragLayer'
 import CaptionPanel from './slide-editor/CaptionPanel'
 import SlidePickerStrip from './slide-editor/SlidePickerStrip'
 import FullPreviewOverlay from './slide-editor/FullPreviewOverlay'
+import { frameFor } from '@/lib/postFrames'
 
 // ── Top-level SlideEditor ─────────────────────────────────────────────────────
 
@@ -99,7 +100,16 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
 
   const [slides, setSlides] = useState(seedSlides)
   const [themeId, setThemeId] = useState(() => piece?.photo_template_id || DEFAULT_DECK_THEME)
-  const [aspect, setAspect] = useState(() => forcedAspect || piece?.aspect_ratio || '4:5')
+  // The frame is DERIVED from where this piece publishes — it is not a choice.
+  // Offering 1:1/4:5/9:16 per piece meant the default silently stuck and shipped
+  // the wrong shape: 27 blog pieces sat at 4:5 (blog heroes are 16:9), 13 GBP
+  // posts at 4:5 (Google clips portrait), and 6 Instagram stories at 4:5 rather
+  // than 9:16. The stored aspect_ratio is no longer read for the same reason —
+  // it only ever recorded which wrong option was left selected.
+  //
+  // forcedAspect stays as an explicit override for callers that know better than
+  // the platform key alone (StoryboardPublish pins story-archetype photos).
+  const aspect = forcedAspect || frameFor(piece?.platform).ratio
   const [activeSlideIdx, setActiveSlideIdx] = useState(0)
   const [fullPreviewOpen, setFullPreviewOpen] = useState(false)
   const [adExportOpen, setAdExportOpen] = useState(false)
@@ -143,7 +153,6 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     const next = seedSlides()
     setSlides(next)
     setThemeId(piece?.photo_template_id || DEFAULT_DECK_THEME)
-    setAspect(forcedAspect || piece?.aspect_ratio || '4:5')
     setActiveSlideIdx(0)
     setSelection({ type: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -400,7 +409,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   const { undo, redo, canUndo, canRedo } = useUndoHistory(draftState, (snap) => {
     setSlides(snap.slides)
     setThemeId(snap.themeId)
-    setAspect(snap.aspect)
+    // aspect is derived from the destination, so there is nothing to restore.
   })
   useUndoRedoShortcut(undo, redo)
 
@@ -413,7 +422,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     if (!d || typeof d !== 'object') return
     if (Array.isArray(d.slides)) setSlides(d.slides)
     if (d.themeId !== undefined) setThemeId(d.themeId)
-    if (d.aspect) setAspect(d.aspect)
+    // d.aspect is ignored — older revisions may carry a hand-picked aspect that
+    // no longer exists as a concept; the frame comes from the destination now.
   }
   useEffect(() => {
     if (!piece?.id) return
@@ -432,26 +442,6 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   // new format's safe zone so it never lands in the crop. Idempotent (clamps into
   // a margin) so switching back and forth is stable; preset-positioned blocks
   // already resolve per-aspect in the renderer, so only custom {x,y} blocks move.
-  function reflowForAspect(sl) {
-    return (sl || []).map((s) => ({
-      ...s,
-      blocks: (s.blocks || []).map((b) => {
-        const p = b.position
-        if (p && typeof p === 'object' && Number.isFinite(p.x) && Number.isFinite(p.y)) {
-          const x = Math.max(0.1, Math.min(0.9, p.x))
-          const y = Math.max(0.12, Math.min(0.88, p.y))
-          return (x !== p.x || y !== p.y) ? { ...b, position: { x, y } } : b
-        }
-        return b
-      }),
-    }))
-  }
-  function changeAspect(next) {
-    if (!next || next === aspect) return
-    setSlides((prev) => reflowForAspect(prev))
-    setAspect(next)
-  }
-
   // Active slide derived values — used by the canvas and the inspector.
   const activeSlide = slides[activeSlideIdx] || slides[0]
   const activePhotoUrl = typeof activeSlide?.photo_idx === 'number' && mediaUrls[activeSlide.photo_idx]
@@ -515,7 +505,6 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         note={photoCount != null && photoCount !== slides.length
           ? `${slides.length} slides from ${photoCount} photo${photoCount === 1 ? '' : 's'}`
           : null}
-        aspect={forcedAspect ? null : { value: aspect, options: ['1:1', '4:5', '9:16'], onChange: changeAspect }}
       >
         <Tooltip>
           <TooltipTrigger asChild>

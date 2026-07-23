@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, Check, Crop, ImageIcon, Loader2, Lock, MessageCircle, Palette, Plus, Search, Send, Type, Video, X } from 'lucide-react'
+import { ArrowRight, Check, ImageIcon, Loader2, Lock, MessageCircle, Palette, Plus, Search, Send, Type, Video, X } from 'lucide-react'
 import { toast } from 'sonner'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
@@ -21,6 +21,7 @@ import { clipToMediaEntry, mediaEntryKey, photoSourceUrl, isVideoEntry } from '@
 import { resolveArchetype, ARCHETYPES, railFor, mediaTierFor, MEDIA_TIER } from '@/lib/editorArchetype'
 import { deriveSeoTitle, deriveMetaDescription, cleanBlogMarkdown, SEO_TITLE_MAX, META_DESC_MAX } from '@/lib/blogOutput'
 import { PLATFORM_META } from '@/lib/contentMeta'
+import { frameFor } from '@/lib/postFrames'
 
 // UnifiedEditor — the single-shell editor body for every archetype that isn't a
 // carousel, single visual, or photo Story (all three route to SlideEditor —
@@ -47,7 +48,6 @@ const RAIL_META = {
   seo: { icon: Search, label: 'SEO' },
 }
 
-const ASPECTS = ['1:1', '4:5', '16:9']
 
 // Does this post have at least one photo (non-video media entry with a source)?
 const hasPhotoEntry = (media) =>
@@ -259,7 +259,7 @@ function SuggestionThumb({ clip, attached, attaching, onAttach }) {
 // post. Suggestions come from the same suggest-media brain the carousel and
 // Storyboard use; attach goes through clipToMediaEntry so the stored entry has
 // the correct {url,type,mediaAssetId,…} shape (never a raw clip → url:null).
-function MediaPanel({ piece, updateItem, aspect, setAspect }) {
+function MediaPanel({ piece, updateItem }) {
   const media = Array.isArray(piece.media_urls) ? piece.media_urls : []
   const optional = mediaTierFor(piece) === MEDIA_TIER.OPTIONAL
   // TikTok/YouTube/Reels (vvideo/lvideo) post exactly ONE video — replace
@@ -364,31 +364,6 @@ function MediaPanel({ piece, updateItem, aspect, setAspect }) {
           </div>
         )}
 
-        {/* Reframe — output aspect (parity with the carousel's Photo reframe). */}
-        {hasPhotoEntry(media) && setAspect && (
-          <div>
-            <p className="mb-1.5 flex items-center gap-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <Crop className="h-3 w-3" /> Reframe
-            </p>
-            <div className="flex overflow-hidden rounded-md border border-border">
-              {ASPECTS.map((a) => (
-                <button
-                  key={a}
-                  type="button"
-                  onClick={() => setAspect(a)}
-                  className={`flex-1 px-2 py-1 text-2xs font-medium transition-colors ${
-                    aspect === a
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
-            <p className="mt-1 text-3xs text-muted-foreground/70">Sets the crop used when you bake a brand look in Grade.</p>
-          </div>
-        )}
 
         {/* Suggestions */}
         <div>
@@ -745,8 +720,16 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
   const cfg = ARCHETYPES[archetype] || ARCHETYPES.visual
   // Output aspect for the photo bake (the carousel's "reframe"). Seeded from a
   // prior bake's treatment, else the archetype default.
-  const [aspect, setAspect] = useState(() => piece?.photo_treatment?.aspect || cfg.aspect || '1:1')
-  const aspectOptions = Array.isArray(cfg.aspects) && cfg.aspects.length ? cfg.aspects : ASPECTS
+  // DERIVED, not chosen. An archetype that declares exactly one aspect has
+  // genuinely pinned it (story/reel are always 9:16); everything else takes the
+  // frame from the destination. The old per-piece picker seeded from
+  // photo_treatment.aspect, which only ever recorded which option was left
+  // selected — and the default stuck, shipping 27 blog pieces at 4:5 (heroes are
+  // 16:9), 13 GBP posts at 4:5 (Google clips portrait) and 6 Instagram stories
+  // at 4:5 instead of 9:16.
+  const aspect = (Array.isArray(cfg.aspects) && cfg.aspects.length === 1)
+    ? cfg.aspects[0]
+    : frameFor(piece?.platform).ratio
   const meta = PLATFORM_META[piece.platform] || { label: piece.platform || '—', icon: undefined }
   const isReel = piece.platform === 'instagram' && archetype === 'vvideo'
   const count = Number.isFinite(photoCount) ? photoCount : null
@@ -778,7 +761,6 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
         title={piece?.topic || 'Untitled draft'}
         badge={{ icon: meta.icon, label: formatLabel || meta.label, sub: formatSub || cfg.label }}
         note={count != null ? (count === 0 ? 'no media' : `${count} ${count === 1 ? 'item' : 'items'}`) : null}
-        aspect={!noMedia && cfg.canvas === 'visual' ? { value: aspect, options: aspectOptions, onChange: setAspect } : null}
       >
         {/* Approve · voice check · publish, inline in the bar. The rail's
             Publish tab remains the full panel (export, metrics, next-up). */}
@@ -794,7 +776,7 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
           {activeKey === 'words' ? (
             <WordsPanel piece={piece} updateItem={updateItem} />
           ) : activeKey === 'media' || activeKey === 'photo' ? (
-            <MediaPanel piece={piece} updateItem={updateItem} aspect={aspect} setAspect={setAspect} />
+            <MediaPanel piece={piece} updateItem={updateItem} />
           ) : activeKey === 'text' ? (
             <TextPanel piece={piece} />
           ) : activeKey === 'grade' ? (
