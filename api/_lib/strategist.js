@@ -412,7 +412,25 @@ function summarizeRegionMix(recentRegionCounts) {
     .map(([region, n]) => ({ region, pct: Math.round((n / total) * 100) }))
 }
 
-export function buildStrategistPrompt({ interviews, channels, recentTopics, recentRegionCounts = {}, palette }) {
+// Render the campaign outcome loop's read of what's working into the prompt.
+// Advisory by construction: it is stated as a tiebreaker and explicitly
+// subordinated to the recent-topics and region-mix rules, so a tune can nudge
+// the mix without letting one hot angle flatten the feed's variety.
+function campaignTuningBlock(tuning) {
+  if (!tuning) return ''
+  const lines = []
+  if (tuning.angles.length) {
+    lines.push(`- Angles resonating: ${tuning.angles.map((a) => `"${a}"`).join(', ')}`)
+  }
+  if (tuning.platform) lines.push(`- Strongest channel right now: ${tuning.platform}`)
+  return `\n\nCAMPAIGN SIGNAL — ${tuning.campaignName} (from recent engagement):\n` +
+    `${lines.join('\n')}\n` +
+    `Use this only as a tiebreaker between otherwise equally good options. It does ` +
+    `NOT override the RECENT TOPICS or RECENT REGION MIX rules, and it must not push ` +
+    `every piece onto one channel or one angle.`
+}
+
+export function buildStrategistPrompt({ interviews, channels, recentTopics, recentRegionCounts = {}, palette, campaignTuning = null }) {
   const paletteText = channels
     .map((ch) => `${ch}: ${(palette[ch] || []).map((p) => `${p.angle} (${p.label})`).join(', ')}`)
     .join('\n')
@@ -437,7 +455,8 @@ export function buildStrategistPrompt({ interviews, channels, recentTopics, rece
     `THIS WEEK'S INTERVIEWS:\n${interviewText}\n\n` +
     `CHANNELS + ANGLE PALETTE:\n${paletteText}\n\n` +
     `RECENT TOPICS (already posted — avoid repeating):\n${recentTopics.length ? recentTopics.map((t) => `- ${t}`).join('\n') : '- (none)'}\n\n` +
-    `RECENT REGION MIX (already in the feed — favor the under-represented):\n${regionMix.length ? regionMix.map((r) => `- ${r.region}: ${r.pct}%`).join('\n') : '- (none yet)'}`
+    `RECENT REGION MIX (already in the feed — favor the under-represented):\n${regionMix.length ? regionMix.map((r) => `- ${r.region}: ${r.pct}%`).join('\n') : '- (none yet)'}` +
+    campaignTuningBlock(campaignTuning)
   return { system, user }
 }
 
@@ -476,6 +495,7 @@ export async function composeWeeklyPlan({
   recentRegionCounts = {},
   promoShare = 0,
   promoCampaignIds = [],
+  campaignTuning = null,
   backlog = [],
   quietDays = ['sat', 'sun'],
   timezone = 'America/Los_Angeles',
@@ -488,7 +508,7 @@ export async function composeWeeklyPlan({
 
   let candidates = []
   if (interviews.length && channels.length) {
-    const prompt = buildStrategistPrompt({ interviews, channels, recentTopics, recentRegionCounts, palette })
+    const prompt = buildStrategistPrompt({ interviews, channels, recentTopics, recentRegionCounts, palette, campaignTuning })
     // The LLM echoes interview_id back and can corrupt it (e.g. inject a space),
     // which 400s the uuid insert. Normalize whitespace, then require an EXACT
     // match to a real input interview — this both repairs that corruption and

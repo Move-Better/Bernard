@@ -9,7 +9,7 @@
 
 import { composeWeeklyPlan, RECOMMENDED_CADENCE, mondayOf } from './strategist.js'
 import { getCadencePrior, computeCadenceChannels } from './cadenceDefaults.js'
-import { getActiveCampaigns, campaignWeight } from './activeCampaigns.js'
+import { getActiveCampaigns, campaignWeight, campaignTuningHint } from './activeCampaigns.js'
 import { applyExplorationSlots, computeDayProposal } from './cadenceAdaptive.js'
 import { mergeSlotsIntoCadence, withExplorationSlot } from './cadenceSlots.js'
 
@@ -159,7 +159,15 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
   // channels participate in exploration too.
   if (exploring) cadence = withExplorationSlot(cadence, exploring)
 
-  return { interviews, cadence, quietDays: effectiveQuietDays, exploring, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, backlog }
+  // Campaign outcome loop: campaign-tune.js has written each campaign's read of
+  // what's working (from real engagement) to ai_tune_state daily, but until now
+  // nothing consumed it — it only rendered in Settings. Resolved here rather
+  // than alongside getActiveCampaigns above because gating priority_platform
+  // needs the ENABLED channel list, which only exists once cadence is resolved.
+  const enabledChannels = Object.entries(cadence).filter(([, c]) => c?.enabled).map(([ch]) => ch)
+  const campaignTuning = campaignTuningHint(activeCampaigns, enabledChannels)
+
+  return { interviews, cadence, quietDays: effectiveQuietDays, exploring, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, campaignTuning, backlog }
 }
 
 // T4 learning loop, part 3 — evaluate whether the workspace's quiet days have
@@ -260,7 +268,7 @@ async function persistPlan({ ops, sb = defaultSb, workspaceId }) {
  */
 export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultSb, generate }) {
   const planWeek = weekMonday || mondayOf(new Date().toISOString())
-  const { interviews, cadence, quietDays, exploring, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, backlog } = await getWeekInputs({
+  const { interviews, cadence, quietDays, exploring, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, campaignTuning, backlog } = await getWeekInputs({
     workspace,
     weekMonday: planWeek,
     sb,
@@ -287,6 +295,7 @@ export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultS
     recentRegionCounts,
     promoShare,
     promoCampaignIds,
+    campaignTuning,
     backlog,
     weekMonday: planWeek,
     ...(generate ? { generate } : {}),

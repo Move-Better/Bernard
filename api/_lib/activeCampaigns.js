@@ -23,7 +23,18 @@ const CAMPAIGN_FIELDS = [
   // A1 — campaign location aim. Carried through loadCurrentTentpole so the
   // CAMPAIGN FOCUS block can overlay the target location's CTA on all channels.
   'target_location_id',
+  // Written daily by cron/campaign-tune.js → runCampaignSpin. Read by
+  // campaignTuningHint() below so the outcome loop reaches weekly planning
+  // instead of terminating in a display-only card.
+  'ai_tune_state', 'ai_tuned_at',
 ].join(',')
+
+// A tune older than this is treated as absent: campaign-tune.js re-runs every
+// 6h (event ≤7 days out) or 20h otherwise, so a two-week-old tune means the
+// cron stopped rather than that the advice is still current.
+const TUNE_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000
+const MAX_ANGLES = 2
+const MAX_ANGLE_LEN = 80
 
 /**
  * Fetch currently-active campaigns for a workspace.
@@ -99,6 +110,63 @@ export function campaignWeight(c, now = Date.now()) {
   if (days <= 7) return Math.max(15, Math.round(30 - 2 * days))
   if (days <= 30) return Math.max(2, Math.round(30 - days))
   return 2  // far future
+}
+
+/**
+ * Derive the weekly planner's campaign tuning hint from the active campaigns.
+ *
+ * campaign-tune.js writes each campaign's `ai_tune_state` daily from real
+ * engagement data, but nothing has ever read it back into planning — it only
+ * rendered in Settings. This closes that loop.
+ *
+ * Picks the single highest-weight campaign (same event-proximity ramp used for
+ * slot allocation, so the most urgent campaign's read wins) that has a fresh,
+ * usable tune. Deliberately one campaign, not a merge: two campaigns naming
+ * different "best" platforms would cancel out into noise.
+ *
+ * Everything in `ai_tune_state` is model-generated, so treat it as untrusted:
+ * only known channels pass, angles are trimmed and capped, and anything
+ * malformed drops out rather than reaching the prompt.
+ *
+ * @param {object[]} campaigns   — rows from getActiveCampaigns()
+ * @param {string[]} channels    — enabled channel keys; gates priority_platform
+ * @returns {{ campaignName: string, angles: string[], platform: string|null }|null}
+ */
+export function campaignTuningHint(campaigns, channels = [], now = Date.now()) {
+  if (!Array.isArray(campaigns) || campaigns.length === 0) return null
+
+  const ranked = campaigns
+    .slice()
+    .sort((a, b) => (campaignWeight(b, now) - campaignWeight(a, now))
+      || String(a.id).localeCompare(String(b.id)))
+
+  for (const c of ranked) {
+    const state = c?.ai_tune_state
+    if (!state || typeof state !== 'object') continue
+    // runCampaignSpin stamps _error on its parse-failure fallback; that row
+    // carries no real recommendation.
+    if (state._error) continue
+
+    const tunedAt = c.ai_tuned_at ? new Date(c.ai_tuned_at).getTime() : NaN
+    if (!Number.isFinite(tunedAt) || now - tunedAt > TUNE_MAX_AGE_MS) continue
+
+    const angles = (Array.isArray(state.priority_angles) ? state.priority_angles : [])
+      .filter((a) => typeof a === 'string' && a.trim())
+      .map((a) => a.trim().slice(0, MAX_ANGLE_LEN))
+      .slice(0, MAX_ANGLES)
+
+    // The model answers with a display name ("Facebook", "blog") rather than the
+    // channel enum, so match case-insensitively and return the ENUM spelling —
+    // the prompt's angle palette is keyed by enum. Anything that isn't an
+    // enabled channel (notably "blog", which has no palette) drops to null
+    // rather than steering the planner at a channel it cannot plan for.
+    const raw = typeof state.priority_platform === 'string' ? state.priority_platform.trim().toLowerCase() : ''
+    const platform = channels.find((ch) => ch.toLowerCase() === raw) ?? null
+
+    if (!angles.length && !platform) continue
+    return { campaignName: c.name || 'the active campaign', angles, platform }
+  }
+  return null
 }
 
 /**
