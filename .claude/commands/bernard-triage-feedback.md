@@ -107,5 +107,5 @@ Bernard's Feedback button is used mostly by front-desk/operational staff (e.g. P
 
 - **Report-only by design.** This command never edits product code or opens PRs. Fixes happen when Q acts on the chips or runs `/bernard-audit`. This matches the review-before-ship autonomy Q chose for the feedback loop.
 - **Screenshots live in Blob** at `feedback/<workspace_id>/<uuid>.png` and the row carries the public `screenshot_url` — always look at it, it's usually the fastest path to the root cause.
-- **Pair with `/schedule`** to run automatically (e.g. Mondays 9am): `/schedule create "Triage feedback" cron="0 9 * * 1" "/triage-feedback"`. The DB-native `triaged_at` state means a scheduled headless run and a manual run never double-process a row.
+- **Pair with `/schedule`** to run automatically (e.g. Mondays 9am): `/schedule create "Triage feedback" cron="0 9 * * 1" "/bernard-triage-feedback"`. The DB-native `triaged_at` state means a scheduled headless run and a manual run never double-process a row.
 - **The `feedback` table is the "directory for Claude"** Q asked about — no email parsing, no copy-paste. To manually re-open a triaged item, `UPDATE feedback SET triaged_at = NULL WHERE id = '…'` and it rejoins the queue.
