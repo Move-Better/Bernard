@@ -25,7 +25,7 @@ import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { renderEditorialPhoto } from '../../_lib/brandRender.js'
-import { frameFor } from '../../_lib/postFrames.js'
+import { frameFor, safeInsetBottomFor } from '../../_lib/postFrames.js'
 import { resolveWorkspaceLogoForDarkSurface } from '../../_lib/workspaceLogo.js'
 import { renderWhoopPhoto, WHOOP_TEMPLATE_IDS } from '../../_lib/whoopTemplates.js'
 
@@ -135,7 +135,12 @@ export default async function handler(req, res) {
   // Google clips in both the Maps carousel and the Search preview card.
   // splitPlatformKey handles the compound keys (instagram_story → story/9:16).
   const frame = frameFor(item.platform)
-  const fullTreatment = { ...treatment, sourceUrl, aspect: frame.ratio }
+  const fullTreatment = {
+    ...treatment,
+    sourceUrl,
+    aspect: frame.ratio,
+    safeInsetBottom: safeInsetBottomFor(item.platform),
+  }
 
   // Editorial cards are designed graphics people screenshot and share, so the
   // logo policy defaults to ON in the footer (per Brand Kit toggle). WHOOP

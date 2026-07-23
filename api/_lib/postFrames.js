@@ -53,11 +53,27 @@ export const POST_FRAMES = {
 
 export const KEEP_WHOLE_FORMATS = new Set(['longform'])
 
-// KNOWN GAP, not yet enforced (a comment, not an export, so nothing can import
-// it and imply otherwise): GBP trims ~10–20% off the top and bottom of a post
-// image in its previews, and the 4:3 editorial render currently puts the byline
-// at ~93% height — inside that band. Fixing it is an overlay-geometry change,
-// tracked separately from this frame fix.
+// How much of the frame the destination CROPS OFF in its own preview surfaces,
+// as a fraction of height. Google Business Profile trims roughly 10–20% off the
+// top and bottom of a post image in the Maps carousel and the Search preview
+// card, so a footer laid out flush to the bottom edge is clipped in the only
+// place customers see it. 0.12 is the conservative middle of that range.
+//
+// This is NOT the frame — the frame decides the shape, this decides how far in
+// from the edge content has to stay to survive. Everything absent from this map
+// shows the whole frame and needs no inset.
+export const SAFE_INSETS = {
+  gbp: { top: 0.12, bottom: 0.12 },
+}
+
+/**
+ * Bottom safe inset for a destination, as a fraction of height (0 when none).
+ * @param {string} platform
+ * @returns {number}
+ */
+export function safeInsetBottomFor(platform) {
+  return SAFE_INSETS[splitPlatformKey(platform).platform]?.bottom || 0
+}
 
 export const FALLBACK_RATIO = '4:5'
 

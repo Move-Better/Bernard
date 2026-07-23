@@ -92,16 +92,27 @@ export const POST_FRAMES = {
 // Everything else covers the frame edge-to-edge.
 export const KEEP_WHOLE_FORMATS = new Set(['longform'])
 
-// KNOWN GAP, not yet enforced — deliberately a comment and not an exported
-// constant, so nothing can import it and imply the inset is being applied.
+// How much of the frame the destination CROPS OFF in its own preview surfaces,
+// as a fraction of height. Google Business Profile trims roughly 10–20% off the
+// top and bottom of a post image in the Maps carousel and the Search preview
+// card, so a footer laid out flush to the bottom edge is clipped in the only
+// place customers see it. 0.12 is the conservative middle of that range.
 //
-// Google Business Profile trims roughly the top and bottom 10–20% of a post
-// image in its preview surfaces. A 4:3 editorial render currently puts the
-// author byline at ~93% height, which lands inside that band and will be
-// clipped in Maps and Search. Fixing it means insetting the overlay's footer
-// for GBP specifically (buildEditorialOverlay padding), which is a change to
-// the overlay geometry rather than to the frame — tracked separately so this
-// change stays a pure frame fix.
+// This is NOT the frame — the frame decides the shape, this decides how far in
+// from the edge content has to stay to survive. Everything absent from this map
+// shows the whole frame and needs no inset.
+export const SAFE_INSETS = {
+  gbp: { top: 0.12, bottom: 0.12 },
+}
+
+/**
+ * Bottom safe inset for a destination, as a fraction of height (0 when none).
+ * @param {string} platform
+ * @returns {number}
+ */
+export function safeInsetBottomFor(platform) {
+  return SAFE_INSETS[splitPlatformKey(platform).platform]?.bottom || 0
+}
 
 // The frame used when a (platform, format) pair isn't in the table. 4:5 is the
 // most broadly-safe social frame — but reaching this is a gap in the registry,

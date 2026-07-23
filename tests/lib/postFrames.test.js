@@ -3,14 +3,18 @@ import {
   POST_FRAMES as SERVER_FRAMES,
   FRAME_PIXELS as SERVER_PIXELS,
   KEEP_WHOLE_FORMATS as SERVER_KEEP_WHOLE,
+  SAFE_INSETS as SERVER_INSETS,
   frameFor as serverFrameFor,
+  safeInsetBottomFor as serverSafeInsetBottomFor,
 } from '../../api/_lib/postFrames.js'
 import { EDITORIAL_ASPECTS } from '../../api/_lib/brandRender.js'
 import {
   POST_FRAMES,
   FRAME_PIXELS,
   KEEP_WHOLE_FORMATS,
+  SAFE_INSETS,
   frameFor,
+  safeInsetBottomFor,
   splitPlatformKey,
 } from '../../src/lib/postFrames.js'
 
@@ -119,6 +123,37 @@ describe('postFrames — the compositor can actually render every frame', () => 
   it('agrees with the registry on the pixels for each shared ratio', () => {
     for (const [ratio, pixels] of Object.entries(FRAME_PIXELS)) {
       if (EDITORIAL_ASPECTS[ratio]) expect(EDITORIAL_ASPECTS[ratio]).toEqual(pixels)
+    }
+  })
+})
+
+describe('postFrames — safe insets keep content out of the destination\'s crop', () => {
+  it('mirrors the inset table on both sides', () => {
+    expect(SERVER_INSETS).toEqual(SAFE_INSETS)
+  })
+
+  it('insets GBP, which crops its own previews', () => {
+    expect(safeInsetBottomFor('gbp')).toBeGreaterThan(0)
+    expect(serverSafeInsetBottomFor('gbp')).toBe(safeInsetBottomFor('gbp'))
+  })
+
+  it('leaves every full-frame destination at zero', () => {
+    for (const platform of ['instagram', 'instagram_story', 'facebook', 'linkedin', 'tiktok', 'blog']) {
+      expect(safeInsetBottomFor(platform), `${platform} should need no inset`).toBe(0)
+    }
+  })
+
+  it('is zero for an unknown platform rather than undefined', () => {
+    expect(safeInsetBottomFor('some_new_network')).toBe(0)
+    expect(safeInsetBottomFor(null)).toBe(0)
+  })
+
+  // The inset shifts the footer up by a fraction of HEIGHT, so a value near or
+  // above 1 would push it off the card entirely.
+  it('stays well inside the frame', () => {
+    for (const inset of Object.values(SAFE_INSETS)) {
+      expect(inset.bottom).toBeLessThan(0.4)
+      expect(inset.top).toBeLessThan(0.4)
     }
   })
 })
