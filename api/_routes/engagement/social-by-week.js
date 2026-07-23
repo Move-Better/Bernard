@@ -14,6 +14,7 @@ import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { scoreSnapshot } from '../../_lib/engagementScoring.js'
 import { periodBounds, prevPeriodBounds, toDateStr } from '../../_lib/periodMath.js'
+import { photoSourceUrl } from '../../../src/lib/mediaEntry.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -47,6 +48,16 @@ function rawBundleMetrics(snap) {
 
 function emptyRaw() {
   return { impressions: 0, views: 0, viewsUnique: 0, likes: 0, comments: 0, shares: 0, saves: 0 }
+}
+
+// Cover image for a top-post card — the first non-video entry's thumbnail
+// (falling back to the resolved source photo for an entry with no
+// thumbnailUrl of its own). Returns null rather than a broken <img> when the
+// post has no photo media at all.
+function coverThumbnail(mediaUrls) {
+  const first = (Array.isArray(mediaUrls) ? mediaUrls : []).find((m) => m && m.type !== 'video')
+  if (!first) return null
+  return first.thumbnailUrl || photoSourceUrl(first) || null
 }
 
 function sb(path) {
@@ -86,7 +97,7 @@ export default withSentry(async function handler(req, res) {
     `&status=eq.published` +
     `&published_at=gte.${encodeURIComponent(prevStart.toISOString())}` +
     `&published_at=lt.${encodeURIComponent(periodEnd.toISOString())}` +
-    `&select=id,topic,platform,published_at`
+    `&select=id,topic,platform,published_at,media_urls`
   )
   if (!itemsRes.ok) return res.status(500).json({ error: 'Database error' })
   const allItems = await itemsRes.json().catch(() => [])
@@ -101,7 +112,7 @@ export default withSentry(async function handler(req, res) {
     periodEnd: toDateStr(new Date(periodEnd.getTime() - 1)),
     overall: { posts: 0, reach: 0, engagement: 0, hasRaw: false, raw: emptyRaw() },
     byPlatform: [],
-    topPost: null,
+    topPosts: [],
     prev: { posts: prevItems.length, measuredPosts: 0, reach: 0, engagement: 0 },
   }
   if (social.length === 0) return res.status(200).json(emptyBody)
@@ -143,7 +154,7 @@ export default withSentry(async function handler(req, res) {
   let overallReach = 0
   let overallEngagement = 0
   const overallRaw = emptyRaw()
-  let topPost = null
+  const measuredPosts = []
 
   for (const item of items) {
     overallPosts++
@@ -191,14 +202,21 @@ export default withSentry(async function handler(req, res) {
     }
     byPlatform.set(item.platform, bucket)
 
-    // Rank the top post only among measured posts — a "top post" with no real
-    // reading is meaningless. `id` links straight to the post (StoryboardPublish,
-    // /publish/:pieceId) and `raw` (when present) lets the card show the
-    // platform's own real number instead of the reach/engagement composite.
-    if (measured && (!topPost || reach > topPost.reach)) {
-      topPost = { id: item.id, topic: item.topic || 'Untitled', platform: item.platform, reach, engagement, raw }
+    // Collect every measured post — ranked into the top 3 after the loop. A
+    // post with no real reading can't be ranked, so unmeasured items never
+    // enter this list. `id` links straight to the post (StoryboardPublish,
+    // /publish/:pieceId); `raw` (when present) lets the card show the
+    // platform's own real number instead of the reach/engagement composite;
+    // `thumbnail` is the cover photo for the card.
+    if (measured) {
+      measuredPosts.push({
+        id: item.id, topic: item.topic || 'Untitled', platform: item.platform, reach, engagement, raw,
+        thumbnail: coverThumbnail(item.media_urls),
+      })
     }
   }
+
+  const topPosts = measuredPosts.sort((a, b) => b.reach - a.reach).slice(0, 3)
 
   // Overall only gets the real-number grid when EVERY measured post this
   // period had raw bundle data — a mix of bundle + Buffer summed together
@@ -226,7 +244,7 @@ export default withSentry(async function handler(req, res) {
       hasRaw: overallHasRaw, raw: overallRaw,
     },
     byPlatform: platformRows,
-    topPost,
+    topPosts,
     prev,
   })
 })
