@@ -200,14 +200,20 @@ export async function renderSegmentToReel({ ws, seg, asset, staffName, createDra
     })
 
     // Insert the b-roll media_assets row (parent_asset_id = source) + index it.
+    // awaitThumbnails: the draft below snapshots this row into media_urls, and a
+    // media_urls entry carries its own thumbnailUrl. Awaiting the poster here is
+    // what lets the draft be born WITH one, rather than relying on the entry-sync
+    // write-back to land after an insert that fires milliseconds from now.
     const saved = await saveBroll({
       ws,
       renders: [{ blobUrl: blob.url, width, height, sizeBytes: buffer.length }],
       staffId: seg.staff_id || null,
       notes: `AI clip from asset ${asset.id}${hook ? ` — "${hook.slice(0, 80)}"` : ''}`,
       parentAssetId: asset.id,
+      awaitThumbnails: true,
     })
-    const newAssetId = saved?.[0]?.id || null
+    const newAsset = saved?.[0] || null
+    const newAssetId = newAsset?.id || null
 
     // Land the rendered reel as an approvable draft, not just a Library b-roll
     // row. Best-effort — a draft-insert failure must not undo a successful
@@ -220,6 +226,7 @@ export async function renderSegmentToReel({ ws, seg, asset, staffName, createDra
           ws,
           videoUrl: blob.url,
           assetId: newAssetId,
+          thumbnailUrl: newAsset?.thumbnail_url || null,
           filename: `${safeFilename}.mp4`,
           durationS: durationSec,
           caption: captionText,

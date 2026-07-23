@@ -27,6 +27,8 @@ const THUMB_WIDTH   = 480
 // poster frames stay crisp without ballooning the blob storage cost.
 const JPEG_QUALITY  = '4'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function requireScope(scope) {
   if (!scope?.workspace) {
     throw new Error('thumbnail: workspace scope is required (caller must pass a resolved scope)')
@@ -134,6 +136,74 @@ function thumbPathname(workspaceId, asset) {
   return `media/thumbs/${workspaceId}/${asset.id}.jpg`
 }
 
+// Propagate a freshly-written poster into every content_items.media_urls entry
+// that points at this asset.
+//
+// media_urls is a SNAPSHOT, not a join — each entry carries its own
+// thumbnailUrl (src/lib/mediaEntry.js), so a poster written AFTER the draft was
+// created leaves the entry stuck at null. That is the normal case for an
+// auto-drafted reel: saveBroll inserts the b-roll row and the draft lands
+// milliseconds later, while the poster takes an ffmpeg pass to produce. A null
+// entry thumbnail degrades every surface that reads it — /week tiles fall back
+// to a grey placeholder (week-summary.js thumbOf), and StoryComposer renders an
+// empty tile.
+//
+// It also overwrites a STALE entry, not just a null one: generateThumbnailFromPath
+// deletes the previous blob a few lines below, so an entry still holding the old
+// URL would point at a dead blob after a rotate/regen.
+//
+// Only video entries are touched — for a photo, thumbnailUrl is deliberately the
+// image URL itself, and this path only ever runs for videos.
+//
+// Best-effort by contract: the poster is already persisted by the time this
+// runs, so a failure here must never fail the thumbnail. It is awaited (not
+// fire-and-forget) so a caller's waitUntil() covers it — a nested floating
+// promise would be dropped when the response sends.
+//
+// The array transform is split out and exported so it can be asserted against
+// real captured media_urls arrays without any I/O (tests/lib/mediaEntryThumbnailSync.test.js).
+export function applyEntryThumbnail(list, assetId, thumbnailUrl) {
+  const entries = Array.isArray(list) ? list : []
+  let changed = false
+  const next = entries.map((entry) => {
+    if (!entry || entry.mediaAssetId !== assetId) return entry
+    // Photos deliberately carry the image URL as their own thumbnailUrl; only a
+    // video entry has a separate poster to keep in step.
+    if (entry.type !== 'video' && entry.kind !== 'video') return entry
+    if (entry.thumbnailUrl === thumbnailUrl) return entry
+    changed = true
+    return { ...entry, thumbnailUrl }
+  })
+  return { changed, next }
+}
+
+async function syncMediaEntriesForAsset(assetId, scope, thumbnailUrl) {
+  if (!assetId || !UUID_RE.test(String(assetId)) || !thumbnailUrl) return
+  try {
+    const contains = encodeURIComponent(JSON.stringify([{ mediaAssetId: assetId }]))
+    const where = `${scope.column}=eq.${scope.id}&media_urls=cs.${contains}`
+    const lookup = await sb(`content_items?${where}&select=id,media_urls`)
+    if (!lookup.ok) {
+      console.error('[thumbnail] entry sync lookup failed:', lookup.status)
+      return
+    }
+    const rows = await lookup.json()
+
+    for (const row of rows) {
+      const { changed, next } = applyEntryThumbnail(row.media_urls, assetId, thumbnailUrl)
+      if (!changed) continue
+
+      const upd = await sb(`content_items?id=eq.${row.id}&${scope.column}=eq.${scope.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ media_urls: next }),
+      })
+      if (!upd.ok) console.error('[thumbnail] entry sync PATCH failed for', row.id, upd.status)
+    }
+  } catch (e) {
+    console.error('[thumbnail] entry sync failed:', e?.message)
+  }
+}
+
 // Core: upload a JPEG from a local path, PATCH thumbnail_url, clean up the
 // old blob. Used both by generateAndPersistThumbnail (after download) and
 // directly by the edit endpoint (re-uses the re-encoded outPath already in
@@ -166,6 +236,11 @@ export async function generateThumbnailFromPath(videoPath, asset, scope) {
     if (!upd.ok) {
       throw new Error(`thumbnail PATCH failed: ${upd.status} ${await upd.text()}`)
     }
+
+    // Keep media_urls entry snapshots in step with the row we just wrote. Must
+    // run BEFORE the stale-blob delete below, so no entry is left pointing at a
+    // URL this call is about to remove.
+    await syncMediaEntriesForAsset(asset.id, s, uploaded.url)
 
     if (oldThumbnailUrl && oldThumbnailUrl !== uploaded.url) {
       blobDel(oldThumbnailUrl).catch((e) => {
