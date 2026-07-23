@@ -5,7 +5,7 @@ import {
   Award, Globe, GitBranch, CheckCircle2, Mic, RefreshCw,
   Search, LogIn, TimerOff, PenLine, AlertTriangle, ExternalLink, MapPin,
   ArrowUp, ArrowDown, HelpCircle, X, Smartphone, Info, ChevronLeft,
-  ChevronRight, CalendarRange, LayoutGrid,
+  ChevronRight, CalendarRange, LayoutGrid, Image as ImageIcon,
 } from 'lucide-react'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import {
@@ -821,6 +821,47 @@ function RawMetricGrid({ raw, reach }) {
   )
 }
 
+// Rank #1 gets the app's act-now amber accent; #2/#3 are neutral silver/bronze
+// — a decoration, not a status, so they stay outside the semantic color set.
+const RANK_BADGE = {
+  1: 'bg-action text-action-foreground',
+  2: 'bg-slate-400 text-white',
+  3: 'bg-amber-700 text-white',
+}
+
+// One card in the top-3 grid — real cover photo, rank badge, platform chip
+// over the image (there's room for it there instead of a text line), and the
+// same real-metric line the single-post card used (Q, 2026-07-22: "show some
+// sort of visual thumbnail... its own row so there's enough visual space").
+function TopPostCard({ post, rank }) {
+  return (
+    <Link
+      to={`/publish/${post.id}`}
+      className="group block rounded-xl border border-border overflow-hidden bg-card hover:border-primary/40 hover:shadow-md transition-all"
+    >
+      <div className="relative aspect-[4/3] bg-muted">
+        {post.thumbnail ? (
+          <img src={post.thumbnail} alt="" loading="lazy" className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center">
+            <ImageIcon className="h-6 w-6 text-muted-foreground/40" aria-hidden="true" />
+          </div>
+        )}
+        <span className={`absolute top-2 left-2 h-6 w-6 rounded-full flex items-center justify-center text-xs font-extrabold shadow ${RANK_BADGE[rank] || RANK_BADGE[3]}`}>
+          {rank}
+        </span>
+        <span className="absolute bottom-2 left-2 text-3xs font-bold px-2 py-0.5 rounded-full bg-black/55 text-white backdrop-blur-sm">
+          {PLATFORM_LABELS[post.platform] || post.platform}
+        </span>
+      </div>
+      <div className="p-3">
+        <p className="text-sm font-semibold leading-snug line-clamp-2 text-foreground">{post.topic}</p>
+        <p className="text-2xs font-semibold tabular-nums text-foreground mt-1.5">{topPostMetricLine(post)}</p>
+      </div>
+    </Link>
+  )
+}
+
 function SocialTab({ data, loading, cost, granularity = 'week' }) {
   if (loading && !data) {
     return (
@@ -833,83 +874,76 @@ function SocialTab({ data, loading, cost, granularity = 'week' }) {
 
   const overall = data?.overall || { posts: 0, measuredPosts: 0, reach: 0, engagement: 0 }
   const byPlatform = data?.byPlatform || []
-  const topPost = data?.topPost
+  const topPosts = data?.topPosts || []
   // Run-cost is always a weekly figure (from the global recap, unrelated to
   // the period picker) — only meaningful when actually viewing a week.
   const showCost = granularity === 'week' && cost && cost.weekTotal > 0
 
   return (
     <>
-      <div className="grid lg:grid-cols-2 gap-4 mb-4">
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" /> Overall — social
-          </h3>
-          <div className="mt-4 space-y-3 text-sm">
-            <div className="flex justify-between items-baseline">
-              <span className="text-muted-foreground">Posts published</span>
-              <span className="inline-flex items-center gap-2">
-                <PeriodDelta cur={overall.posts} prev={data?.prev?.posts} granularity={granularity} />
-                <span className="font-semibold tabular-nums">{overall.posts}</span>
-              </span>
-            </div>
-            {overall.measuredPosts > 0 && overall.hasRaw ? (
-              <RawMetricGrid raw={overall.raw} reach={overall.reach} />
-            ) : (
-              <>
-                <div className="flex justify-between items-baseline">
-                  <span className="text-muted-foreground">Reach</span>
-                  <span className="inline-flex items-center gap-2">
-                    {overall.measuredPosts > 0 && data?.prev?.measuredPosts > 0 ? (
-                      <PeriodDelta cur={overall.reach} prev={data.prev.reach} granularity={granularity} />
-                    ) : null}
-                    <span className="font-semibold tabular-nums">{overall.measuredPosts > 0 ? fmtNum(overall.reach) : '—'}</span>
-                  </span>
-                </div>
-                <div className="flex justify-between items-baseline">
-                  <span className="text-muted-foreground">Engagement</span>
-                  <span className="inline-flex items-center gap-2">
-                    {overall.measuredPosts > 0 && data?.prev?.measuredPosts > 0 ? (
-                      <PeriodDelta cur={overall.engagement} prev={data.prev.engagement} granularity={granularity} />
-                    ) : null}
-                    <span className="font-semibold tabular-nums">{overall.measuredPosts > 0 ? fmtNum(overall.engagement) : '—'}</span>
-                  </span>
-                </div>
-              </>
-            )}
-            {overall.posts > 0 && overall.measuredPosts === 0 && (
-              <p className="text-2xs text-muted-foreground pt-1">
-                Reach/engagement for this {granularity}&rsquo;s posts isn&rsquo;t available yet — see per-platform below.
-              </p>
-            )}
-            {showCost && (
-              <p className="text-2xs text-muted-foreground pt-1 border-t border-border">
-                Estimated run cost this week: {fmtUsd(cost.weekTotal)}
-                {cost.perPost != null && <> (≈ {fmtUsd(cost.perPost)}/post)</>}
-              </p>
-            )}
+      <div className="rounded-2xl border border-border bg-card p-5 mb-4">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <Activity className="h-4 w-4 text-primary" /> Overall — social
+        </h3>
+        <div className="mt-4 space-y-3 text-sm">
+          <div className="flex justify-between items-baseline">
+            <span className="text-muted-foreground">Posts published</span>
+            <span className="inline-flex items-center gap-2">
+              <PeriodDelta cur={overall.posts} prev={data?.prev?.posts} granularity={granularity} />
+              <span className="font-semibold tabular-nums">{overall.posts}</span>
+            </span>
           </div>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Award className="h-4 w-4 text-primary" /> Your top post this {granularity}
-          </h3>
-          {topPost ? (
-            <Link to={`/publish/${topPost.id}`} className="text-sm mt-3 flex items-start justify-between gap-3 group -mx-1 px-1 py-1 rounded-lg hover:bg-muted/50 transition-colors">
-              <div className="min-w-0">
-                <div className="font-medium truncate text-foreground">{topPost.topic}</div>
-                <div className="text-2xs text-muted-foreground mt-0.5">{PLATFORM_LABELS[topPost.platform] || topPost.platform}</div>
-                <div className="mt-2 font-semibold tabular-nums text-foreground">{topPostMetricLine(topPost)}</div>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5 group-hover:text-primary transition-colors" aria-hidden="true" />
-            </Link>
-          ) : overall.posts > 0 ? (
-            <p className="text-sm text-muted-foreground mt-3">No measured reach yet for this {granularity}&rsquo;s posts.</p>
+          {overall.measuredPosts > 0 && overall.hasRaw ? (
+            <RawMetricGrid raw={overall.raw} reach={overall.reach} />
           ) : (
-            <p className="text-sm text-muted-foreground mt-3">No social posts published this {granularity}.</p>
+            <>
+              <div className="flex justify-between items-baseline">
+                <span className="text-muted-foreground">Reach</span>
+                <span className="inline-flex items-center gap-2">
+                  {overall.measuredPosts > 0 && data?.prev?.measuredPosts > 0 ? (
+                    <PeriodDelta cur={overall.reach} prev={data.prev.reach} granularity={granularity} />
+                  ) : null}
+                  <span className="font-semibold tabular-nums">{overall.measuredPosts > 0 ? fmtNum(overall.reach) : '—'}</span>
+                </span>
+              </div>
+              <div className="flex justify-between items-baseline">
+                <span className="text-muted-foreground">Engagement</span>
+                <span className="inline-flex items-center gap-2">
+                  {overall.measuredPosts > 0 && data?.prev?.measuredPosts > 0 ? (
+                    <PeriodDelta cur={overall.engagement} prev={data.prev.engagement} granularity={granularity} />
+                  ) : null}
+                  <span className="font-semibold tabular-nums">{overall.measuredPosts > 0 ? fmtNum(overall.engagement) : '—'}</span>
+                </span>
+              </div>
+            </>
+          )}
+          {overall.posts > 0 && overall.measuredPosts === 0 && (
+            <p className="text-2xs text-muted-foreground pt-1">
+              Reach/engagement for this {granularity}&rsquo;s posts isn&rsquo;t available yet — see per-platform below.
+            </p>
+          )}
+          {showCost && (
+            <p className="text-2xs text-muted-foreground pt-1 border-t border-border">
+              Estimated run cost this week: {fmtUsd(cost.weekTotal)}
+              {cost.perPost != null && <> (≈ {fmtUsd(cost.perPost)}/post)</>}
+            </p>
           )}
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-5 mb-4">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <Award className="h-4 w-4 text-primary" /> Your top {topPosts.length > 1 ? `${topPosts.length} posts` : 'post'} this {granularity}
+        </h3>
+        {topPosts.length > 0 ? (
+          <div className="grid sm:grid-cols-3 gap-3.5 mt-3">
+            {topPosts.map((p, i) => <TopPostCard key={p.id} post={p} rank={i + 1} />)}
+          </div>
+        ) : overall.posts > 0 ? (
+          <p className="text-sm text-muted-foreground mt-3">No measured reach yet for this {granularity}&rsquo;s posts.</p>
+        ) : (
+          <p className="text-sm text-muted-foreground mt-3">No social posts published this {granularity}.</p>
+        )}
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5">
