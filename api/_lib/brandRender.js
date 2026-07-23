@@ -23,6 +23,7 @@ import satori from 'satori'
 import { Readable } from 'node:stream'
 import { getBrandFont, ensureFontconfig, getFallbackFontBuffer } from './brandFonts.js'
 import { applyGradeParamsSharp } from './gradeParams.js'
+import { channelSpec } from './postFrames.js'
 
 const MAX_SOURCE_BYTES = 50 * 1024 * 1024
 
@@ -63,15 +64,23 @@ async function fetchSourcePhotoBuffer(photoUrl) {
   return Buffer.concat(chunks)
 }
 
-// Channel specs. Width × height in pixels. Add new channels here.
+// Photo channel specs. Dimensions are DERIVED from the (platform, format)
+// registry via channelSpec() — this table now only declares which channels exist
+// and how each one lays out its caption. Add a new channel here AND in
+// CHANNEL_DESTINATIONS (postFrames.js), which is where its frame comes from.
+//
+// The keys are persisted on live story_packages rows, so they stay as-is.
+// Deriving the numbers is what fixes the drift: this table used to say
+// `instagram_feed: 1:1` and `linkedin_feed: 1:1` while both platforms render
+// feed posts at 4:5.
 export const CHANNEL_SPECS = {
-  linkedin_feed:        { width: 1080, height: 1080, aspect: '1:1',  captionPos: 'top' },
-  instagram_reel_still: { width: 1080, height: 1920, aspect: '9:16', captionPos: 'top' },
-  instagram_feed:       { width: 1080, height: 1080, aspect: '1:1',  captionPos: 'top' },
-  facebook_feed:        { width: 1080, height: 1350, aspect: '4:5',  captionPos: 'top' },
-  blog_hero:            { width: 1920, height: 1080, aspect: '16:9', captionPos: 'bottom' },
-  tiktok_still:         { width: 1080, height: 1920, aspect: '9:16', captionPos: 'top' },
-  youtube_short_still:  { width: 1080, height: 1920, aspect: '9:16', captionPos: 'top' },
+  linkedin_feed:        channelSpec('linkedin_feed',        { captionPos: 'top' }),
+  instagram_reel_still: channelSpec('instagram_reel_still', { captionPos: 'top' }),
+  instagram_feed:       channelSpec('instagram_feed',       { captionPos: 'top' }),
+  facebook_feed:        channelSpec('facebook_feed',        { captionPos: 'top' }),
+  blog_hero:            channelSpec('blog_hero',            { captionPos: 'bottom' }),
+  tiktok_still:         channelSpec('tiktok_still',         { captionPos: 'top' }),
+  youtube_short_still:  channelSpec('youtube_short_still',  { captionPos: 'top' }),
 }
 
 const DEFAULT_PRIMARY = '#1a3a5c'   // navy fallback

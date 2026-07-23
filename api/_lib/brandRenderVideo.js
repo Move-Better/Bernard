@@ -32,6 +32,7 @@ import { buildKaraokeAss } from './karaokeCaptions.js'
 import { normalizeCuts, keptRanges, remapWords, remapOverlays, buildCutFilter, totalCut } from './transcriptCuts.js'
 import { gradeToFfmpeg } from './gradeParams.js'
 import { reframeFilter, isNeutralReframe, buildOverlaySvg, normalizeOverlays, kenBurnsFilter, isKenBurnsActive } from './videoOverlays.js'
+import { channelSpec } from './postFrames.js'
 
 // Fast-path threshold: sources at/below this stream to /tmp untouched (the
 // original is preserved for the render). ZV-1F 4K clips can be large.
@@ -162,23 +163,28 @@ const LONGFORM_MAX_SECONDS = 240
 
 /**
  * Channel specs for video rendering.
- * Dimensions + aspect match the photo CHANNEL_SPECS so the brand overlay SVG
- * geometry is identical — only the output format (MP4 vs JPEG) differs.
+ *
+ * Dimensions are DERIVED from the (platform, format) registry via channelSpec(),
+ * the same source the photo CHANNEL_SPECS uses — so the brand overlay SVG
+ * geometry is identical by construction rather than by a comment asking someone
+ * to keep two hand-maintained tables in step. (They had already drifted: both
+ * tables carried their own 1:1 for LinkedIn while the platform renders 4:5.)
+ * Only the output format (MP4 vs JPEG) and the render behaviour below differ.
  */
 export const VIDEO_CHANNEL_SPECS = {
-  linkedin_video:  { width: 1080, height: 1080, aspect: '1:1',  captionPos: 'top' },
-  instagram_reel:  { width: 1080, height: 1920, aspect: '9:16', captionPos: 'top' },
-  tiktok:          { width: 1080, height: 1920, aspect: '9:16', captionPos: 'top' },
-  youtube_short:   { width: 1080, height: 1920, aspect: '9:16', captionPos: 'top' },
-  blog_hero_video: { width: 1920, height: 1080, aspect: '16:9', captionPos: 'bottom' },
-  facebook_video:  { width: 1080, height: 1350, aspect: '4:5',  captionPos: 'top' },
+  linkedin_video:  channelSpec('linkedin_video',  { captionPos: 'top' }),
+  instagram_reel:  channelSpec('instagram_reel',  { captionPos: 'top' }),
+  tiktok:          channelSpec('tiktok',          { captionPos: 'top' }),
+  youtube_short:   channelSpec('youtube_short',   { captionPos: 'top' }),
+  blog_hero_video: channelSpec('blog_hero_video', { captionPos: 'bottom' }),
+  facebook_video:  channelSpec('facebook_video',  { captionPos: 'top' }),
   // Long-form / "keep whole" channels — landscape masters for teaching content
   // that should NOT be cropped into a reel. fit:'contain' letterboxes to keep
   // the WHOLE frame (a teaching video must never crop the speaker out of frame);
   // longform:true selects the higher duration budget (LONGFORM_MAX_SECONDS).
-  youtube:         { width: 1920, height: 1080, aspect: '16:9', captionPos: 'bottom', fit: 'contain', longform: true },
-  linkedin_native: { width: 1920, height: 1080, aspect: '16:9', captionPos: 'bottom', fit: 'contain', longform: true },
-  website_embed:   { width: 1920, height: 1080, aspect: '16:9', captionPos: 'bottom', fit: 'contain', longform: true },
+  youtube:         channelSpec('youtube',         { captionPos: 'bottom', fit: 'contain', longform: true }),
+  linkedin_native: channelSpec('linkedin_native', { captionPos: 'bottom', fit: 'contain', longform: true }),
+  website_embed:   channelSpec('website_embed',   { captionPos: 'bottom', fit: 'contain', longform: true }),
 }
 
 /**

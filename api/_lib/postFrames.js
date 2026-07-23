@@ -77,6 +77,54 @@ export function safeInsetBottomFor(platform) {
 
 export const FALLBACK_RATIO = '4:5'
 
+// Legacy render-channel key → the destination it actually targets.
+//
+// These keys are PERSISTED (story_packages.channels / .renders hold them on live
+// rows) and are threaded through renderClipCore, renderPackageChannels,
+// generate-package, approve-package, ads/render-video and the VideoEditor. So
+// they cannot be renamed or dropped — but they no longer need to carry their own
+// copy of the dimensions. CHANNEL_SPECS and VIDEO_CHANNEL_SPECS now derive
+// width/height/aspect through this map, which is what stops the two tables
+// drifting apart the way they had (the photo table said `instagram_feed: 1:1`
+// while Instagram's feed renders 4:5).
+//
+// Render BEHAVIOUR that isn't the frame — captionPos, fit:'contain', longform —
+// stays on the channel tables, because it varies per channel rather than per
+// destination (website_embed and blog_hero_video share a frame but not a fit).
+export const CHANNEL_DESTINATIONS = {
+  // Photo channels (CHANNEL_SPECS)
+  linkedin_feed:        { platform: 'linkedin',  format: 'post' },
+  instagram_reel_still: { platform: 'instagram', format: 'reel' },
+  instagram_feed:       { platform: 'instagram', format: 'post' },
+  facebook_feed:        { platform: 'facebook',  format: 'post' },
+  blog_hero:            { platform: 'blog',      format: 'hero' },
+  tiktok_still:         { platform: 'tiktok',    format: 'photo' },
+  youtube_short_still:  { platform: 'youtube',   format: 'short' },
+  // Video channels (VIDEO_CHANNEL_SPECS)
+  linkedin_video:       { platform: 'linkedin',  format: 'video' },
+  instagram_reel:       { platform: 'instagram', format: 'reel' },
+  tiktok:               { platform: 'tiktok',    format: 'video' },
+  youtube_short:        { platform: 'youtube',   format: 'short' },
+  blog_hero_video:      { platform: 'blog',      format: 'hero' },
+  facebook_video:       { platform: 'facebook',  format: 'post' },
+  youtube:              { platform: 'youtube',   format: 'longform' },
+  linkedin_native:      { platform: 'linkedin',  format: 'longform' },
+  website_embed:        { platform: 'blog',      format: 'hero' },
+}
+
+/**
+ * Build a render-channel spec from the registry, merging in the channel's own
+ * render behaviour. The single place channel dimensions come from.
+ *
+ * @param {string} channel  key in CHANNEL_DESTINATIONS
+ * @param {Object} [extra]  captionPos / fit / longform — behaviour, not frame
+ */
+export function channelSpec(channel, extra = {}) {
+  const dest = CHANNEL_DESTINATIONS[channel]
+  const { width, height, ratio } = frameFor(dest?.platform, dest?.format)
+  return { width, height, aspect: ratio, ...extra }
+}
+
 // Bernard folds some formats into the platform key itself (`instagram_story` is
 // a distinct content_items.platform value; there is no content_items.format
 // column). Split it here rather than in every caller.

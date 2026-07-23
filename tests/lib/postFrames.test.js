@@ -4,6 +4,7 @@ import {
   FRAME_PIXELS as SERVER_PIXELS,
   KEEP_WHOLE_FORMATS as SERVER_KEEP_WHOLE,
   SAFE_INSETS as SERVER_INSETS,
+  CHANNEL_DESTINATIONS as SERVER_CHANNELS,
   frameFor as serverFrameFor,
   safeInsetBottomFor as serverSafeInsetBottomFor,
 } from '../../api/_lib/postFrames.js'
@@ -13,6 +14,7 @@ import {
   FRAME_PIXELS,
   KEEP_WHOLE_FORMATS,
   SAFE_INSETS,
+  CHANNEL_DESTINATIONS,
   frameFor,
   safeInsetBottomFor,
   splitPlatformKey,
@@ -30,6 +32,10 @@ describe('postFrames — client and server mirrors stay in step', () => {
 
   it('declares identical pixel dimensions per ratio', () => {
     expect(SERVER_PIXELS).toEqual(FRAME_PIXELS)
+  })
+
+  it('declares identical legacy channel → destination maps', () => {
+    expect(SERVER_CHANNELS).toEqual(CHANNEL_DESTINATIONS)
   })
 
   it('agrees on which formats keep the whole frame', () => {
