@@ -27,6 +27,9 @@ import { unpostedTargets, mergePostedLocations } from './autoPublishRetry.js'
 import { isInstagramReel } from '../../src/lib/mediaEntry.js'
 import { checkWordsApproved } from './wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from './dispatchClaim.js'
+import { clampToCap, platformCap } from './socialLengthTargets.js'
+
+const GBP_CAP = platformCap('gbp')
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -163,7 +166,12 @@ export async function dispatchContentItem({ ws, piece }) {
     for (const t of todo) {
       // GBP: honor the per-location body override generated at draft time
       // (keyed by workspace_locations.id) — matching the client publish path.
-      const text = (piece.platform === 'gbp' && locationOverrides[t.id]) ? locationOverrides[t.id] : content
+      // Clamp to Google's 1500-char cap here too: this is the final gate for
+      // manually-edited captions on this path, same as runBundlePublish in
+      // publish/buffer.js — without it an over-length caption 400s at bundle
+      // behind an opaque dispatch_failed.
+      const rawText = (piece.platform === 'gbp' && locationOverrides[t.id]) ? locationOverrides[t.id] : content
+      const text = piece.platform === 'gbp' ? clampToCap(rawText, GBP_CAP) : rawText
       const publisher = piece.platform === 'gbp'
         ? new BundlePublisher(ws, { teamId: t.teamId })
         : new BundlePublisher(ws)

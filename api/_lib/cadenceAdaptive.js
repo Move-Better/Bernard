@@ -21,6 +21,8 @@
 //        { [atomPlatform]: { target_per_week, enabled: true, adaptive?: true } }
 //      Returns null → caller falls back to prior-only path.
 
+import { scoreSnapshot } from './engagementScoring.js'
+
 const TRAILING_WEEKS    = 8   // engagement window to aggregate over
 const MIN_SAMPLE        = 5   // min scored posts before we tune a channel
 const MAX_STEP          = 1   // max ±posts/wk change per planning cycle vs prior
@@ -54,6 +56,13 @@ function toAtomPlatform(platform) {
 //   GBP:                    stats.views, stats.actions
 function scoreOf(stats) {
   if (!stats || typeof stats !== 'object') return 0
+  // bundle's statistics blob carries BOTH `impressions` and `views` for the
+  // SAME real number on IG/FB (Meta's impressions→Views rename) — blindly
+  // summing every field double-counts it, over-weighting IG/FB vs LinkedIn in
+  // the adaptive pool split. Delegate to the shared scorer, same as
+  // refresh-engagement.js does since #2283. (bundle snapshots embed
+  // source:'bundle' inside the stats blob itself, so no extra select needed.)
+  if (stats.source === 'bundle') return scoreSnapshot({ source: 'bundle', stats }).score
   const s = stats.statistics
   if (s && typeof s === 'object') {
     return Object.values(s).reduce((sum, v) => sum + (typeof v === 'number' ? v : 0), 0)

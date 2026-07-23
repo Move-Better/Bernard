@@ -19,6 +19,8 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 // Terminal Twilio statuses that mean the clinician did not take the call.
 const UNANSWERED = new Set(['no-answer', 'busy', 'failed', 'canceled'])
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 // eslint-disable-next-line bernard/require-workspace-scope -- webhook: no Clerk session; only PATCHes a single interview by its own primary-key id (the signature-verified `iv`), which cannot cross tenants.
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -56,6 +58,10 @@ export default async function handler(req, res) {
   if (!verifyTwilioSignature(callbackUrl, params, req.headers['x-twilio-signature'], authToken)) {
     return res.status(401).json({ error: 'invalid_signature' })
   }
+
+  // Same guard as twilio-recording.js: never let a non-UUID land in the
+  // PostgREST filter below. Defense-in-depth — the signature already binds iv.
+  if (iv && !UUID_RE.test(iv)) return res.status(400).json({ error: 'invalid_id' })
 
   const status = params.CallStatus
   if (iv && UNANSWERED.has(status)) {

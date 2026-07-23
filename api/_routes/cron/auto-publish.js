@@ -29,6 +29,7 @@ import { filterCampaignsForStaff } from '../../_lib/tentpoleCampaignContext.js'
 import { getActiveCampaigns } from '../../_lib/activeCampaigns.js'
 import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
 import { verifyCronSecret } from '../../_lib/auth.js'
+import { clampToCap, platformCap } from '../../_lib/socialLengthTargets.js'
 import {
   MAX_AUTO_PUBLISH_RETRIES,
   unpostedTargets,
@@ -37,6 +38,8 @@ import {
   decideClaimDisposition,
 } from '../../_lib/autoPublishRetry.js'
 import { waitUntil } from '@vercel/functions'
+
+const GBP_CAP = platformCap('gbp')
 
 const SUPABASE_URL  = process.env.SUPABASE_URL
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY
@@ -89,7 +92,9 @@ async function resolveBundleGbpTargets(workspaceId) {
 // Returns { posted: [{ id, postId }], failed: [id] } keyed by the stable target
 // id (= bundle teamId) so the caller can record exactly which locations posted.
 async function dispatchGbpBundle({ pkg, workspace, targets }) {
-  const text = pkg.caption_text || pkg.topic || ''
+  // Google rejects >1500-char captions; caption_text is editable in Moment
+  // Miner pre-approval, so clamp here like every other GBP dispatch path.
+  const text = clampToCap(pkg.caption_text || pkg.topic || '', GBP_CAP)
   const mediaUrls = Array.isArray(pkg.renders)
     ? pkg.renders.filter((r) => r.channel === 'gbp_post' && r.blobUrl).map((r) => ({ url: r.blobUrl, type: 'image' }))
     : []
@@ -126,7 +131,9 @@ async function resolveGbpChannelIds(workspaceId) {
 // { posted: [{ id, postId }], failed: [id] } keyed by stable target id
 // (= Buffer channelId) so the caller records exactly which locations posted.
 async function dispatchGbp({ pkg, token, locationChannels }) {
-  const text = pkg.caption_text || pkg.topic || ''
+  // Google rejects >1500-char captions; caption_text is editable in Moment
+  // Miner pre-approval, so clamp here like every other GBP dispatch path.
+  const text = clampToCap(pkg.caption_text || pkg.topic || '', GBP_CAP)
   const mediaUrls = Array.isArray(pkg.renders)
     ? pkg.renders
         .filter((r) => r.channel === 'gbp_post' && r.blobUrl)

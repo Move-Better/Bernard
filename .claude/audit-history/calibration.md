@@ -36,7 +36,17 @@ and don't survive into a fresh worktree, so this snapshot — inside the one for
 file — is what the NEXT run diffs against to detect recurrence. After comparing, the next
 run overwrites this section with its own snapshot. -->
 
-_(none yet — first run seeds it)_
+Seeded by the 2026-07-22 full sweep (report: 2026-07-22-2035-full.md). Items marked FIXED
+were repaired in-session; if one reappears, that's a regression — report at P1 minimum.
+
+- [bug] api/_lib/dispatchContentItem.js:167 — GBP 1500 clamp missing on /week Approve dispatch — 2026-07-22 (FIXED same session)
+- [bug] api/_lib/cadenceAdaptive.js:55 — scoreOf double-counts bundle impressions+views (#2283 sibling) — 2026-07-22 (FIXED same session)
+- [bug] api/_routes/cron/auto-publish.js:92,129 — GBP clamp missing in dispatchGbp/dispatchGbpBundle — 2026-07-22 (FIXED same session)
+- [ui] src/pages/YourWeek.jsx:333,519 — Instagram pink reused as "open slot" status color on the same board — 2026-07-22 (report-only, pending Q)
+- [ui] src/pages/YourWeek.jsx:29 — comment promises a status legend that doesn't exist; 7 unexplained status colors — 2026-07-22 (report-only, pending Q)
+- [ui] src/pages/StaffProfile.jsx:746,1257 — hover-lift rows with only a 32px chevron click target (#2245 class) — 2026-07-22 (report-only, pending Q)
+- [live] agent_actions kind='channel_disconnected' — 0 rows ever, but GBP-walker fix (#2280) merged 7-23 02:49 UTC and cron runs 14:00 UTC — RE-CHECK first: if still 0 after 2026-07-23 14:00 UTC while a GBP stays disconnected, that IS a P1 "never fired"
+- [live] watchlist (merged <72h, user-driven, all 0 rows on 7-22): T3 slots config (cadence_policy.slots), T4 reject_reason, T4 edit_diff — flag only if still 0 next audit
 
 ## Notes for agents
 
