@@ -10,6 +10,7 @@ export const config = { runtime: 'nodejs', maxDuration: 60 }
 
 import { waitUntil } from '@vercel/functions'
 import { generateText } from 'ai'
+import { rankTopPerformers } from '../_lib/engagementScoring.js'
 import { workspaceContext, invalidateWorkspaceCacheById } from '../_lib/workspaceContext.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { requireRole } from '../_lib/auth.js'
@@ -60,40 +61,12 @@ async function fetchTopPerformers(wsId) {
     const rows = await r.json().catch(() => [])
     if (!Array.isArray(rows) || rows.length === 0) return []
 
-    // Dedupe to latest snapshot per content item; score by source signal.
-    const seen = new Set()
-    const candidates = []
-    for (const row of rows) {
-      if (seen.has(row.content_item_id)) continue
-      seen.add(row.content_item_id)
-      const ci = row.content_items
-      if (!ci || ci.status !== 'published') continue
-
-      let score, reach, engagement
-      if (row.source === 'ga4') {
-        score = row.stats?.pageviews ?? 0
-        reach = score
-        engagement = 0
-      } else {
-        const stats = row.stats?.statistics ?? {}
-        const likes = stats.likes ?? stats.favorites ?? 0
-        reach = stats.reach ?? 0
-        engagement = likes + (stats.comments ?? 0) + (stats.shares ?? 0)
-        score = reach
-      }
-      if (score <= 0) continue
-      candidates.push({ topic: ci.topic || 'Untitled', platform: ci.platform, score, reach, engagement })
-    }
-
-    return candidates
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5)
-      .map((i) => ({
-        topic:      i.topic,
-        platform:   PLATFORM_LABELS[i.platform] || i.platform || 'Unknown',
-        reach:      i.reach,
-        engagement: i.engagement,
-      }))
+    return rankTopPerformers(rows, 5).map((i) => ({
+      topic:      i.topic,
+      platform:   PLATFORM_LABELS[i.platform] || i.platform || 'Unknown',
+      reach:      i.reach,
+      engagement: i.engagement,
+    }))
   } catch {
     return []
   }
