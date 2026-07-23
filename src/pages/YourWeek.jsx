@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import NeedsYouStrip from '@/components/producer/NeedsYouStrip'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -17,7 +17,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { useUpdateContentItemStatus, useUpdateContentItem, useCarouselThemes, queryKeys } from '@/lib/queries'
 import { BUFFER_DISPATCH_PLATFORMS } from '@/lib/publish'
 import { publishPieceToBuffer } from '@/lib/publishPiece'
-import { computeEmptySlots, localSlotParts } from '@/lib/postingSlots'
+import { adHocSlotOptions, computeEmptySlots, localSlotParts } from '@/lib/postingSlots'
 import { toast } from '@/lib/toast'
 import PageHelp from '@/components/PageHelp'
 import PageSkeleton from '@/components/PageSkeleton'
@@ -397,22 +397,33 @@ function EmptySlotTile({ slot, onClick }) {
 // (create-slot-atom + the existing /api/content-plan/draft, unchanged), or
 // place an already-banked backlog item straight into the slot
 // (/api/content-plan/assign-slot).
-function AddToDayModal({ slot, weekMonday, heldItems, onClose }) {
+function AddToDayModal({ slot, cadence, weekMonday, heldItems, onClose }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [drafting, setDrafting] = useState(false)
   const [placingId, setPlacingId] = useState(null)
+  // An ad-hoc add (the day's "Add post" button) arrives with no channel, on
+  // purpose: it is not tied to a pinned cadence slot, so the operator picks the
+  // lane first. Once picked, both paths below run completely unchanged.
+  const [picked, setPicked] = useState(null)
 
-  const meta = PLATFORM_META[slot.platform] || { label: slot.platform, icon: null }
+  const active = slot.platform ? slot : (picked && { ...slot, ...picked })
+  const adHocOptions = useMemo(() => adHocSlotOptions(cadence), [cadence])
+
+  const meta = PLATFORM_META[active?.platform] || { label: active?.platform, icon: null }
   const Icon = meta.icon
-  const formatMeta = FORMAT_META[slot.format] || FORMAT_META.post
-  const timeStr = new Date(2026, 0, 1, slot.hour).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const formatMeta = FORMAT_META[active?.format] || FORMAT_META.post
+  const timeStr = active
+    ? new Date(2026, 0, 1, active.hour).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : ''
 
   // Backlog items eligible for this exact slot — same platform, and either a
   // matching format or no format set yet (undrafted atoms rarely carry one).
-  const eligible = (heldItems || []).filter(
-    (item) => item.platform === slot.platform && (!item.format || item.format === slot.format),
-  )
+  const eligible = active
+    ? (heldItems || []).filter(
+        (item) => item.platform === active.platform && (!item.format || item.format === active.format),
+      )
+    : []
 
   async function handleDraftNew() {
     if (drafting) return
@@ -421,7 +432,7 @@ function AddToDayModal({ slot, weekMonday, heldItems, onClose }) {
       const created = await apiFetch('/api/content-plan/create-slot-atom', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform: slot.platform, format: slot.format, weekday: slot.weekday, hour: slot.hour, weekMonday }),
+        body: JSON.stringify({ platform: active.platform, format: active.format, weekday: active.weekday, hour: active.hour, weekMonday }),
       })
       const result = await apiFetch('/api/content-plan/draft', {
         method: 'POST',
@@ -452,7 +463,7 @@ function AddToDayModal({ slot, weekMonday, heldItems, onClose }) {
       await apiFetch('/api/content-plan/assign-slot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ atomId: item.id, weekday: slot.weekday, hour: slot.hour, weekMonday }),
+        body: JSON.stringify({ atomId: item.id, weekday: active.weekday, hour: active.hour, weekMonday }),
       })
       toast.success('Placed on the board')
       qc.invalidateQueries({ queryKey: ['week-summary'] })
@@ -470,9 +481,48 @@ function AddToDayModal({ slot, weekMonday, heldItems, onClose }) {
         <DialogHeader>
           <DialogTitle>Add to {slot.dayLabel}{slot.dateLabel ? `, ${slot.dateLabel}` : ''}</DialogTitle>
           <DialogDescription className="flex items-center gap-1.5">
-            {Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />} {meta.label} {formatMeta.label.toLowerCase()} slot · {timeStr}
+            {active ? (
+              <>
+                {Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />} {meta.label} {formatMeta.label.toLowerCase()} slot · {timeStr}
+              </>
+            ) : (
+              'Pick a channel for this post.'
+            )}
           </DialogDescription>
         </DialogHeader>
+        {!active ? (
+          // Ad-hoc lane picker. Offers every enabled channel, whether or not
+          // this day has a pinned slot left for it — that freedom is the point.
+          <div className="flex flex-wrap gap-2">
+            {adHocOptions.length === 0 ? (
+              <p className="text-2xs text-muted-foreground">
+                No channels are turned on yet. Enable one in Settings → Channels to post here.
+              </p>
+            ) : (
+              adHocOptions.map((opt) => {
+                const optMeta = PLATFORM_META[opt.platform] || { label: opt.platform, icon: null }
+                const OptIcon = optMeta.icon
+                const optFormat = FORMAT_META[opt.format] || FORMAT_META.post
+                const OptFormatIcon = optFormat.icon
+                const optTime = new Date(2026, 0, 1, opt.hour).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                return (
+                  <button
+                    key={`${opt.platform}-${opt.format}`}
+                    type="button"
+                    onClick={() => setPicked(opt)}
+                    className="flex items-center gap-1.5 rounded-full border-2 border-border px-3 py-1.5 text-2xs font-semibold transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    {OptIcon && <OptIcon className="h-3.5 w-3.5" aria-hidden="true" />}
+                    <OptFormatIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                    {optMeta.label} {optFormat.label.toLowerCase()}
+                    <span className="font-normal text-muted-foreground">· {optTime}</span>
+                  </button>
+                )
+              })
+            )}
+          </div>
+        ) : (
+        <>
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
@@ -519,6 +569,8 @@ function AddToDayModal({ slot, weekMonday, heldItems, onClose }) {
               ))}
             </div>
           </div>
+        )}
+        </>
         )}
       </DialogContent>
     </Dialog>
@@ -1627,6 +1679,29 @@ export default function YourWeek() {
                             )
                           ))
                         )}
+                        {/* Add beyond the pinned cadence. computeEmptySlots can
+                            only offer slots the template defines, so a day whose
+                            slots are all taken used to offer nothing at all —
+                            the add-affordance vanished exactly when the day was
+                            busiest ("Unable to schedule new posts today
+                            (Thursday)", 2026-07-23: Thursday had one pinned slot
+                            and it was filled). Cadence is what Bernard plans on
+                            its own, not a cap on what a human may add. Quiet
+                            days stay excluded — that toggle is a real "don't
+                            post here" and has its own affordance. */}
+                        {!isPast && !isQuiet && (
+                          <button
+                            type="button"
+                            onClick={() => setAddToDaySlot({
+                              weekday: key,
+                              dayLabel: DAY_FULL[key],
+                              dateLabel: dayDates[DAYS.findIndex(([k]) => k === key)],
+                            })}
+                            className="flex items-center justify-center gap-1 rounded-lg py-1.5 text-3xs font-semibold text-muted-foreground/70 transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          >
+                            <Plus className="h-3 w-3" aria-hidden="true" />Add post
+                          </button>
+                        )}
                       </div>
                     </div>
                   )
@@ -1705,10 +1780,13 @@ export default function YourWeek() {
         onConfirm={batchSchedule}
       />
 
-      {/* T3 — Add-to-day picker, opened from an empty pinned slot tile. */}
+      {/* T3 — Add-to-day picker. Opened either from an empty pinned slot tile
+          (channel already known) or from a day's "Add post" button (ad-hoc, so
+          the modal asks for the channel first). */}
       {addToDaySlot && (
         <AddToDayModal
           slot={addToDaySlot}
+          cadence={cadence}
           weekMonday={data.weekMonday}
           heldItems={data.held}
           onClose={() => setAddToDaySlot(null)}
