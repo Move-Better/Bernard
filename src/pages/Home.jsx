@@ -24,6 +24,7 @@ import RelationshipCard from '@/components/home/RelationshipCard'
 import PageHelp from '@/components/PageHelp'
 import InstallBanner from '@/components/home/InstallBanner'
 import ChannelHealthBanner from '@/components/home/ChannelHealthBanner'
+import FeedbackResolvedBanner from '@/components/home/FeedbackResolvedBanner'
 
 const RESUME_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -352,6 +353,8 @@ export default function Home() {
       )}
 
       <InstallBanner />
+
+      <FeedbackResolvedBanner />
 
       <ChannelHealthBanner />
 
