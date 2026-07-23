@@ -21,7 +21,7 @@
 //        { [atomPlatform]: { target_per_week, enabled: true, adaptive?: true } }
 //      Returns null → caller falls back to prior-only path.
 
-import { scoreSnapshot } from './engagementScoring.js'
+import { scoreSnapshot, isUnavailable } from './engagementScoring.js'
 
 const TRAILING_WEEKS    = 8   // engagement window to aggregate over
 const MIN_SAMPLE        = 5   // min scored posts before we tune a channel
@@ -121,6 +121,12 @@ export async function computeAdaptiveCadenceChannels(wsId, enabledOutputs, prior
     const ap = toAtomPlatform(rawPlatform)
     if (!enabledAtomPlatforms.has(ap)) continue
     if (snap.stats == null) continue
+    // A sentinel ("analytics unavailable") is not a zero-engagement post — it
+    // is the absence of a reading. Counting it would add 0 to totalScore AND 1
+    // to count, pulling the platform's mean toward zero purely because its post
+    // type is unreportable. Since the pool is split proportionally to
+    // engagement-per-post, that silently under-allocates the affected channel.
+    if (isUnavailable(snap)) continue
     const score = scoreOf(snap.stats)
     if (!agg[ap]) agg[ap] = { count: 0, totalScore: 0 }
     agg[ap].count += 1
@@ -269,6 +275,10 @@ export async function computeDayProposal(wsId, quietDays, dismissedDays, timezon
   for (const snap of snapshots) {
     const publishedAt = snap.content_items?.published_at
     if (!publishedAt || snap.stats == null) continue
+    // Same reason as the platform aggregation above: a sentinel would drag the
+    // mean for whichever day happened to carry an unreportable post type, which
+    // is exactly the comparison this proposal turns on.
+    if (isUnavailable(snap)) continue
     const day = dayCodeOf(publishedAt, timezone || 'UTC')
     const score = scoreOf(snap.stats)
     ;(byDay[day] ||= { count: 0, totalScore: 0 })

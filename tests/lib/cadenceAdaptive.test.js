@@ -89,6 +89,28 @@ describe('computeDayProposal', () => {
     expect(result.baselineCount).toBe(2)
   })
 
+  it('excludes unavailable sentinels from the day average instead of counting them as zero', async () => {
+    // Two real Saturday readings plus one sentinel. Counting the sentinel would
+    // add 0 to the total AND 1 to the count, pulling sat's mean 100 -> 66.7 and
+    // understating a day purely because one post type was unreportable.
+    const sentinel = (publishedAt) => ({
+      stats: { statistics: {}, source: 'bundle', unavailable: true, reason: 'unsupported_type' },
+      content_items: { published_at: publishedAt },
+    })
+    const snapshots = [
+      snap('2026-07-18T15:00:00Z', 100),     // sat
+      snap('2026-07-11T15:00:00Z', 100),     // sat
+      snap('2026-07-04T15:00:00Z', 100),     // sat
+      sentinel('2026-06-27T15:00:00Z'),      // sat — not a measurement
+      snap('2026-07-15T12:00:00Z', 50),      // wed (baseline)
+      snap('2026-07-16T12:00:00Z', 50),      // thu (baseline)
+    ]
+    const result = await computeDayProposal('ws-1', ['sat'], [], 'UTC', mockSb(snapshots))
+    expect(result).not.toBeNull()
+    expect(result.avgScore).toBeCloseTo(100, 1)  // not 75 (4 samples incl. the sentinel)
+    expect(result.sampleCount).toBe(3)           // the sentinel is not a sample
+  })
+
   it('never proposes a dismissed day even with plenty of evidence', async () => {
     const snapshots = [
       snap('2026-07-18T15:00:00Z', 500),
