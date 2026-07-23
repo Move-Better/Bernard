@@ -21,6 +21,50 @@ function StatChip({ label, value }) {
   )
 }
 
+// Legacy Buffer-sourced shape: { reach, engagement, clicks, impressions, shares }.
+// Buffer's API reports no per-platform breakdown, so this stays a fixed set —
+// unchanged from before the bundle.social migration.
+function BufferStatChips({ metrics }) {
+  return (
+    <>
+      <StatChip label="Reach" value={metrics.reach} />
+      <StatChip label="Engagement" value={metrics.engagement} />
+      <StatChip label="Clicks" value={metrics.clicks} />
+      {metrics.impressions > 0 && <StatChip label="Impressions" value={metrics.impressions} />}
+      {metrics.shares > 0 && <StatChip label="Shares" value={metrics.shares} />}
+    </>
+  )
+}
+
+// bundle.social-sourced shape: { impressions, views, reach, likes, comments,
+// shares, saves } — the platform's own numbers, not a computed composite (Q,
+// 2026-07-22: "just display everything we can get"). Every chip is gated on
+// >0 rather than shown as a fake zero, because bundle sends the same 9-field
+// shape for every platform whether or not that platform actually reports the
+// field (see mapBundleMetrics in buffer-analytics.js) — a 0 here could mean
+// "measured, genuinely zero" or "this platform never sends this field," and
+// showing it as a confident zero would misrepresent the second case.
+//
+// Meta renamed "impressions" to "Views" in its own apps (2024); bundle's
+// `views` field carries that same number for IG/FB. LinkedIn never populates
+// `views` (its analytics only ever land in `impressions`), so the headline
+// chip falls back to Impressions there rather than showing a permanent 0.
+function BundleStatChips({ metrics }) {
+  const headline = metrics.views > 0
+    ? { label: 'Views', value: metrics.views }
+    : { label: 'Impressions', value: metrics.impressions }
+  return (
+    <>
+      {headline.value > 0 && <StatChip label={headline.label} value={headline.value} />}
+      {metrics.reach > 0 && <StatChip label="Reached" value={metrics.reach} />}
+      {metrics.likes > 0 && <StatChip label="Likes" value={metrics.likes} />}
+      {metrics.comments > 0 && <StatChip label="Comments" value={metrics.comments} />}
+      {metrics.shares > 0 && <StatChip label="Shares" value={metrics.shares} />}
+      {metrics.saves > 0 && <StatChip label="Saves" value={metrics.saves} />}
+    </>
+  )
+}
+
 export default function BufferMetricsRow({ contentItemId }) {
   const { data, isLoading, isFetching } = useBufferMetrics(contentItemId)
   const qc = useQueryClient()
@@ -59,14 +103,11 @@ export default function BufferMetricsRow({ contentItemId }) {
   if (!data || !data.metrics) return null
 
   const { metrics } = data
+  const isBundle = metrics.source === 'bundle'
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap pt-1">
-      <StatChip label="Reach" value={metrics.reach} />
-      <StatChip label="Engagement" value={metrics.engagement} />
-      <StatChip label="Clicks" value={metrics.clicks} />
-      {metrics.impressions > 0 && <StatChip label="Impressions" value={metrics.impressions} />}
-      {metrics.shares > 0 && <StatChip label="Shares" value={metrics.shares} />}
+      {isBundle ? <BundleStatChips metrics={metrics} /> : <BufferStatChips metrics={metrics} />}
       <button
         type="button"
         onClick={handleRefresh}

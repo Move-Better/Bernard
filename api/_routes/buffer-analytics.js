@@ -151,20 +151,27 @@ export default async function handler(req, res) {
   return res.status(200).json({ metrics, fetchedAt, cached: false })
 }
 
-// Map bundle's normalized engagement set onto the Buffer-shaped object the UI
-// renders (BufferMetricsRow: reach, engagement, clicks, impressions, shares).
-// bundle reports no click metric, so clicks is always 0.
-function mapBundleMetrics(m = {}) {
+// Pass through bundle's normalized engagement set as-is (Q, 2026-07-22: "show
+// everything we can get" — don't collapse it into the old Buffer-shaped
+// reach/engagement composite). bundle sends the same 9-field shape for every
+// platform regardless of whether that platform actually reports each field
+// (LinkedIn never reports views/likes/comments/shares/saves; GBP has no bundle
+// analytics at all — see processWorkspaceBundle in refresh-engagement.js).
+// `source`/`platform` let BufferMetricsRow pick platform-native labels
+// (IG/FB call the impressions number "Views"; LinkedIn calls it
+// "Impressions") instead of guessing from field names alone.
+function mapBundleMetrics(m = {}, platform) {
   const num = (v) => (typeof v === 'number' ? v : 0)
   return {
-    clicks: 0,
-    reach: num(m.impressionsUnique),
+    source: 'bundle',
+    platform,
     impressions: num(m.impressions),
-    favorites: num(m.likes),
-    mentions: 0,
-    shares: num(m.shares),
+    views: num(m.views),
+    reach: num(m.impressionsUnique), // IG's own "Accounts reached"
+    likes: num(m.likes),
     comments: num(m.comments),
-    engagement: num(m.likes) + num(m.comments) + num(m.shares) + num(m.saves),
+    shares: num(m.shares),
+    saves: num(m.saves),
   }
 }
 
@@ -175,7 +182,7 @@ async function handleBundleMetrics(res, ws, contentItemId, item, force) {
   try {
     const publisher = new BundlePublisher(ws)
     const result = await publisher.getAnalytics({ postId: item.buffer_update_id, platformType: item.platform, force })
-    const metrics = mapBundleMetrics(result?.metrics)
+    const metrics = mapBundleMetrics(result?.metrics, item.platform)
     const fetchedAt = new Date().toISOString()
     waitUntil(
       sb(`content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}`, {
