@@ -57,10 +57,18 @@ if (!url || !out) {
 }
 
 const SECRET = process.env.CLERK_SECRET_KEY
-// The fixture account to sign in as. Defaults to the dedicated e2e user.
-// NOTE: the 1Password `E2E_TEST_USER_EMAIL` value is currently corrupt (a
-// 15-char random string, not an address), so it is NOT used as a fallback.
-const EMAIL = arg('email') || 'e2e@movebetter.co'
+// The fixture account to sign in as. `--email` wins, then the env var, then
+// the dedicated e2e user. The hardcoded default stays so a capture still works
+// without the env var set (and it survived the 1Password entry being corrupt —
+// fixed 2026-07-22 and now a valid address again).
+const EMAIL = arg('email') || process.env.E2E_TEST_USER_EMAIL || 'e2e@movebetter.co'
+if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(EMAIL)) {
+  // A malformed value here otherwise surfaces as a confusing "No Clerk user
+  // found" further down. The 1Password entry held a 15-char random string for
+  // a while, which is exactly what this catches.
+  console.error(`ERROR: fixture email is not a valid address: "${EMAIL}". Check E2E_TEST_USER_EMAIL or pass --email.`)
+  process.exit(1)
+}
 if (!SECRET) {
   console.error('ERROR: CLERK_SECRET_KEY must be set (prod sk_live_...).')
   process.exit(1)
