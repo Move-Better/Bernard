@@ -49,3 +49,64 @@ export function computeEmptySlots(cadence, scheduled, tz) {
   }
   return empty
 }
+
+// Fallback hour for an ad-hoc add on a channel that has no pinned slot to copy
+// a time from. Midday is the least-wrong default: it is the hour the cadence
+// template itself uses for most channels.
+const DEFAULT_AD_HOC_HOUR = 12
+
+/**
+ * The channel · format choices offered when adding a post to a day OUTSIDE the
+ * pinned cadence.
+ *
+ * computeEmptySlots above can only ever offer what the cadence template
+ * defines, so a day whose slots are all filled offers nothing at all — the
+ * board's only add-affordance disappears exactly when the day is busiest. On
+ * the reported week, Thursday had a single pinned slot (instagram/12:00/reel),
+ * it was taken, and there was no way to put anything else on that day
+ * ("Unable to schedule new posts today (Thursday)"). Cadence is a template for
+ * what Bernard plans on its own, not a ceiling on what a human may add.
+ *
+ * Neither server path validates against the cadence template — create-slot-atom
+ * and assign-slot both accept any well-formed weekday+hour — so an ad-hoc
+ * choice is already a first-class thing to schedule; only the UI was gating it.
+ *
+ * One entry per enabled channel × each format that channel actually posts in,
+ * so Instagram offers both its post and its reel lane rather than collapsing to
+ * one. `hour` copies the channel's own most-used configured hour so an ad-hoc
+ * add lands at the time that channel normally posts.
+ *
+ * @param {Record<string, {enabled?: boolean, slots?: Array<object>}>} cadence
+ * @returns {Array<{platform: string, format: string, hour: number}>}
+ */
+export function adHocSlotOptions(cadence) {
+  const options = []
+  for (const [platform, cfg] of Object.entries(cadence || {})) {
+    if (!cfg?.enabled) continue
+    const slots = (cfg.slots || []).filter((s) => s && s.enabled !== false)
+
+    // Most-used configured hour for this channel, so an ad-hoc Instagram add
+    // lands at the hour Instagram already posts rather than a global default.
+    const hourCounts = new Map()
+    for (const s of slots) {
+      if (!Number.isInteger(s.hour)) continue
+      hourCounts.set(s.hour, (hourCounts.get(s.hour) || 0) + 1)
+    }
+    let hour = DEFAULT_AD_HOC_HOUR
+    let best = 0
+    for (const [h, n] of hourCounts) {
+      // Ties break to the earlier hour so the choice is stable across renders
+      // (Map order follows insertion, which follows slot order, not time).
+      if (n > best || (n === best && h < hour)) { hour = h; best = n }
+    }
+
+    const formats = [...new Set(slots.map((s) => s.format || 'post'))]
+    // An enabled channel with no slots at all still deserves an entry —
+    // otherwise turning a channel on but not pinning it a time makes it
+    // unreachable from the board.
+    if (formats.length === 0) formats.push('post')
+
+    for (const format of formats) options.push({ platform, format, hour })
+  }
+  return options
+}
