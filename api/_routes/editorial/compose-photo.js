@@ -25,6 +25,7 @@ import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { renderEditorialPhoto } from '../../_lib/brandRender.js'
+import { frameFor } from '../../_lib/postFrames.js'
 import { resolveWorkspaceLogoForDarkSurface } from '../../_lib/workspaceLogo.js'
 import { renderWhoopPhoto, WHOOP_TEMPLATE_IDS } from '../../_lib/whoopTemplates.js'
 
@@ -78,7 +79,7 @@ export default async function handler(req, res) {
 
   // Load the content item, scoped to this workspace.
   const itemRes = await sb(
-    `content_items?id=eq.${pieceId}&workspace_id=eq.${ws.id}&select=id,media_urls,staff_id,photo_treatment,photo_template_id`,
+    `content_items?id=eq.${pieceId}&workspace_id=eq.${ws.id}&select=id,media_urls,staff_id,photo_treatment,photo_template_id,platform`,
   )
   if (!itemRes.ok) {
     const txt = await itemRes.text().catch(() => '')
@@ -127,7 +128,14 @@ export default async function handler(req, res) {
     }
   }
 
-  const fullTreatment = { ...treatment, sourceUrl }
+  // The frame is DERIVED from where this piece is going — never taken from the
+  // client. An aspect the caller picks is an aspect that can disagree with the
+  // destination: `instagram_feed` rendered 1:1 for months (Instagram's feed is
+  // 4:5), and GBP had no entry at all so it fell through to 4:5 portrait, which
+  // Google clips in both the Maps carousel and the Search preview card.
+  // splitPlatformKey handles the compound keys (instagram_story → story/9:16).
+  const frame = frameFor(item.platform)
+  const fullTreatment = { ...treatment, sourceUrl, aspect: frame.ratio }
 
   // Editorial cards are designed graphics people screenshot and share, so the
   // logo policy defaults to ON in the footer (per Brand Kit toggle). WHOOP

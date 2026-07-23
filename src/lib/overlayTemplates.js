@@ -290,18 +290,32 @@ function drawCover(ctx, img, x, y, w, h, zoom = 1, offset = null) {
   ctx.restore()
 }
 
-// Draw a photo into (x,y,w,h) framed by the user's zoom (relative to FIT) + pan.
-//   zoom = 1            → the WHOLE photo fits inside the frame (default)
+// How big to draw the photo, given the frame and the author's zoom.
+//   zoom = unset        → the photo FILLS the frame edge-to-edge (default)
+//   zoom = 1            → the WHOLE photo fits inside the frame (max pull-back)
 //   zoom = cover/fit    → the photo just covers the frame
 //   zoom > cover/fit    → cropped in tighter
-// When the photo doesn't cover the frame, a blurred enlarged copy of the SAME
-// photo fills the gaps (Instagram-style) so it always looks intentional. Honours
-// any colorist filter already set on ctx.filter for the sharp photo. (Q 2026-06-20)
-function drawPhotoFit(ctx, img, x, y, w, h, zoom = 1, offset = null) {
-  const z = zoom > 0 ? zoom : 1
-  const fitScale   = Math.min(w / img.width, h / img.height)
+//
+// The DEFAULT is cover, not fit: an unset photo_zoom means the author never
+// deliberately framed this slide, and every platform expects a full-bleed frame
+// — defaulting to fit meant an unframed photo always rendered letterboxed behind
+// its own blur. An explicit numeric zoom keeps the legacy FIT-relative meaning so
+// the slides that were already hand-framed render byte-identically. (Q 2026-07-22)
+//
+// Exported (and canvas-free) purely so the fit-vs-fill decision is testable.
+export function photoFitScale(imgW, imgH, w, h, zoom = null) {
+  const fitScale   = Math.min(w / imgW, h / imgH)
+  const coverScale = Math.max(w / imgW, h / imgH)
+  return Number.isFinite(zoom) && zoom > 0 ? fitScale * zoom : coverScale
+}
+
+// Draw a photo into (x,y,w,h) at photoFitScale, then pan by `offset`. When the
+// photo doesn't cover the frame, a blurred enlarged copy of the SAME photo fills
+// the gaps (Instagram-style) so it always looks intentional. Honours any colorist
+// filter already set on ctx.filter for the sharp photo. (Q 2026-06-20)
+function drawPhotoFit(ctx, img, x, y, w, h, zoom = null, offset = null) {
   const coverScale = Math.max(w / img.width, h / img.height)
-  const scale = fitScale * z
+  const scale = photoFitScale(img.width, img.height, w, h, zoom)
   const sw = img.width * scale, sh = img.height * scale
   const ox = offset && Number.isFinite(offset.x) ? offset.x : 0
   const oy = offset && Number.isFinite(offset.y) ? offset.y : 0
@@ -1486,7 +1500,10 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
 
   // Per-slide photo reframe — drag-pan + zoom of the source photo, applied in
   // the single shared renderer so preview, publish bake, and ad export all match.
-  const photoZoom = slide?.photo_zoom || 1
+  // `?? null` (not `|| 1`): an unset zoom must reach drawPhotoFit as null so it
+  // fills the frame. Coercing to 1 here is what pinned every unframed slide to
+  // fit-with-blur regardless of the renderer's default.
+  const photoZoom = slide?.photo_zoom ?? null
   const photoOffset = slide?.photo_offset || null
   // Per-slide colorist grade — applied ONLY to the photo pixels (not panels/text)
   // in the single shared renderer, so editor preview, publish bake, and ad export
