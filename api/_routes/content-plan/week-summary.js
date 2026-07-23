@@ -137,12 +137,19 @@ export default async function handler(req, res) {
   // First renderable media entry → a thumbnail for the Day-view cards. media_urls
   // is the canonical [{url,type,kind,thumbnailUrl,...}] shape; for a video we only
   // use its poster (thumbnailUrl), never the raw video URL in an <img>.
+  //
+  // Photos prefer thumbnailUrl too: every consumer of this field renders into a
+  // 40x40 or 64x64 tile, so `url` (the full-resolution original — routinely a
+  // 12 MB / 45 MP DSLR JPEG) only costs transfer + decode time and visibly blanks
+  // the tile while it decodes. `url` stays as the fallback for entries that have
+  // no thumbnail yet. Same failure the Library grid hit — see
+  // scripts/backfill-photo-thumbnails.mjs.
   const thumbOf = (ci) => {
     const list = Array.isArray(ci?.media_urls) ? ci.media_urls : []
     for (const m of list) {
       if (!m) continue
       const isVideo = m.type === 'video' || m.kind === 'video'
-      const src = isVideo ? m.thumbnailUrl : (m.url || m.thumbnailUrl)
+      const src = isVideo ? m.thumbnailUrl : (m.thumbnailUrl || m.url)
       if (src) return { url: src, kind: isVideo ? 'video' : 'image' }
     }
     return null
