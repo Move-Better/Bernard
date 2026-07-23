@@ -63,10 +63,14 @@ const SCHEDULE_PREF_PLATFORMS = new Set([
 
 // Shape: { [platform]: { days: number[], hours: number[] } | null }
 // Returns the cleaned object on success, or null on shape error.
-function sanitizeSchedulePrefs(value) {
+// Merges over the stored value (same reasoning as sanitizeCadencePolicy, #2253):
+// a PATCH mentioning only `instagram` must not wipe the other platforms' prefs.
+// An explicit per-platform null still clears that platform; a top-level null
+// still clears the whole column (handled at the call site).
+function sanitizeSchedulePrefs(value, existing) {
   if (value === null) return null
   if (typeof value !== 'object' || Array.isArray(value)) return null
-  const out = {}
+  const out = isPlainObject(existing) ? { ...existing } : {}
   for (const [platform, entry] of Object.entries(value)) {
     if (!SCHEDULE_PREF_PLATFORMS.has(platform)) continue
     if (entry === null) { out[platform] = null; continue }
@@ -133,13 +137,15 @@ const DEFAULT_VOICE_FIDELITY_MIN = 7.0
 const DEFAULT_SIMILARITY_MIN     = 0.65
 
 // Shape: { [channel]: { enabled: bool, voice_fidelity_min?: number, similarity_min?: number } }
-// Returns {} (all-off) on null/empty. Returns null on bad shape.
-function sanitizeAutoPublishSettings(value) {
+// Returns {} (all-off) on null/empty — an explicit reset. Returns null on bad shape.
+// Non-empty patches merge over the stored value (#2253 pattern): mentioning only
+// `gbp` must not wipe another channel's settings.
+function sanitizeAutoPublishSettings(value, existing) {
   if (value === null || (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0)) {
     return {}
   }
   if (!isPlainObject(value)) return null
-  const out = {}
+  const out = isPlainObject(existing) ? { ...existing } : {}
   for (const [ch, entry] of Object.entries(value)) {
     if (!AUTO_PUBLISH_CHANNELS.has(ch)) continue
     if (!isPlainObject(entry)) return null
@@ -401,9 +407,11 @@ const PUBLISH_INTENT_WEBSITE  = new Set(['wordpress', 'astro', 'none'])
 const PUBLISH_INTENT_SOCIAL   = new Set(['buffer', 'bundle', 'manual'])
 const PUBLISH_INTENT_NEWSLETTER = new Set(['beehiiv', 'other', 'skip'])
 
-function sanitizePublishIntent(value) {
+// Merges over the stored value (#2253 pattern): a PATCH setting only `social`
+// must not wipe website/newsletter/analytics.
+function sanitizePublishIntent(value, existing) {
   if (!isPlainObject(value)) return null
-  const out = {}
+  const out = isPlainObject(existing) ? { ...existing } : {}
   if ('website' in value) {
     if (!PUBLISH_INTENT_WEBSITE.has(value.website)) return null
     out.website = value.website
@@ -717,7 +725,7 @@ async function handler(req, res) {
         continue
       }
       if (key === 'schedule_prefs') {
-        const cleaned = sanitizeSchedulePrefs(value)
+        const cleaned = sanitizeSchedulePrefs(value, workspace.schedule_prefs)
         if (cleaned === null && value !== null) {
           return res.status(400).json({ error: 'invalid-schedule-prefs' })
         }
@@ -725,7 +733,7 @@ async function handler(req, res) {
         continue
       }
       if (key === 'auto_publish_settings') {
-        const cleaned = sanitizeAutoPublishSettings(value)
+        const cleaned = sanitizeAutoPublishSettings(value, workspace.auto_publish_settings)
         if (cleaned === null) {
           return res.status(400).json({ error: 'invalid-auto-publish-settings' })
         }
@@ -758,7 +766,7 @@ async function handler(req, res) {
         continue
       }
       if (key === 'publish_intent') {
-        const cleaned = sanitizePublishIntent(value)
+        const cleaned = sanitizePublishIntent(value, workspace.publish_intent)
         if (cleaned === null) return res.status(400).json({ error: 'invalid-publish-intent' })
         patch.publish_intent = cleaned
         continue
