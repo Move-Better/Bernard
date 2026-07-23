@@ -71,7 +71,7 @@ Q keeps a logged-in Chrome session. Drive it with the **Claude-in-Chrome MCP** (
 
 ## Challenge gate — decisions log + worked example
 
-Bernard's decisions log (kill criteria, revisit dates, for the adversarial-brief methodology in global) is `.claude/decisions.md` (tracked). `/outcome-review` checks its revisit-by dates monthly.
+Bernard's decisions log (kill criteria, revisit dates, for the adversarial-brief methodology in global) is `.claude/decisions.md` (tracked). `/bernard-outcome-review` checks its revisit-by dates monthly.
 
 **Worked example — a signal with no consumer:** 2026-07-22, the media usage counter shipped with a complete-looking composition line (three display surfaces, all correct) — but nobody checked whether the automatic photo/video picker could read the new count. It couldn't: `searchClips` ranked purely on similarity, so Bernard kept auto-selecting a photo it had already used 7 times, which was the actual point of asking for a counter. Q had to request the wiring as a follow-up.
 
@@ -708,7 +708,7 @@ Pair `/bernard-audit` with `/schedule` for an automated weekly run; reserve `ful
 
 Every submission from Bernard's in-app Feedback button is stored durably in the **`feedback` Supabase table** (`message`, `page_url`, `screenshot_url`, `user_name`, `created_at` — see `api/_routes/feedback.js`). The email to `ADMIN_NOTIFY_EMAIL` is only a notification copy — **never parse the inbox; query the table.** When a staffer reports bugs via Feedback ("act on these feedback emails"), the table IS the queue.
 
-- **`/triage-feedback`** command — queries untriaged rows (`triaged_at IS NULL`), maps each `page_url` → code, reads the screenshot, diagnoses the root cause, writes a P0/P1 punch list to `.claude/feedback-history/`, spawns a task chip per actionable item, and stamps rows `triaged_at`. **Report-only** by default (no auto-PRs — review before ship). Migration 177 added `feedback.triaged_at` + `triage_note` as DB-native state so a headless routine and an interactive session never double-process a row.
+- **`/bernard-triage-feedback`** command — queries untriaged rows (`triaged_at IS NULL`), maps each `page_url` → code, reads the screenshot, diagnoses the root cause, writes a P0/P1 punch list to `.claude/feedback-history/`, spawns a task chip per actionable item, and stamps rows `triaged_at`. **Report-only** by default (no auto-PRs — review before ship). Migration 177 added `feedback.triaged_at` + `triage_note` as DB-native state so a headless routine and an interactive session never double-process a row.
 - A weekly scheduled task (`triage-bernard-feedback`, Mondays 9am) runs it automatically.
 - To re-open a triaged item: `UPDATE feedback SET triaged_at = NULL WHERE id = '…'`.
 - Fixes still go through the normal branch → PR → prod → Chrome-verify loop (authed UI surfaces need the post-deploy Chrome check). Shipped as the feedback-triage loop, #2179 (2026-07-16).
