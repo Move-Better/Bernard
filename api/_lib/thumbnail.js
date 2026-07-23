@@ -152,8 +152,11 @@ function thumbPathname(workspaceId, asset) {
 // deletes the previous blob a few lines below, so an entry still holding the old
 // URL would point at a dead blob after a rotate/regen.
 //
-// Only video entries are touched — for a photo, thumbnailUrl is deliberately the
-// image URL itself, and this path only ever runs for videos.
+// Only video entries are touched — this function propagates a VIDEO poster
+// frame specifically (generateThumbnailFromPath is video-only; see
+// generateAndPersistThumbnail's `asset.kind !== 'video'` guard above). A
+// photo's thumbnailUrl is a separate concern (src/lib/mediaEntry.js) with its
+// own generation path, not this one.
 //
 // Best-effort by contract: the poster is already persisted by the time this
 // runs, so a failure here must never fail the thumbnail. It is awaited (not
@@ -167,8 +170,8 @@ export function applyEntryThumbnail(list, assetId, thumbnailUrl) {
   let changed = false
   const next = entries.map((entry) => {
     if (!entry || entry.mediaAssetId !== assetId) return entry
-    // Photos deliberately carry the image URL as their own thumbnailUrl; only a
-    // video entry has a separate poster to keep in step.
+    // This function syncs a VIDEO poster frame only — photo thumbnails are a
+    // separate concern (src/lib/mediaEntry.js) with their own generation path.
     if (entry.type !== 'video' && entry.kind !== 'video') return entry
     if (entry.thumbnailUrl === thumbnailUrl) return entry
     changed = true

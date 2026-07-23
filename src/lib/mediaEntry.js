@@ -12,6 +12,17 @@
 // all share one definition instead of three drifting copies.
 
 // A searchClips / suggest-media result row → media_urls entry.
+//
+// thumbnailUrl is null, not url, when no real thumbnail exists yet — for
+// BOTH kinds. It used to fall back to the full-resolution url for photos
+// ("a photo entry's thumbnailUrl is just its own url"), which meant every
+// small-tile consumer (e.g. /week's Day-view cards) decoded a multi-MB
+// original into a 40-64px box. Consumers that render a thumbnail-sized photo
+// already fall back to the real source (`photoSourceUrl(entry) || entry.url`)
+// when thumbnailUrl is falsy — see week-summary.js, PhotoInspector.jsx,
+// SlidePickerStrip.jsx, DraftContextPanel.jsx — so this is a size hint, not a
+// required field; null just means "no thumbnail yet," same as it already does
+// for video.
 export function clipToMediaEntry(clip) {
   const isVideo = clip.kind === 'video'
   const url = clip.blobUrl || clip.url
@@ -19,14 +30,15 @@ export function clipToMediaEntry(clip) {
     url,
     type:         isVideo ? 'video' : 'image',
     kind:         isVideo ? 'video' : 'image',
-    thumbnailUrl: clip.thumbnailUrl || (isVideo ? null : url),
+    thumbnailUrl: clip.thumbnailUrl || null,
     mediaAssetId: clip.assetId,
     name:         clip.filename || null,
     ...(clip.durationS != null ? { duration_s: clip.durationS } : {}),
   }
 }
 
-// A MediaPicker / media_assets row → media_urls entry.
+// A MediaPicker / media_assets row → media_urls entry. See clipToMediaEntry's
+// header comment — same null-not-url rule applies here.
 export function pickerItemToMediaEntry(asset) {
   const isVideo = asset.kind === 'video'
   const url     = asset.rendered_url || asset.blob_url || asset.url
@@ -34,7 +46,7 @@ export function pickerItemToMediaEntry(asset) {
     url,
     type:         isVideo ? 'video' : 'image',
     kind:         isVideo ? 'video' : 'image',
-    thumbnailUrl: asset.thumbnail_url || asset.thumbnailUrl || (isVideo ? null : url),
+    thumbnailUrl: asset.thumbnail_url || asset.thumbnailUrl || null,
     mediaAssetId: asset.id,
     name:         asset.filename || asset.name,
     ...(asset.duration_s != null ? { duration_s: asset.duration_s } : {}),
