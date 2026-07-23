@@ -157,6 +157,25 @@ Reference handlers: `api/content-pieces/*`, `api/media/*`, `api/db/*`.
 Required for any handler importing `@sentry/node`, `@clerk/backend`, `@vercel/blob`, or any
 `node:*` built-in.
 
+**PATCH bodies are camelCase — a snake_case key is dropped SILENTLY, and the request still 200s.**
+`api/_routes/db/content.js` (and the other `db/*` PATCH handlers) map an explicit camelCase→snake_case
+`allowed` object: `media_urls: patch.mediaUrls`, `overlay_text: patch.overlayText`,
+`scheduled_at: patch.scheduledAt`, … A key the map doesn't name simply isn't read. That alone would be
+survivable, but the same object also sets `updated_at: new Date().toISOString()` **unconditionally** —
+so a PATCH carrying nothing but unrecognized keys still writes a row, returns `200` with a valid
+(unchanged) body, and bumps the timestamp. Downstream, `useUpdateContentItem`'s `onSuccess` writes that
+returned unchanged row straight into the detail cache via `setQueryData`, so the client re-renders in
+agreement with itself. Net effect: `mutateAsync` resolves, no `catch` fires, the success toast shows,
+the cache looks right — and nothing was saved. **There is no error anywhere in the loop.**
+This shipped twice in one file: `UnifiedEditor.jsx`'s MediaPanel PATCHed `{ media_urls: next }` in both
+its attach and remove paths, so the unified video/Reel editor could never attach OR remove media at all
+(the AI suggestion thumbs were as dead as the library picker) — #2309, found only because a prod DB read
+after a green "Media replaced" toast showed the row untouched with `updated_at` moved. Rules: (1) when
+writing a `content_items` patch, copy the key from the handler's `allowed` map, not from the column name
+— `mediaUrls` not `media_urls`; (2) **never accept a resolved mutation or a success toast as proof of
+persistence on these handlers** — verify the actual row; (3) the diagnostic signature is
+`updated_at` advanced + payload identical, which means a dropped field, never a failed request.
+
 ### Consolidated `_routes` vs standalone physical handlers
 
 Most light JSON routes live in `api/_routes/**` and are served by the single consolidated
