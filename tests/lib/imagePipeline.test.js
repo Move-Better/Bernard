@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import sharp from 'sharp'
-import { isHeicBuffer, isHeicMime } from '../../api/_lib/imagePipeline.js'
+import { isHeicBuffer, isHeicMime, decodeBase, encodeVariant } from '../../api/_lib/imagePipeline.js'
 
 // Helper — synthesize an ISO-BMFF "ftyp" box with the given major brand.
 // Mirrors the first 12 bytes of a real HEIF/HEIC file. Anything beyond byte
@@ -56,43 +56,59 @@ describe('isHeicBuffer', () => {
   })
 })
 
-// Integration smoke for the resize side of the pipeline — exercises the
-// internal sharp invocation by re-creating the same resize args. Skipped if
-// sharp's HEIF decode isn't available on this platform (CI Linux + libheif
-// have it; some macOS builds don't).
-describe('sharp resize behavior used by processImageUpload', () => {
-  it('produces a JPEG within the 2000px ceiling and respects EXIF rotation', async () => {
-    // 3000×1500 red rectangle — wider than the resize ceiling.
+// Integration smoke for the resize side of the pipeline — calls the actual
+// decodeBase/encodeVariant functions processImageUpload uses (not a
+// hand-copied parallel pipeline), so a real regression here fails the test.
+describe('decodeBase/encodeVariant — the resize path used by processImageUpload', () => {
+  it('web variant: produces a JPEG within the 2000px ceiling, thumbnail: within the 400px ceiling — from ONE decoded source', async () => {
+    // 3000×1500 red rectangle — wider than both ceilings.
     const src = await sharp({
       create: { width: 3000, height: 1500, channels: 3, background: { r: 255, g: 0, b: 0 } },
     }).jpeg().toBuffer()
 
-    const { data, info } = await sharp(src)
-      .rotate()
-      .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 80, mozjpeg: true, progressive: true })
-      .toBuffer({ resolveWithObject: true })
+    const base = decodeBase(src)
+    const web = await encodeVariant(base, { longEdge: 2000, mime: 'image/jpeg', quality: 80 })
+    const thumb = await encodeVariant(base, { longEdge: 400, mime: 'image/jpeg', quality: 78 })
 
-    expect(info.format).toBe('jpeg')
-    expect(info.width).toBe(2000)
-    expect(info.height).toBe(1000)
-    expect(data.length).toBeLessThan(src.length) // resize must shrink, not grow
+    expect(web.mime).toBe('image/jpeg')
+    expect(web.width).toBe(2000)
+    expect(web.height).toBe(1000)
+    expect(web.buffer.length).toBeLessThan(src.length) // resize must shrink, not grow
+
+    expect(thumb.mime).toBe('image/jpeg')
+    expect(thumb.width).toBe(400)
+    expect(thumb.height).toBe(200)
+    expect(thumb.buffer.length).toBeLessThan(web.buffer.length) // thumbnail must be smaller than the web variant
   })
 
-  it('preserves PNG transparency when the source is PNG', async () => {
+  it('preserves PNG transparency for the web variant; thumbnail is still forced JPEG', async () => {
     const src = await sharp({
       create: { width: 800, height: 600, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
     }).png().toBuffer()
 
-    const { info } = await sharp(src)
-      .rotate()
-      .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
-      .png({ compressionLevel: 9, palette: true })
-      .toBuffer({ resolveWithObject: true })
+    const base = decodeBase(src)
+    const web = await encodeVariant(base, { longEdge: 2000, mime: 'image/png', quality: 80 })
+    const thumb = await encodeVariant(base, { longEdge: 400, mime: 'image/jpeg', quality: 78 })
 
-    expect(info.format).toBe('png')
+    expect(web.mime).toBe('image/png')
     // withoutEnlargement keeps the smaller source untouched
-    expect(info.width).toBe(800)
-    expect(info.height).toBe(600)
+    expect(web.width).toBe(800)
+    expect(web.height).toBe(600)
+
+    expect(thumb.mime).toBe('image/jpeg')
+    expect(thumb.width).toBe(400)
+    expect(thumb.height).toBe(300)
+  })
+
+  it('withoutEnlargement keeps a source smaller than the thumbnail ceiling untouched', async () => {
+    const src = await sharp({
+      create: { width: 200, height: 150, channels: 3, background: { r: 0, g: 128, b: 255 } },
+    }).jpeg().toBuffer()
+
+    const base = decodeBase(src)
+    const thumb = await encodeVariant(base, { longEdge: 400, mime: 'image/jpeg', quality: 78 })
+
+    expect(thumb.width).toBe(200)
+    expect(thumb.height).toBe(150)
   })
 })
