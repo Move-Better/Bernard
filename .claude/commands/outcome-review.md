@@ -1,5 +1,5 @@
 ---
-description: Monthly outcome review — compute the usage scoreboard (pipeline funnel, cadence delivery, channel-silence alarms, publish fidelity, staff signals) from prod data, compare built-vs-used, and report the top 3 gaps with a fix chip each. Sister command to /audit (code correctness) and /checkup (health) — this one audits OUTCOMES, which those structurally cannot see. Report-only: no fix PRs in this run.
+description: Monthly outcome review — compute the usage scoreboard (pipeline funnel, cadence delivery, channel-silence alarms, publish fidelity, staff signals) from prod data, compare built-vs-used, and report the top 3 gaps with a fix chip each. Sister command to /bernard-audit (code correctness) and /bernard-checkup (health) — this one audits OUTCOMES, which those structurally cannot see. Report-only: no fix PRs in this run.
 ---
 
 Answer one question with numbers: **where is the gap between what we built and what's actually being used?** Born from the 2026-07-21 strategy session, where every component was green while the job was broken for months — 172 moments detected → 3 rendered → 0 Reels ever, Facebook silently dead for 3+ weeks, staff routing around the product. Component checks are labs; this is the follow-up visit.
