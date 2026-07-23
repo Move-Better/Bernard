@@ -40,7 +40,7 @@ import { ALL_KNOWN_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { searchClips } from '../../_lib/clipSearch.js'
 import { buildDraftMatchQuery } from '../../_lib/draftMatchQuery.js'
-import { mediaKindForPlatform } from '../../_lib/platformMedia.js'
+import { mediaKindForDraft } from '../../_lib/platformMedia.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -85,15 +85,18 @@ export default async function handler(req, res) {
   const id = body.id ? String(body.id) : null
   if (id && !UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
   let query = body.query ? String(body.query).trim() : ''
-  // Platform drives which media kinds are valid to suggest (see `kind`, below).
-  // A caller may pass it for a query-only call; the draft fetch overrides it.
-  let platform = body.platform ? String(body.platform) : null
+  // The draft's platform AND its already-attached media together drive which
+  // media kinds are valid to suggest (see `kind`, below) — platform alone can't
+  // tell a Reel from a carousel, since both are stored as platform:'instagram'.
+  // A caller may pass platform for a query-only call; the draft fetch overrides
+  // it (and is the only way media_urls is known).
+  let draft = { platform: body.platform ? String(body.platform) : null, media_urls: [] }
 
   // When an id is given (the common path), build the query from the draft.
   // The fetch is workspace-scoped, so a caller can't pull another tenant's row.
   if (id && !query) {
     const r = await sb(
-      `content_items?id=eq.${encodeURIComponent(id)}&workspace_id=eq.${ws.id}&select=id,topic,content,platform&limit=1`,
+      `content_items?id=eq.${encodeURIComponent(id)}&workspace_id=eq.${ws.id}&select=id,topic,content,platform,media_urls&limit=1`,
     )
     if (!r.ok) {
       const detail = await r.text().catch(() => '')
@@ -104,19 +107,22 @@ export default async function handler(req, res) {
     const item = rows?.[0]
     if (!item) return res.status(404).json({ error: 'draft_not_found' })
     query = buildDraftMatchQuery(item)
-    platform = item.platform || platform
+    draft = { platform: item.platform || draft.platform, media_urls: item.media_urls }
   }
 
   if (!query) return res.status(400).json({ error: 'query_required' })
   if (query.length > 2000) query = query.slice(0, 2000)
 
   const k = Math.min(Math.max(parseInt(body.k, 10) || DEFAULT_K, 1), 50)
-  // Default the kind from the draft's platform so we never suggest media the
-  // platform can't use (no photos for YouTube/TikTok; no raw video for a blog
-  // hero). An explicit body.kind still wins (e.g. a manual "show me photos").
+  // Default the kind from the draft so we never suggest media it can't use (no
+  // photos for YouTube/TikTok; no raw video for a blog hero; and no photos for
+  // an Instagram Reel, which is platform:'instagram' + a video, not a distinct
+  // platform value — see mediaKindForDraft). An explicit body.kind still wins,
+  // so a manual "show me photos" (the carousel strip, the Swap-photo panel)
+  // keeps working on any draft.
   const kind = body.kind && ['photo', 'video'].includes(body.kind)
     ? body.kind
-    : mediaKindForPlatform(platform)
+    : mediaKindForDraft(draft)
   const minScore = typeof body.minScore === 'number'
     ? Math.min(Math.max(body.minScore, 0), 1)
     : DEFAULT_MIN_SCORE

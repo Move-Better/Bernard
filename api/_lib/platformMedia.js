@@ -1,35 +1,19 @@
-// Map a content_items.platform value → the media kind that's valid to attach,
-// so the media→content matcher (api/content-items/suggest-media.js) never
-// suggests media a platform can't use (the "photos on YouTube" bug).
+// Server-side entry point for "what media kind can this draft use?".
 //
-// Platform values are the atom/publish namespace keys (content_items.platform):
-// instagram, facebook, tiktok, youtube, blog, landing_page, gbp, linkedin, …
-// Classification mirrors src/lib/contentMeta.js PLATFORM_GROUPS + outputChannels.js.
+// This file used to keep its OWN copy of the platform→kind maps. It had already
+// drifted from the client copy (it carried 'email' and a dead 'reels'; the
+// client carried neither), and neither copy could tell that a Reel — stored as
+// platform:'instagram' with a video attached, never platform:'instagram_reel' —
+// is a video post. That gap is what surfaced as photos being suggested on a
+// Reel draft.
 //
-//   'video' → only video makes sense (you can't post a photo to YouTube/TikTok)
-//   'photo' → only a still works (a raw video can't be a blog/landing hero — it
-//             would fail the image-hero publish path)
-//   null    → either is fine (IG / FB / GBP accept photo or video)
+// There is now ONE implementation, in src/lib/platformMediaKind.js, re-exported
+// here so both the API and the app resolve identically by construction and the
+// existing '../_lib/platformMedia.js' import path keeps working. The cross-repo
+// import is the same pattern api/_lib/dispatchContentItem.js already uses for
+// isInstagramReel; that module's graph is alias-free so Node can load it.
+//
+// Prefer mediaKindForDraft(piece) — mediaKindForPlatform(platform) alone cannot
+// identify a Reel.
 
-// Video-only surfaces — a still image is unusable here.
-const VIDEO_ONLY = new Set([
-  'youtube', 'youtube_short', 'tiktok', 'reels', 'instagram_reel',
-])
-
-// Image-only surfaces — the attached media is a hero/still; a raw video would
-// publish broken (e.g. the WordPress hero path sharp-resizes an image).
-const PHOTO_ONLY = new Set([
-  'blog', 'landing_page', 'google_ads', 'email',
-])
-
-/**
- * @param {string|null|undefined} platform
- * @returns {'video'|'photo'|null}
- */
-export function mediaKindForPlatform(platform) {
-  if (!platform) return null
-  const p = String(platform).toLowerCase()
-  if (VIDEO_ONLY.has(p)) return 'video'
-  if (PHOTO_ONLY.has(p)) return 'photo'
-  return null
-}
+export { mediaKindForDraft, mediaKindForPlatform } from '../../src/lib/platformMediaKind.js'

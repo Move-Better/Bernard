@@ -1,7 +1,7 @@
 import { X, Play, Image as ImageIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { PLATFORM_META } from '@/lib/contentMeta'
-import { mediaKindForPlatform, mediaKindLabel } from '@/lib/platformMediaKind'
+import { mediaKindForDraft, mediaKindLabel } from '@/lib/platformMediaKind'
 import { mediaEntryKey } from '@/lib/mediaEntry'
 
 function firstHeading(content) {
@@ -20,7 +20,11 @@ function firstHeading(content) {
 export default function DraftContextPanel({ piece, onRemoveMedia, removingKey }) {
   const meta = PLATFORM_META[piece?.platform] || { label: piece?.platform || '—' }
   const Icon = meta.icon
-  const kindHint = mediaKindLabel(mediaKindForPlatform(piece?.platform))
+  // Draft-aware, not platform-only: this hint sits next to the candidate list,
+  // so it has to name what the server actually filtered to. A Reel (platform
+  // 'instagram' + a video attached) now reads "Videos only" instead of the
+  // platform-level "Photos or video", which no longer matches the candidates.
+  const kindHint = mediaKindLabel(mediaKindForDraft(piece))
   const title = piece?.topic || firstHeading(piece?.content) || 'Untitled draft'
   const media = Array.isArray(piece?.media_urls) ? piece.media_urls : []
   const body = typeof piece?.content === 'string' ? piece.content : ''
