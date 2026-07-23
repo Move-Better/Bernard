@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, Check, ImageIcon, Loader2, Lock, MessageCircle, Palette, Plus, Search, Send, Type, Video, X } from 'lucide-react'
+import { ArrowRight, Check, FolderOpen, ImageIcon, Loader2, Lock, MessageCircle, Palette, Plus, Search, Send, Sparkles, Type, Upload, Video, X } from 'lucide-react'
 import { toast } from 'sonner'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
@@ -12,12 +12,13 @@ import WinnerToggle from '@/components/story-detail/WinnerToggle'
 import OverlayTextEditor from '@/components/story-detail/OverlayTextEditor'
 import { ApprovalPanel } from '@/components/story-detail/AssetsPane'
 import GbpLocationPicker from '@/components/GbpLocationPicker'
+import MediaPicker from '@/components/MediaPicker'
 import { useUpdateContentItem, useMediaSuggestions, useInterview, queryKeys } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { resolveGbpLocationIds } from '@/lib/gbpLocations'
 import { BlogStyleSwitcher, BlogGenerationActions } from '@/components/editor/BlogWordsExtras'
 import { apiFetch } from '@/lib/api'
-import { clipToMediaEntry, mediaEntryKey, photoSourceUrl, isVideoEntry } from '@/lib/mediaEntry'
+import { clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey, photoSourceUrl, isVideoEntry } from '@/lib/mediaEntry'
 import { resolveArchetype, ARCHETYPES, railFor, mediaTierFor, MEDIA_TIER } from '@/lib/editorArchetype'
 import { deriveSeoTitle, deriveMetaDescription, cleanBlogMarkdown, SEO_TITLE_MAX, META_DESC_MAX } from '@/lib/blogOutput'
 import { PLATFORM_META } from '@/lib/contentMeta'
@@ -255,10 +256,17 @@ function SuggestionThumb({ clip, attached, attaching, onAttach }) {
   )
 }
 
-// Media inspector — attach / swap / remove a photo on a single (non-carousel)
-// post. Suggestions come from the same suggest-media brain the carousel and
-// Storyboard use; attach goes through clipToMediaEntry so the stored entry has
-// the correct {url,type,mediaAssetId,…} shape (never a raw clip → url:null).
+// Media inspector — attach / swap / remove media on a single (non-carousel)
+// post. Two sources, mirroring SwapAddPhoto's AI|Library tabs:
+//   AI picks — the same suggest-media brain the carousel and Storyboard use.
+//   Library  — the full MediaPicker (browse/search everything, or upload).
+// The Library tab is the escape hatch: the AI list is a top-12 ranking, so
+// without it any clip outside those 12 was simply unreachable from this editor —
+// which on a Reel (whose suggestions can skew photo) left no way to attach the
+// video you actually wanted. Both paths normalize through mediaEntry.js
+// (clipToMediaEntry / pickerItemToMediaEntry) so the stored entry has the
+// correct {url,type,mediaAssetId,…} shape — a raw clip or picker item stores
+// url:null and breaks dedup.
 function MediaPanel({ piece, updateItem }) {
   const media = Array.isArray(piece.media_urls) ? piece.media_urls : []
   const optional = mediaTierFor(piece) === MEDIA_TIER.OPTIONAL
@@ -278,13 +286,21 @@ function MediaPanel({ piece, updateItem }) {
   const { data: sugg, isLoading } = useMediaSuggestions(piece.id, { k: 12 })
   const clips = sugg?.clips || []
   const [attaching, setAttaching] = useState(null)
+  const [tab, setTab] = useState('ai')          // 'ai' | 'library'
+  const [pickerOpen, setPickerOpen] = useState(false)
   const attachedKeys = new Set(media.map(mediaEntryKey))
 
-  async function attach(clip) {
-    const entry = clipToMediaEntry(clip)
-    const already = attachedKeys.has(mediaEntryKey(entry))
-    if (already) return
-    setAttaching(clip.assetId || clip.blobUrl || clip.url)
+  // The one attach path — both the AI thumbs and the Library picker hand it a
+  // normalized media_urls entry, so the dedupe and the single-media replace
+  // semantics can't drift between the two sources.
+  async function attachEntry(entry) {
+    if (!entry?.url) {
+      toast.error('That file has no usable URL')
+      return
+    }
+    const key = mediaEntryKey(entry)
+    if (attachedKeys.has(key)) return
+    setAttaching(key)
     try {
       const next = singleMedia ? [entry] : [...media, entry]
       await updateItem.mutateAsync({ id: piece.id, patch: { media_urls: next } })
@@ -296,6 +312,14 @@ function MediaPanel({ piece, updateItem }) {
     } finally {
       setAttaching(null)
     }
+  }
+
+  // MediaPicker calls back with a single asset (or an array on the upload path).
+  function handlePicked(asset) {
+    setPickerOpen(false)
+    const picked = (Array.isArray(asset) ? asset : [asset]).filter(Boolean)[0]
+    if (!picked) return
+    attachEntry(pickerItemToMediaEntry(picked))
   }
 
   async function removeAt(idx) {
@@ -356,48 +380,102 @@ function MediaPanel({ piece, updateItem }) {
             })}
           </div>
         ) : (
-          <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 text-center">
-            <p className="text-2xs font-semibold text-primary">+ Add a photo or video</p>
+          // The dashed CTA already looked like a button — now it is one, and it
+          // opens the library rather than only describing what you could do.
+          <button
+            type="button"
+            onClick={() => { setTab('library'); setPickerOpen(true) }}
+            className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 text-center transition-colors hover:border-primary/70 hover:bg-primary/10"
+          >
+            <span className="block text-2xs font-semibold text-primary">+ Add a photo or video</span>
             {optional && (
-              <p className="mt-1 text-3xs text-muted-foreground">Text-only is a valid post on this channel.</p>
+              <span className="mt-1 block text-3xs text-muted-foreground">Text-only is a valid post on this channel.</span>
             )}
-          </div>
+          </button>
         )}
 
-
-        {/* Suggestions */}
-        <div>
-          <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Suggested for this post
-          </p>
-          {isLoading ? (
-            <div role="status" className="flex items-center justify-center py-6 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              <span className="sr-only">Loading…</span>
-            </div>
-          ) : clips.length === 0 ? (
-            <p className="py-4 text-center text-2xs text-muted-foreground">
-              No suggestions yet — upload media in your Library to see picks here.
-            </p>
-          ) : (
-            <div className="grid grid-cols-3 gap-2">
-              {clips.slice(0, 12).map((clip) => {
-                const entry = clipToMediaEntry(clip)
-                const key = clip.chunkId || clip.assetId || clip.blobUrl || clip.url
-                return (
-                  <SuggestionThumb
-                    key={key}
-                    clip={clip}
-                    attached={attachedKeys.has(mediaEntryKey(entry))}
-                    attaching={attaching === (clip.assetId || clip.blobUrl || clip.url)}
-                    onAttach={() => attach(clip)}
-                  />
-                )
-              })}
-            </div>
-          )}
+        {/* Source — AI picks (a top-12 ranking) or the whole library */}
+        <div role="tablist" aria-label="Media source" className="flex gap-1 rounded-lg border border-border p-0.5">
+          {[['ai', 'AI picks', Sparkles], ['library', 'Library', FolderOpen]].map(([k, label, Icon]) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={tab === k}
+              onClick={() => setTab(k)}
+              className={`flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-2xs font-semibold transition-colors ${
+                tab === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Icon className="h-3 w-3" aria-hidden="true" />{label}
+            </button>
+          ))}
         </div>
+
+        {tab === 'ai' ? (
+          <div>
+            <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Suggested for this post
+            </p>
+            {isLoading ? (
+              <div role="status" className="flex items-center justify-center py-6 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                <span className="sr-only">Loading…</span>
+              </div>
+            ) : clips.length === 0 ? (
+              <p className="py-4 text-center text-2xs text-muted-foreground">
+                No suggestions yet — browse the <span className="font-semibold text-foreground">Library</span> tab, or
+                upload media to see picks here.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-2">
+                  {clips.slice(0, 12).map((clip) => {
+                    const entry = clipToMediaEntry(clip)
+                    const key = clip.chunkId || clip.assetId || clip.blobUrl || clip.url
+                    return (
+                      <SuggestionThumb
+                        key={key}
+                        clip={clip}
+                        attached={attachedKeys.has(mediaEntryKey(entry))}
+                        attaching={attaching === mediaEntryKey(entry)}
+                        onAttach={() => attachEntry(entry)}
+                      />
+                    )
+                  })}
+                </div>
+                <p className="mt-1.5 text-3xs text-muted-foreground/70">
+                  Bernard&rsquo;s top picks for these words. Not the one you want?{' '}
+                  <button
+                    type="button"
+                    onClick={() => setTab('library')}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    Browse the library
+                  </button>
+                  .
+                </p>
+              </>
+            )}
+          </div>
+        ) : (
+          <div>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-primary/60 bg-primary/5 px-3 py-4 text-2xs font-semibold text-primary transition-colors hover:bg-primary/10"
+            >
+              <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+              Browse library / upload
+            </button>
+            <p className="mt-1.5 text-3xs text-muted-foreground/70">
+              Search or filter your whole library — photos and videos — or upload a new file.
+            </p>
+          </div>
+        )}
       </div>
+
+      {pickerOpen && <MediaPicker onClose={() => setPickerOpen(false)} onSelect={handlePicked} />}
     </div>
   )
 }
