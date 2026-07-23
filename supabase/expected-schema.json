@@ -386,12 +386,16 @@
     "workspace_id"
   ],
   "feedback": [
+    "acknowledged_at",
     "created_at",
     "id",
     "message",
     "notify_error",
     "notify_ok",
     "page_url",
+    "resolved_at",
+    "resolved_note",
+    "resolved_notified_at",
     "screenshot_url",
     "triage_note",
     "triaged_at",

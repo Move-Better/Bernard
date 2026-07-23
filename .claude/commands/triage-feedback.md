@@ -70,7 +70,7 @@ Investigate the rows concurrently when they touch different areas (parallel Expl
    ```
    `.claude/feedback-history/` is gitignored scratch (like `audit-history/`); create it if missing.
 
-2. **Spawn one task chip per actionable P0/P1/P2** via `spawn_task`. Each chip must stand alone — include the feedback `id`, the verbatim message, the page route, the reporter, the root-cause `file:line`, and the suggested fix, so the spawned session can act without this conversation. Do NOT spawn chips for `already-fixed` / `not-reproducible` items — note those in the report only.
+2. **Spawn one task chip per actionable P0/P1/P2** via `spawn_task`. Each chip must stand alone — include the feedback `id`, the verbatim message, the page route, the reporter, the root-cause `file:line`, and the suggested fix, so the spawned session can act without this conversation. **The chip's prompt must end with an explicit instruction to close the loop once the fix ships**: "Once the fix is merged and deployed, call `PATCH /api/feedback/resolve` with `{ id: '<feedback-id>', note: '<one-line plain-language summary of what was fixed>' }` (authenticated as an admin/staff user of the reporter's workspace) — this emails the original reporter that it's safe to use the feature again and clears the in-app 'fixed' banner they'll see on Home. Do not call it until the fix is actually live in prod." Do NOT spawn chips for `already-fixed` / `not-reproducible` items — note those in the report only, but see Phase 4 below for `already-fixed`.
 
 3. **Stamp every investigated row triaged** (one statement, all ids):
    ```sql
@@ -85,6 +85,21 @@ Investigate the rows concurrently when they touch different areas (parallel Expl
    Never stamp a row you didn't actually investigate — an un-stamped row is the safety net that it resurfaces next run.
 
 4. **Console summary** to chat: one line per tier (counts), a link to the report, the top P0/P1 items inlined, and the count of chips spawned. Call out anything classified `already-fixed` so the loop is visibly working, not silently swallowing reports.
+
+---
+
+## Phase 4 — Closing the loop (the reporter gets told)
+
+Bernard's Feedback button is used mostly by front-desk/operational staff (e.g. Philip) who deliberately **stop using a feature the moment they hit a bug**, and wait to be told it's fixed before going back to it. A report that's fixed-but-never-communicated means that person keeps avoiding a bottleneck in their workflow indefinitely. This is why chips (Phase 3, step 2) carry the resolve instruction, and why `already-fixed` rows here get the same treatment:
+
+- **If a row classifies as `already-fixed`** (Phase 2, step 4) and it has a `user_email` on file, resolve it directly in this run — don't just note it in the report:
+  ```
+  PATCH /api/feedback/resolve
+  { "id": "<row id>", "note": "<one-line plain-language summary, e.g. 'Fixed 2026-07-20 in #2198'>" }
+  ```
+  Call it authenticated against the reporter's own workspace subdomain (the `w.slug` from Phase 1's query). This is the only Phase-4 action this command takes directly; everything else (P0/P1/P2 chips) resolves itself later when the spawned session ships its fix and calls the same endpoint per its chip instructions.
+- **Never resolve a row you haven't personally confirmed is fixed** — a false "it's fixed" email is worse than silence, since it invites the reporter back into a still-broken flow.
+- The resolve endpoint is best-effort on the email (a missing `user_email` silently skips it) but always sets `resolved_at`, which is what drives the in-app banner on Home (`FeedbackResolvedBanner`, queried via `/api/feedback/my-notices`) — so even a reporter with no email on file eventually sees it next time they log in.
 
 ---
 
