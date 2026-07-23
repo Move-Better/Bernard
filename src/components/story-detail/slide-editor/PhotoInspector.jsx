@@ -22,6 +22,19 @@ export default function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, at
   const hasPhoto = !!photoUrl
   const photoThumb = (typeof slide.photo_idx === 'number' && mediaUrls[slide.photo_idx]?.thumbnailUrl) || photoUrl
 
+  // Slider position, on the FILL baseline (1 = fills the frame).
+  //
+  // A slide still carrying the legacy FIT-relative photo_zoom cannot be shown
+  // faithfully here: converting between the two baselines needs the photo's
+  // natural dimensions AND the deck aspect, neither of which this component
+  // has. Rather than render the slider at a position that quietly disagrees
+  // with the canvas, legacy slides say so and offer Reset — and any drag writes
+  // photo_fill and drops photo_zoom, so the disagreement cannot outlive one
+  // interaction. 21 slides carried legacy framing when this shipped, 14 of them
+  // already published.
+  const isLegacyFramed = slide.photo_fill == null && slide.photo_zoom > 1
+  const effectiveFill = slide.photo_fill != null ? slide.photo_fill : 1
+
   const grade = slide.grade || NEUTRAL_GRADE
   const graded = !isNeutralGrade(grade)
   function setGradeParam(key, value) {
@@ -144,25 +157,36 @@ export default function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, at
             <span className="shrink-0">Zoom</span>
             <input
               type="range"
-              min="1"
+              min="0.4"
               max="4"
               step="0.01"
-              value={slide.photo_zoom || 1}
-              onChange={(e) => onChange({ ...slide, photo_zoom: parseFloat(e.target.value) })}
+              value={effectiveFill}
+              onChange={(e) => {
+                // Writes photo_fill (1 = fills the frame). photo_zoom is the
+                // legacy fit-relative field — drop it on edit so a slide never
+                // carries both baselines at once.
+                const s = { ...slide, photo_fill: parseFloat(e.target.value) }
+                delete s.photo_zoom
+                onChange(s)
+              }}
               className="h-5 flex-1 accent-primary"
               aria-label="Photo zoom"
             />
-            {(slide.photo_zoom > 1 || slide.photo_offset) && (
+            {(slide.photo_fill != null || slide.photo_zoom > 1 || slide.photo_offset) && (
               <button
                 type="button"
-                onClick={() => { const s = { ...slide }; delete s.photo_zoom; delete s.photo_offset; onChange(s) }}
+                onClick={() => { const s = { ...slide }; delete s.photo_fill; delete s.photo_zoom; delete s.photo_offset; onChange(s) }}
                 className="shrink-0 font-medium text-primary hover:underline"
               >
                 reset
               </button>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">Slider far-left = whole photo fits (blurred backdrop fills the rest); zoom in to crop. Drag the photo to reposition · scroll to zoom.</p>
+          <p className="text-sm text-muted-foreground">
+            {isLegacyFramed
+              ? 'This slide uses older framing, so the slider does not reflect it — hit reset, or drag to re-frame from a full-bleed start.'
+              : 'Default fills the frame. Zoom out to show more of the photo (a blurred backdrop fills the rest); zoom in to crop. Drag the photo to reposition · scroll to zoom.'}
+          </p>
         </div>
       )}
 

@@ -13,7 +13,7 @@ export default function SlideInspector({
 }) {
   const [addOpen, setAddOpen] = useState(false)
   // Signature of everything (besides the theme) that changes a thumbnail's pixels.
-  const thumbSig = `${photoUrl || ''}|${slide.photo_zoom ?? 'fill'}|${slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : ''}|${slide.blocks.map((b) => `${b.role}:${b.text}`).join('~')}|${(slide.objects || []).map((o) => `${o.src}:${o.x},${o.y}:${o.scale}`).join('~')}`
+  const thumbSig = `${photoUrl || ''}|${slide.photo_zoom ?? 'fill'}|${slide.photo_fill ?? ''}|${slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : ''}|${slide.blocks.map((b) => `${b.role}:${b.text}`).join('~')}|${(slide.objects || []).map((o) => `${o.src}:${o.x},${o.y}:${o.scale}`).join('~')}`
   return (
     <div className="space-y-5">
       {/* Slide management — reorder + delete this slide */}

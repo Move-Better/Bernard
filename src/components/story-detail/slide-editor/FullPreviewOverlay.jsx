@@ -91,6 +91,7 @@ export default function FullPreviewOverlay({ slides, activeIdx, mediaUrls, brand
     (slide.blocks || []).map((b) => `${b.role}:${b.text}:${typeof b.position === 'object' ? `${b.position.x},${b.position.y}` : b.position}:${b.fontScale || ''}:${b.color || ''}:${b.fontWeight || ''}:${b.uppercase ?? ''}:${b.italic ? 'i' : ''}:${b.underline ? 'u' : ''}:${b.letterSpacing || ''}:${b.lineHeight || ''}:${b.shadow || ''}:${b.textEffect || ''}:${b.effectIntensity || ''}:${b.effectColor || ''}:${b.runs ? JSON.stringify(b.runs) : ''}`).join('~'),
     (slide.objects || []).map((o) => `${o.type}:${o.src}:${o.x},${o.y}:${o.scale}:${o.opacity}`).join('~'),
     slide.photo_zoom ?? 'fill',
+    slide.photo_fill ?? '',
     slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : '',
     slide.grade ? JSON.stringify(slide.grade) : '',
   ].join('|')

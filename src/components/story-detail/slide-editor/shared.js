@@ -35,6 +35,7 @@ export function normalizeSlide(s, idx) {
     // Photo reframe — focal pan + crop zoom of the bound photo. Optional;
     // absent = centered cover at 1×.
     ...(s?.photo_zoom > 1 ? { photo_zoom: s.photo_zoom } : {}),
+    ...(s?.photo_fill != null ? { photo_fill: s.photo_fill } : {}),
     ...(s?.photo_offset && (Number.isFinite(s.photo_offset.x) || Number.isFinite(s.photo_offset.y))
       ? { photo_offset: { x: Number(s.photo_offset.x) || 0, y: Number(s.photo_offset.y) || 0 } }
       : {}),
