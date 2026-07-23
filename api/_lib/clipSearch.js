@@ -11,6 +11,37 @@ import { embedTexts } from './embeddings.js'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+// ── Freshness ranking ────────────────────────────────────────────────────────
+//
+// Similarity alone makes the picker deterministic in the worst way: the single
+// best-matching shot for a recurring topic wins EVERY time it comes up, so one
+// photo ends up on nine posts about the same condition while equally good
+// alternatives never surface. generate-package takes top-1 with no reuse
+// awareness at all, so its choice is fully repeatable.
+//
+// So rank on similarity discounted by how much the asset has already been used
+// (the media_asset_usage view, migration 185). Deliberately a soft penalty, not
+// a hard exclusion: when one shot really is the only good match for a topic,
+// it should still win — it just has to be meaningfully better to keep winning.
+//
+// A published use counts double an unpublished one: a photo sitting in three
+// drafts has not actually been in front of the audience three times, so it
+// shouldn't be discounted as if it had.
+const PENALTY_PER_USE = 0.05
+const MAX_PENALTY     = 0.30
+const DRAFT_WEIGHT    = 0.5
+
+// The multiplier applied to an asset's similarity. 0 uses → 1.0 (untouched);
+// the floor is 0.70, so a heavily-reused asset still wins when it is >~43%
+// more relevant than the next option.
+export function freshnessMultiplier(usage) {
+  const published = Number(usage?.published) || 0
+  const total     = Number(usage?.total) || 0
+  const drafts    = Math.max(total - published, 0)
+  const weighted  = published + drafts * DRAFT_WEIGHT
+  return 1 - Math.min(weighted * PENALTY_PER_USE, MAX_PENALTY)
+}
+
 async function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -37,8 +68,12 @@ async function sb(path, init = {}) {
  * @param {string[]} [params.excludeAssetIds] — asset ids to drop from results
  *   (e.g. photos already used on other recent pieces) — over-fetches from the
  *   RPC so filtering these out still leaves up to k candidates.
+ * @param {boolean} [params.preferFresh=true] — discount already-used assets so
+ *   a recurring topic stops resolving to the same shot every time. See the
+ *   freshness notes above. Pass false for a pure-similarity search.
  *
- * @returns {Promise<Array>} shaped clip objects (camelCase)
+ * @returns {Promise<Array>} shaped clip objects (camelCase), each carrying
+ *   `usage` ({ total, published }) and the `effectiveScore` it was ranked on.
  * @throws on embed failure or RPC failure
  */
 export async function searchClips({
@@ -49,6 +84,7 @@ export async function searchClips({
   minScore = 0.5,
   staffId = null,
   excludeAssetIds = [],
+  preferFresh = true,
 }) {
   // Embed the query text
   const [queryEmbedding] = await embedTexts([query])
@@ -60,7 +96,14 @@ export async function searchClips({
   const boundedK = Math.max(k, 1)
   // Over-fetch by the exclusion-set size so filtering out already-used assets
   // still leaves up to k results, rather than silently returning fewer.
-  const matchCount = Math.min(boundedK + excludeSet.size, 50)
+  //
+  // When ranking on freshness, over-fetch a real CANDIDATE POOL on top of that:
+  // re-ranking k rows can only reorder the same k assets, it can never swap a
+  // tired one out for a fresh alternative. That matters most exactly where the
+  // reuse problem is worst — generate-package asks for k=1, so without a pool
+  // it would re-rank a single candidate against itself and change nothing.
+  const poolK = preferFresh ? Math.max(boundedK * 3, boundedK + 10) : boundedK
+  const matchCount = Math.min(poolK + excludeSet.size, 50)
 
   // Call match_visual_memory_chunks RPC
   const rpcRes = await sb('rpc/match_visual_memory_chunks', {
@@ -85,7 +128,27 @@ export async function searchClips({
     ? rows.filter((r) => !excludeSet.has(r.source_id))
     : rows
 
-  return filtered.slice(0, boundedK).map((r) => ({
+  // Usage is fetched regardless of preferFresh, because callers RENDER it (the
+  // picker badges every tile from this field). Gating the lookup on the ranking
+  // flag would hand a preferFresh:false caller a fabricated `{total: 0}` that is
+  // indistinguishable from a genuinely unused asset — i.e. a confident "never
+  // used" on a photo that has been out five times. preferFresh controls the
+  // ORDER only; the counts are always real.
+  const usageById = await fetchUsage(workspaceId, filtered.map((r) => r.source_id))
+
+  const ranked = filtered
+    .map((r) => {
+      const usage = usageById.get(r.source_id) || { total: 0, published: 0 }
+      const similarity = r.similarity ?? 0
+      return {
+        row: r,
+        usage,
+        effectiveScore: preferFresh ? similarity * freshnessMultiplier(usage) : similarity,
+      }
+    })
+    .sort((a, b) => b.effectiveScore - a.effectiveScore)
+
+  return ranked.slice(0, boundedK).map(({ row: r, usage, effectiveScore }) => ({
     chunkId:         r.chunk_id,
     assetId:         r.source_id,
     similarity:      r.similarity,
@@ -103,5 +166,36 @@ export async function searchClips({
     storyRole:       r.story_role,
     staffId:         r.staff_id,
     displayTitle:    r.asset_display_title || null,
+    usage,
+    effectiveScore,
   }))
+}
+
+// Reuse counts for a set of candidate assets, from the media_asset_usage view
+// (migration 185). Best-effort: if the lookup fails every asset reads as unused
+// and ranking falls back to pure similarity — the same behavior as before this
+// existed, which is a safe degradation rather than a failed search.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+async function fetchUsage(workspaceId, assetIds) {
+  const byId = new Map()
+  const ids = [...new Set((assetIds || []).filter((v) => UUID_RE.test(v || '')))]
+  if (ids.length === 0) return byId
+
+  try {
+    const r = await sb(
+      `media_asset_usage?select=asset_id,use_count,published_count` +
+      `&workspace_id=eq.${workspaceId}&asset_id=in.(${ids.map(encodeURIComponent).join(',')})`
+    )
+    if (!r.ok) {
+      console.error('[clipSearch] usage lookup failed:', r.status)
+      return byId
+    }
+    for (const u of await r.json()) {
+      byId.set(u.asset_id, { total: u.use_count || 0, published: u.published_count || 0 })
+    }
+  } catch (e) {
+    console.error('[clipSearch] usage lookup failed:', e?.message)
+  }
+  return byId
 }
