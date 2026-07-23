@@ -43,7 +43,13 @@ export default function StoryComposer({ piece, remainingNeedsMedia = [] }) {
   const media = Array.isArray(piece?.media_urls) ? piece.media_urls : []
   const first = media[0] || null
   const firstIsVideo = first ? isVideoEntry(first) : false
-  const thumbSrc = first ? (photoSourceUrl(first) || first.url || first.thumbnailUrl) : null
+  // A video entry's url is the raw file — only its poster is safe in an <img>.
+  // photoSourceUrl() would hand back the .mp4 and render an empty black tile.
+  const thumbSrc = !first
+    ? null
+    : firstIsVideo
+      ? first.thumbnailUrl || null
+      : photoSourceUrl(first) || first.url || first.thumbnailUrl
 
   const patch = (p) =>
     update.mutateAsync({ id: piece.id, patch: p }).catch((e) =>
