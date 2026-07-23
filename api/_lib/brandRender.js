@@ -415,8 +415,18 @@ export async function buildEditorialOverlaySvgSatori({
   accentColor,
   scrimColor = DEFAULT_SCRIM,
   fontBuffer,
+  // Fraction of the height (0–0.4) the destination trims off the BOTTOM of what
+  // it shows. Google Business Profile crops ~10–20% off the top and bottom of a
+  // post image in its Maps carousel and Search preview card, so a footer laid
+  // out flush to the real bottom edge gets clipped in the only place customers
+  // actually see it. Pushing the footer up by this much keeps the byline inside
+  // the visible band. 0 for every surface that shows the whole frame.
+  safeInsetBottom = 0,
 }) {
   const baseDim = Math.min(width, height)
+  // Clamped: a caller passing something wild must not push the footer off the
+  // top of the card.
+  const safeBottom = Math.min(Math.max(Number(safeInsetBottom) || 0, 0), 0.4)
   const pad = Math.round(width * 0.06)
   const fs = Math.round(width * (HEADLINE_SIZE_FACTOR[headlineSize] || HEADLINE_SIZE_FACTOR.m))
   const nameFs = Math.round(baseDim * 0.026)
@@ -426,7 +436,10 @@ export async function buildEditorialOverlaySvgSatori({
   const scrim = h('div', {
     style: {
       position: 'absolute', top: 0, left: 0, width, height, display: 'flex',
-      backgroundImage: `linear-gradient(180deg, ${hexToRgba(scrimColor, 0)} 42%, ${hexToRgba(scrimColor, 0.55)} 78%, ${hexToRgba(scrimColor, 0.86)} 100%)`,
+      // Gradient stops ride UP with the footer. Insetting the text without
+      // moving the scrim would float the byline off the dark band and onto the
+      // photo, trading a clipping bug for a contrast one.
+      backgroundImage: `linear-gradient(180deg, ${hexToRgba(scrimColor, 0)} ${42 - safeBottom * 42}%, ${hexToRgba(scrimColor, 0.55)} ${78 - safeBottom * 78}%, ${hexToRgba(scrimColor, 0.86)} ${100 - safeBottom * 100}%)`,
     },
   })
 
@@ -452,7 +465,8 @@ export async function buildEditorialOverlaySvgSatori({
   const tree = h('div', {
     style: {
       width, height, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-      position: 'relative', paddingLeft: pad, paddingRight: pad, paddingBottom: Math.round(height * 0.055),
+      position: 'relative', paddingLeft: pad, paddingRight: pad,
+      paddingBottom: Math.round(height * (0.055 + safeBottom)),
     },
   }, scrim, headlineEl, nameRow)
 
@@ -551,6 +565,10 @@ export async function renderEditorialPhoto({ photoUrl, treatment = {}, workspace
     accentColor,
     scrimColor: treatment.scrim === 'brand' ? primaryColor : DEFAULT_SCRIM,
     fontBuffer,
+    // Keep the footer clear of whatever the destination crops in its own
+    // preview (GBP). Passed as a treatment field so the ad-export and template
+    // paths, which have no destination, simply get 0.
+    safeInsetBottom: treatment.safeInsetBottom || 0,
   }
 
   // Satori (real font metrics, vector text) first; fall back to the legacy

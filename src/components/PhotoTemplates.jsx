@@ -62,16 +62,24 @@ function sampleSlides(workspaceName) {
 }
 const SLIDE_KEYS = ['cover', 'explainer', 'cta']
 
-// Platform format presets — changes the preview container's aspect ratio so you
-// can see how the template looks at each platform's native crop. `ratio` is
-// height/width. The preview box is fully responsive (CSS aspect-ratio), capped
-// by PREVIEW_MAX_H so tall formats don't run away vertically.
+// Preview-only ratio presets — changes the preview container's aspect so you can
+// check a template holds up at each shape it will actually be rendered at. This
+// is a DESIGN TOOL, not a per-post choice: a real post's frame is derived from
+// its destination via src/lib/postFrames.js and is never selectable.
+//
+// Titles name the destinations each shape is actually used for, per that
+// registry. They previously called BOTH 1:1 and 4:5 "Instagram post", which is
+// the same mislabelling that let `instagram_feed: 1:1` survive for months —
+// Instagram's feed renders 4:5, and nothing Bernard publishes is square.
+// `ratio` is height/width. The preview box is fully responsive (CSS
+// aspect-ratio), capped by PREVIEW_MAX_H so tall formats don't run away.
 const PREVIEW_MAX_H = 540
 const FORMATS = [
-  { id: 'square',    label: '1:1',  ratio: 1,       title: 'Square — Instagram post (1080×1080)' },
-  { id: 'portrait',  label: '4:5',  ratio: 5 / 4,   title: 'Portrait — Instagram post (1080×1350)' },
-  { id: 'story',     label: '9:16', ratio: 16 / 9,  title: 'Story — Instagram / Facebook (1080×1920)' },
-  { id: 'landscape', label: '16:9', ratio: 9 / 16,  title: 'Landscape — Facebook / LinkedIn (1920×1080)' },
+  { id: 'portrait',  label: '4:5',  ratio: 5 / 4,   title: 'Portrait — Instagram / Facebook / LinkedIn post (1080×1350)' },
+  { id: 'story',     label: '9:16', ratio: 16 / 9,  title: 'Vertical — Reels & Stories, TikTok, YouTube Shorts (1080×1920)' },
+  { id: 'landscape', label: '16:9', ratio: 9 / 16,  title: 'Landscape — blog hero, X, Mastodon, long-form video (1920×1080)' },
+  { id: 'gbp',       label: '4:3',  ratio: 3 / 4,   title: 'Google Business Profile — the only ratio Maps & Search will not clip (1200×900)' },
+  { id: 'square',    label: '1:1',  ratio: 1,       title: 'Square — Bluesky (1080×1080)' },
 ]
 
 // Normalize a theme record so renderFreeformSlide gets layout, palette AND
@@ -532,7 +540,9 @@ function ChatDesigner({ allThemes, brandStyle, workspaceName, onSaveTemplate, sa
   const transcriptRef = useRef(null)
 
   // Preview state (mirrors the browse view's preview stage)
-  const [formatId, setFormatId] = useState('square')
+  // Defaults to 4:5, the frame most real posts render at. It used to default to
+  // square — the one shape in this list that nothing Bernard publishes uses.
+  const [formatId, setFormatId] = useState('portrait')
   const [slideKey, setSlideKey] = useState('cover')
   const [previewPhotoIdx, setPreviewPhotoIdx] = useState(0)
   const { data: mediaPages } = useMediaInfinite({ kind: 'photo' }, { pageSize: 6 })
@@ -797,7 +807,9 @@ export default function PhotoTemplates() {
   const selectedTheme = allThemes.find((t) => t.id === selectedThemeId) || allThemes[0] || null
 
   const [editing, setEditing] = useState(null)  // null | 'new' | { theme }
-  const [formatId, setFormatId] = useState('square')
+  // Defaults to 4:5, the frame most real posts render at. It used to default to
+  // square — the one shape in this list that nothing Bernard publishes uses.
+  const [formatId, setFormatId] = useState('portrait')
   const format    = FORMATS.find((f) => f.id === formatId) || FORMATS[0]
   // Cap the box WIDTH so a tall format (9:16) stays within PREVIEW_MAX_H.
   const maxBoxW   = Math.round(PREVIEW_MAX_H / format.ratio)
