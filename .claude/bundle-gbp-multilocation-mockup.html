@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>bundle.social — multi-location GBP connect (mockup)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%;
+    --card:0 0% 100%; --card-foreground:222 47% 8%;
+    --primary:186 83% 27%; --primary-foreground:0 0% 100%;
+    --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --accent:160 60% 95%; --accent-foreground:160 84% 30%;
+    --destructive:0 84% 60%;
+    --border:214 32% 91%; --input:214 32% 91%; --ring:160 84% 39%;
+    --success:152 76% 40%; --action:32 95% 44%; --action-foreground:0 0% 100%;
+  }
+  body{background:hsl(var(--background));color:hsl(var(--foreground));
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  .bg-card{background:hsl(var(--card));}
+  .bg-primary{background:hsl(var(--primary));} .text-primary{color:hsl(var(--primary));}
+  .text-primary-foreground{color:hsl(var(--primary-foreground));}
+  .bg-primary\/10{background:hsl(var(--primary)/0.1);}
+  .ring-primary\/30{--tw-ring-color:hsl(var(--primary)/0.3);}
+  .ring-primary\/20{--tw-ring-color:hsl(var(--primary)/0.2);}
+  .border-primary{border-color:hsl(var(--primary));}
+  .border-border{border-color:hsl(var(--border));}
+  .text-muted-foreground{color:hsl(var(--muted-foreground));}
+  .bg-muted{background:hsl(var(--muted));}
+  .bg-success\/10{background:hsl(var(--success)/0.1);} .text-success{color:hsl(var(--success));}
+  .bg-action\/10{background:hsl(var(--action)/0.1);} .text-action{color:hsl(var(--action));}
+  .text-destructive{color:hsl(var(--destructive));}
+  .text-3xs{font-size:10px;line-height:14px;} .text-2xs{font-size:11px;line-height:15px;}
+  .legend{border:1px dashed hsl(var(--primary)/0.5);background:hsl(var(--primary)/0.04);}
+</style>
+</head>
+<body class="py-8">
+<div class="max-w-2xl mx-auto px-4 space-y-6">
+
+  <div>
+    <h1 class="text-lg font-semibold">Settings → Integrations — “Social publishing” (proposed)</h1>
+    <p class="text-sm text-muted-foreground mt-1">Move Better · bundle.social active · 2 locations (Portland primary, Vancouver)</p>
+  </div>
+
+  <!-- ============ THE SECTION ============ -->
+  <div class="space-y-3">
+    <div>
+      <h2 class="text-sm font-semibold">Social publishing</h2>
+      <p class="text-xs text-muted-foreground mt-0.5">Choose how Bernard posts to Instagram, Facebook, Google Business &amp; more. Pick one — you can switch anytime.</p>
+    </div>
+
+    <!-- bundle.social card -->
+    <div class="rounded-lg border bg-card border-primary" style="box-shadow:0 0 0 1px hsl(var(--primary)/0.3);">
+      <div class="px-5 py-4 flex items-start gap-3">
+        <span class="h-9 w-9 shrink-0 rounded-md bg-primary/10 grid place-items-center">
+          <i data-lucide="share-2" class="h-5 w-5 text-primary"></i>
+        </span>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-semibold text-sm">bundle.social</span>
+            <span class="text-3xs uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded" style="box-shadow:0 0 0 1px hsl(var(--primary)/0.2);">Active</span>
+          </div>
+          <p class="text-xs text-muted-foreground leading-snug mt-1">
+            Bernard posts directly to your accounts and pulls back likes, reach &amp; impressions. Connect in bundle’s secure portal — Bernard never sees your passwords.
+          </p>
+        </div>
+      </div>
+
+      <!-- Brand accounts subsection (IG/FB on the workspace team) -->
+      <div class="px-5 py-3.5 border-t border-border">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h3 class="text-xs font-semibold">Brand accounts</h3>
+            <p class="text-2xs text-muted-foreground mt-0.5">Instagram &amp; Facebook for the whole clinic.</p>
+          </div>
+          <button class="text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded-md font-medium inline-flex items-center gap-1.5">
+            Manage accounts <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
+          </button>
+        </div>
+        <div class="mt-2.5 space-y-2">
+          <div class="flex items-center gap-3">
+            <i data-lucide="instagram" class="h-4 w-4 text-muted-foreground shrink-0"></i>
+            <span class="text-sm flex-1 truncate">Instagram <span class="text-muted-foreground">· @movebetter</span></span>
+            <span class="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success"><i data-lucide="check-circle-2" class="h-3.5 w-3.5"></i>Connected</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <i data-lucide="facebook" class="h-4 w-4 text-muted-foreground shrink-0"></i>
+            <span class="text-sm flex-1 truncate">Facebook <span class="text-muted-foreground">· Move Better</span></span>
+            <span class="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success"><i data-lucide="check-circle-2" class="h-3.5 w-3.5"></i>Connected</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google Business by location subsection (one team per location) -->
+      <div class="px-5 py-3.5 border-t border-border">
+        <div class="flex items-center gap-2">
+          <i data-lucide="map-pin" class="h-4 w-4 text-muted-foreground"></i>
+          <h3 class="text-xs font-semibold">Google Business — by location</h3>
+        </div>
+        <p class="text-2xs text-muted-foreground mt-0.5">Each location connects its own Google Business listing. Posts to Google fan out to every connected location.</p>
+
+        <div class="mt-2.5 space-y-2">
+          <!-- Portland: connected -->
+          <div class="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-medium truncate">Portland</span>
+                <span class="text-3xs uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Primary</span>
+              </div>
+              <span class="text-2xs text-muted-foreground">Google Business · Move Better — Portland</span>
+            </div>
+            <span class="text-2xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success"><i data-lucide="check-circle-2" class="h-3.5 w-3.5"></i>Connected</span>
+            <button class="text-2xs text-primary inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-muted">Manage <i data-lucide="external-link" class="h-3 w-3"></i></button>
+          </div>
+
+          <!-- Vancouver: not connected -->
+          <div class="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+            <div class="flex-1 min-w-0">
+              <span class="text-sm font-medium truncate">Vancouver</span>
+              <span class="block text-2xs text-muted-foreground">Google Business · not connected yet</span>
+            </div>
+            <button class="text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded-md font-medium inline-flex items-center gap-1.5">
+              Connect Google Business <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
+            </button>
+          </div>
+
+          <!-- example of a third, unhealthy location (reconnect state) -->
+          <div class="flex items-center gap-3 rounded-md border border-border px-3 py-2 opacity-90">
+            <div class="flex-1 min-w-0">
+              <span class="text-sm font-medium truncate">Beaverton</span>
+              <span class="block text-2xs text-muted-foreground">Google Business · connection expired</span>
+            </div>
+            <button class="text-2xs inline-flex items-center gap-1 px-2 py-1 rounded bg-action/10 text-action"><i data-lucide="alert-triangle" class="h-3.5 w-3.5"></i>Reconnect</button>
+          </div>
+        </div>
+        <p class="text-3xs text-muted-foreground mt-2">Add or rename locations in <span class="underline">Settings → Workspace → Locations</span>.</p>
+      </div>
+    </div>
+
+    <!-- Buffer card (unchanged, collapsed) -->
+    <div class="rounded-lg border bg-card border-border">
+      <div class="px-5 py-4 flex items-start gap-3">
+        <span class="h-9 w-9 shrink-0 rounded-md bg-muted grid place-items-center"><i data-lucide="rss" class="h-5 w-5 text-muted-foreground"></i></span>
+        <div class="flex-1 min-w-0">
+          <span class="font-semibold text-sm">Buffer</span>
+          <p class="text-xs text-muted-foreground leading-snug mt-1">Already use Buffer? Post through your existing Buffer account by pasting an access token.</p>
+          <button class="mt-3 text-sm border border-border px-3 py-1.5 rounded-md hover:bg-muted">Switch to Buffer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- What changed legend -->
+  <div class="legend rounded-lg p-4 text-xs space-y-1.5">
+    <p class="font-semibold text-primary">What changed here</p>
+    <ul class="list-disc pl-4 space-y-1 text-muted-foreground">
+      <li><b>Two subsections inside the bundle card.</b> Today there's one flat “Connect accounts” button + account list. Now: <b>Brand accounts</b> (Instagram &amp; Facebook, one portal on the workspace team) and <b>Google Business — by location</b> (one portal + team per location).</li>
+      <li><b>Per-location connect.</b> Each location row has its own connect/Manage/Reconnect button → opens a Google-only bundle portal scoped to that location’s team. Reflects bundle’s hard limit of one active GBP per team.</li>
+      <li><b>Status is per row.</b> Connected (success/emerald), “not connected yet” (Connect button), expired (amber Reconnect — the act-now <code>--action</code> token).</li>
+      <li><b>Posting fan-out.</b> A Google post now fans out across every connected location, mirroring the existing Buffer GBP fan-out.</li>
+      <li><b>Locations come from <code>workspace_locations</code></b> — managed under Settings → Workspace → Locations; this card only connects them.</li>
+    </ul>
+  </div>
+
+</div>
+<script>lucide.createIcons();</script>
+</body>
+</html>

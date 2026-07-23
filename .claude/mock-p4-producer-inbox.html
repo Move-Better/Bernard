@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bernard — P4 Producer Review-Inbox (mockup)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* Real Bernard HSL tokens from src/index.css so this looks like the app */
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%;
+    --card:0 0% 100%; --card-foreground:222 47% 8%;
+    --primary:20 76% 52%; --primary-foreground:0 0% 100%;
+    --secondary:220 14% 96%; --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --accent:20 60% 95%; --accent-foreground:20 76% 38%;
+    --destructive:0 84% 60%; --border:214 32% 91%; --ring:20 76% 52%; --radius:.625rem;
+    --success:152 76% 40%; --warning:38 92% 50%; --info:199 95% 40%;
+  }
+  body{background:hsl(var(--background));color:hsl(var(--foreground));
+       font-family:'Geist','Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,h4{font-weight:700;letter-spacing:-.025em;}
+  .nx-grad-ribbon{background:linear-gradient(100deg,hsl(20 76% 52%),hsl(14 80% 46%));color:#fff;border-radius:14px;padding:14px 18px;}
+  .tint{background:linear-gradient(180deg,#fff,#fefaf7);}
+  .legend{border:1px dashed hsl(20 76% 52% / .55);background:hsl(20 60% 95% / .5);}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:hsl(214 20% 80%);border-radius:9px}
+</style>
+<script>
+  tailwind.config={theme:{extend:{colors:{
+    background:'hsl(var(--background))',foreground:'hsl(var(--foreground))',
+    card:'hsl(var(--card))',primary:'hsl(var(--primary))','primary-foreground':'hsl(var(--primary-foreground))',
+    muted:'hsl(var(--muted))','muted-foreground':'hsl(var(--muted-foreground))',
+    accent:'hsl(var(--accent))',border:'hsl(var(--border))',
+    success:'hsl(var(--success))',warning:'hsl(var(--warning))',info:'hsl(var(--info))',
+    destructive:'hsl(var(--destructive))',
+  },borderColor:{DEFAULT:'hsl(var(--border))'},fontSize:{'2xs':'.6875rem','3xs':'.625rem'}}}}
+</script>
+</head>
+<body class="text-[15px]">
+
+<div class="flex min-h-screen">
+  <!-- ───────── Sidebar (mirrors Layout.jsx NAV_SECTIONS, + new Inbox item) ───────── -->
+  <aside class="w-60 shrink-0 border-r bg-card flex flex-col">
+    <div class="px-4 py-4 border-b">
+      <div class="flex items-center gap-2">
+        <div class="h-8 w-8 rounded-lg bg-primary text-white grid place-items-center font-extrabold">N</div>
+        <div>
+          <p class="text-sm font-extrabold leading-none">Bernard</p>
+          <p class="text-3xs text-muted-foreground mt-1">Voice-faithful clinical content</p>
+        </div>
+      </div>
+      <div class="mt-3 flex items-center gap-2 rounded-lg border px-2.5 py-1.5">
+        <i data-lucide="building-2" class="h-3.5 w-3.5 text-muted-foreground"></i>
+        <span class="text-xs font-medium">Move Better — People</span>
+        <i data-lucide="chevron-down" class="h-3.5 w-3.5 text-muted-foreground ml-auto"></i>
+      </div>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto px-2 py-3 text-sm">
+      <a class="nav flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-accent/40"><i data-lucide="layout-dashboard" class="h-4 w-4"></i>Home</a>
+      <a class="nav flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-accent/40"><i data-lucide="layout-grid" class="h-4 w-4"></i>Overview<span class="ml-auto text-3xs text-muted-foreground">Clinic</span></a>
+      <a class="nav flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-accent/40"><i data-lucide="bar-chart-3" class="h-4 w-4"></i>Analytics</a>
+
+      <!-- NEW top-level surface -->
+      <div class="mt-3 mb-1 px-2.5 text-3xs font-bold uppercase tracking-widest text-muted-foreground/70">Produce</div>
+      <a class="nav nav-active flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-semibold bg-primary text-white">
+        <i data-lucide="inbox" class="h-4 w-4"></i>Review&nbsp;Inbox
+        <span class="ml-auto text-3xs font-bold rounded-full bg-white/25 px-1.5 py-0.5">7</span>
+      </a>
+      <a class="nav flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-accent/40"><i data-lucide="newspaper" class="h-4 w-4"></i>Stories<span class="ml-auto text-3xs text-muted-foreground">Words</span></a>
+      <a class="nav flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-accent/40"><i data-lucide="gallery-horizontal-end" class="h-4 w-4"></i>Storyboard<span class="ml-auto text-3xs text-muted-foreground">Media</span></a>
+
+      <div class="mt-3 mb-1 px-2.5 text-3xs font-bold uppercase tracking-widest text-muted-foreground/70">Library</div>
+      <a class="nav flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-accent/40"><i data-lucide="folder-open" class="h-4 w-4"></i>Library</a>
+
+      <div class="mt-3 mb-1 px-2.5 text-3xs font-bold uppercase tracking-widest text-muted-foreground/70">Tools</div>
+      <a class="nav flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-accent/40"><i data-lucide="book-open" class="h-4 w-4"></i>Book</a>
+      <a class="nav flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-accent/40"><i data-lucide="pen-line" class="h-4 w-4"></i>Write</a>
+      <a class="nav flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-accent/40"><i data-lucide="scissors" class="h-4 w-4"></i>Slate<span class="ml-auto text-3xs font-bold text-primary">new</span></a>
+    </nav>
+
+    <div class="border-t px-3 py-3 flex items-center gap-2">
+      <div class="h-7 w-7 rounded-full bg-[hsl(20_60%_90%)] grid place-items-center text-xs font-bold text-[#c04d18]">A</div>
+      <div class="leading-tight"><p class="text-xs font-semibold">Alli Madsen</p><p class="text-3xs text-muted-foreground">Producer · People</p></div>
+    </div>
+  </aside>
+
+  <!-- ───────── Main ───────── -->
+  <main class="flex-1 min-w-0 flex flex-col">
+    <!-- top ribbon -->
+    <div class="px-7 pt-6">
+      <div class="nx-grad-ribbon flex items-center justify-between gap-4 flex-wrap">
+        <div class="min-w-0">
+          <p class="text-2xs font-bold uppercase tracking-widest opacity-85">Producer workspace</p>
+          <h1 class="text-2xl font-extrabold leading-tight">Review Inbox</h1>
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+          <span class="rounded-lg bg-white/20 px-3 py-1.5 font-semibold">7 need you</span>
+          <span class="rounded-lg bg-white/15 px-3 py-1.5">12 scheduled this week</span>
+        </div>
+      </div>
+
+      <!-- The one-line frame: why this surface exists -->
+      <div class="legend mt-4 rounded-xl px-4 py-3 text-xs text-foreground/80">
+        <p class="font-bold text-[#c04d18] mb-1 flex items-center gap-1.5"><i data-lucide="git-compare" class="h-3.5 w-3.5"></i> What changed &amp; why — P4 collapses three review→publish paths into one producer surface</p>
+        <div class="grid md:grid-cols-3 gap-2 mt-2">
+          <div class="rounded-lg bg-white/70 border p-2.5">
+            <p class="font-semibold text-foreground">TODAY · split 3 ways</p>
+            <p class="mt-1 text-muted-foreground">Approve→publish lives in <b>Home</b> buckets (DraftsReadyRow / “Ready to distribute”), <b>Stories</b> <code>?stage=review</code>, and <b>Storyboard</b> + per-piece <code>/publish</code>. Alli re-learns each.</p>
+          </div>
+          <div class="rounded-lg bg-white/70 border p-2.5">
+            <p class="font-semibold text-foreground">TODAY · one at a time</p>
+            <p class="mt-1 text-muted-foreground">Every piece is clicked through individually — <b>no bulk approve, no bulk schedule</b>. 7 drafts = 7 round-trips.</p>
+          </div>
+          <div class="rounded-lg bg-white/70 border p-2.5">
+            <p class="font-semibold text-foreground">TODAY · weak calendar</p>
+            <p class="mt-1 text-muted-foreground">Overview already has a Calendar lens (<code>StoriesCalendarView</code>), but it’s thin + read-only — you still go to <b>Buffer</b> to see the real week. Improve it in place, don’t add a surface.</p>
+          </div>
+        </div>
+        <p class="mt-2.5 text-[#c04d18] font-semibold leading-relaxed"><i data-lucide="arrow-right" class="inline h-3.5 w-3.5 -mt-0.5"></i> CHANGE → Review Inbox is the new producer <b>Queue</b> (bulk approve/schedule). Scheduling lands on the <b>shared calendar that already lives under Overview</b> — this just makes that calendar better.</p>
+      </div>
+    </div>
+
+    <!-- tabs — two DIFFERENT surfaces shown in one mockup -->
+    <div class="px-7 mt-5 border-b">
+      <div class="flex items-center gap-1">
+        <button data-tab="queue" class="tab tab-active px-4 py-2.5 text-sm font-semibold border-b-2 border-primary text-foreground flex items-center gap-1.5"><i data-lucide="inbox" class="h-3.5 w-3.5"></i>Review Inbox <span class="text-3xs font-normal text-muted-foreground">· Produce</span></button>
+        <button data-tab="calendar" class="tab px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-muted-foreground hover:text-foreground flex items-center gap-1.5"><i data-lucide="layout-grid" class="h-3.5 w-3.5"></i>Overview › Calendar <span class="text-3xs font-normal">· where scheduling shows up</span></button>
+        <span class="ml-auto text-xs text-muted-foreground self-center hidden md:flex items-center gap-1.5"><i data-lucide="info" class="h-3.5 w-3.5"></i> Mockup — clickable, no real data</span>
+      </div>
+    </div>
+
+    <!-- ════════════ QUEUE TAB ════════════ -->
+    <section id="tab-queue" class="px-7 py-5 flex-1">
+      <!-- bulk action bar (appears when rows selected) -->
+      <div id="bulkbar" class="hidden sticky top-0 z-20 mb-3 rounded-xl border border-primary/40 tint shadow-[0_8px_24px_-18px_rgba(227,101,37,.5)] px-4 py-2.5 flex items-center gap-3">
+        <span class="inline-block w-1 h-6 rounded-full bg-primary"></span>
+        <span class="text-sm font-bold"><span id="selcount">0</span> selected</span>
+        <div class="flex items-center gap-2 ml-2">
+          <button onclick="bulkApprove()" class="inline-flex items-center gap-1.5 bg-success text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-90"><i data-lucide="check-check" class="h-3.5 w-3.5"></i>Approve</button>
+          <button onclick="openScheduler()" class="inline-flex items-center gap-1.5 bg-primary text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-90"><i data-lucide="calendar-clock" class="h-3.5 w-3.5"></i>Schedule…</button>
+          <button class="inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1.5 rounded-lg bg-white hover:bg-accent/40"><i data-lucide="user" class="h-3.5 w-3.5"></i>Assign</button>
+          <button class="inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1.5 rounded-lg bg-white hover:bg-accent/40 text-destructive"><i data-lucide="trash-2" class="h-3.5 w-3.5"></i></button>
+        </div>
+        <button onclick="clearSel()" class="ml-auto text-xs text-muted-foreground hover:text-foreground">Clear</button>
+      </div>
+
+      <!-- list chrome: select-all + grouping note -->
+      <div class="flex items-center gap-3 mb-2 text-xs text-muted-foreground">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input id="selall" type="checkbox" onchange="toggleAll(this)" class="h-4 w-4 accent-[hsl(var(--primary))]" />
+          <span class="font-medium text-foreground">Select all</span>
+        </label>
+        <span class="legend rounded-md px-2 py-0.5 text-3xs">CHANGE → one list spans both old “awaiting review” (Stories) and “ready to distribute” (Storyboard/Home)</span>
+      </div>
+
+      <!-- group 1: needs review -->
+      <p class="mt-3 mb-2 text-2xs font-bold uppercase tracking-wide text-warning flex items-center gap-1.5"><i data-lucide="eye" class="h-3.5 w-3.5"></i> Needs review · 4 <span class="font-normal normal-case tracking-normal text-muted-foreground">— clinician sign-off that it sounds like them</span></p>
+      <div id="grp-review" class="space-y-2"></div>
+
+      <!-- group 2: ready to schedule -->
+      <p class="mt-6 mb-2 text-2xs font-bold uppercase tracking-wide text-primary flex items-center gap-1.5"><i data-lucide="send" class="h-3.5 w-3.5"></i> Approved · ready to schedule · 3 <span class="font-normal normal-case tracking-normal text-muted-foreground">— media attached, just needs a go-live time</span></p>
+      <div id="grp-ready" class="space-y-2"></div>
+    </section>
+
+    <!-- ════════════ OVERVIEW › CALENDAR TAB ════════════ -->
+    <section id="tab-calendar" class="hidden px-7 py-5 flex-1">
+      <!-- This is the EXISTING Overview surface — same page chrome as Overview.jsx -->
+      <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+        <div>
+          <h2 class="flex items-center gap-2 text-xl font-bold"><i data-lucide="layout-grid" class="h-5 w-5 text-primary"></i>Overview</h2>
+          <p class="mt-1 text-sm text-muted-foreground">The whole clinic’s content, top-down — every piece, every staff member.</p>
+        </div>
+        <span class="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-2xs font-medium text-muted-foreground"><i data-lucide="shield" class="h-3 w-3"></i>Publisher view</span>
+      </div>
+
+      <!-- Existing lens toggle from Overview.jsx — Calendar lens active -->
+      <div class="inline-flex rounded-md border p-0.5 text-xs font-medium mb-3">
+        <button class="rounded px-3 py-1 text-muted-foreground hover:text-foreground">Pipeline</button>
+        <button class="rounded px-3 py-1 text-muted-foreground hover:text-foreground">Cards</button>
+        <button class="rounded px-3 py-1 bg-primary text-white">Calendar</button>
+        <button class="rounded px-3 py-1 text-muted-foreground hover:text-foreground">Campaigns</button>
+      </div>
+
+      <div class="legend rounded-lg px-3 py-2 text-2xs mb-4">TODAY → the Calendar lens already exists here (<code>StoriesCalendarView</code>), but it’s thin and read-only. CHANGE → <b>same place, better calendar</b>: per-channel color, a teammate-wide week of go-live times, and an “approved · unscheduled” rail you schedule straight from. No new top-level surface.</div>
+
+      <div class="grid lg:grid-cols-[1fr_260px] gap-5">
+        <!-- week grid -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <button class="h-7 w-7 grid place-items-center rounded-md border bg-white hover:bg-accent/40"><i data-lucide="chevron-left" class="h-4 w-4"></i></button>
+              <h3 class="text-sm font-bold">Week of Jun 8 — Jun 14</h3>
+              <button class="h-7 w-7 grid place-items-center rounded-md border bg-white hover:bg-accent/40"><i data-lucide="chevron-right" class="h-4 w-4"></i></button>
+            </div>
+            <div class="flex items-center gap-3 text-3xs text-muted-foreground">
+              <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm bg-[#0284c7]"></span>Instagram</span>
+              <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm bg-[#7c3aed]"></span>Facebook</span>
+              <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm bg-success"></span>GBP</span>
+              <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm bg-warning"></span>Email</span>
+            </div>
+          </div>
+          <div id="calgrid" class="grid grid-cols-7 gap-2"></div>
+        </div>
+
+        <!-- unscheduled rail -->
+        <div>
+          <p class="text-2xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Approved · unscheduled · 3</p>
+          <p class="text-3xs text-muted-foreground mb-3">Drag onto a day, or select &amp; bulk-schedule from the Queue.</p>
+          <div id="unsched" class="space-y-2"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ════════════ BULK SCHEDULER DRAWER ════════════ -->
+<div id="scrim" class="hidden fixed inset-0 bg-black/30 z-40" onclick="closeScheduler()"></div>
+<aside id="drawer" class="hidden fixed right-0 top-0 h-full w-[380px] bg-card border-l shadow-2xl z-50 flex flex-col">
+  <div class="px-5 py-4 border-b flex items-center justify-between">
+    <h3 class="font-bold flex items-center gap-2"><i data-lucide="calendar-clock" class="h-4 w-4 text-primary"></i>Schedule <span id="drawcount">0</span> posts</h3>
+    <button onclick="closeScheduler()" class="text-muted-foreground hover:text-foreground"><i data-lucide="x" class="h-4 w-4"></i></button>
+  </div>
+  <div class="p-5 space-y-5 overflow-y-auto flex-1 text-sm">
+    <div class="legend rounded-lg px-3 py-2 text-2xs">CHANGE → bulk schedule replaces clicking each piece through <code>/storyboard/:id/publish</code> one at a time.</div>
+
+    <div>
+      <p class="font-semibold mb-2">How should they go out?</p>
+      <label class="flex items-start gap-2.5 rounded-lg border p-3 mb-2 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-accent/30">
+        <input type="radio" name="cadence" checked class="mt-0.5 accent-[hsl(var(--primary))]" />
+        <span><span class="font-medium">Auto-space across this week</span><br><span class="text-2xs text-muted-foreground">One per weekday at 9:00am — fills the gaps in the Overview calendar.</span></span>
+      </label>
+      <label class="flex items-start gap-2.5 rounded-lg border p-3 mb-2 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-accent/30">
+        <input type="radio" name="cadence" class="mt-0.5 accent-[hsl(var(--primary))]" />
+        <span><span class="font-medium">Add to Buffer queue</span><br><span class="text-2xs text-muted-foreground">Use each channel’s existing Buffer posting schedule.</span></span>
+      </label>
+      <label class="flex items-start gap-2.5 rounded-lg border p-3 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-accent/30">
+        <input type="radio" name="cadence" class="mt-0.5 accent-[hsl(var(--primary))]" />
+        <span><span class="font-medium">Same time for all</span><br><span class="text-2xs text-muted-foreground">Pick one date &amp; time below.</span></span>
+      </label>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="text-2xs font-semibold text-muted-foreground">Start date</label><input type="date" value="2026-06-08" class="mt-1 w-full rounded-lg border px-2.5 py-1.5 text-sm" /></div>
+      <div><label class="text-2xs font-semibold text-muted-foreground">Time</label><input type="time" value="09:00" class="mt-1 w-full rounded-lg border px-2.5 py-1.5 text-sm" /></div>
+    </div>
+
+    <div class="rounded-lg border bg-muted/30 p-3">
+      <p class="text-2xs font-semibold text-muted-foreground mb-2">Preview</p>
+      <div id="schedpreview" class="space-y-1.5 text-2xs"></div>
+    </div>
+  </div>
+  <div class="px-5 py-4 border-t flex items-center gap-2">
+    <button onclick="closeScheduler()" class="flex-1 rounded-lg border bg-white py-2 text-sm font-semibold hover:bg-accent/40">Cancel</button>
+    <button onclick="confirmSchedule()" class="flex-1 rounded-lg bg-primary text-white py-2 text-sm font-semibold hover:opacity-90">Schedule all</button>
+  </div>
+</aside>
+
+<!-- toast -->
+<div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] rounded-xl bg-foreground text-white px-4 py-3 text-sm font-medium shadow-2xl flex items-center gap-2"></div>
+
+<script>
+// ── mock data (shapes mirror content_items: platform/topic/staff_name/status/media_urls) ──
+const PLAT = {
+  instagram:{label:'Instagram',icon:'instagram',color:'#0284c7'},
+  facebook:{label:'Facebook',icon:'facebook',color:'#7c3aed'},
+  gbp:{label:'Google',icon:'map-pin',color:'#16a34a'},
+  email:{label:'Email',icon:'mail',color:'#d97706'},
+  blog:{label:'Blog',icon:'file-text',color:'#475569'},
+};
+const REVIEW = [
+  {id:'r1',plat:'blog',topic:'Why your sciatica feels worse in the morning',staff:'AJ Gentile',age:'2d',need:'words'},
+  {id:'r2',plat:'instagram',topic:'3 desk resets for low-back tension',staff:'Whitney Park',age:'1d',need:'words'},
+  {id:'r3',plat:'facebook',topic:'Meet the team: Cullen on hands-on care',staff:'Cullen Reed',age:'4d',need:'words',stale:true},
+  {id:'r4',plat:'email',topic:'June newsletter — movement as medicine',staff:'AJ Gentile',age:'today',need:'words'},
+];
+const READY = [
+  {id:'a1',plat:'instagram',topic:'Reel: shoulder mobility in 30s',staff:'Whitney Park',media:1,kind:'Reel'},
+  {id:'a2',plat:'gbp',topic:'New patient hours this summer',staff:'Alli Madsen',media:1,kind:'Photo'},
+  {id:'a3',plat:'facebook',topic:'Patient win — back to trail running',staff:'AJ Gentile',media:3,kind:'Carousel'},
+];
+
+const sel = new Set();
+function platBadge(p){const m=PLAT[p];return `<span class="inline-flex items-center gap-1 text-2xs font-semibold rounded-full border px-2 py-0.5" style="color:${m.color}"><i data-lucide="${m.icon}" class="h-3 w-3"></i>${m.label}</span>`}
+
+function row(item, group){
+  const checked = sel.has(item.id)?'checked':'';
+  const ageCls = item.stale ? 'text-warning font-semibold':'text-muted-foreground';
+  const action = group==='review'
+    ? `<button onclick="quickApprove('${item.id}',event)" class="inline-flex items-center gap-1 text-xs font-semibold text-success hover:underline"><i data-lucide="check" class="h-3.5 w-3.5"></i>Approve</button>`
+    : `<button onclick="quickSchedule('${item.id}',event)" class="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><i data-lucide="calendar-plus" class="h-3.5 w-3.5"></i>Schedule</button>`;
+  const meta = group==='review'
+    ? `Awaiting clinician sign-off · <span class="${ageCls}">${item.age}</span>`
+    : `${item.media} media · ${item.kind}`;
+  return `<div class="flex items-center gap-3 rounded-xl border bg-card px-3.5 py-3 hover:border-primary/40 transition-colors ${checked?'ring-1 ring-primary/40 bg-accent/20':''}">
+    <input type="checkbox" ${checked} onchange="toggle('${item.id}')" class="h-4 w-4 accent-[hsl(var(--primary))]" />
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 flex-wrap">${platBadge(item.plat)}<span class="text-sm font-semibold truncate">${item.topic}</span></div>
+      <p class="text-2xs text-muted-foreground mt-0.5">${item.staff} · ${meta}</p>
+    </div>
+    ${action}
+    <button class="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary">Open<i data-lucide="chevron-right" class="h-3.5 w-3.5"></i></button>
+  </div>`;
+}
+function renderQueue(){
+  document.getElementById('grp-review').innerHTML = REVIEW.map(i=>row(i,'review')).join('');
+  document.getElementById('grp-ready').innerHTML  = READY.map(i=>row(i,'ready')).join('');
+  lucide.createIcons();
+  updateBulk();
+}
+
+// ── calendar ──
+const DAYS=['Mon 8','Tue 9','Wed 10','Thu 11','Fri 12','Sat 13','Sun 14'];
+const SCHED={ // day-index → posts already live/scheduled (shared across team)
+  0:[{p:'instagram',t:'Morning mobility tip',s:'Whitney'}],
+  1:[{p:'gbp',t:'Summer hours',s:'Alli'},{p:'email',t:'Welcome series',s:'Alli'}],
+  2:[],
+  3:[{p:'facebook',t:'Patient story: trail running',s:'AJ'}],
+  4:[{p:'instagram',t:'Friday Q&A: knee pain',s:'AJ'}],
+  5:[],6:[],
+};
+function renderCal(){
+  document.getElementById('calgrid').innerHTML = DAYS.map((d,i)=>{
+    const posts=(SCHED[i]||[]).map(x=>{const m=PLAT[x.p];return `<div class="rounded-md px-2 py-1 text-3xs text-white font-medium truncate" style="background:${m.color}">${x.t}<span class="opacity-80"> · ${x.s}</span></div>`}).join('');
+    const today = i===0?'ring-2 ring-primary/50':'';
+    return `<div class="min-h-[120px] rounded-lg border bg-card p-1.5 ${today}">
+      <p class="text-3xs font-bold text-muted-foreground mb-1.5 px-1">${d}</p>
+      <div class="space-y-1">${posts || '<p class=\"text-3xs text-muted-foreground/50 px-1\">—</p>'}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('unsched').innerHTML = READY.map(i=>{const m=PLAT[i.plat];
+    return `<div class="rounded-lg border bg-card px-3 py-2 cursor-grab hover:border-primary/40">
+      <div class="flex items-center gap-1.5">${platBadge(i.plat)}</div>
+      <p class="text-2xs font-semibold mt-1 truncate">${i.topic}</p>
+      <p class="text-3xs text-muted-foreground">${i.staff}</p>
+    </div>`}).join('');
+  lucide.createIcons();
+}
+
+// ── selection / bulk ──
+function toggle(id){sel.has(id)?sel.delete(id):sel.add(id);renderQueue();}
+function toggleAll(cb){sel.clear();if(cb.checked){[...REVIEW,...READY].forEach(i=>sel.add(i.id));}renderQueue();}
+function clearSel(){sel.clear();document.getElementById('selall').checked=false;renderQueue();}
+function updateBulk(){
+  const bar=document.getElementById('bulkbar');
+  document.getElementById('selcount').textContent=sel.size;
+  bar.classList.toggle('hidden',sel.size===0);
+}
+function quickApprove(id,e){e.stopPropagation();toast(`Approved “${find(id).topic}” — moved to Ready to schedule`);}
+function quickSchedule(id,e){e.stopPropagation();sel.clear();sel.add(id);renderQueue();openScheduler();}
+function bulkApprove(){toast(`Approved ${sel.size} pieces`);clearSel();}
+function find(id){return [...REVIEW,...READY].find(i=>i.id===id);}
+
+// ── scheduler drawer ──
+function openScheduler(){
+  if(sel.size===0)return;
+  document.getElementById('drawcount').textContent=sel.size;
+  const items=[...sel].map(find).filter(Boolean);
+  document.getElementById('schedpreview').innerHTML=items.map((i,n)=>{
+    const day=DAYS[n%5];
+    return `<div class="flex items-center justify-between"><span class="truncate">${i.topic}</span><span class="text-muted-foreground shrink-0 ml-2">${day} · 9:00am</span></div>`;
+  }).join('');
+  document.getElementById('scrim').classList.remove('hidden');
+  document.getElementById('drawer').classList.remove('hidden');
+  lucide.createIcons();
+}
+function closeScheduler(){document.getElementById('scrim').classList.add('hidden');document.getElementById('drawer').classList.add('hidden');}
+function confirmSchedule(){const n=sel.size;closeScheduler();clearSel();toast(`Scheduled ${n} posts — see them on the Overview calendar`);}
+
+// ── toast ──
+let tt;
+function toast(msg){const el=document.getElementById('toast');el.innerHTML=`<i data-lucide="check-circle-2" class="h-4 w-4 text-[hsl(var(--success))]"></i>${msg}`;el.classList.remove('hidden');lucide.createIcons();clearTimeout(tt);tt=setTimeout(()=>el.classList.add('hidden'),2600);}
+
+// ── tabs ──
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>{x.classList.remove('tab-active','border-primary','text-foreground');x.classList.add('border-transparent','text-muted-foreground');});
+  b.classList.add('tab-active','border-primary','text-foreground');b.classList.remove('border-transparent','text-muted-foreground');
+  const t=b.dataset.tab;
+  document.getElementById('tab-queue').classList.toggle('hidden',t!=='queue');
+  document.getElementById('tab-calendar').classList.toggle('hidden',t!=='calendar');
+  if(t==='calendar')renderCal();
+}));
+
+renderQueue();
+lucide.createIcons();
+</script>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Photo Templates — fix proposals</title>
+<style>
+  :root{
+    --navy:#0c1a2e;
+    --paper:#f6f4ef;
+    --accent:#e36525;        /* Move Better brand accent (orange rule + CTA) */
+    --ink:#0c1a2e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#eef1f4;color:#0c1a2e;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif;padding:32px 40px 80px}
+  h1{font-size:22px;margin:0 0 4px}
+  .sub{color:#5b6675;font-size:14px;margin:0 0 28px;max-width:760px;line-height:1.5}
+  h2{font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:#5b6675;margin:36px 0 14px;border-bottom:1px solid #d7dde3;padding-bottom:8px}
+  .row{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
+  .opt{width:330px}
+  .tag{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:8px}
+  .pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+  .cur{background:#fde2e1;color:#b42318}
+  .pro{background:#dcfae6;color:#067647}
+  .ref{background:#e0eaff;color:#2541b2}
+  .note{font-size:12px;color:#5b6675;margin-top:8px;line-height:1.45}
+
+  /* ---- card scaffold (square 1080 → 330px) ---- */
+  .card{position:relative;width:330px;height:330px;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.12);background:#111}
+  .card .photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .label{position:absolute;top:16px;left:18px;font-size:11px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.85)}
+  .label.dark-ink{color:rgba(12,26,46,.6)}
+  .brand{position:absolute;bottom:14px;left:18px;font-size:11px;font-weight:600}
+  .rule{position:absolute;left:0;right:0;height:3px;background:var(--accent)}
+  .hook{position:absolute;left:0;right:0;text-align:center;font-size:26px;font-weight:800;line-height:1.1;padding:0 22px}
+
+  /* DARK BADGE reference scrim */
+  .scrim-dark{position:absolute;left:0;right:0;bottom:0;height:60%;
+    background:linear-gradient(to bottom,rgba(12,26,46,0) 0%,rgba(12,26,46,.8)55%,rgba(12,26,46,.97) 100%)}
+
+  /* LIGHT BADGE panels */
+  .scrim-light-solid{position:absolute;left:0;right:0;bottom:0;height:42%;background:#fff}
+  .scrim-light-solid-fade{position:absolute;left:0;right:0;bottom:42%;height:20%;
+    background:linear-gradient(to bottom,rgba(255,255,255,0),#fff)}
+
+  .scrim-light-translucent{position:absolute;left:0;right:0;bottom:0;height:42%;background:rgba(255,255,255,.72)}
+  .scrim-light-translucent-fade{position:absolute;left:0;right:0;bottom:42%;height:22%;
+    background:linear-gradient(to bottom,rgba(255,255,255,0),rgba(255,255,255,.72))}
+
+  .scrim-light-frost{position:absolute;left:0;right:0;bottom:0;height:42%;background:rgba(255,255,255,.55);backdrop-filter:blur(10px)}
+  .scrim-light-frost-fade{position:absolute;left:0;right:0;bottom:42%;height:22%;
+    background:linear-gradient(to bottom,rgba(255,255,255,0),rgba(255,255,255,.55));backdrop-filter:blur(6px)}
+
+  /* text-zone helper for badge panels */
+  .panel-text{position:absolute;left:0;right:0;text-align:center;padding:0 22px}
+  .panel-hook{font-size:22px;font-weight:800;color:var(--ink)}
+  .panel-body{font-size:14px;font-weight:500;color:#3a4654;margin-top:6px;line-height:1.3}
+
+  /* ---- TEXT BLOCK shape demos (over photo) ---- */
+  .tcard{position:relative;width:330px;height:330px;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+  .tcard .photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+  /* current "crazy" — box hugs widest line only, 2nd line spills out */
+  .blk-crazy{position:absolute;left:50%;top:46%;transform:translateX(-50%);width:auto;max-width:88%;
+    background:rgba(12,26,46,.78);border-radius:18px;padding:10px 24px;color:#fff;font-size:16px;font-weight:600;white-space:nowrap}
+  .blk-crazy .spill{position:absolute;left:50%;top:100%;transform:translateX(-50%);white-space:nowrap;color:#fff;margin-top:2px}
+
+  /* T1 clean rounded box that bounds ALL lines */
+  .blk-clean{position:absolute;left:50%;top:42%;transform:translateX(-50%);width:78%;
+    background:rgba(12,26,46,.78);border-radius:18px;padding:14px 22px;color:#fff;font-size:16px;font-weight:600;text-align:center;line-height:1.3}
+
+  /* T2 no box — plain text, panel/scrim carries contrast */
+  .blk-plain{position:absolute;left:0;right:0;top:42%;text-align:center;padding:0 26px;color:#fff;font-size:17px;font-weight:700;line-height:1.3;text-shadow:0 2px 8px rgba(0,0,0,.55)}
+
+  .cta{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);
+    background:var(--accent);color:#fff;font-weight:700;font-size:15px;padding:11px 26px;border-radius:999px}
+  .legend{margin-top:10px;font-size:12px;color:#5b6675;border-left:3px dashed #b9c2cc;padding:6px 0 6px 12px;line-height:1.5;max-width:330px}
+</style>
+</head>
+<body>
+  <h1>Photo Templates — proposed fixes</h1>
+  <p class="sub">Two things to confirm before I write any code: (1) how the <b>light-badge bottom panel</b> should read — solid vs see-through like the dark badge, and (2) the <b>text-block shape</b>. Pick one in each section.</p>
+
+  <!-- ============ SECTION 1: LIGHT BADGE PANEL ============ -->
+  <h2>1 · Light-badge bottom panel — see-through?</h2>
+  <div class="row">
+    <!-- reference -->
+    <div class="opt">
+      <div class="tag">Dark badge <span class="pill ref">REFERENCE — already live</span></div>
+      <div class="card">
+        <img class="photo" src="https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/061ea516-c282-4905-a127-0f67ba1a082e-THJcHRAsDPjwG7jnzWtfElC8edvfMS.jpg" referrerpolicy="no-referrer">
+        <div class="scrim-dark"></div>
+        <div class="label">MOBILITY</div>
+        <div class="rule" style="bottom:38%"></div>
+        <div class="panel-text" style="bottom:16%"><div class="panel-hook" style="color:#fff">Why your hips lie</div></div>
+        <div class="brand" style="color:#fff">Move Better</div>
+      </div>
+      <div class="legend">The fade is translucent — the photo keeps showing through behind the text. This is the look to match.</div>
+    </div>
+
+    <!-- current -->
+    <div class="opt">
+      <div class="tag">Light badge — A <span class="pill cur">CURRENT (live now)</span></div>
+      <div class="card">
+        <img class="photo" src="https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/061ea516-c282-4905-a127-0f67ba1a082e-THJcHRAsDPjwG7jnzWtfElC8edvfMS.jpg" referrerpolicy="no-referrer">
+        <div class="scrim-light-solid-fade"></div>
+        <div class="scrim-light-solid"></div>
+        <div class="rule" style="bottom:42%"></div>
+        <div class="label">MOBILITY</div>
+        <div class="panel-text" style="bottom:20%"><div class="panel-hook">Why your hips lie</div></div>
+        <div class="brand" style="color:var(--ink)">Move Better</div>
+      </div>
+      <div class="legend">Fade is nice, but the bottom panel is <b>solid white</b> — photo is fully blocked. This is what you flagged.</div>
+    </div>
+
+    <!-- proposed translucent -->
+    <div class="opt">
+      <div class="tag">Light badge — B <span class="pill pro">PROPOSED · translucent</span></div>
+      <div class="card">
+        <img class="photo" src="https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/061ea516-c282-4905-a127-0f67ba1a082e-THJcHRAsDPjwG7jnzWtfElC8edvfMS.jpg" referrerpolicy="no-referrer">
+        <div class="scrim-light-translucent-fade"></div>
+        <div class="scrim-light-translucent"></div>
+        <div class="rule" style="bottom:42%"></div>
+        <div class="label">MOBILITY</div>
+        <div class="panel-text" style="bottom:20%"><div class="panel-hook">Why your hips lie</div></div>
+        <div class="brand" style="color:var(--ink)">Move Better</div>
+      </div>
+      <div class="legend">Panel is 72% white — photo ghosts through, mirrors the dark badge. Canvas-native (works in preview AND publish).</div>
+    </div>
+
+    <!-- proposed frosted -->
+    <div class="opt">
+      <div class="tag">Light badge — C <span class="pill pro">PROPOSED · frosted</span></div>
+      <div class="card">
+        <img class="photo" src="https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/061ea516-c282-4905-a127-0f67ba1a082e-THJcHRAsDPjwG7jnzWtfElC8edvfMS.jpg" referrerpolicy="no-referrer">
+        <div class="scrim-light-frost-fade"></div>
+        <div class="scrim-light-frost"></div>
+        <div class="rule" style="bottom:42%"></div>
+        <div class="label">MOBILITY</div>
+        <div class="panel-text" style="bottom:20%"><div class="panel-hook">Why your hips lie</div></div>
+        <div class="brand" style="color:var(--ink)">Move Better</div>
+      </div>
+      <div class="legend">Frosted glass (blur + 55% white). Prettiest, but blur is more work to bake server-side — flag if you want this one.</div>
+    </div>
+  </div>
+
+  <!-- ============ SECTION 2: TEXT BLOCK SHAPE ============ -->
+  <h2>2 · Text-block shape (CTA / explainer text over photo)</h2>
+  <div class="row">
+    <!-- current crazy -->
+    <div class="opt">
+      <div class="tag">A <span class="pill cur">CURRENT (live now)</span></div>
+      <div class="tcard">
+        <img class="photo" src="https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/05a3288c-d368-4d7c-a91e-4fc3abe7b901-rUKgBmK5M2QgTQ2IaLNm2en0q9Tz5n.jpg" referrerpolicy="no-referrer">
+        <div class="blk-crazy">Book a movement assessment and we’ll<div class="spill">map the real driver.</div></div>
+        <div class="cta">Book now →</div>
+      </div>
+      <div class="legend">The box hugs only the first line; the wrapped line spills outside it → the “crazy shape” you saw.</div>
+    </div>
+
+    <!-- T1 clean box -->
+    <div class="opt">
+      <div class="tag">B <span class="pill pro">PROPOSED · clean box</span></div>
+      <div class="tcard">
+        <img class="photo" src="https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/05a3288c-d368-4d7c-a91e-4fc3abe7b901-rUKgBmK5M2QgTQ2IaLNm2en0q9Tz5n.jpg" referrerpolicy="no-referrer">
+        <div class="blk-clean">Book a movement assessment and we’ll map the real driver.</div>
+        <div class="cta">Book now →</div>
+      </div>
+      <div class="legend">One rounded box that bounds <b>all</b> wrapped lines, even padding. Keeps the dark chip for legibility over busy photos.</div>
+    </div>
+
+    <!-- T2 no box -->
+    <div class="opt">
+      <div class="tag">C <span class="pill pro">PROPOSED · no box</span></div>
+      <div class="tcard">
+        <img class="photo" src="https://t4otw6ecf8ztxfeq.public.blob.vercel-storage.com/media/web/05a3288c-d368-4d7c-a91e-4fc3abe7b901-rUKgBmK5M2QgTQ2IaLNm2en0q9Tz5n.jpg" referrerpolicy="no-referrer">
+        <div class="blk-plain">Book a movement assessment and we’ll map the real driver.</div>
+        <div class="cta">Book now →</div>
+      </div>
+      <div class="legend">No chip at all — just text + soft shadow. Cleanest, and in badge/split layouts the panel already gives contrast so a box is redundant.</div>
+    </div>
+  </div>
+
+</body>
+</html>

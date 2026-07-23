@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bernard — Weekly recap on the Overview dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --background:220 22% 97%; --foreground:222 47% 8%; --card:0 0% 100%;
+    --primary:20 76% 52%; --primary-foreground:0 0% 100%;
+    --muted:220 14% 96%; --muted-foreground:215 16% 47%;
+    --accent:20 60% 95%; --accent-foreground:20 76% 38%;
+    --border:214 32% 91%; --radius:0.625rem;
+    --success:152 76% 40%; --warning:38 92% 50%; --info:199 95% 40%;
+  }
+  body{background:hsl(var(--background));color:hsl(var(--foreground));font-family:'Geist','Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,h4{font-weight:700;letter-spacing:-0.025em;}
+  .nx-card{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:var(--radius);}
+  .pill{display:inline-flex;align-items:center;gap:5px;border-radius:9999px;padding:3px 9px;font-size:11px;font-weight:600;line-height:1.4;white-space:nowrap;}
+  .pill-emerald{background:#ecfdf5;color:#059669;}
+  .pill-sky{background:#e0f2fe;color:#0284c7;}
+  .pill-tint{background:#fff7f0;color:#c04d18;border:1px solid #fde0d2;}
+  .pill-ink{background:#f1f5f9;color:#475569;}
+  .legend-chip{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:2px 8px;border-radius:6px;background:hsl(var(--accent));color:hsl(var(--accent-foreground));}
+  .diff-change{outline:2px dashed hsl(var(--primary));outline-offset:4px;border-radius:16px;}
+</style>
+</head>
+<body class="min-h-screen">
+
+<div class="max-w-[1080px] mx-auto px-6 py-8">
+
+  <!-- intro -->
+  <div class="mb-6 flex items-start gap-3 text-sm">
+    <span class="legend-chip mt-0.5">Overview · /overview</span>
+    <p class="text-slate-500 max-w-3xl">Replaces the weekly email. A workspace-wide <b>"This week"</b> recap pinned to the top of the Overview dashboard — pull it up on the screen in your weekly all-staff meeting. Dashed outline = the one new section; everything below it is today's Overview, unchanged.</p>
+  </div>
+
+  <!-- Overview page header (real chrome) -->
+  <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+    <div>
+      <h1 class="flex items-center gap-2 text-xl font-semibold"><i data-lucide="layout-grid" class="h-5 w-5 text-[hsl(var(--primary))]"></i> Overview</h1>
+      <p class="mt-1 text-sm text-slate-500">The whole clinic's content, top-down — every piece, every staff member.</p>
+    </div>
+    <span class="inline-flex items-center gap-1.5 rounded-full border bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500"><i data-lucide="shield" class="h-3 w-3"></i> Publisher view</span>
+  </div>
+
+  <!-- ★ NEW — the weekly recap section -->
+  <div class="diff-change mb-8">
+    <div class="rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-22px_rgba(15,23,42,0.3)]">
+      <!-- banner header -->
+      <div class="px-6 py-4 flex items-center gap-3 text-white" style="background:linear-gradient(100deg,#e36525 0%,#f0883e 60%,#f6a96b 100%);">
+        <div class="text-2xl">🎉</div>
+        <div class="flex-1">
+          <h2 class="text-lg font-extrabold leading-tight">This week at Move Better</h2>
+          <p class="text-xs opacity-90">May 28 – Jun 4 · for your Monday all-staff meeting</p>
+        </div>
+        <button class="bg-white/15 hover:bg-white/25 text-white text-xs font-semibold px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5 backdrop-blur"><i data-lucide="presentation" class="h-3.5 w-3.5"></i> Present mode</button>
+      </div>
+
+      <!-- stat row -->
+      <div class="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-100 border-b border-slate-100">
+        <div class="p-4 text-center"><p class="text-3xl font-extrabold text-emerald-600">7</p><p class="text-xs text-slate-500 mt-0.5">went live</p></div>
+        <div class="p-4 text-center"><p class="text-3xl font-extrabold text-sky-600">4</p><p class="text-xs text-slate-500 mt-0.5">scheduled to go out</p></div>
+        <div class="p-4 text-center"><p class="text-3xl font-extrabold" style="color:hsl(var(--primary));">3</p><p class="text-xs text-slate-500 mt-0.5">waiting on review</p></div>
+        <div class="p-4 text-center"><p class="text-3xl font-extrabold text-slate-700">5</p><p class="text-xs text-slate-500 mt-0.5">new stories captured</p></div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+        <!-- went live -->
+        <div class="p-5">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="pill pill-emerald">🎉 Went live</span>
+            <h3 class="text-sm font-bold">7 posts out in the world</h3>
+          </div>
+          <div class="space-y-2.5">
+            <div class="flex items-center gap-3">
+              <span class="h-7 w-7 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold flex items-center justify-center shrink-0">WH</span>
+              <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">Why your low back locks up after travel</p><p class="text-xs text-slate-500">Whitney · Instagram, Facebook · Tue</p></div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="h-7 w-7 rounded-full bg-violet-100 text-violet-700 text-[10px] font-bold flex items-center justify-center shrink-0">AJ</span>
+              <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">What we look for in a running gait screen</p><p class="text-xs text-slate-500">AJ · Blog, LinkedIn · Wed</p></div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="h-7 w-7 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold flex items-center justify-center shrink-0">Q</span>
+              <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">The 30-second hip reset I show every runner</p><p class="text-xs text-slate-500">Q · GBP, Instagram Reel · Thu</p></div>
+            </div>
+            <p class="text-xs text-slate-400 pt-1">+ 4 more — Cullen (2), Whitney (1), Alli (1)</p>
+          </div>
+        </div>
+
+        <!-- going out next + waiting -->
+        <div class="p-5 space-y-5">
+          <div>
+            <div class="flex items-center gap-2 mb-3">
+              <span class="pill pill-sky">Going out next</span>
+              <h3 class="text-sm font-bold">Scheduled this coming week</h3>
+            </div>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2 text-sm"><i data-lucide="calendar" class="h-3.5 w-3.5 text-slate-400 shrink-0"></i><span class="font-semibold truncate flex-1">Posture &amp; desk setup series</span><span class="text-xs text-slate-500 shrink-0">Mon 9 AM</span></div>
+              <div class="flex items-center gap-2 text-sm"><i data-lucide="calendar" class="h-3.5 w-3.5 text-slate-400 shrink-0"></i><span class="font-semibold truncate flex-1">Recovery after a long ride</span><span class="text-xs text-slate-500 shrink-0">Tue 9 AM</span></div>
+              <p class="text-xs text-slate-400">+ 2 more scheduled</p>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-3">
+              <span class="pill pill-tint">Needs the team</span>
+              <h3 class="text-sm font-bold">Waiting on review</h3>
+            </div>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2 text-sm"><span class="font-semibold truncate flex-1">What "good posture" actually means</span><span class="text-xs text-slate-500 shrink-0">Whitney → needs Alli</span></div>
+              <div class="flex items-center gap-2 text-sm"><span class="font-semibold truncate flex-1">Why we screen before we adjust</span><span class="text-xs text-slate-500 shrink-0">draft ready</span></div>
+              <p class="text-xs text-slate-400">+ 1 more</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ★ NEW — all-time summary (the lifetime counterpart to "this week") -->
+  <div class="diff-change mb-8">
+    <div class="rounded-2xl overflow-hidden border border-slate-700 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-22px_rgba(15,23,42,0.4)]" style="background:linear-gradient(120deg,#1e293b 0%,#334155 100%);">
+      <div class="px-6 py-3.5 flex items-center gap-3 text-white border-b border-white/10">
+        <i data-lucide="infinity" class="h-5 w-5 opacity-90"></i>
+        <div class="flex-1">
+          <h2 class="text-base font-extrabold leading-tight">All time at Move Better</h2>
+          <p class="text-2xs opacity-70">since Jan 2026 · the whole story so far</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-white/10 text-white">
+        <div class="p-4 text-center"><p class="text-3xl font-extrabold text-emerald-400">1,847</p><p class="text-xs opacity-70 mt-0.5">posts published</p></div>
+        <div class="p-4 text-center"><p class="text-3xl font-extrabold text-sky-400">512</p><p class="text-xs opacity-70 mt-0.5">stories captured</p></div>
+        <div class="p-4 text-center"><p class="text-3xl font-extrabold text-orange-300">7</p><p class="text-xs opacity-70 mt-0.5">teammates contributing</p></div>
+        <div class="p-4 text-center"><p class="text-3xl font-extrabold text-white">$2,140</p><p class="text-xs opacity-70 mt-0.5">total run cost · est.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ★ NEW — expanded Team section: motivate (all-time counter + streaks) + accountable (due nudges) -->
+  <div class="diff-change mb-8">
+    <div class="nx-card overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-3 flex-wrap">
+        <i data-lucide="users" class="h-4 w-4 text-[hsl(var(--primary))]"></i>
+        <h3 class="text-base font-bold">The team</h3>
+        <span class="pill pill-ink">streaks reward showing up, not posting most</span>
+        <span class="ml-auto text-xs text-slate-400">who's been captured recently · who's due</span>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-slate-100">
+        <!-- active person card: this-week + streak (motivation) + all-time (the growing number) -->
+        <div class="bg-white p-4">
+          <div class="flex items-center gap-3">
+            <span class="h-11 w-11 rounded-full bg-slate-200 text-slate-600 text-sm font-bold flex items-center justify-center shrink-0">WH</span>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2"><p class="font-bold text-sm">Whitney</p><span class="pill pill-emerald">2 this week</span></div>
+              <p class="text-2xs text-slate-400 mt-0.5">Last captured Tue · 1 in review</p>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
+            <span class="inline-flex items-center gap-1 text-xs font-bold text-orange-600">🔥 6-week streak</span>
+            <span class="text-xs text-slate-500"><b class="text-foreground text-sm">312</b> all-time</span>
+          </div>
+        </div>
+        <div class="bg-white p-4">
+          <div class="flex items-center gap-3">
+            <span class="h-11 w-11 rounded-full bg-amber-100 text-amber-700 text-sm font-bold flex items-center justify-center shrink-0">Q</span>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2"><p class="font-bold text-sm">Q</p><span class="pill pill-emerald">1 this week</span></div>
+              <p class="text-2xs text-slate-400 mt-0.5">Last captured Thu · 2 scheduled</p>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
+            <span class="inline-flex items-center gap-1 text-xs font-bold text-orange-600">🔥 11-week streak</span>
+            <span class="text-xs text-slate-500"><b class="text-foreground text-sm">688</b> all-time</span>
+          </div>
+        </div>
+        <div class="bg-white p-4">
+          <div class="flex items-center gap-3">
+            <span class="h-11 w-11 rounded-full bg-violet-100 text-violet-700 text-sm font-bold flex items-center justify-center shrink-0">AJ</span>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2"><p class="font-bold text-sm">AJ</p><span class="pill pill-emerald">1 this week</span></div>
+              <p class="text-2xs text-slate-400 mt-0.5">Last captured Wed</p>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
+            <span class="inline-flex items-center gap-1 text-xs font-bold text-orange-600">🔥 3-week streak</span>
+            <span class="text-xs text-slate-500"><b class="text-foreground text-sm">147</b> all-time</span>
+          </div>
+        </div>
+        <div class="bg-white p-4">
+          <div class="flex items-center gap-3">
+            <span class="h-11 w-11 rounded-full bg-sky-100 text-sky-700 text-sm font-bold flex items-center justify-center shrink-0">CU</span>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2"><p class="font-bold text-sm">Cullen</p><span class="pill pill-emerald">2 this week</span></div>
+              <p class="text-2xs text-slate-400 mt-0.5">Last captured Mon</p>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
+            <span class="inline-flex items-center gap-1 text-xs font-bold text-orange-600">🔥 8-week streak</span>
+            <span class="text-xs text-slate-500"><b class="text-foreground text-sm">256</b> all-time</span>
+          </div>
+        </div>
+        <!-- due person card — gentle accountability, broken streak -->
+        <div class="bg-white p-4">
+          <div class="flex items-center gap-3">
+            <span class="h-11 w-11 rounded-full bg-slate-100 text-slate-400 text-sm font-bold flex items-center justify-center shrink-0">SO</span>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2"><p class="font-bold text-sm text-slate-500">Sophie</p><span class="pill pill-tint">let's grab 10 min</span></div>
+              <p class="text-2xs text-slate-400 mt-0.5">No capture in 3 weeks</p>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
+            <span class="inline-flex items-center gap-1 text-xs font-medium text-slate-400">streak paused · was 5 🔥</span>
+            <span class="text-xs text-slate-500"><b class="text-foreground text-sm">73</b> all-time</span>
+          </div>
+        </div>
+        <div class="bg-white p-4">
+          <div class="flex items-center gap-3">
+            <span class="h-11 w-11 rounded-full bg-slate-100 text-slate-400 text-sm font-bold flex items-center justify-center shrink-0">TY</span>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2"><p class="font-bold text-sm text-slate-500">Tyler</p><span class="pill pill-tint">let's grab 10 min</span></div>
+              <p class="text-2xs text-slate-400 mt-0.5">No capture yet — let's get his first</p>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
+            <span class="inline-flex items-center gap-1 text-xs font-medium text-slate-400">no streak yet</span>
+            <span class="text-xs text-slate-500"><b class="text-foreground text-sm">0</b> all-time</span>
+          </div>
+        </div>
+      </div>
+      <div class="px-5 py-2.5 bg-slate-50/70 border-t border-slate-100 text-2xs text-slate-400 flex items-center gap-1.5">
+        <i data-lucide="info" class="h-3.5 w-3.5 shrink-0"></i>
+        The streak rewards <b>consistency</b> (a capture every week), and all-time is a number that only grows — so it motivates showing up, not cramming volume. Due flags are a nudge, never a ranking.
+      </div>
+    </div>
+  </div>
+
+  <!-- ★ NEW — what this week cost to run (operational compute only) -->
+  <div class="diff-change mb-8">
+    <div class="nx-card overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-2 flex-wrap">
+        <i data-lucide="receipt" class="h-4 w-4 text-[hsl(var(--primary))]"></i>
+        <h3 class="text-base font-bold">What this week cost to run</h3>
+        <span class="pill pill-ink ml-1">estimate</span>
+        <span class="ml-auto inline-flex items-center gap-2">
+          <span class="pill pill-emerald">↓ 12% vs last week</span>
+          <span class="text-lg font-extrabold">≈ $9.40</span>
+        </span>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-100">
+        <div class="p-4">
+          <div class="flex items-center gap-1.5 text-slate-400 mb-1"><i data-lucide="mic" class="h-3.5 w-3.5"></i><span class="text-2xs font-semibold uppercase tracking-wide">Transcription</span></div>
+          <p class="text-lg font-bold">$0.45</p>
+          <p class="text-2xs text-slate-400">~75 min of audio · Whisper</p>
+        </div>
+        <div class="p-4">
+          <div class="flex items-center gap-1.5 text-slate-400 mb-1"><i data-lucide="sparkles" class="h-3.5 w-3.5"></i><span class="text-2xs font-semibold uppercase tracking-wide">AI writing</span></div>
+          <p class="text-lg font-bold">$2.10</p>
+          <p class="text-2xs text-slate-400">5 stories → 38 pieces · Claude</p>
+        </div>
+        <div class="p-4">
+          <div class="flex items-center gap-1.5 text-slate-400 mb-1"><i data-lucide="video" class="h-3.5 w-3.5"></i><span class="text-2xs font-semibold uppercase tracking-wide">Video / audio</span></div>
+          <p class="text-lg font-bold">$5.85</p>
+          <p class="text-2xs text-slate-400">6 clips encoded · Mux + ffmpeg</p>
+        </div>
+        <div class="p-4">
+          <div class="flex items-center gap-1.5 text-slate-400 mb-1"><i data-lucide="volume-2" class="h-3.5 w-3.5"></i><span class="text-2xs font-semibold uppercase tracking-wide">Voice (TTS)</span></div>
+          <p class="text-lg font-bold">$1.00</p>
+          <p class="text-2xs text-slate-400">interview narration · ElevenLabs</p>
+        </div>
+      </div>
+      <!-- running totals: this week / month-to-date / year-to-date -->
+      <div class="grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 bg-slate-50/40">
+        <div class="p-3 text-center"><p class="text-2xs font-semibold uppercase tracking-wide text-slate-400">This week</p><p class="text-base font-extrabold mt-0.5">$9.40</p></div>
+        <div class="p-3 text-center"><p class="text-2xs font-semibold uppercase tracking-wide text-slate-400">Month to date</p><p class="text-base font-extrabold mt-0.5">$38.10</p></div>
+        <div class="p-3 text-center"><p class="text-2xs font-semibold uppercase tracking-wide text-slate-400">Year to date</p><p class="text-base font-extrabold mt-0.5">$610.45</p></div>
+      </div>
+      <div class="px-5 py-2.5 bg-slate-50/70 border-t border-slate-100 text-2xs text-slate-400 flex items-center gap-1.5">
+        <i data-lucide="info" class="h-3.5 w-3.5 shrink-0"></i>
+        Estimated from counted usage × provider rate card (not exact billed cost). Excludes flat subscriptions (Buffer, hosting). ~$0.27 per published post this week.
+      </div>
+    </div>
+  </div>
+
+  <!-- existing Overview below (muted) -->
+  <div class="opacity-60">
+    <div class="inline-flex rounded-md border p-0.5 text-xs font-medium mb-4 bg-white">
+      <button class="rounded px-3 py-1 text-white" style="background:hsl(var(--primary));">Pipeline</button>
+      <button class="rounded px-3 py-1 text-slate-500">Cards</button>
+      <button class="rounded px-3 py-1 text-slate-500">Calendar</button>
+      <button class="rounded px-3 py-1 text-slate-500">Campaigns</button>
+    </div>
+    <div class="nx-card p-8 text-center text-sm text-slate-400">(existing Pipeline / Cards / Calendar / Campaigns lenses — unchanged)</div>
+  </div>
+
+</div>
+<script>lucide.createIcons();</script>
+</body>
+</html>
