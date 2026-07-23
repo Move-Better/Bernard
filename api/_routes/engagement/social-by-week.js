@@ -37,11 +37,16 @@ function rawBundleMetrics(snap) {
   return {
     impressions: num(s.impressions),
     views:       num(s.views),
+    viewsUnique: num(s.viewsUnique),
     likes:       num(s.likes),
     comments:    num(s.comments),
     shares:      num(s.shares),
     saves:       num(s.saves),
   }
+}
+
+function emptyRaw() {
+  return { impressions: 0, views: 0, viewsUnique: 0, likes: 0, comments: 0, shares: 0, saves: 0 }
 }
 
 function sb(path) {
@@ -94,7 +99,7 @@ export default withSentry(async function handler(req, res) {
     periodOffset,
     periodStart: toDateStr(periodStart),
     periodEnd: toDateStr(new Date(periodEnd.getTime() - 1)),
-    overall: { posts: 0, reach: 0, engagement: 0 },
+    overall: { posts: 0, reach: 0, engagement: 0, hasRaw: false, raw: emptyRaw() },
     byPlatform: [],
     topPost: null,
     prev: { posts: prevItems.length, measuredPosts: 0, reach: 0, engagement: 0 },
@@ -134,8 +139,10 @@ export default withSentry(async function handler(req, res) {
   const byPlatform = new Map()
   let overallPosts = 0
   let overallMeasured = 0
+  let overallMeasuredRaw = 0
   let overallReach = 0
   let overallEngagement = 0
+  const overallRaw = emptyRaw()
   let topPost = null
 
   for (const item of items) {
@@ -158,7 +165,7 @@ export default withSentry(async function handler(req, res) {
 
     const bucket = byPlatform.get(item.platform) || {
       platform: item.platform, posts: 0, measured: 0, unavailable: 0, reach: 0, engagement: 0,
-      hasRaw: false, raw: { impressions: 0, views: 0, likes: 0, comments: 0, shares: 0, saves: 0 },
+      hasRaw: false, raw: emptyRaw(),
     }
     bucket.posts++
     if (measured) {
@@ -167,11 +174,17 @@ export default withSentry(async function handler(req, res) {
       bucket.engagement += engagement
       // bundle-sourced platforms get their own real numbers shown instead of
       // the reach/engagement composite (Q, 2026-07-22: "just display
-      // everything we can get" — same reasoning as BufferMetricsRow).
+      // everything we can get" — same reasoning as BufferMetricsRow). Rolled
+      // up into overallRaw too, so the Overall card can show real summed
+      // numbers instead of the same composite.
       const raw = rawBundleMetrics(snap)
       if (raw) {
         bucket.hasRaw = true
-        for (const k of Object.keys(bucket.raw)) bucket.raw[k] += raw[k]
+        overallMeasuredRaw++
+        for (const k of Object.keys(bucket.raw)) {
+          bucket.raw[k] += raw[k]
+          overallRaw[k] += raw[k]
+        }
       }
     } else if (isUnavailable) {
       bucket.unavailable++
@@ -184,6 +197,13 @@ export default withSentry(async function handler(req, res) {
       topPost = { id: item.id, topic: item.topic || 'Untitled', platform: item.platform, reach, engagement }
     }
   }
+
+  // Overall only gets the real-number grid when EVERY measured post this
+  // period had raw bundle data — a mix of bundle + Buffer summed together
+  // would silently understate the total (Buffer posts have no raw fields to
+  // add in), so fall back to the reach/engagement composite for a mixed or
+  // Buffer-only period instead of showing a total that's quietly wrong.
+  const overallHasRaw = overallMeasured > 0 && overallMeasuredRaw === overallMeasured
 
   // Per-platform status: measured (has a real reading, even if genuinely 0) >
   // unavailable (provider can't report it) > pending (published, not yet pulled).
@@ -199,7 +219,10 @@ export default withSentry(async function handler(req, res) {
     periodOffset,
     periodStart: toDateStr(periodStart),
     periodEnd: toDateStr(new Date(periodEnd.getTime() - 1)),
-    overall: { posts: overallPosts, measuredPosts: overallMeasured, reach: overallReach, engagement: overallEngagement },
+    overall: {
+      posts: overallPosts, measuredPosts: overallMeasured, reach: overallReach, engagement: overallEngagement,
+      hasRaw: overallHasRaw, raw: overallRaw,
+    },
     byPlatform: platformRows,
     topPost,
     prev,
