@@ -47,217 +47,283 @@ Check `.staff-update-screenshots/captions.jsonl` (one line per screenshot, JSON)
 {"file":"YYYY-MM-DD_PR###_slug.png","date":"YYYY-MM-DD","pr":###,"caption":"one plain-language sentence"}
 ```
 
-Match each screenshot to a bullet by:
-- Caption content overlap
-- PR number (if bullet text mentions PR context)
-- Date overlap (screenshot dated in the same 7-day window)
+**The PDF-build script keys `screenshot_map` on the literal caption string and looks up
+`if bullet_text in screenshot_map`** — an exact match. Since bullets are freshly written
+each run (not copy-pasted from `captions.jsonl`), an exact match is the exception, not the
+rule. Match with this priority order, and **rewrite the bullet text passed into the PDF
+script to equal the winning caption exactly** whenever a match is found (the renderer only
+embeds on exact string equality, so the match has to be made real, not just noted):
 
-If a bullet has no matching screenshot, render just the text.
+1. **PR number** — if the bullet was generated from a commit whose PR number appears in
+   `captions.jsonl`, that's the match, full stop, regardless of wording.
+2. **Date + strong content overlap** — screenshot dated inside the 7-day window AND shares
+   several distinctive nouns/verbs with the bullet (e.g. both mention "media usage counter").
+3. **Caption content overlap alone** — same idea, no date signal (use sparingly, PDF/screenshot
+   dates are the primary anchor).
 
-### 4b. Screenshot capture standard — ZOOMED CROPS, not full pages
+If a bullet has no matching screenshot, render just the text — don't force a weak match.
+
+### 4b. Screenshot capture — use `scripts/capture-screenshot.mjs`, NOT the Chrome MCP
 
 Screenshots are normally captured at ship time (see CLAUDE.md → "Weekly staff-update
-routine — capturing screenshots for the PDF"). If the weekly run captures them live
-instead (driving Q's logged-in Chrome via the claude-in-chrome MCP), follow this
-standard — it is what makes the PDF readable.
+routine — capturing screenshots for the PDF") using **`scripts/capture-screenshot.mjs`**, a
+local headless Playwright script that signs in as the `e2e@movebetter.co` fixture user and
+writes PNGs directly to disk. This is the only working capture path — the Chrome-MCP +
+html2canvas + `~/Downloads` route described in older docs **does not work in the agent
+environment**: the MCP tab is permanently `visibilityState: "hidden"`, so every file-out
+route (blob-URL download, clipboard, dataURL round-trip, local-server upload) fails silently.
+Do not attempt it, live or headless. Full root-cause writeup: CLAUDE.md → "Why the
+Chrome-MCP pipeline can't work here."
 
-**Quality bar:** the Deep Thought reference PDF
-(`/Users/qbook/Claude Projects/Deep Thought/.staff-update-screenshots/`) — a colored
-title plus tight, high-resolution crops of just the one component each bullet is about
-(e.g. its "My voice" card, its Cmd-K search box, its thumbs-up/down buttons).
+If this weekly run ever needs to capture a screenshot itself (bullet has no ship-time
+screenshot but the UI element still exists), invoke the script directly:
+
+```bash
+cd "/Users/qbook/Claude Projects/Bernard" && T=$(mktemp) && cat .env.bernard.1pw > "$T" && \
+  export CLERK_SECRET_KEY="$(awk -F= '/^CLERK_SECRET_KEY=/{print substr($0,index($0,"=")+1)}' "$T" | tr -d '\r')" && \
+  rm -f "$T" && node scripts/capture-screenshot.mjs \
+  --url https://movebetter.withbernard.ai/<page> \
+  --selector '<css-or-has-text-selector>' \
+  --scale 4 --delay 4000 \
+  --out ".staff-update-screenshots/$(date +%F)_PR<NNNN>_<slug>.png"
+```
+
+Quality bar (Deep Thought reference PDF): a colored title plus tight, high-resolution crops
+of just the one component each bullet is about — never a full page.
 
 Rules:
 - **Crop to the relevant element, NOT the whole page.** A full-page screenshot downscaled
   to fit the PDF becomes an unreadable blur — this is the #1 failure mode (hit 2026-07-16).
-  Capture only the specific card / control / row-group the bullet describes.
-- **Capture at `scale: 2`** in html2canvas (high pixel density). The PDF renders images at
-  950px wide; a 2× crop of a ~600–1200px element lands crisp, a downscaled ~1900px full
-  page does not.
-- **Isolate the target.** Either pass the specific element to `html2canvas(el, {scale:2})`,
-  or hide surrounding siblings first (set `display:none`) so only the relevant part renders
-  — e.g. for a compose form, keep the input + the new toggle and hide the other fields; for
-  a long table, hide all but the first ~5 rows; for a card grid, capture 2–3 representative
-  cards.
+  Use `--selector` targeted at the specific card / control / row-group; never point it at
+  `main` or omit it for a full-viewport shot.
+- **Pick `--scale` so the raw crop is ≥ 950px wide** (the PDF's default `MAX_IMAGE_WIDTH`) —
+  e.g. `--scale 4` for a ~250px CSS-wide tile. A too-small scale gets upscaled (soft) in the
+  PDF. Capturing it right here is always better than patching it later with an
+  `IMAGE_OVERRIDES` entry (5.3).
+- **Avoid capturing a very wide element with lots of empty space in it.** A full-width strip
+  scaled down to fit the page turns its text into an illegible sliver. Crop to the part that
+  carries the point.
+- **Use `--hide 'sel,sel'`** to remove distracting siblings instead of manual DOM surgery.
 - **One representative element per bullet** — the single UI piece that best conveys the
-  change (the new toggle, the search+header row, the trend-recap card).
-- Downloads need the site's **"allow multiple downloads"** permission the first time (Chrome
-  blocks the 2nd+ automatic download per origin) — a one-time click Q grants. A headless run
-  with Q absent cannot grant it, which is why ship-time capture is preferred over live capture.
+  change.
+- Only `CLERK_SECRET_KEY` is required as an env var (the fixture email has a hardcoded
+  default). It's a real authenticated session — don't `--click` anything mutating
+  (Approve/Publish/Delete/Send).
 
 ### 5. Build PDF with Python + Pillow
 
 **Script location:** Inline Python in this routine.
 
+**5.1 — write the bullets to a file, do NOT inline them.** Earlier versions substituted a
+`BULLETS_JSON_PLACEHOLDER` into a `json.loads("""...""")` literal. Bullets routinely contain
+apostrophes, double quotes and em-dashes, and one stray `"""` or backslash silently corrupts
+the whole payload. Write the filtered bullets as a JSON array to `bullets.json` next to the
+script instead; the script reads it directly.
+
+**5.2 — the PDF is PAGINATED.** Do not render one tall image and save it as a single page.
+At 20+ bullets that produces a ~3,400px-tall page that no one can read at fit-to-width. The
+`Pager` class flows content across letter-ratio pages (1200x1553) and never splits a
+screenshot across a page break — a block that does not fit starts a new page.
+
+**5.3 — `IMAGE_OVERRIDES` exists because a fixed 950px width ruins two common shapes.**
+The stock behavior scales every screenshot to 950px wide, which fails in both directions:
+
+- **An ultra-wide strip becomes an unreadable sliver.** A 2962x86 schedule strip scaled to
+  950 wide is 27px tall — the text is gone. Crop the dead space out to a `_crop.png`
+  derivative and give it a `width` up to 1120 (page width minus padding).
+- **A small native crop gets soft-upscaled.** A 512x512 tile blown up to 950 is visibly
+  mushy. Cap its `width` at or near its native size instead.
+
+Add an entry keyed on the filename from `captions.jsonl`; `file` substitutes a different
+image, `width` overrides the target width. Both are optional. Prefer re-capturing at a
+higher `--scale` (step 4b) when the UI still exists — an override is the fallback for a
+screenshot already on disk.
+
+**5.4 — verify the rendered pages, not just that the file exists.** `pdftoppm -png -r 110
+-f N -l N <pdf> p` renders page N; read the PNG and confirm the text is legible and every
+embedded screenshot is sharp. A PDF that saves successfully can still be unreadable.
+
 ```python
 #!/usr/bin/env python3
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
-# Workaround: Ensure JPEG handler is available
 try:
     from PIL import JpegImagePlugin
     Image.SAVE['JPEG'] = JpegImagePlugin._save
 except (ImportError, KeyError):
     pass
 
-# Config
 SCREENSHOTS_DIR = Path("/Users/qbook/Claude Projects/Bernard/.staff-update-screenshots")
 PDF_FILENAME = f"bernard-weekly-update-{datetime.now().strftime('%Y-%m-%d')}.pdf"
 PDF_PATH = SCREENSHOTS_DIR / PDF_FILENAME
-
 CAPTIONS_FILE = SCREENSHOTS_DIR / "captions.jsonl"
+BULLETS_FILE = Path(__file__).parent / "bullets.json"   # written in step 5.1
+
 MAX_IMAGE_WIDTH = 950
 BORDER_WIDTH = 2
 BORDER_COLOR = (200, 200, 200)
 PAGE_WIDTH = 1200
+PAGE_HEIGHT = 1553          # letter ratio at 1200 wide
 PADDING = 40
 TEXT_COLOR = (0, 0, 0)
 TITLE_COLOR = (40, 40, 40)
+RUST = (156, 61, 30)
 LINE_HEIGHT = 24
 BULLET_MARGIN = 15
 
-# Load bullets (passed as JSON)
-bullets = json.loads("""BULLETS_JSON_PLACEHOLDER""")
+bullets = json.loads(BULLETS_FILE.read_text())
 
-# Load screenshot mappings
 screenshot_map = {}
 if CAPTIONS_FILE.exists():
-    with open(CAPTIONS_FILE) as f:
-        for line in f:
-            try:
-                entry = json.loads(line.strip())
-                screenshot_map[entry.get('caption')] = entry
-            except json.JSONDecodeError:
-                pass
+    for line in CAPTIONS_FILE.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+            screenshot_map[entry.get('caption')] = entry
+        except json.JSONDecodeError:
+            pass
 
-# Fonts (fallback to default if not available)
 try:
-    title_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 24)
-    text_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 14)
-    bullet_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 14)
+    title_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 34)
+    text_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 15)
+    bullet_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 15)
 except (IOError, OSError):
     title_font = ImageFont.load_default()
     text_font = ImageFont.load_default()
     bullet_font = ImageFont.load_default()
 
+_measure = ImageDraw.Draw(Image.new('RGB', (1, 1)))
+
+# Per-file render overrides. The stock 950px width either blurs an ultra-wide
+# strip into an unreadable sliver or soft-upscales a small native crop, so a few
+# screenshots get a substitute file and/or their own target width.
+IMAGE_OVERRIDES = {
+    # 2962x86 strip with a large dead gap: use the tight crop, render near full width.
+    '2026-07-22_PR2257_week-schedule-strip.png': {
+        'file': '2026-07-22_PR2257_week-schedule-strip_crop.png',
+        'width': 1120,
+    },
+    # 512x512 native: cap the upscale so it stays crisp.
+    '2026-07-22_PR2282_media-usage-counter.png': {'width': 620},
+}
+
+
+
 def wrap_text(text, font, max_width):
-    """Wrap text to fit within max_width pixels."""
     lines = []
     for para in text.split('\n'):
         if not para.strip():
             lines.append('')
             continue
         words = para.split(' ')
-        current_line = []
+        current = []
         for word in words:
-            test_line = ' '.join(current_line + [word])
-            bbox = ImageDraw.ImageDraw(Image.new('RGB', (1, 1))).textbbox((0, 0), test_line, font=font)
-            test_width = bbox[2] - bbox[0]
-            if test_width > max_width and current_line:
-                lines.append(' '.join(current_line))
-                current_line = [word]
+            test = ' '.join(current + [word])
+            bbox = _measure.textbbox((0, 0), test, font=font)
+            if (bbox[2] - bbox[0]) > max_width and current:
+                lines.append(' '.join(current))
+                current = [word]
             else:
-                current_line.append(word)
-        if current_line:
-            lines.append(' '.join(current_line))
+                current.append(word)
+        if current:
+            lines.append(' '.join(current))
     return lines
 
-def measure_content_height(bullets, screenshot_map, max_width):
-    """Measure total height needed for all content."""
-    height = PADDING * 2 + 60  # Title area
-    
-    for bullet_text in bullets:
-        # Bullet text
-        wrapped = wrap_text(f"• {bullet_text}", bullet_font, max_width - BULLET_MARGIN - PADDING * 2)
-        height += len(wrapped) * LINE_HEIGHT + PADDING
-        
-        # Screenshot if available
-        for caption in [bullet_text]:
-            if caption in screenshot_map:
-                img_path = SCREENSHOTS_DIR / screenshot_map[caption]['file']
-                if img_path.exists():
-                    img = Image.open(img_path)
-                    aspect_ratio = img.height / img.width
-                    img_width = min(MAX_IMAGE_WIDTH, max_width - PADDING * 2)
-                    img_height = int(img_width * aspect_ratio)
-                    height += img_height + BORDER_WIDTH * 2 + PADDING * 2
-    
-    return height
 
-def render_pdf(bullets, screenshot_map, output_path, max_width=PAGE_WIDTH):
-    """Render PDF with bullets and screenshots."""
-    total_height = measure_content_height(bullets, screenshot_map, max_width - PADDING * 2)
-    
-    # Create image
-    img = Image.new('RGB', (max_width, total_height), color=(255, 255, 255))
-    draw = ImageDraw.Draw(img)
-    
-    y = PADDING
-    
-    # Title
-    title = "Bernard Update"
-    date_str = datetime.now().strftime("%B %d, %Y")
-    # Rust accent title — matches the Deep Thought reference PDF (do not revert to gray)
-    draw.text((PADDING, y), title, font=title_font, fill=(156, 61, 30))
-    y += 40
-    draw.text((PADDING, y), date_str, font=text_font, fill=TEXT_COLOR)
-    y += 40
-    draw.line([(PADDING, y), (max_width - PADDING, y)], fill=(220, 220, 220), width=1)
-    y += 20
-    
-    draw.text((PADDING, y), "This week in Bernard:", font=text_font, fill=TITLE_COLOR)
-    y += 30
-    
-    # Bullets
+class Pager:
+    """Flow layout across fixed-size pages; blocks never split mid-image."""
+
+    def __init__(self):
+        self.pages = []
+        self._new_page()
+
+    def _new_page(self):
+        self.img = Image.new('RGB', (PAGE_WIDTH, PAGE_HEIGHT), color=(255, 255, 255))
+        self.draw = ImageDraw.Draw(self.img)
+        self.y = PADDING
+        self.pages.append(self.img)
+
+    def ensure(self, height):
+        if self.y + height > PAGE_HEIGHT - PADDING:
+            self._new_page()
+
+    def text(self, x, s, font, fill):
+        self.draw.text((x, self.y), s, font=font, fill=fill)
+
+    def hr(self):
+        self.draw.line([(PADDING, self.y), (PAGE_WIDTH - PADDING, self.y)],
+                       fill=(220, 220, 220), width=1)
+
+
+def render_pdf(bullets, screenshot_map, output_path):
+    p = Pager()
+
+    p.text(PADDING, "Bernard Update", title_font, RUST)
+    p.y += 48
+    p.text(PADDING, datetime.now().strftime("%B %d, %Y"), text_font, TEXT_COLOR)
+    p.y += 34
+    p.hr()
+    p.y += 22
+    p.text(PADDING, "This week in Bernard:", text_font, TITLE_COLOR)
+    p.y += 34
+
+    text_width = PAGE_WIDTH - BULLET_MARGIN - PADDING * 2
+
     for bullet_text in bullets:
-        # Wrapped bullet text
-        wrapped = wrap_text(f"• {bullet_text}", bullet_font, max_width - BULLET_MARGIN - PADDING * 2)
+        wrapped = wrap_text(f"• {bullet_text}", bullet_font, text_width)
+        p.ensure(len(wrapped) * LINE_HEIGHT + PADDING)
         for line in wrapped:
-            draw.text((PADDING + BULLET_MARGIN, y), line, font=bullet_font, fill=TEXT_COLOR)
-            y += LINE_HEIGHT
-        
-        y += PADDING
-        
-        # Screenshot if available
-        for caption in [bullet_text]:
-            if caption in screenshot_map:
-                img_path = SCREENSHOTS_DIR / screenshot_map[caption]['file']
-                if img_path.exists():
-                    try:
-                        ss_img = Image.open(img_path).convert('RGB')
-                        aspect_ratio = ss_img.height / ss_img.width
-                        img_width = min(MAX_IMAGE_WIDTH, max_width - PADDING * 2)
-                        img_height = int(img_width * aspect_ratio)
-                        ss_img = ss_img.resize((img_width, img_height), Image.Resampling.LANCZOS)
-                        
-                        # Add border
-                        bordered = Image.new('RGB', (img_width + BORDER_WIDTH * 2, img_height + BORDER_WIDTH * 2), BORDER_COLOR)
-                        bordered.paste(ss_img, (BORDER_WIDTH, BORDER_WIDTH))
-                        
-                        # Paste onto main image
-                        x_offset = (max_width - img_width - BORDER_WIDTH * 2) // 2
-                        img.paste(bordered, (x_offset, y))
-                        y += img_height + BORDER_WIDTH * 2 + PADDING * 2
-                    except Exception as e:
-                        print(f"Warning: Could not load screenshot {img_path}: {e}")
-    
-    # Save as PDF
-    img.convert('RGB').save(output_path, 'PDF')
-    return output_path
+            p.text(PADDING + BULLET_MARGIN, line, bullet_font, TEXT_COLOR)
+            p.y += LINE_HEIGHT
+        p.y += PADDING
 
-# Execute (placeholder for bullets JSON)
-output = render_pdf(bullets, screenshot_map, PDF_PATH)
-print(f"✓ PDF saved: {output}")
+        entry = screenshot_map.get(bullet_text)
+        if not entry:
+            continue
+        override = IMAGE_OVERRIDES.get(entry['file'], {})
+        img_path = SCREENSHOTS_DIR / override.get('file', entry['file'])
+        if not img_path.exists():
+            print(f"Warning: missing screenshot file {img_path}")
+            continue
+        try:
+            ss = Image.open(img_path).convert('RGB')
+            w = min(override.get('width', MAX_IMAGE_WIDTH), PAGE_WIDTH - PADDING * 2)
+            h = int(w * (ss.height / ss.width))
+            max_h = PAGE_HEIGHT - PADDING * 2 - 40
+            if h > max_h:                       # very tall crop: scale to fit a page
+                h = max_h
+                w = int(h * (ss.width / ss.height))
+            ss = ss.resize((w, h), Image.Resampling.LANCZOS)
+            bordered = Image.new('RGB', (w + BORDER_WIDTH * 2, h + BORDER_WIDTH * 2), BORDER_COLOR)
+            bordered.paste(ss, (BORDER_WIDTH, BORDER_WIDTH))
+
+            p.ensure(h + BORDER_WIDTH * 2 + PADDING)
+            x = (PAGE_WIDTH - w - BORDER_WIDTH * 2) // 2
+            p.img.paste(bordered, (x, p.y))
+            p.y += h + BORDER_WIDTH * 2 + PADDING
+            print(f"  embedded {entry['file']} ({w}x{h})")
+        except Exception as e:
+            print(f"Warning: could not load screenshot {img_path}: {e}")
+
+    first, rest = p.pages[0], p.pages[1:]
+    first.save(output_path, 'PDF', save_all=True, append_images=rest)
+    return output_path, len(p.pages)
+
+
+out, npages = render_pdf(bullets, screenshot_map, PDF_PATH)
+print(f"✓ PDF saved: {out} ({npages} pages, {len(bullets)} bullets)")
 ```
 
 **Execution:**
-1. Serialize the filtered bullets as JSON
-2. Substitute into the Python script
-3. Run the script
-4. Verify PDF exists and is readable
+1. Write the filtered bullets as a JSON array to `bullets.json` beside the script
+2. Run the script
+3. Render every page with `pdftoppm` and read them — confirm legibility and sharp images
+4. If a screenshot renders badly, add an `IMAGE_OVERRIDES` entry and re-run
 
 **Known workaround:** PIL/Pillow on some systems throws `KeyError: 'JPEG'` on save. The script includes the import guard above.
 
@@ -300,13 +366,16 @@ Bernard staff are currently auth-managed (Clerk org membership) with no direct a
 
 ---
 
-## Verification checklist (first run only)
+## Verification checklist (every run)
 
 Before considering this routine "complete," verify:
-1. ✅ The PDF renders and is readable
+1. ✅ Every page renders and is readable — `pdftoppm -png -r 110 -f N -l N <pdf> p`, then
+   read each PNG. "The file saved without error" is not verification.
 2. ✅ A Gmail draft appears in the drafts folder with the expected subject + body
 3. ✅ The draft points to the correct PDF file path
-4. ✅ Screenshots (if any matched) appear embedded in the PDF
+4. ✅ Screenshots (if any matched) appear embedded in the PDF, and each one is legible at
+   its rendered size — check the wide strips and the small native crops specifically
+   (see 5.3 `IMAGE_OVERRIDES`)
 
 If the Gmail tool gets blocked by the safety classifier in a headless run, the routine will note that in the completion report and the draft creation will be a manual step.
 
