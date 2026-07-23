@@ -62,7 +62,7 @@ export default function CandidateCard({ clip, attached, attaching, onPreview, on
   const reason = reasonLine(clip)
 
   return (
-    <div className="group overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md">
+    <div className="group overflow-hidden rounded-lg border bg-card">
       <button
         type="button"
         onClick={onPreview}

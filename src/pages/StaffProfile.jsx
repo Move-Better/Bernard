@@ -741,22 +741,25 @@ function PublishedPostRow({ post }) {
   const title = post.topic
     || (post.content ? post.content.slice(0, 60) + (post.content.length > 60 ? '…' : '') : 'Untitled post')
   const date = post.published_at || post.created_at
+  const href = post.interview_id ? `/stories/${post.interview_id}` : `/stories/${post.id}`
 
+  // Whole card navigates (2026-07-22 audit: the hover-lift promised it, but
+  // only the chevron actually worked) — same pattern as PipelineKanban's
+  // StaticCard. text-foreground on the title overrides the global `a` link
+  // color the Link wrapper would otherwise inherit.
   return (
-    <Card className="hover:shadow-sm transition-shadow">
-      <CardContent className="p-3 flex items-center gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate" title={title}>{title}</p>
-          <p className="text-xs text-muted-foreground">{formatRelativeDate(date)}</p>
-        </div>
-        <ChannelBadge platform={post.platform} />
-        <Button asChild variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="View story">
-          <Link to={post.interview_id ? `/stories/${post.interview_id}` : `/stories/${post.id}`}>
-            <ChevronRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
+    <Link to={href} className="block">
+      <Card className="hover:shadow-sm transition-shadow">
+        <CardContent className="p-3 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate" title={title}>{title}</p>
+            <p className="text-xs text-muted-foreground">{formatRelativeDate(date)}</p>
+          </div>
+          <ChannelBadge platform={post.platform} />
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        </CardContent>
+      </Card>
+    </Link>
   )
 }
 
@@ -1253,44 +1256,48 @@ function InterviewRow({ interview, staffId, currentUserId, staffList, onDelete }
     ? `/output/${staffId}/${interview.id}`
     : `/interview/${staffId}/${interview.id}`
 
+  // The delete button is destructive and must stay a real, separately-clickable
+  // control — nesting a <button> inside an <a> is invalid HTML and ambiguous to
+  // click/keyboard nav. So the Link wraps everything else (icon, title, badge,
+  // chevron) instead of the whole Card; that's still "the row navigates" for
+  // every non-destructive pixel (2026-07-22 audit: hover-lift promised whole-card
+  // navigation, only the chevron button worked).
   return (
     <Card className="hover:shadow-sm transition-shadow">
       <CardContent className="p-4 flex items-center gap-4">
-        <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
-          {isComplete
-            ? <FileText className="h-4 w-4 text-primary" />
-            : <Clock className="h-4 w-4 text-warning" />
-          }
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate" title={interview.topic}>{interview.topic}</p>
-          <p className="text-xs text-muted-foreground">
-            {formatRelativeDate(interview.updated_at)}
-            {ownerName && <span className="ml-2 text-muted-foreground/60">· by {ownerName}</span>}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <Link to={href} className="flex flex-1 min-w-0 items-center gap-4">
+          <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
+            {isComplete
+              ? <FileText className="h-4 w-4 text-primary" />
+              : <Clock className="h-4 w-4 text-warning" />
+            }
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm text-foreground truncate" title={interview.topic}>{interview.topic}</p>
+            <p className="text-xs text-muted-foreground">
+              {formatRelativeDate(interview.updated_at)}
+              {ownerName && <span className="ml-2 text-muted-foreground/60">· by {ownerName}</span>}
+            </p>
+          </div>
           <Badge
             variant={isComplete ? 'secondary' : 'outline'}
-            className={`text-xs ${!isComplete ? 'border-warning/40 text-warning' : ''}`}
+            className={`text-xs shrink-0 ${!isComplete ? 'border-warning/40 text-warning' : ''}`}
           >
             {isComplete ? 'Captured' : 'In progress'}
           </Badge>
-          <Button asChild variant="ghost" size="icon" className="h-8 w-8" aria-label="View interview">
-            <Link to={href}><ChevronRight className="h-4 w-4" aria-hidden="true" /></Link>
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        </Link>
+        {isOwner && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+            onClick={onDelete}
+            aria-label="Delete interview"
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
-          {isOwner && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-              onClick={onDelete}
-              aria-label="Delete interview"
-            >
-              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-            </Button>
-          )}
-        </div>
+        )}
       </CardContent>
     </Card>
   )
