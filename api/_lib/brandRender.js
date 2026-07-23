@@ -203,13 +203,21 @@ export function buildBrandOverlaySvg({
   // sensibly across 1:1, 9:16, and 16:9.
   const baseDim = Math.min(width, height)
   const captionBandHeight = Math.round(baseDim * 0.18)
+  const lowerThirdHeight = Math.round(baseDim * 0.09)
+  const lowerThirdY = height - lowerThirdHeight
+  const accentBarHeight = 4
+  // A BOTTOM caption band stacks ABOVE the lower third, not against the frame
+  // edge. Anchoring it to `height` overlapped the lower-third bar by 97px on a
+  // 16:9 frame (band 886→1080 vs bar 983→1080), and since the bar is painted
+  // after the caption it covered the bottom of the text and the accent rule cut
+  // through the middle of it — the caption was legible in neither half. Affects
+  // blog_hero and every 16:9 video lane (blog_hero_video, youtube,
+  // linkedin_native, website_embed). Top and centre bands are unchanged.
   const captionBandY = captionPos === 'top'
     ? 0
     : captionPos === 'center'
       ? Math.round((height - captionBandHeight) / 2)
-      : (height - captionBandHeight)
-  const lowerThirdHeight = Math.round(baseDim * 0.09)
-  const lowerThirdY = height - lowerThirdHeight
+      : (lowerThirdY - accentBarHeight - captionBandHeight)
 
   const captionFontSize = Math.round(baseDim * 0.048 * captionSizeScale)
   const captionSidePadding = Math.round(width * 0.05)
@@ -253,7 +261,7 @@ export function buildBrandOverlaySvg({
   ${captionLines.length ? captionTspans : ''}
 
   <!-- Accent bar above lower-third -->
-  <rect x="0" y="${lowerThirdY - 4}" width="${width}" height="4" fill="${accentColor}" />
+  <rect x="0" y="${lowerThirdY - accentBarHeight}" width="${width}" height="${accentBarHeight}" fill="${accentColor}" />
 
   <!-- Lower-third bar -->
   <rect x="0" y="${lowerThirdY}" width="${width}" height="${lowerThirdHeight}" fill="#000000" fill-opacity="0.78" />
