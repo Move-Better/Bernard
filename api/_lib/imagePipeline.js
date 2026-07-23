@@ -13,15 +13,28 @@
 //      (resize-before-WP-upload); this module is the upstream variant that
 //      runs at intake so every downstream consumer reads from the same web
 //      variant.
+//   3b. Resize to a 400px-wide JPEG thumbnail from the SAME decoded source
+//      (sharp .clone() — one download, one decode, two encodes). Closes the
+//      loop mediaEntry.js opened: a photo's media_urls thumbnailUrl now
+//      defaults to null until a real thumbnail exists (PR #2331) — without
+//      this step every future photo would sit at null forever and every
+//      small-tile consumer (e.g. /week's Day-view cards, week-summary.js
+//      thumbOf, #2318) would keep falling back to the 2000px web variant.
+//      Always JPEG regardless of source format — matches the historical
+//      backfill convention (scripts/backfill-photo-thumbnails.mjs) and every
+//      thumbnail already in media/thumbs/.
 //   4. Generate one-sentence alt text via Claude vision through the AI
 //      Gateway. Failures here are non-fatal — the row gets a NULL alt_text
 //      and the variant still lands.
-//   5. Upload the variant to Blob at `media/web/<asset-id>.<ext>` and return
-//      the URL set so the caller can PATCH the media_assets row.
+//   5. Upload both variants to Blob (`media/web/<workspace>/<asset-id>.<ext>`,
+//      `media/thumbs/<workspace>/<asset-id>.jpg`) and return the URL sets so
+//      the caller can PATCH the media_assets row. A thumbnail failure is
+//      non-fatal and never blocks the web variant — same best-effort
+//      contract as video poster generation (thumbnail.js).
 //
 // This module deliberately does NOT touch the DB. The caller (upload
-// completion webhook or backfill script) decides how to persist the result —
-// keeps the unit boundary clean and testable.
+// completion webhook, Drive import, or backfill script) decides how to
+// persist the result — keeps the unit boundary clean and testable.
 
 import sharp from 'sharp'
 import heicConvert from 'heic-convert'
@@ -32,6 +45,8 @@ import { downloadImageCapped } from './imageSource.js'
 const MAX_LONG_EDGE = 2000
 const JPEG_QUALITY  = 80
 const PNG_COMPRESSION = 9
+const THUMB_LONG_EDGE   = 400
+const THUMB_JPEG_QUALITY = 78
 const ALT_MODEL = 'anthropic/claude-sonnet-4-6'
 const ALT_MAX_TOKENS = 200
 
@@ -87,28 +102,32 @@ function chooseWebFormat(sourceMime, isHeic) {
   return { mime: 'image/jpeg', ext: 'jpg' }
 }
 
-// Run sharp resize + re-encode. Returns { buffer, width, height, mime }.
-// Throws on unrecoverable decode failures so the caller can stamp the row
-// with the error and leave the original blob_url alone.
-async function resizeImage(sourceBytes, targetFormat) {
-  const pipeline = sharp(sourceBytes, { failOn: 'truncated' })
-    .rotate() // honor EXIF orientation so the variant matches what users expect
-    .resize({
-      width:            MAX_LONG_EDGE,
-      height:           MAX_LONG_EDGE,
-      fit:              'inside',
-      withoutEnlargement: true,
-    })
+// Decode the source once. Every variant (web, thumbnail) derives from this
+// via .clone() — sharp's own documented pattern for producing several
+// outputs from one input without re-reading/re-decoding the source per
+// variant. EXIF rotation is applied here so every variant agrees on
+// orientation.
+export function decodeBase(sourceBytes) {
+  return sharp(sourceBytes, { failOn: 'truncated' }).rotate()
+}
 
-  let encoded
-  if (targetFormat.mime === 'image/png') {
-    encoded = pipeline.png({ compressionLevel: PNG_COMPRESSION, palette: true })
-  } else {
-    encoded = pipeline.jpeg({ quality: JPEG_QUALITY, mozjpeg: true, progressive: true })
-  }
+// Resize + re-encode a clone of the base pipeline. Returns
+// { buffer, width, height, mime }. Throws on unrecoverable encode failures —
+// callers decide fatal (web variant) vs. non-fatal (thumbnail). Exported so
+// tests exercise the real resize path instead of a hand-copied parallel one.
+export async function encodeVariant(basePipeline, { longEdge, mime, quality }) {
+  const pipeline = basePipeline.clone().resize({
+    width:              longEdge,
+    height:             longEdge,
+    fit:                'inside',
+    withoutEnlargement: true,
+  })
+  const encoded = mime === 'image/png'
+    ? pipeline.png({ compressionLevel: PNG_COMPRESSION, palette: true })
+    : pipeline.jpeg({ quality, mozjpeg: true, progressive: true })
 
   const { data, info } = await encoded.toBuffer({ resolveWithObject: true })
-  return { buffer: data, width: info.width, height: info.height, mime: targetFormat.mime }
+  return { buffer: data, width: info.width, height: info.height, mime }
 }
 
 // Generate one-sentence alt text via Claude vision through the AI Gateway.
@@ -146,6 +165,13 @@ function webPathname(workspaceId, assetId, ext) {
   return `media/web/${workspaceId}/${assetId}.${ext}`
 }
 
+// Thumbnail pathname — same workspace-first convention, sibling to the video
+// poster path (thumbnail.js's thumbPathname). Always .jpg (see decode/encode
+// step above — thumbnails are always JPEG regardless of source format).
+function thumbPathname(workspaceId, assetId) {
+  return `media/thumbs/${workspaceId}/${assetId}.jpg`
+}
+
 // Main entry point. Given a freshly-uploaded asset row's blob URL + id +
 // declared mime, run the full pipeline and return the bits the caller needs
 // to PATCH the row.
@@ -166,6 +192,10 @@ function webPathname(workspaceId, assetId, ext) {
 //     originalSizeBytes: number,
 //     altText:         string|null,
 //     formatChanged:   boolean,   // true when HEIC→JPEG
+//     thumbnailUrl:    string|null,  // null if thumbnail generation failed —
+//                                    // non-fatal, never blocks the web variant
+//     thumbWidth:      number|null,
+//     thumbHeight:     number|null,
 //   }
 //
 // Output (skip / non-fatal):
@@ -212,12 +242,24 @@ export async function processImageUpload({ workspaceId, assetId, blobUrl, declar
     }
   }
 
+  const base = decodeBase(bytesForSharp)
+
   let resized
   try {
-    resized = await resizeImage(bytesForSharp, target)
+    resized = await encodeVariant(base, { longEdge: MAX_LONG_EDGE, mime: target.mime, quality: JPEG_QUALITY })
   } catch (e) {
     console.error(`[imagePipeline] asset ${assetId}: resize failed:`, e?.message)
     throw e
+  }
+
+  // Thumbnail is best-effort: a failure here must never fail the (already
+  // web-critical) resize above — same non-fatal contract as video poster
+  // generation (thumbnail.js). Always JPEG — see thumbPathname.
+  let thumb = null
+  try {
+    thumb = await encodeVariant(base, { longEdge: THUMB_LONG_EDGE, mime: 'image/jpeg', quality: THUMB_JPEG_QUALITY })
+  } catch (e) {
+    console.error(`[imagePipeline] asset ${assetId}: thumbnail resize failed (non-fatal):`, e?.message)
   }
 
   const altText = await generateAltText(resized.buffer, resized.mime)
@@ -229,6 +271,20 @@ export async function processImageUpload({ workspaceId, assetId, blobUrl, declar
     allowOverwrite:  false,
   })
 
+  let thumbUploaded = null
+  if (thumb) {
+    try {
+      thumbUploaded = await blobPut(thumbPathname(workspaceId, assetId), thumb.buffer, {
+        access:          'public',
+        contentType:     'image/jpeg',
+        addRandomSuffix: true,
+        allowOverwrite:  false,
+      })
+    } catch (e) {
+      console.error(`[imagePipeline] asset ${assetId}: thumbnail upload failed (non-fatal):`, e?.message)
+    }
+  }
+
   return {
     originalBlobUrl:   blobUrl,
     webBlobUrl:        uploaded.url,
@@ -239,5 +295,8 @@ export async function processImageUpload({ workspaceId, assetId, blobUrl, declar
     originalSizeBytes: sourceBytes.length,
     altText,
     formatChanged:     heic,
+    thumbnailUrl:      thumbUploaded?.url ?? null,
+    thumbWidth:        thumbUploaded ? thumb.width : null,
+    thumbHeight:       thumbUploaded ? thumb.height : null,
   }
 }

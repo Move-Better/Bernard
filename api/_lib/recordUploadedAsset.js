@@ -304,6 +304,9 @@ export async function recordUploadedAsset({ blob, tokenPayload }) {
                 size_bytes:        result.webSizeBytes,
                 width:             result.webWidth,
                 height:            result.webHeight,
+                // null when thumbnail generation failed (non-fatal) — leaves the
+                // row at thumbnail_url:null rather than writing a bad value.
+                ...(result.thumbnailUrl ? { thumbnail_url: result.thumbnailUrl } : {}),
               }
               const upd = await sb(
                 `media_assets?id=eq.${insertedRow.id}&${scopeColumn}=eq.${scopeId}`,

@@ -386,6 +386,9 @@ async function handler(req, res) {
                   size_bytes:        result.webSizeBytes,
                   width:             result.webWidth,
                   height:            result.webHeight,
+                  // null when thumbnail generation failed (non-fatal) — leaves
+                  // the row at thumbnail_url:null rather than writing a bad value.
+                  ...(result.thumbnailUrl ? { thumbnail_url: result.thumbnailUrl } : {}),
                 }
                 await sb(
                   `media_assets?id=eq.${inserted.id}&workspace_id=eq.${workspace.id}`,
