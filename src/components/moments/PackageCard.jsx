@@ -282,7 +282,7 @@ export default function PackageCard({ pkg, staffName, triageReason, onApprove, o
   const showGenerating = isGenerating || rerendering
 
   return (
-    <article className="flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+    <article className="flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-sm">
       {/* Triage badge (only present when shown in Triage view) */}
       {triageReason && <TriageBadge reason={triageReason} />}
       {/* Thumbnail */}

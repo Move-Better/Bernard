@@ -282,7 +282,7 @@ function VideoCard({ asset, staffName, onEdit, onFind }) {
     : null
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden flex flex-col hover:border-primary/40 hover:-translate-y-px transition-all">
+    <div className="bg-card border border-border rounded-xl overflow-hidden flex flex-col">
       {/* Thumbnail — sized to the video's native aspect ratio (like the
           Library grid) so portrait clips aren't cropped/zoomed into 16:9.
           Falls back to aspect-video only when dimensions are unknown. */}

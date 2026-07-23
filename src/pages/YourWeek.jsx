@@ -7,6 +7,7 @@ import {
   CalendarRange, Sparkles, Archive, Mail, Moon, ChevronRight, ChevronLeft, Shield, Plus,
   Check, Loader2, Clock, Eye, Send, BookOpen, AlertTriangle, Pencil,
   History, CalendarPlus, Bot, Image as ImageIcon, Play, Film, CircleDot, FlaskConical, BellOff, Bell,
+  Palette,
 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { PLATFORM_META } from '@/lib/contentMeta'
@@ -26,8 +27,9 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 
-// T3 — format badges shown on cards/slots and in the legend. Mirrors the
-// atom.format vocabulary (api/_lib/atomPlan.js ATOM_FORMATS): post/reel/story.
+// T3 — format badges shown on cards/slots. Mirrors the atom.format vocabulary
+// (api/_lib/atomPlan.js ATOM_FORMATS): post/reel/story. (Status-color legend
+// is STATUS_LEGEND/StatusLegend below, a separate popover for the rail colors.)
 const FORMAT_META = {
   post: { icon: ImageIcon, label: 'Post' },
   reel: { icon: Film, label: 'Reel' },
@@ -214,6 +216,50 @@ function cardState(item) {
   return { label: 'in review', cls: 'bg-warning text-warning-foreground', action: 'open', reviewable: true, rail: 'bg-warning' }
 }
 
+// One entry per rail/tile color the board actually uses (cardState above,
+// EmptySlotTile, MonthView's aggregate chips). Kept as a flat list next to
+// cardState so a new state added there is easy to remember to add here too —
+// this is what closes the "N unexplained colors" gap from the 2026-07-22 audit
+// (a stale comment on FORMAT_META above had promised this and never shipped it).
+const STATUS_LEGEND = [
+  { label: 'Needs draft', note: 'a to-do Bernard will fill', swatch: 'border border-dashed border-muted-foreground/40' },
+  { label: 'Drafting…', note: 'generating now', swatch: 'bg-muted' },
+  { label: 'In review', note: 'needs your yes', swatch: 'bg-warning' },
+  { label: 'Approved', note: 'ready to schedule', swatch: 'bg-primary' },
+  { label: 'Scheduled / Live', note: 'queued or already posted', swatch: 'bg-success' },
+  { label: 'Open slot', note: 'a pinned time with nothing planned yet', swatch: 'border border-dashed border-info/40 bg-info/15' },
+  { label: 'Trying this day', note: 'Bernard is testing a new slot, no data yet', swatch: 'border border-dashed border-primary/40 bg-primary/10' },
+]
+
+function StatusLegend() {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-1 text-2xs font-semibold text-muted-foreground hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          <Palette className="h-3 w-3" aria-hidden="true" /> Key
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72">
+        <div className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">What the colors mean</div>
+        <ul className="mt-2 space-y-1.5">
+          {STATUS_LEGEND.map((s) => (
+            <li key={s.label} className="flex items-start gap-2">
+              <span className={`mt-0.5 h-3 w-3 shrink-0 rounded-sm ${s.swatch}`} aria-hidden="true" />
+              <span className="text-2xs">
+                <span className="font-semibold text-foreground">{s.label}</span>{' '}
+                <span className="text-muted-foreground">— {s.note}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 // T3 — the whole tile routes to the full review screen (words + all media +
 // approve/reject, /publish/:pieceId) instead of the old hidden "Review"
 // expander that showed a 4-line excerpt with zero media. "Draft" stays a
@@ -305,7 +351,10 @@ function PlanCard({ item, tz, onDraft, drafting, draftBusy, readOnly }) {
 // whether or not it's filled. Clicking opens the Add-to-day picker (PR4) —
 // for now, opens the existing backlog drawer as the interim action.
 // `exploring` (T4 tie-in) gets the primary/dashed treatment + a note instead
-// of the pink "open slot" styling, matching the signed-off mockup.
+// of the "open slot" styling below. The base "open slot" color is --info
+// (sky), not the mockup's original pink — pink is Instagram's platform color
+// (PLATFORM_META) and renders on this same board, so an "open slot" tile for
+// an Instagram slot read as an Instagram post at a glance (2026-07-22 audit).
 function EmptySlotTile({ slot, onClick }) {
   const meta = PLATFORM_META[slot.platform] || { label: slot.platform, icon: null }
   const Icon = meta.icon
@@ -330,7 +379,7 @@ function EmptySlotTile({ slot, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-pink-300 bg-pink-50/60 p-2 text-3xs font-medium text-pink-700 transition-colors hover:bg-pink-50"
+      className="flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-info/30 bg-info/10 p-2 text-3xs font-medium text-info transition-colors hover:bg-info/15"
     >
       <span className="flex items-center gap-1">
         {Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
@@ -516,8 +565,8 @@ function MonthView({ monthData, monthDate, loading, onSelectDay }) {
             chip = <span className="text-3xs font-semibold text-action">{cell.review} review</span>
             cellCls = 'border-action/30 bg-action/10 hover:bg-action/15'
           } else if (cell.open > 0) {
-            chip = <span className="text-3xs font-semibold text-pink-600">{cell.open} open</span>
-            cellCls = 'border-pink-200 bg-pink-50 hover:bg-pink-100'
+            chip = <span className="text-3xs font-semibold text-info">{cell.open} open</span>
+            cellCls = 'border-info/30 bg-info/10 hover:bg-info/15'
           } else if (cell.live > 0) {
             chip = <span className="text-3xs font-semibold text-success">{cell.live} live</span>
             cellCls = 'border-success/30 bg-success/10 hover:bg-success/15'
@@ -1215,6 +1264,7 @@ export default function YourWeek() {
               </PopoverContent>
             </Popover>
           )}
+          <StatusLegend />
           <PageHelp pageKey="your-week" variant="default" />
           <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-2xs font-medium text-muted-foreground">
             <Shield className="h-3 w-3" aria-hidden="true" /> {isEditor ? 'Producer' : 'Clinician'} view
