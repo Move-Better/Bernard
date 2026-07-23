@@ -770,6 +770,46 @@ function PeriodDelta({ cur, prev, granularity = 'week' }) {
   )
 }
 
+// Small stat tile — zero renders in muted weight, same as a real number, never
+// hidden (Q, 2026-07-22: "show me everything that could be present per
+// platform even when the data is zero").
+function StatTile({ label, value }) {
+  const zero = !value
+  return (
+    <div className="rounded-lg border border-border bg-muted/40 px-2 py-2 text-center">
+      <div className={`text-sm font-bold tabular-nums ${zero ? 'text-muted-foreground' : 'text-foreground'}`}>
+        {fmtNum(value)}
+      </div>
+      <div className="text-3xs uppercase tracking-wide text-muted-foreground mt-0.5">{label}</div>
+    </div>
+  )
+}
+
+// The full real-number grid bundle.social gives us for a platform (or the
+// whole workspace, summed) — every field always shown, including zero.
+// `reach` (accounts reached) isn't part of the `raw` object since it's also
+// used by the reach/engagement composite fallback, so it's passed alongside.
+function RawMetricGrid({ raw, reach }) {
+  return (
+    <>
+      <p className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground mt-3 mb-1.5">Reach</p>
+      <div className="grid grid-cols-4 gap-1.5">
+        <StatTile label="Impressions" value={raw.impressions} />
+        <StatTile label="Views" value={raw.views} />
+        <StatTile label="Reached" value={reach} />
+        <StatTile label="Uniq. views" value={raw.viewsUnique} />
+      </div>
+      <p className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground mt-3 mb-1.5">Engagement</p>
+      <div className="grid grid-cols-4 gap-1.5">
+        <StatTile label="Likes" value={raw.likes} />
+        <StatTile label="Comments" value={raw.comments} />
+        <StatTile label="Shares" value={raw.shares} />
+        <StatTile label="Saves" value={raw.saves} />
+      </div>
+    </>
+  )
+}
+
 function SocialTab({ data, loading, cost, granularity = 'week' }) {
   if (loading && !data) {
     return (
@@ -802,24 +842,30 @@ function SocialTab({ data, loading, cost, granularity = 'week' }) {
                 <span className="font-semibold tabular-nums">{overall.posts}</span>
               </span>
             </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-muted-foreground">Reach</span>
-              <span className="inline-flex items-center gap-2">
-                {overall.measuredPosts > 0 && data?.prev?.measuredPosts > 0 ? (
-                  <PeriodDelta cur={overall.reach} prev={data.prev.reach} granularity={granularity} />
-                ) : null}
-                <span className="font-semibold tabular-nums">{overall.measuredPosts > 0 ? fmtNum(overall.reach) : '—'}</span>
-              </span>
-            </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-muted-foreground">Engagement</span>
-              <span className="inline-flex items-center gap-2">
-                {overall.measuredPosts > 0 && data?.prev?.measuredPosts > 0 ? (
-                  <PeriodDelta cur={overall.engagement} prev={data.prev.engagement} granularity={granularity} />
-                ) : null}
-                <span className="font-semibold tabular-nums">{overall.measuredPosts > 0 ? fmtNum(overall.engagement) : '—'}</span>
-              </span>
-            </div>
+            {overall.measuredPosts > 0 && overall.hasRaw ? (
+              <RawMetricGrid raw={overall.raw} reach={overall.reach} />
+            ) : (
+              <>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-muted-foreground">Reach</span>
+                  <span className="inline-flex items-center gap-2">
+                    {overall.measuredPosts > 0 && data?.prev?.measuredPosts > 0 ? (
+                      <PeriodDelta cur={overall.reach} prev={data.prev.reach} granularity={granularity} />
+                    ) : null}
+                    <span className="font-semibold tabular-nums">{overall.measuredPosts > 0 ? fmtNum(overall.reach) : '—'}</span>
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-muted-foreground">Engagement</span>
+                  <span className="inline-flex items-center gap-2">
+                    {overall.measuredPosts > 0 && data?.prev?.measuredPosts > 0 ? (
+                      <PeriodDelta cur={overall.engagement} prev={data.prev.engagement} granularity={granularity} />
+                    ) : null}
+                    <span className="font-semibold tabular-nums">{overall.measuredPosts > 0 ? fmtNum(overall.engagement) : '—'}</span>
+                  </span>
+                </div>
+              </>
+            )}
             {overall.posts > 0 && overall.measuredPosts === 0 && (
               <p className="text-2xs text-muted-foreground pt-1">
                 Reach/engagement for this {granularity}&rsquo;s posts isn&rsquo;t available yet — see per-platform below.
@@ -860,35 +906,30 @@ function SocialTab({ data, loading, cost, granularity = 'week' }) {
           <p className="text-sm text-muted-foreground mt-3">No social posts published this {granularity}.</p>
         ) : (
           <>
-            <div className="divide-y divide-border mt-2">
+            <div className="space-y-3 mt-3">
               {byPlatform.map((p) => (
-                <div key={p.platform} className="flex items-center justify-between py-3">
-                  <PlatformBadge platform={p.platform} />
+                <div key={p.platform} className="rounded-xl border border-border p-3">
+                  <div className="flex items-center justify-between">
+                    <PlatformBadge platform={p.platform} />
+                    <span className="text-2xs text-muted-foreground">
+                      {p.posts} {p.posts === 1 ? 'post' : 'posts'}
+                    </span>
+                  </div>
                   {p.status === 'measured' ? (
                     p.hasRaw ? (
-                      <div className="flex items-center gap-4 text-sm tabular-nums flex-wrap justify-end">
-                        {p.raw.views > 0 ? (
-                          <span>{fmtNum(p.raw.views)} views</span>
-                        ) : p.raw.impressions > 0 ? (
-                          <span>{fmtNum(p.raw.impressions)} impressions</span>
-                        ) : null}
-                        {p.raw.likes > 0 && <span>{fmtNum(p.raw.likes)} likes</span>}
-                        {p.raw.comments > 0 && <span>{fmtNum(p.raw.comments)} comments</span>}
-                        {p.raw.shares > 0 && <span>{fmtNum(p.raw.shares)} shares</span>}
-                        {p.raw.saves > 0 && <span>{fmtNum(p.raw.saves)} saves</span>}
-                      </div>
+                      <RawMetricGrid raw={p.raw} reach={p.reach} />
                     ) : (
-                      <div className="flex items-center gap-6 text-sm tabular-nums">
+                      <div className="flex items-center gap-6 text-sm tabular-nums mt-3">
                         <span>{fmtNum(p.reach)} reach</span>
                         <span>{fmtNum(p.engagement)} engagement</span>
                       </div>
                     )
                   ) : (
-                    <span className="text-2xs text-muted-foreground">
+                    <p className="text-2xs text-muted-foreground italic mt-2">
                       {p.status === 'unavailable'
-                        ? 'Analytics not available (carousels/stories)'
-                        : 'Not measured yet'}
-                    </span>
+                        ? "bundle.social can't read analytics for this post type (carousels/stories) — not shown as a zero."
+                        : 'Not measured yet.'}
+                    </p>
                   )}
                 </div>
               ))}
