@@ -654,17 +654,29 @@ left join visual_memory_chunks v
 where m.workspace_id = '<ws>' and m.archived_at is null;
 ```
 
-**2. `kind` is derived server-side from the draft's platform — do not override it
-from the client.** `mediaKindForPlatform` (`api/_lib/platformMedia.js`) returns
-`video` for reels/tiktok/youtube, `photo` for blog/landing/email/ads, and `null`
-(= both) for instagram/facebook/gbp/linkedin. An explicit `body.kind` **wins over
-that default**, so a client passing `kind:'photo'` disables the whole mapping for
-every platform at once. That shipped: every caller of `useMediaSuggestions`
-hardcoded `kind:'photo'`, so no surface in the app had ever requested a video, and
-movebetter reached 466 videos with 4 attachments before anyone noticed (#2272).
-Only pass `kind` from a surface that is photo-only *by construction* (SlideEditor's
-carousel strip, SwapAddPhoto). A general editor must stay silent and let the
-platform decide.
+**2. `kind` is derived server-side from the whole DRAFT, not the platform alone —
+do not override it from the client.** `mediaKindForDraft(piece)`
+(`src/lib/platformMediaKind.js`, re-exported by `api/_lib/platformMedia.js` — one
+implementation, cross-imported into the API the same alias-free way
+`mediaEntry.js`/`isInstagramReel` already are, since Vite's `@` alias doesn't
+exist under Node) returns `video` for reels/tiktok/youtube, `photo` for
+blog/landing/email/ads, and for a dual-kind platform (instagram/facebook/gbp/
+linkedin) **`video` if the draft already has a video attached, else `null`** (=
+both). The video-attached refinement matters because an Instagram Reel is
+stored as `platform:'instagram'` **plus a video** — never as
+`platform:'instagram_reel'`, which is an atom/OUTPUT_CHANNELS-namespace value
+that is never written to `content_items.platform` (confirmed against prod: the
+column only ever holds instagram/instagram_story/blog/linkedin/facebook/gbp).
+Reading platform alone (the pre-#2306 `mediaKindForPlatform`) can't tell a Reel
+from a carousel, so a Reel draft got photos ranked next to its videos on
+similarity alone. An explicit `body.kind` **still wins over the derived
+default**, so a client passing `kind:'photo'` disables the whole mapping for
+every platform at once. That shipped once already: every caller of
+`useMediaSuggestions` hardcoded `kind:'photo'`, so no surface in the app had
+ever requested a video, and movebetter reached 466 videos with 4 attachments
+before anyone noticed (#2272). Only pass `kind` from a surface that is
+photo-only *by construction* (SlideEditor's carousel strip, SwapAddPhoto). A
+general editor must stay silent and let the draft decide.
 
 Consequence for any surface that may now receive both: a video's `blobUrl` is the
 raw `.mov`/`.mp4` and is **never** a valid `<img src>`. Use `thumbnailUrl`, and fall
