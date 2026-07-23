@@ -24,6 +24,7 @@
 import { workspaceById } from './workspaceContext.js'
 import { resolveClipRender, runClipRender } from './renderClipCore.js'
 import { indexMediaAsset } from './visualMemoryIndex.js'
+import { generateAndPersistThumbnail } from './thumbnail.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -202,6 +203,20 @@ export async function runExportRender({ brollAssetId, workspaceId, body, briefId
     if (!landed) return  // row deleted or already settled (e.g. cron swept it)
 
     // Post-completion enrichment — best-effort, never blocks the terminal write.
+    // Deliberately AFTER the terminal PATCH: a crash or 300s kill in here must
+    // not strand the row at 'rendering', and the clip is already usable without
+    // a poster.
+    //
+    // The poster frame matters more than it looks. With thumbnail_url null the
+    // Library grid, the MediaPicker and the editor's attached-media tile all
+    // render a blank box, so an exported clip is unfindable by eye. The upload
+    // path (recordUploadedAsset.js) has always generated one; both derived-clip
+    // paths were missing it — see the note in saveBroll.js for the full list of
+    // insert sites that owe this call.
+    await generateAndPersistThumbnail(
+      { id: brollAssetId, kind: 'video', blob_url: out.blobUrl, thumbnail_url: null },
+      { column: 'workspace_id', id: ws.id, workspace: ws },
+    ).catch((e) => console.error('[exportClipEngine] thumbnail generation failed:', e?.message))
     await indexMediaAsset({ assetId: brollAssetId })
       .catch((e) => console.error('[exportClipEngine] visual-memory index failed:', e?.message))
     await closeBrief({ ws, briefId, sourceAssetId: String(body?.assetId || ''), brollAssetId })

@@ -84,6 +84,14 @@ export async function saveBroll({ ws, renders, staffId, notes, parentAssetId, aw
 
   // Generate a poster frame for every video row.
   //
+  // Any place that inserts a `kind: 'video'` media_assets row owes this call.
+  // Today that is: recordUploadedAsset.js, integrations/drive/import.js,
+  // media/[id]/edit.js, capture/upload.js, exportClipEngine.js and here. That
+  // list is enforced rather than maintained by hand —
+  // tests/lib/videoThumbnailCoverage greps for the INSERT rather than the
+  // route, which is how the exportClipEngine and capture/upload misses were
+  // found (a route-by-route audit never reaches a shared helper like this one).
+  //
   // These rows are marked transcode_status:'skipped' above (renders are already
   // processed mp4s, so Mux has nothing to do) — and Mux's webhook was the ONLY
   // thing that ever wrote thumbnail_url for a b-roll clip. So until this call,

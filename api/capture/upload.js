@@ -31,6 +31,7 @@ export const config = {
 import { put as blobPut } from '@vercel/blob'
 import { waitUntil } from '@vercel/functions'
 import { indexMediaAsset } from '../_lib/visualMemoryIndex.js'
+import { generateAndPersistThumbnail } from '../_lib/thumbnail.js'
 import { authByCaptureToken } from '../_lib/captureAuth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 
@@ -193,10 +194,26 @@ export default async function handler(req, res) {
     }).catch(() => {}),
   )
 
+  // --- Poster frame for videos (async, doesn't block response) ---
+  // Skipping tagAndPersist (below) also skipped THUMBNAILS, so every video
+  // captured from the iOS Shortcut was born with thumbnail_url null and
+  // rendered as a blank box in the Library grid, the MediaPicker and the
+  // editor's attached-media tile. Generating it directly here is the narrow
+  // fix — it needs none of tagAndPersist's Mux/segmenting coupling.
+  if (asset.kind === 'video' && asset.blob_url) {
+    waitUntil(
+      generateAndPersistThumbnail(asset, {
+        column: 'workspace_id',
+        id: auth.workspace.id,
+        workspace: auth.workspace,
+      }).catch((e) => console.error('[capture/upload] thumbnail generation failed:', e?.message)),
+    )
+  }
+
   // --- Visual memory index (async, doesn't block response) ---
   // Note: tagAndPersist (the existing auto-tag pipeline) is NOT called here for
   // Phase 1 because that helper is tightly coupled to api/media/upload.js's flow
-  // (handles Mux + thumbnails + segmenting interviews). For Phase 1 capture, the
+  // (handles Mux + segmenting interviews). For Phase 1 capture, the
   // simpler path is: store the asset now, run visualMemoryIndex with whatever
   // text fields are present, and let Phase 2's clip-pull AI re-enrich as needed.
   // tagAndPersist integration is a Phase 2 follow-up (see roadmap).
