@@ -10,6 +10,7 @@ export const config = { runtime: 'nodejs' }
 // Idempotent: calling twice on the same campaign just overwrites ai_tune_state.
 
 import { generateText } from 'ai'
+import { rankTopPerformers } from '../../_lib/engagementScoring.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
@@ -31,15 +32,6 @@ function sb(path, init = {}) {
   })
 }
 
-// Score a snapshot by source — mirrors top-performers.js.
-function scoreSnapshot(snap) {
-  if (snap.source === 'ga4') {
-    return snap.stats?.pageviews ?? 0
-  }
-  const stats = snap.stats?.statistics ?? {}
-  return stats.reach ?? 0
-}
-
 async function loadTopPerformers(workspaceId) {
   const r = await sb(
     `engagement_snapshots?workspace_id=eq.${encodeURIComponent(workspaceId)}` +
@@ -47,26 +39,7 @@ async function loadTopPerformers(workspaceId) {
     `&select=content_item_id,source,stats,fetched_at,content_items(id,topic,platform,status)`,
   )
   if (!r.ok) return []
-  const rows = await r.json().catch(() => [])
-  if (!Array.isArray(rows)) return []
-
-  const seen = new Set()
-  const candidates = []
-  for (const row of rows) {
-    if (seen.has(row.content_item_id)) continue
-    seen.add(row.content_item_id)
-    const ci = row.content_items
-    if (!ci || ci.status !== 'published') continue
-    const score = scoreSnapshot(row)
-    if (score <= 0) continue
-    candidates.push({
-      topic:    ci.topic || 'Untitled',
-      platform: ci.platform,
-      score,
-    })
-  }
-  candidates.sort((a, b) => b.score - a.score)
-  return candidates.slice(0, 5)
+  return rankTopPerformers(await r.json().catch(() => []), 5)
 }
 
 async function loadPendingAtoms(campaignId, workspaceId) {
