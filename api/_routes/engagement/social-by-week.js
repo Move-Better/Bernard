@@ -156,6 +156,7 @@ export default withSentry(async function handler(req, res) {
     const isUnavailable = snap?.stats?.unavailable === true
     const measured = !!snap && !isUnavailable
     const { reach, engagement } = measured ? scoreSnapshot(snap) : { reach: 0, engagement: 0 }
+    const raw = measured ? rawBundleMetrics(snap) : null
 
     if (measured) {
       overallMeasured++
@@ -177,7 +178,6 @@ export default withSentry(async function handler(req, res) {
       // everything we can get" — same reasoning as BufferMetricsRow). Rolled
       // up into overallRaw too, so the Overall card can show real summed
       // numbers instead of the same composite.
-      const raw = rawBundleMetrics(snap)
       if (raw) {
         bucket.hasRaw = true
         overallMeasuredRaw++
@@ -192,9 +192,11 @@ export default withSentry(async function handler(req, res) {
     byPlatform.set(item.platform, bucket)
 
     // Rank the top post only among measured posts — a "top post" with no real
-    // reading is meaningless.
+    // reading is meaningless. `id` links straight to the post (StoryboardPublish,
+    // /publish/:pieceId) and `raw` (when present) lets the card show the
+    // platform's own real number instead of the reach/engagement composite.
     if (measured && (!topPost || reach > topPost.reach)) {
-      topPost = { id: item.id, topic: item.topic || 'Untitled', platform: item.platform, reach, engagement }
+      topPost = { id: item.id, topic: item.topic || 'Untitled', platform: item.platform, reach, engagement, raw }
     }
   }
 
