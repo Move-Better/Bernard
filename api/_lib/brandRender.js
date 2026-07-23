@@ -313,11 +313,17 @@ export async function renderPhotoChannel({ photoUrl, channel, captionText, works
 // template the StoryboardPiece compositor drives. Reuses the same Sharp + SVG +
 // embedded-font pipeline (no fontconfig dependency).
 
-const EDITORIAL_ASPECTS = {
+// Kept in step with FRAME_PIXELS in api/_lib/postFrames.js — that registry
+// decides WHICH ratio a destination renders at; this map turns the ratio into
+// pixels. A ratio missing here silently falls back to 4:5, so any ratio the
+// registry can return MUST have an entry (that is how 4:3 got missed: adding
+// GBP to the registry without adding it here would have no-op'd the fix).
+export const EDITORIAL_ASPECTS = {
   '4:5':  [1080, 1350],
   '9:16': [1080, 1920],
   '1:1':  [1080, 1080],
   '16:9': [1920, 1080], // YouTube in-stream / Google Display — added for ad export
+  '4:3':  [1200, 900],  // Google Business Profile — the only ratio Maps/Search won't clip
 }
 const HEADLINE_SIZE_FACTOR = { s: 0.058, m: 0.070, l: 0.084 }
 const DEFAULT_SCRIM = '#10243f' // brand navy
