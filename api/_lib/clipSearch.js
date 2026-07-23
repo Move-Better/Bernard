@@ -65,9 +65,6 @@ async function sb(path, init = {}) {
  * @param {string} [params.kind]          — 'photo' | 'video' | null (= any)
  * @param {number} [params.minScore=0.5]  — cosine similarity threshold
  * @param {string} [params.staffId]   — optional clinician-scoped search
- * @param {string[]} [params.excludeAssetIds] — asset ids to drop from results
- *   (e.g. photos already used on other recent pieces) — over-fetches from the
- *   RPC so filtering these out still leaves up to k candidates.
  * @param {boolean} [params.preferFresh=true] — discount already-used assets so
  *   a recurring topic stops resolving to the same shot every time. See the
  *   freshness notes above. Pass false for a pure-similarity search.
@@ -83,7 +80,6 @@ export async function searchClips({
   kind = null,
   minScore = 0.5,
   staffId = null,
-  excludeAssetIds = [],
   preferFresh = true,
 }) {
   // Embed the query text
@@ -92,18 +88,14 @@ export async function searchClips({
     throw new Error('embedding_dim_mismatch')
   }
 
-  const excludeSet = new Set(excludeAssetIds.filter(Boolean))
   const boundedK = Math.max(k, 1)
-  // Over-fetch by the exclusion-set size so filtering out already-used assets
-  // still leaves up to k results, rather than silently returning fewer.
-  //
-  // When ranking on freshness, over-fetch a real CANDIDATE POOL on top of that:
-  // re-ranking k rows can only reorder the same k assets, it can never swap a
-  // tired one out for a fresh alternative. That matters most exactly where the
-  // reuse problem is worst — generate-package asks for k=1, so without a pool
-  // it would re-rank a single candidate against itself and change nothing.
+  // When ranking on freshness, over-fetch a real CANDIDATE POOL: re-ranking k
+  // rows can only reorder the same k assets, it can never swap a tired one out
+  // for a fresh alternative. That matters most exactly where the reuse problem
+  // is worst — generate-package asks for k=1, so without a pool it would
+  // re-rank a single candidate against itself and change nothing.
   const poolK = preferFresh ? Math.max(boundedK * 3, boundedK + 10) : boundedK
-  const matchCount = Math.min(poolK + excludeSet.size, 50)
+  const matchCount = Math.min(poolK, 50)
 
   // Call match_visual_memory_chunks RPC
   const rpcRes = await sb('rpc/match_visual_memory_chunks', {
@@ -124,9 +116,6 @@ export async function searchClips({
   }
 
   const rows = await rpcRes.json()
-  const filtered = excludeSet.size
-    ? rows.filter((r) => !excludeSet.has(r.source_id))
-    : rows
 
   // Usage is fetched regardless of preferFresh, because callers RENDER it (the
   // picker badges every tile from this field). Gating the lookup on the ranking
@@ -134,9 +123,9 @@ export async function searchClips({
   // indistinguishable from a genuinely unused asset — i.e. a confident "never
   // used" on a photo that has been out five times. preferFresh controls the
   // ORDER only; the counts are always real.
-  const usageById = await fetchUsage(workspaceId, filtered.map((r) => r.source_id))
+  const usageById = await fetchUsage(workspaceId, rows.map((r) => r.source_id))
 
-  const ranked = filtered
+  const ranked = rows
     .map((r) => {
       const usage = usageById.get(r.source_id) || { total: 0, published: 0 }
       const similarity = r.similarity ?? 0
