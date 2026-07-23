@@ -644,6 +644,17 @@ function AppleInsightsRead({ data }) {
 
 const fmtNum = (n) => Number(n || 0).toLocaleString()
 
+// The top post's own real numbers when available (bundle-sourced), same
+// platform-native headline as the by-platform cards — falls back to the
+// reach/engagement composite for a Buffer-sourced post with no raw fields.
+function topPostMetricLine(topPost) {
+  if (!topPost?.raw) return `${fmtNum(topPost.reach)} reach · ${fmtNum(topPost.engagement)} engagement`
+  const headline = topPost.raw.views > 0
+    ? `${fmtNum(topPost.raw.views)} views`
+    : `${fmtNum(topPost.raw.impressions)} impressions`
+  return `${headline} · ${fmtNum(topPost.raw.likes)} likes`
+}
+
 function TabButton({ active, onClick, icon: Icon, label }) {
   return (
     <button
@@ -885,11 +896,14 @@ function SocialTab({ data, loading, cost, granularity = 'week' }) {
             <Award className="h-4 w-4 text-primary" /> Your top post this {granularity}
           </h3>
           {topPost ? (
-            <div className="text-sm mt-3">
-              <div className="font-medium truncate">{topPost.topic}</div>
-              <div className="text-2xs text-muted-foreground mt-0.5">{PLATFORM_LABELS[topPost.platform] || topPost.platform}</div>
-              <div className="mt-2 font-semibold tabular-nums">{fmtNum(topPost.reach)} reach · {fmtNum(topPost.engagement)} engagement</div>
-            </div>
+            <Link to={`/publish/${topPost.id}`} className="text-sm mt-3 flex items-start justify-between gap-3 group -mx-1 px-1 py-1 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="min-w-0">
+                <div className="font-medium truncate text-foreground">{topPost.topic}</div>
+                <div className="text-2xs text-muted-foreground mt-0.5">{PLATFORM_LABELS[topPost.platform] || topPost.platform}</div>
+                <div className="mt-2 font-semibold tabular-nums text-foreground">{topPostMetricLine(topPost)}</div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5 group-hover:text-primary transition-colors" aria-hidden="true" />
+            </Link>
           ) : overall.posts > 0 ? (
             <p className="text-sm text-muted-foreground mt-3">No measured reach yet for this {granularity}&rsquo;s posts.</p>
           ) : (
