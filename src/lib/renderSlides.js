@@ -63,6 +63,7 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle, aspect }) {
     // Photo reframe + colorist grade also change the pixels — without these a
     // pan/zoom or grade edit kept the stale cached bake.
     photoZoom: slide.photo_zoom || null,
+    photoFill: slide.photo_fill ?? null,
     photoOffset: slide.photo_offset || null,
     grade: slide.grade || null,
     // Renderer version — bump to force a one-time re-bake when the render model
@@ -73,7 +74,13 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle, aspect }) {
     // v6: aspect selector — output dimensions are now user-controlled.
     // v7: text-effect presets (shadow/outline/glow/label) — WS3.2.
     // v8: objects layer (logo/watermark) — WS3.1.
-    _renderV: 8,
+    // v9: an unframed photo FILLS the frame instead of fitting inside it behind
+    //     a blurred backdrop, and zoom moved to the fill baseline (photo_fill).
+    //     This bump matters more than most: the default framing changed, so
+    //     every slide baked under v8 without an explicit zoom is a cached image
+    //     of the OLD letterboxed render. Without the bump those stale bakes keep
+    //     being served and the fix looks like it never shipped.
+    _renderV: 9,
     aspect: aspect || '4:5',
   }))
 }

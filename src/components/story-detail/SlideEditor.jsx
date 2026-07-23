@@ -354,6 +354,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
       // Persist the photo reframe (pan/zoom) so it survives reload and ships in
       // the bake. Omit when neutral to keep rows lean + legacy slides identical.
       ...(s.photo_zoom > 1 ? { photo_zoom: s.photo_zoom } : {}),
+      ...(s.photo_fill != null ? { photo_fill: s.photo_fill } : {}),
       ...(s.photo_offset && (s.photo_offset.x || s.photo_offset.y)
         ? { photo_offset: { x: s.photo_offset.x || 0, y: s.photo_offset.y || 0 } }
         : {}),

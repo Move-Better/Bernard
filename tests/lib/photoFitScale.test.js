@@ -76,3 +76,43 @@ describe('photoFitScale — hand-framed slides keep their exact framing', () => 
     expect(photoFitScale(...LANDSCAPE, ...FRAME_4_5, NaN)).toBe(cover)
   })
 })
+
+describe('photoFitScale — the fill baseline the editor writes today', () => {
+  // photo_fill is relative to FILL, so its numbers mean the same thing on every
+  // photo regardless of shape — which is what lets the editor's slider show a
+  // position that matches the canvas. The legacy fit-relative photo_zoom could
+  // not: "1" meant a different amount of zoom on every photo.
+  it('fills the frame at exactly 1', () => {
+    const scale = photoFitScale(...LANDSCAPE, ...FRAME_4_5, null, 1)
+    expect(fills(scale, LANDSCAPE, FRAME_4_5)).toBe(true)
+    expect(scale).toBeCloseTo(photoFitScale(...LANDSCAPE, ...FRAME_4_5, null), 10)
+  })
+
+  it('means the same thing for a portrait and a landscape source', () => {
+    const land = photoFitScale(1600, 1200, 1080, 1350, null, 1)
+    const port = photoFitScale(1200, 1600, 1080, 1350, null, 1)
+    expect(fills(land, [1600, 1200], FRAME_4_5)).toBe(true)
+    expect(fills(port, [1200, 1600], FRAME_4_5)).toBe(true)
+  })
+
+  it('pulls back below 1, revealing the blurred backdrop on purpose', () => {
+    const scale = photoFitScale(...LANDSCAPE, ...FRAME_4_5, null, 0.6)
+    expect(fills(scale, LANDSCAPE, FRAME_4_5)).toBe(false)
+  })
+
+  it('crops in above 1', () => {
+    const one = photoFitScale(...LANDSCAPE, ...FRAME_4_5, null, 1)
+    expect(photoFitScale(...LANDSCAPE, ...FRAME_4_5, null, 2)).toBeCloseTo(one * 2, 10)
+  })
+
+  it('wins over a legacy value if a slide somehow carries both baselines', () => {
+    const both = photoFitScale(...LANDSCAPE, ...FRAME_4_5, 3, 1)
+    expect(both).toBeCloseTo(photoFitScale(...LANDSCAPE, ...FRAME_4_5, null, 1), 10)
+  })
+
+  it('ignores a nonsensical fill zoom and falls through', () => {
+    const cover = photoFitScale(...LANDSCAPE, ...FRAME_4_5, null)
+    expect(photoFitScale(...LANDSCAPE, ...FRAME_4_5, null, 0)).toBe(cover)
+    expect(photoFitScale(...LANDSCAPE, ...FRAME_4_5, null, NaN)).toBe(cover)
+  })
+})

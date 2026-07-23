@@ -291,31 +291,43 @@ function drawCover(ctx, img, x, y, w, h, zoom = 1, offset = null) {
 }
 
 // How big to draw the photo, given the frame and the author's zoom.
-//   zoom = unset        → the photo FILLS the frame edge-to-edge (default)
-//   zoom = 1            → the WHOLE photo fits inside the frame (max pull-back)
-//   zoom = cover/fit    → the photo just covers the frame
-//   zoom > cover/fit    → cropped in tighter
 //
-// The DEFAULT is cover, not fit: an unset photo_zoom means the author never
-// deliberately framed this slide, and every platform expects a full-bleed frame
-// — defaulting to fit meant an unframed photo always rendered letterboxed behind
-// its own blur. An explicit numeric zoom keeps the legacy FIT-relative meaning so
-// the slides that were already hand-framed render byte-identically. (Q 2026-07-22)
+// TWO zoom fields, because they use different baselines:
+//
+//   photo_fill (current) — relative to FILL. 1 = fills the frame edge-to-edge,
+//     <1 pulls back and reveals the blurred backdrop, >1 crops in tighter. This
+//     is what the editor's slider writes, and it is the only one whose numbers
+//     mean the same thing on every photo regardless of its shape.
+//
+//   photo_zoom (legacy) — relative to FIT. 1 = the whole photo fits inside the
+//     frame. Only ever persisted when >1. Still honoured so the slides that were
+//     hand-framed before the baseline changed render byte-identically; nothing
+//     writes it any more.
+//
+//   neither → FILL. An unframed slide is full-bleed, which is what every
+//     platform expects. Defaulting to fit is what made unframed photos render
+//     letterboxed behind a blur of themselves. (Q 2026-07-22)
+//
+// The two-baseline split exists so this change needed no data migration: a
+// fit-relative value can only be converted to a fill-relative one if you know
+// the photo's dimensions, which the stored row does not carry.
 //
 // Exported (and canvas-free) purely so the fit-vs-fill decision is testable.
-export function photoFitScale(imgW, imgH, w, h, zoom = null) {
+export function photoFitScale(imgW, imgH, w, h, zoom = null, fillZoom = null) {
   const fitScale   = Math.min(w / imgW, h / imgH)
   const coverScale = Math.max(w / imgW, h / imgH)
-  return Number.isFinite(zoom) && zoom > 0 ? fitScale * zoom : coverScale
+  if (Number.isFinite(fillZoom) && fillZoom > 0) return coverScale * fillZoom
+  if (Number.isFinite(zoom) && zoom > 0) return fitScale * zoom
+  return coverScale
 }
 
 // Draw a photo into (x,y,w,h) at photoFitScale, then pan by `offset`. When the
 // photo doesn't cover the frame, a blurred enlarged copy of the SAME photo fills
 // the gaps (Instagram-style) so it always looks intentional. Honours any colorist
 // filter already set on ctx.filter for the sharp photo. (Q 2026-06-20)
-function drawPhotoFit(ctx, img, x, y, w, h, zoom = null, offset = null) {
+function drawPhotoFit(ctx, img, x, y, w, h, zoom = null, offset = null, fillZoom = null) {
   const coverScale = Math.max(w / img.width, h / img.height)
-  const scale = photoFitScale(img.width, img.height, w, h, zoom)
+  const scale = photoFitScale(img.width, img.height, w, h, zoom, fillZoom)
   const sw = img.width * scale, sh = img.height * scale
   const ox = offset && Number.isFinite(offset.x) ? offset.x : 0
   const oy = offset && Number.isFinite(offset.y) ? offset.y : 0
@@ -1191,10 +1203,10 @@ const WHOOP_SAGE_FILL = '#eaeeea'
 // Draw the source photo with the per-slide colorist grade applied (and only the
 // photo — panels/scrims/rules stay ungraded). `photoFilter` is a CSS filter
 // string from gradeToCanvasFilter, 'none' when neutral.
-function drawGradedCover(ctx, img, x, y, w, h, zoom, offset, photoFilter) {
+function drawGradedCover(ctx, img, x, y, w, h, zoom, offset, photoFilter, fillZoom = null) {
   const prev = ctx.filter
   if (photoFilter && photoFilter !== 'none') ctx.filter = photoFilter
-  drawPhotoFit(ctx, img, x, y, w, h, zoom, offset)
+  drawPhotoFit(ctx, img, x, y, w, h, zoom, offset, fillZoom)
   ctx.filter = prev || 'none'
 }
 
@@ -1226,7 +1238,7 @@ function resolveColor(spec, brandStyle) {
   return '#000000'
 }
 
-function drawStructure(ctx, structure, brandStyle, img, W, H, photoZoom, photoOffset, photoFilter) {
+function drawStructure(ctx, structure, brandStyle, img, W, H, photoZoom, photoOffset, photoFilter, photoFill = null) {
   for (const p of structure) {
     switch (p.type) {
 
@@ -1267,7 +1279,7 @@ function drawStructure(ctx, structure, brandStyle, img, W, H, photoZoom, photoOf
 
       case 'photo': {
         if (img) {
-          drawGradedCover(ctx, img, 0, 0, W, H, photoZoom, photoOffset, photoFilter)
+          drawGradedCover(ctx, img, 0, 0, W, H, photoZoom, photoOffset, photoFilter, photoFill)
         } else if (p.fallback) {
           drawStructure(ctx, [p.fallback], brandStyle, null, W, H, 1, null, 'none')
         }
@@ -1345,7 +1357,7 @@ function drawStructure(ctx, structure, brandStyle, img, W, H, photoZoom, photoOf
   }
 }
 
-function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offset = null, photoFilter = 'none', W = SIZE, H = SIZE }) {
+function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offset = null, photoFilter = 'none', W = SIZE, H = SIZE, fill = null }) {
   const accent = brandAccent(brandStyle)
 
   if (layout === 'claim') {
@@ -1371,7 +1383,7 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
     // it does NOT crop the photo into a box. The photo never shrinks; you frame
     // the full image. (Structure fix, Q 2026-06-20; panel/rule styling unchanged.)
     if (img) {
-      drawGradedCover(ctx, img, 0, 0, W, H, zoom, offset, photoFilter)
+      drawGradedCover(ctx, img, 0, 0, W, H, zoom, offset, photoFilter, fill)
     } else {
       const base = brandInk(brandStyle, '#1e293b')
       const grad = ctx.createLinearGradient(0, 0, 0, H)
@@ -1392,7 +1404,7 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
     // just edge scrims (stronger bottom for the hook, light top for labels/page)
     // so overlaid text stays legible. (U2.1b, Q sign-off 2026-06-20.)
     if (img) {
-      drawGradedCover(ctx, img, 0, 0, W, H, zoom, offset, photoFilter)
+      drawGradedCover(ctx, img, 0, 0, W, H, zoom, offset, photoFilter, fill)
     } else {
       const base = brandInk(brandStyle, '#1e293b')
       const grad = ctx.createLinearGradient(0, 0, 0, H)
@@ -1421,7 +1433,7 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
     // badge
     if (palette === 'dark') {
       if (img) {
-        drawGradedCover(ctx, img, 0, 0, W, H, zoom, offset, photoFilter)
+        drawGradedCover(ctx, img, 0, 0, W, H, zoom, offset, photoFilter, fill)
       } else {
         ctx.fillStyle = brandInk(brandStyle, WHOOP_NAVY)
         ctx.fillRect(0, 0, W, H)
@@ -1447,7 +1459,7 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
       // below — mirrors the dark-badge scrim treatment (fade, not a hard seam).
       const panelY = Math.round(H * 0.58)
       if (img) {
-        drawGradedCover(ctx, img, 0, 0, W, H, zoom, offset, photoFilter)
+        drawGradedCover(ctx, img, 0, 0, W, H, zoom, offset, photoFilter, fill)
       } else {
         const base = brandPaper(brandStyle, '#cbd5e1')
         const grad = ctx.createLinearGradient(0, 0, 0, H)
@@ -1504,6 +1516,8 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
   // fills the frame. Coercing to 1 here is what pinned every unframed slide to
   // fit-with-blur regardless of the renderer's default.
   const photoZoom = slide?.photo_zoom ?? null
+  // Fill-relative zoom the editor writes today (1 = fills the frame).
+  const photoFill = slide?.photo_fill ?? null
   const photoOffset = slide?.photo_offset || null
   // Per-slide colorist grade — applied ONLY to the photo pixels (not panels/text)
   // in the single shared renderer, so editor preview, publish bake, and ad export
@@ -1516,15 +1530,15 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
     // have layout/palette but no structure field.
     const img = sourceUrl ? await loadImage(sourceUrl) : null
     if (Array.isArray(theme?.structure)) {
-      drawStructure(ctx, theme.structure, brandStyle || {}, img, W, H, photoZoom, photoOffset, photoFilter)
+      drawStructure(ctx, theme.structure, brandStyle || {}, img, W, H, photoZoom, photoOffset, photoFilter, photoFill)
     } else {
-      drawWhoopLayout(ctx, { layout, palette, img, brandStyle: brandStyle || {}, zoom: photoZoom, offset: photoOffset, photoFilter, W, H })
+      drawWhoopLayout(ctx, { layout, palette, img, brandStyle: brandStyle || {}, zoom: photoZoom, offset: photoOffset, photoFilter, W, H, fill: photoFill })
     }
   } else if (sourceUrl) {
     const img = await loadImage(sourceUrl)
     const prevFilter = ctx.filter
     if (photoFilter !== 'none') ctx.filter = photoFilter
-    drawPhotoFit(ctx, img, 0, 0, W, H, photoZoom, photoOffset)
+    drawPhotoFit(ctx, img, 0, 0, W, H, photoZoom, photoOffset, photoFill)
     ctx.filter = prevFilter || 'none'
   } else if (background) {
     // Text-only card (Text Post Studio): paint a brand-aware background.

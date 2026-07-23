@@ -62,8 +62,13 @@ export default function SlidePreview({ slide, photoUrl, brandStyle, theme, onRef
   function onWheel(e) {
     if (!canReframe) return
     e.preventDefault()
-    const z = Math.max(1, Math.min(4, (slide.photo_zoom || 1) - e.deltaY * 0.0015))
-    onReframe({ ...slide, photo_zoom: z })
+    // Scroll-zoom on the FILL baseline (1 = fills). Drops the legacy
+    // fit-relative field so a slide never carries both at once.
+    const base = slide.photo_fill != null ? slide.photo_fill : 1
+    const z = Math.max(0.4, Math.min(4, base - e.deltaY * 0.0015))
+    const next = { ...slide, photo_fill: z }
+    delete next.photo_zoom
+    onReframe(next)
   }
   // A click that wasn't a drag selects the photo layer (drives the inspector).
   function onClick() {
