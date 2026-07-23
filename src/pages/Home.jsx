@@ -23,6 +23,7 @@ import PostsLiveCard from '@/components/home/PostsLiveCard'
 import RelationshipCard from '@/components/home/RelationshipCard'
 import PageHelp from '@/components/PageHelp'
 import InstallBanner from '@/components/home/InstallBanner'
+import ChannelHealthBanner from '@/components/home/ChannelHealthBanner'
 
 const RESUME_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -351,6 +352,8 @@ export default function Home() {
       )}
 
       <InstallBanner />
+
+      <ChannelHealthBanner />
 
       {/* F18 — the disclosure beat: what Bernard has quietly noticed about how
           this clinician's interviews have evolved, plus a receipt of what
