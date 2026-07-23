@@ -672,6 +672,59 @@ embedding/backfill work, run that probe first: import `buildDraftMatchQuery` +
 
 ---
 
+## Reels — how one is stored, and what controls how many get made
+
+**A Reel is not a platform value.** It is `content_items.platform = 'instagram'`
+with a video-typed entry in `media_urls`; `resolveArchetype`
+(`src/lib/editorArchetype.js`) refines `instagram + hasVideo → vvideo`, and
+`instagram_story + hasVideo → storyvid`, `visual + hasVideo → lvideo`. The
+`instagram_reel` platform key exists in `PLATFORM_ARCHETYPE` and is what
+`bundlePublisher` sends as `type`, but the planner does not write it — atoms
+carry `format:'reel'` on `platform:'instagram'` instead.
+
+So **`select … where platform = 'instagram_reel'` returns zero rows on a
+workspace that is actively shipping Reels.** That false negative cost this
+codebase a confidently wrong "nothing plans Reels" conclusion (2026-07-22).
+Query for the archetype, not the platform:
+
+```sql
+select * from content_items c
+where c.platform = 'instagram'
+  and exists (select 1 from jsonb_array_elements(coalesce(c.media_urls,'[]'::jsonb)) m
+              where m->>'type' = 'video' or m->>'kind' = 'video');
+```
+
+The same shape-vs-key trap applies to any "is feature X being used?" question
+where the entity is denormalised across two columns rather than given its own
+enum value — check how the writer stores it before trusting a key-based count.
+
+**Reel volume is governed by two numbers, and the lower one wins.**
+`reelTargetForWorkspace` (`api/_lib/reelFactory.js`) returns
+`min(instagram.target_per_week, explicitReelTarget)`, where the explicit target
+is `cadence_policy.formats.reel.target_per_week` (or the legacy
+`channels.instagram_reel.target_per_week`). With no explicit target it falls back
+to `round(igTarget × DEFAULT_REEL_SHARE)`, share = 0.75. **Raising only the reel
+target silently does nothing if Instagram's own `target_per_week` is lower.**
+
+A third, separate value decides *where on the calendar* they land: the
+`channels.instagram.slots` array (`{weekday, hour, format, enabled}`), deduped by
+weekday+hour, honouring `cadence_policy.quiet_days`. Slots and targets are not
+derived from each other — change both or the calendar and the target disagree.
+
+Everything else in `fillReelSlots` is a ceiling, not a driver: `MAX_PER_RUN = 2`
+per hourly cron tick (`/api/cron/auto-reel-week`), `MIN_SCORE = 75` on a 0–100
+segment score, 8–60s duration, hard consent skip, one reel per source video per
+run, and `content_plan_atoms.source_segment_id` as the never-draft-twice ledger.
+The target is counted against existing non-skipped reel atoms for the week, so
+re-running is idempotent rather than additive.
+
+`cadence_policy.formats.reel.voice = 'clinician'` additionally requires
+`speaker_voice = 'clinician'` at `confidence ≥ 0.6`. It is off by default and ON
+for movebetter — worth remembering when auditing candidate supply, since it
+removed ~30% of otherwise-qualifying segments there.
+
+---
+
 ## Async pipeline patterns
 
 ### Polling: hard cap is universal
