@@ -79,6 +79,10 @@ Then dispatch the three agents in one message. **Append this calibration block t
   > - Mutation race conditions where saveMessages and updateInterview both PATCH the same row
   > - Stale closures in useCallback over messages/interview refs
   >
+  > **Additionally, run every one of the "Bernard recurring bug classes" in your agent definition** — contract fiction (third-party fields never verified against a real payload), sanitizer overwrite-vs-merge data loss, sibling-path divergence (grep every caller of shared entry points like `getAtomSystemPrompt` / `BundlePublisher.publish` / `dispatchContentItem`), signals with no machine consumer, dead enums / no-op gates, optimistic status ahead of external confirmation, batch-at-end persistence in serverless handlers, client param overrides narrowing server behavior, date-window/PostgREST operator bugs, and server-managed fields echoed back on save. Each of these shipped a real prod incident in July 2026; treat them as first-class sweep dimensions, not afterthoughts.
+  >
+  > For any feature that writes alerts, cron output, or derived signal rows, also emit a **liveness-probe request**: name the table + the condition that should have rows if the feature ever ran (e.g. "channel-health alerts → rows in X since ship date"). You can't query prod; the orchestrator will run these probes. List them in a final section titled `## Liveness probes requested`.
+  >
   > Output as Markdown with sections P0 (data loss / crashes / security), P1 (broken UX / wrong behavior), P2 (resilience / future-bug). Each finding: `file:line — problem — suggested fix`. Cap at top 20 findings (higher than /audit's 15 since this is a baseline run).
 
 ### Agent 2 — tenant-isolation-auditor
@@ -100,6 +104,22 @@ Then dispatch the three agents in one message. **Append this calibration block t
   > Major screens: Home (`/`), Stories (`/stories`), StoryDetail (`/stories/:id`), Library / MediaHub, Settings (workspace, brand kit, channels, locations), Account, New Interview, Interview Session.
   >
   > Output as Markdown with P0 (broken / unusable), P1 (confusing or off-brand), P2 (polish). Each finding: `<screen> — <issue> — <suggested fix>`. Cap at top 20 findings (higher than /audit's 15 since this is a baseline run).
+  >
+  > Also run the **Affordance/behavior integrity sweep** from your agent definition on every screen — clickable conversions missing `text-foreground`, hover affordances without handlers (and the inverse), read-only state drawn as input controls, and threshold/severity rules tabulated against real input ranges. These are greppable code-level checks; report them with file:line like a bug, not just a screen impression.
+
+---
+
+## Phase 2.5 — Liveness probes (main session, after agents return)
+
+The subagents can't reach prod; you can (Supabase MCP). This phase catches the "shipped but never fired" class — #2235's channel-health alert had zero rows and zero errors for its whole life, invisible to any static read.
+
+1. Collect every `## Liveness probes requested` entry from the bug-hunter report.
+2. Independently, build your own list: grep `api/_routes/cron/` and any alert/digest/signal-writing handler for the tables they INSERT into. For each: `SELECT count(*), max(created_at) FROM <table> [WHERE <condition>]` via Supabase MCP (read-only).
+3. Verdicts:
+   - **Zero rows ever** for a feature merged >72h ago → **P1 finding: "never fired"** — the wiring is dead somewhere (bad field name, dead cron, unreachable branch). Add to the punch list tagged `[live]`.
+   - Rows exist but `max(created_at)` predates the last relevant code change by weeks → flag as "possibly went dead" P2.
+   - Recent rows → note as verified-live in the report (valuable signal, same as a green tenant audit).
+4. Keep it read-only — counts and max timestamps only, no row contents needed. ~5–10 queries; add ~2 min to the run.
 
 ---
 
@@ -107,7 +127,7 @@ Then dispatch the three agents in one message. **Append this calibration block t
 
 After all three agents return:
 
-1. **Compose the punch list**. Interleave findings by priority across agents — all P0s first (regardless of source agent), then P1s, then P2s. Tag each finding with its source `[bug]`, `[tenant]`, `[ui]`.
+1. **Compose the punch list**. Interleave findings by priority across agents — all P0s first (regardless of source agent), then P1s, then P2s. Tag each finding with its source `[bug]`, `[tenant]`, `[ui]`, `[live]` (Phase 2.5 liveness probes).
 
 1a. **Recurrence check against calibration.md's "Findings snapshot" section** (skip if it says "none yet"). Compare this run's P0/P1 findings to that snapshot by file:line + problem:
    - Still present → prefix with `🔁(Nx)` in the punch list and bump to at least P1 if N ≥ 2.
