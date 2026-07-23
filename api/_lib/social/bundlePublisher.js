@@ -551,5 +551,13 @@ function normalizeBundleAnalytics(res) {
   }
   const m = emptyMetrics()
   for (const key of Object.keys(m)) m[key] = num(key)
-  return { metrics: m, fetchedAt: new Date().toISOString(), raw: res }
+  // bundle's analytics items carry a `.raw` field — the source platform's own
+  // verbatim API response (Meta/LinkedIn), separate from bundle's normalized
+  // 9-key shape above. We don't parse it (each platform's raw shape differs
+  // and is undocumented by bundle), but preserve it so a caller can inspect
+  // what the platform actually sent — e.g. checking whether IG's raw payload
+  // has `saved`/`profile_visits` fields that bundle's normalized set omits,
+  // before we know whether those are real zeros or just never surfaced.
+  const platformRaw = candidates.map((c) => c?.raw).find((r) => r != null) ?? null
+  return { metrics: m, fetchedAt: new Date().toISOString(), raw: res, platformRaw }
 }

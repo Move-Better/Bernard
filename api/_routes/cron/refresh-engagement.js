@@ -366,8 +366,17 @@ async function processWorkspaceBundle(ws, summary) {
     // checked and that's the real reading. Skipping it would leave `catchUp`
     // re-queuing the same post forever, since it depends on `!latest` to know
     // a post has never been pulled.
-    const stats = { statistics: { ...metrics }, source: 'bundle', service: item.platform }
-    const nonZero = Object.values(stats.statistics).some((v) => typeof v === 'number' && v > 0)
+    // platformRaw is the platform's own verbatim analytics payload, kept
+    // alongside bundle's normalized 9-field set so we can check for metrics
+    // bundle's shape doesn't surface (IG saves/profile visits, etc.) without
+    // a second API call — see normalizeBundleAnalytics in bundlePublisher.js.
+    const stats = {
+      statistics: { ...metrics },
+      source: 'bundle',
+      service: item.platform,
+      platformRaw: analytics?.platformRaw ?? null,
+    }
+    const nonZero = Object.values(metrics).some((v) => typeof v === 'number' && v > 0)
     if (!nonZero) bump(item.platform, 'allZero')
     const ins = await sb('engagement_snapshots', {
       method: 'POST',
@@ -566,10 +575,21 @@ async function processWorkspaceGA4(ws, summary) {
 }
 
 // GBP walker — matches published GBP content items to Google local posts and
-// fetches view counts from the reportInsights API. Runs daily alongside the
-// Buffer / bundle / GA4 walkers. Skipped silently when no GBP credential exists.
+// fetches view counts from the reportInsights API (direct Google API — GBP
+// analytics does NOT come from bundle.social at all, bundle has none; see
+// processWorkspaceBundle's platform skip-list above). Runs daily alongside
+// the Buffer / bundle / GA4 walkers. Skipped silently when no GBP credential
+// exists.
+//
+// NOTE: this used to bail immediately for every bundle-provider workspace
+// (`if (ws.publish_provider === 'bundle') return`) — apparently on the
+// assumption that bundle-provider engagement is fully covered by
+// processWorkspaceBundle. It isn't: that walker explicitly skips GBP
+// (`item.platform === 'gbp' ... continue`), since bundle has no GBP
+// analytics. The two walkers are NOT redundant for GBP — this is the only
+// path that ever fetches GBP post views, and the guard silenced it for the
+// one workspace (movebetter) that actually has GBP analytics configured.
 async function processWorkspaceGBP(ws, summary) {
-  if (ws.publish_provider === 'bundle') return
   if (!ws.gbp_location_name) {
     // Not configured — skip silently (not an error; most workspaces won't have this).
     return
