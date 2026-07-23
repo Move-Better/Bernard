@@ -51,7 +51,12 @@ export async function notifyChannelHealth({ workspace, unhealthy }) {
       return { ok: false, skipped: true }
     }
 
-    const names = unhealthy.map(channelLabel)
+    // Dedupe for the subject line only — GBP disconnects one per LOCATION
+    // (Portland, Vancouver, …), all sharing the same `type: GOOGLE_BUSINESS`,
+    // so an unhealthy list with two broken locations would otherwise read
+    // "Google Business Profile and Google Business Profile are disconnected".
+    // The per-item `list` below still differentiates by displayName.
+    const names = [...new Set(unhealthy.map(channelLabel))]
     const wsName = workspace.display_name || 'your workspace'
     const settingsLink = workspace.slug
       ? `https://${workspace.slug}.withbernard.ai/settings/integrations`

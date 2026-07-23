@@ -27,6 +27,7 @@ import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
 import { refreshGbpToken } from '../../_lib/gbpAuth.js'
 import { listLocalPosts, fetchPostViewInsights } from '../../_lib/gbpClient.js'
 import { verifyCronSecret } from '../../_lib/auth.js'
+import { scoreSnapshot } from '../../_lib/engagementScoring.js'
 
 const SUPABASE_URL  = process.env.SUPABASE_URL
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY
@@ -60,6 +61,16 @@ function sb(path, init = {}) {
 
 function scoreOf(stats) {
   if (!stats || typeof stats !== 'object') return 0
+  // bundle's statistics blob carries BOTH `impressions` and `views` for the
+  // SAME real number on IG/FB (Meta's 2024 "impressions"→"Views" rename — see
+  // BufferMetricsRow.jsx) — blindly summing every field below double-counts
+  // that one number, inflating bundle-sourced scores relative to platforms
+  // that don't have this duplicate naming (LinkedIn always has views=0).
+  // Delegate to the same reach+engagement scorer used by
+  // top-performers.js/social-by-week.js (engagementScoring.js) so a post
+  // isn't ranked differently by two different yardsticks depending on which
+  // feature is looking at it.
+  if (stats.source === 'bundle') return scoreSnapshot({ source: 'bundle', stats }).score
   const s = stats.statistics
   if (s && typeof s === 'object') {
     return Object.values(s).reduce((sum, v) => sum + (typeof v === 'number' ? v : 0), 0)

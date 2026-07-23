@@ -865,10 +865,24 @@ function SocialTab({ data, loading, cost, granularity = 'week' }) {
                 <div key={p.platform} className="flex items-center justify-between py-3">
                   <PlatformBadge platform={p.platform} />
                   {p.status === 'measured' ? (
-                    <div className="flex items-center gap-6 text-sm tabular-nums">
-                      <span>{fmtNum(p.reach)} reach</span>
-                      <span>{fmtNum(p.engagement)} engagement</span>
-                    </div>
+                    p.hasRaw ? (
+                      <div className="flex items-center gap-4 text-sm tabular-nums flex-wrap justify-end">
+                        {p.raw.views > 0 ? (
+                          <span>{fmtNum(p.raw.views)} views</span>
+                        ) : p.raw.impressions > 0 ? (
+                          <span>{fmtNum(p.raw.impressions)} impressions</span>
+                        ) : null}
+                        {p.raw.likes > 0 && <span>{fmtNum(p.raw.likes)} likes</span>}
+                        {p.raw.comments > 0 && <span>{fmtNum(p.raw.comments)} comments</span>}
+                        {p.raw.shares > 0 && <span>{fmtNum(p.raw.shares)} shares</span>}
+                        {p.raw.saves > 0 && <span>{fmtNum(p.raw.saves)} saves</span>}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-6 text-sm tabular-nums">
+                        <span>{fmtNum(p.reach)} reach</span>
+                        <span>{fmtNum(p.engagement)} engagement</span>
+                      </div>
+                    )
                   ) : (
                     <span className="text-2xs text-muted-foreground">
                       {p.status === 'unavailable'
@@ -976,10 +990,10 @@ function DefinitionsModal({ onClose }) {
               Social Media (Instagram, Facebook, LinkedIn, etc.)
             </h3>
             <ul className="list-disc pl-8 text-muted-foreground space-y-1.5">
-              <li><span className="font-medium text-foreground">Reach</span> — unique accounts your connected platform reports having seen the post at least once.</li>
-              <li><span className="font-medium text-foreground">Engagement</span> — likes + comments + shares + saves, added together, as reported by the platform.</li>
+              <li>The overall card and top-post ranking use <span className="font-medium text-foreground">Reach</span> (unique accounts the platform reports having seen the post) and <span className="font-medium text-foreground">Engagement</span> (likes + comments + shares + saves).</li>
+              <li>The by-platform breakdown shows each platform&rsquo;s own real numbers instead — <span className="font-medium text-foreground">Views</span>/<span className="font-medium text-foreground">Impressions</span>, Likes, Comments, Shares, Saves — only the ones that platform actually reports for the post.</li>
               <li>Numbers only update when Bernard pulls fresh stats — on a schedule (1, 3, 7, and 30 days after a post goes out), then it stops. A brand-new post can show 0 until its first pull.</li>
-              <li>If your workspace publishes through Buffer rather than bundle.social: Buffer&rsquo;s API doesn&rsquo;t provide per-post engagement data today, so Reach/Engagement won&rsquo;t be available.</li>
+              <li>If your workspace publishes through Buffer rather than bundle.social: Buffer&rsquo;s API doesn&rsquo;t provide per-post engagement data today, so these numbers won&rsquo;t be available.</li>
             </ul>
           </div>
           <div>

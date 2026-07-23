@@ -1,6 +1,7 @@
 export const config = { runtime: 'nodejs' }
-// Cron: check every bundle.social workspace's connected channels and alert the
-// owner about any that have gone dead (runs daily).
+// Cron: check every bundle.social workspace's connected channels — the brand
+// Team (Instagram/Facebook/LinkedIn/…) AND every active location's own GBP
+// Team — and alert the owner about any that have gone dead (runs daily).
 //
 // Why this exists: Move Better's Facebook token was invalidated by Meta
 // (190:460) around 2026-06-26. Publishing to Facebook simply stopped. There was
@@ -17,6 +18,14 @@ export const config = { runtime: 'nodejs' }
 // the real object at all, so it silently never fired for anyone; caught only
 // by checking live bundle data, not by the unit tests written against it.
 //
+// GBP is intentionally NOT on the brand Team — bundle allows one active GBP
+// per Team, so each location connects through its own Team
+// (workspace_locations.bundle_team_id; see memory/project-bundle-social.md).
+// The brand-Team-only version of this cron silently never checked those Teams
+// at all, so a dropped GBP connection (Portland/Vancouver both showed
+// "Connection needs attention" in Integrations, 2026-07-22) never triggered
+// an alert — the gap this update closes.
+//
 // Auth: Bearer CRON_SECRET (same as all other crons).
 
 import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
@@ -31,6 +40,33 @@ function sb(path) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   })
+}
+
+// Check every active location's own GBP Team (see the module comment for why
+// this is separate from the brand Team). Never throws — one dead/unreachable
+// location Team must not stop the rest of the check.
+async function checkLocationGbp(ws) {
+  const locRes = await sb(
+    `workspace_locations?workspace_id=eq.${ws.id}&status=eq.active&bundle_team_id=not.is.null` +
+    `&select=id,label,bundle_team_id`
+  )
+  if (!locRes.ok) return []
+  const locations = (await locRes.json().catch(() => [])) || []
+
+  const unhealthy = []
+  for (const loc of locations) {
+    try {
+      const publisher = new BundlePublisher(ws, { teamId: loc.bundle_team_id })
+      const accounts = await publisher.listAccounts()
+      const gbp = accounts.find((a) => a.type === 'GOOGLE_BUSINESS')
+      if (gbp && !gbp.connected) {
+        unhealthy.push({ type: 'GOOGLE_BUSINESS', displayName: loc.label, reason: gbp.reason })
+      }
+    } catch (e) {
+      console.warn('[check-channel-health] location GBP check failed:', loc.id, e?.message)
+    }
+  }
+  return unhealthy
 }
 
 export default async function handler(req, res) {
@@ -62,7 +98,9 @@ export default async function handler(req, res) {
     try {
       const publisher = new BundlePublisher(ws)
       const accounts = await publisher.listAccounts()
-      const unhealthy = accounts.filter((a) => !a.connected)
+      const brandUnhealthy = accounts.filter((a) => !a.connected)
+      const locationUnhealthy = await checkLocationGbp(ws)
+      const unhealthy = [...brandUnhealthy, ...locationUnhealthy]
 
       if (unhealthy.length === 0) {
         summary.healthy++
@@ -74,10 +112,10 @@ export default async function handler(req, res) {
       if (sent?.ok) summary.alerted++
       summary.workspaces.push({
         workspaceId: ws.id,
-        // Log the types and the reason — derived from bundle's own
-        // deletedAt/disconnectedCheckTryAt/deleteOn fields, the only clue to
-        // WHY, and it isn't stored anywhere else.
-        unhealthy: unhealthy.map((a) => ({ type: a.type, reason: a.reason })),
+        // Log the type, location (for GBP), and the reason — derived from
+        // bundle's own deletedAt/disconnectedCheckTryAt/deleteOn fields, the
+        // only clue to WHY, and it isn't stored anywhere else.
+        unhealthy: unhealthy.map((a) => ({ type: a.type, displayName: a.displayName ?? null, reason: a.reason })),
         alerted: !!sent?.ok,
       })
     } catch (e) {

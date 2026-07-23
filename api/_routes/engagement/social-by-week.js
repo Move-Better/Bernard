@@ -26,6 +26,24 @@ const SOCIAL_PLATFORMS = new Set([
   'youtube_short', 'youtube', 'twitter', 'threads', 'bluesky', 'mastodon',
 ])
 
+// bundle.social's real per-platform numbers (Views/Impressions, Likes,
+// Comments, Shares, Saves) — same fields BufferMetricsRow shows on a single
+// post. Returns null for non-bundle snapshots (Buffer's shape has no
+// views/saves and shouldn't be summed as if it did).
+function rawBundleMetrics(snap) {
+  if (snap?.source !== 'bundle') return null
+  const s = snap.stats?.statistics || {}
+  const num = (v) => (typeof v === 'number' ? v : 0)
+  return {
+    impressions: num(s.impressions),
+    views:       num(s.views),
+    likes:       num(s.likes),
+    comments:    num(s.comments),
+    shares:      num(s.shares),
+    saves:       num(s.saves),
+  }
+}
+
 function sb(path) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: {
@@ -138,13 +156,23 @@ export default withSentry(async function handler(req, res) {
       overallEngagement += engagement
     }
 
-    const bucket = byPlatform.get(item.platform) ||
-      { platform: item.platform, posts: 0, measured: 0, unavailable: 0, reach: 0, engagement: 0 }
+    const bucket = byPlatform.get(item.platform) || {
+      platform: item.platform, posts: 0, measured: 0, unavailable: 0, reach: 0, engagement: 0,
+      hasRaw: false, raw: { impressions: 0, views: 0, likes: 0, comments: 0, shares: 0, saves: 0 },
+    }
     bucket.posts++
     if (measured) {
       bucket.measured++
       bucket.reach += reach
       bucket.engagement += engagement
+      // bundle-sourced platforms get their own real numbers shown instead of
+      // the reach/engagement composite (Q, 2026-07-22: "just display
+      // everything we can get" — same reasoning as BufferMetricsRow).
+      const raw = rawBundleMetrics(snap)
+      if (raw) {
+        bucket.hasRaw = true
+        for (const k of Object.keys(bucket.raw)) bucket.raw[k] += raw[k]
+      }
     } else if (isUnavailable) {
       bucket.unavailable++
     }
