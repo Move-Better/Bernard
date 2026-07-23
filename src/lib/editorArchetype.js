@@ -50,7 +50,11 @@ export const MEDIA_TIER = Object.freeze({
 export const ARCHETYPES = Object.freeze({
   carousel: {
     label: 'Carousel', surface: SURFACE.SLIDES, canvas: CANVAS.VISUAL,
-    rail: ['words', 'slide', 'photo', 'text', 'grade'],
+    // No 'slide' section — per-slide editing is the SLIDES *surface*
+    // (SURFACE.SLIDES, the slide rail beside the canvas), not an inspector
+    // panel. Carousels route to SlideEditor, which owns that surface; the key
+    // only ever made railFor silently drop it.
+    rail: ['words', 'photo', 'text', 'grade'],
     aspects: ['4:5', '1:1', '9:16'], mediaTier: MEDIA_TIER.REQUIRED,
   },
   visual: {
@@ -60,22 +64,32 @@ export const ARCHETYPES = Object.freeze({
   },
   story: {
     label: 'Story frame', surface: SURFACE.NONE, canvas: CANVAS.VISUAL,
-    rail: ['media', 'text', 'link'],
+    // No 'link' section — IG story link stickers aren't supported by our
+    // publisher, and there's no link inspector panel to route to.
+    rail: ['words', 'media', 'text'],
     aspects: ['9:16'], mediaTier: MEDIA_TIER.REQUIRED,
   },
   storyvid: {
     label: 'Story · video', surface: SURFACE.TIMELINE, canvas: CANVAS.VISUAL,
-    rail: ['media', 'trim', 'caption', 'overlay', 'link', 'grade'],
+    // See vvideo below — 'trim'/'overlay' are VideoEditor's job, not the
+    // unified shell's, and 'caption' is spelled 'words' everywhere else.
+    rail: ['words', 'media', 'grade'],
     aspects: ['9:16'], mediaTier: MEDIA_TIER.REQUIRED,
   },
   vvideo: {
     label: 'Vertical video', surface: SURFACE.TIMELINE, canvas: CANVAS.VISUAL,
-    rail: ['media', 'trim', 'caption', 'overlay', 'grade'],
+    // 'words' — NOT 'caption'. The caption editor is WordsPanel under the
+    // 'words' key, the same one every other archetype uses; 'caption' has no
+    // RAIL_META entry, so railFor silently dropped it and Reels/TikToks/Shorts
+    // opened with no way to edit their caption at all. 'trim' and 'overlay'
+    // are likewise absent — timeline trimming and on-video overlays live in
+    // the dedicated VideoEditor (/moments/clip/:id), not the unified shell.
+    rail: ['words', 'media', 'grade'],
     aspects: ['9:16'], mediaTier: MEDIA_TIER.REQUIRED,
   },
   lvideo: {
     label: 'Landscape video', surface: SURFACE.TIMELINE, canvas: CANVAS.VISUAL,
-    rail: ['media', 'trim', 'caption', 'overlay', 'grade'],
+    rail: ['words', 'media', 'grade'],
     aspects: ['16:9', '1:1'], mediaTier: MEDIA_TIER.REQUIRED,
   },
   doc: {

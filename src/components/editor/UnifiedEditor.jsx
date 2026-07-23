@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, Check, FolderOpen, ImageIcon, Loader2, Lock, MessageCircle, Palette, Plus, Search, Send, Sparkles, Type, Upload, Video, X } from 'lucide-react'
+import { ArrowRight, Check, FolderOpen, ImageIcon, Loader2, Lock, Palette, Plus, Send, Sparkles, Upload, Video, X } from 'lucide-react'
 import { toast } from 'sonner'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
 import EditorIconRail from '@/components/editor/IconRail'
+import { RAIL_META } from '@/components/editor/railSections'
 import PostPreview from '@/components/PostPreview'
 import BufferMetricsRow from '@/components/story-detail/BufferMetricsRow'
 import WinnerToggle from '@/components/story-detail/WinnerToggle'
@@ -35,20 +36,13 @@ import { frameFor } from '@/lib/postFrames'
 // from `.claude/mockups/unified-shell-all-channels.html`.
 //
 // The rail is driven by `railFor(piece)` (the archetype's section list), the
-// same matrix the mockup uses. Only sections with a real working panel render —
-// today: Words (caption), Media (attach/swap a photo), Text (on-image overlay).
-// Grade (brand-template bake) is the next section to land. Publish is always
-// present and is the DEFAULT so Schedule/Send stay at a glance.
-
-const RAIL_META = {
-  words: { icon: MessageCircle, label: 'Words' },
-  media: { icon: ImageIcon, label: 'Media' },
-  photo: { icon: ImageIcon, label: 'Media' },
-  text: { icon: Type, label: 'Text' },
-  grade: { icon: Palette, label: 'Grade' },
-  seo: { icon: Search, label: 'SEO' },
-}
-
+// same matrix the mockup uses. Only sections with a real working panel render:
+// Words (caption/body), Media (attach/swap), Text (on-image overlay), Grade
+// (brand-template bake) and SEO (doc only) — the RAIL_META keys in
+// ./railSections.js. A key with no entry there is dropped SILENTLY, so the
+// archetype↔RAIL_META contract is asserted in tests/lib/editorArchetypeRail.
+// Publish is always present and is the DEFAULT so Schedule/Send stay at a
+// glance.
 
 // Does this post have at least one photo (non-video media entry with a source)?
 const hasPhotoEntry = (media) =>
