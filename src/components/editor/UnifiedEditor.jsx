@@ -268,11 +268,14 @@ function MediaPanel({ piece, updateItem }) {
   // single-visual photo posts in SlideEditor's attachPhoto). doc/email/ad
   // keep the append behavior — those genuinely take multiple images.
   const singleMedia = ['vvideo', 'lvideo'].includes(resolveArchetype(piece))
-  // No `kind` — the server derives it from the draft's platform via
-  // mediaKindForPlatform: video for reels/tiktok/youtube, photo for blog/email,
-  // and BOTH for instagram/facebook/gbp/linkedin. Passing kind:'photo' here used
-  // to override that for every piece, including reels, so the video half of the
-  // library was never suggested anywhere in the app (4 of 466 videos ever used).
+  // No `kind` — the server derives it from the whole draft via mediaKindForDraft:
+  // video for tiktok/youtube AND for any piece that already has a video attached
+  // (an IG Reel is platform:'instagram' + a video, so platform alone can't tell
+  // it from a carousel — that gap is what made a Reel draft suggest photos);
+  // photo for blog/email/landing; BOTH for a media-less instagram/facebook/gbp/
+  // linkedin post. Passing kind:'photo' here used to override that for every
+  // piece, including reels, so the video half of the library was never suggested
+  // anywhere in the app (4 of 466 videos ever used).
   // The carousel strip and the Swap-photo panel still pass kind:'photo' — those
   // two are photo surfaces by definition; this one is not.
   const { data: sugg, isLoading } = useMediaSuggestions(piece.id, { k: 12 })
