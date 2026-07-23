@@ -4,6 +4,21 @@
 // the first (exactly what happened when top-performers.js's bundle mapping
 // was written before bundle.social shipped and never updated to match).
 
+// True for a sentinel row that records "analytics could not be fetched" rather
+// than a real measurement. refresh-engagement.js writes these with an empty
+// `statistics` object when bundle.social 400s with `unsupported_type` for a
+// post type it can't report on.
+//
+// The distinction matters because a sentinel scores 0 through the normal path,
+// making it indistinguishable from a genuine zero-reach post. Readers that
+// dedupe to the newest snapshot would let it shadow an older real measurement;
+// readers that AVERAGE would count it as a zero and drag the platform's mean
+// down. social-by-week.js and workspace-week.js already guard for this — this
+// export exists so no reader has to re-derive the check and drift out of sync.
+export function isUnavailable(snap) {
+  return snap?.stats?.unavailable === true
+}
+
 // Score a snapshot by its source. Returns { score, reach, pageviews, engagement }.
 export function scoreSnapshot(snap) {
   if (snap.source === 'ga4') {
@@ -59,6 +74,13 @@ export function rankTopPerformers(rows, limit = 5) {
   const scored = []
   for (const row of rows) {
     if (seen.has(row.content_item_id)) continue
+    // A sentinel snapshot (`unavailable:true`, written by refresh-engagement
+    // when bundle returns `unsupported_type`) records that a fetch could not be
+    // made — it is NOT a measurement of zero. Rows arrive newest-first, so
+    // marking it `seen` would let it shadow an older REAL measurement for the
+    // same item and drop that item from the ranking entirely. Skip it without
+    // claiming the id, so the newest genuine snapshot still wins.
+    if (isUnavailable(row)) continue
     seen.add(row.content_item_id)
     const ci = row.content_items
     if (!ci || ci.status !== 'published') continue

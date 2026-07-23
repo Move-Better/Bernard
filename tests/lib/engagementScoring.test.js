@@ -76,6 +76,35 @@ describe('rankTopPerformers', () => {
     expect(top[0].score).toBe(9)
   })
 
+  it('does not let an "unavailable" sentinel shadow an older real measurement', () => {
+    // refresh-engagement writes this sentinel when bundle 400s with
+    // `unsupported_type`. It is newest, so a plain dedupe-to-newest would claim
+    // the id, score 0, and drop the item — losing the real reading behind it.
+    const rows = [
+      { content_item_id: 'f', source: 'bundle', content_items: published('FB post', 'facebook'),
+        stats: { statistics: {}, source: 'bundle', unavailable: true, reason: 'unsupported_type' } },
+      { content_item_id: 'f', source: 'bundle', content_items: published('FB post', 'facebook'),
+        stats: { statistics: { impressionsUnique: 12, likes: 1 }, source: 'bundle' } },
+    ]
+    const top = rankTopPerformers(rows, 5)
+    expect(top).toHaveLength(1)
+    expect(top[0].score).toBe(12)
+  })
+
+  // Note: this one passes pre-fix too — a sentinel scores 0 and the `score <= 0`
+  // filter already drops it. It is here to pin the boundary of the fix above:
+  // skipping sentinels must not tip into ADMITTING an item that has never had a
+  // real reading. Verified by mutation — it survives neutering isUnavailable(),
+  // which is the expected result for an over-correction guard, not a gap.
+  it('still drops an item whose only snapshot is an unavailable sentinel', () => {
+    const rows = [
+      { content_item_id: 'u', source: 'bundle', content_items: published('Never measured', 'instagram'),
+        stats: { statistics: {}, source: 'bundle', unavailable: true, reason: 'unsupported_type' } },
+      { content_item_id: 'k', source: 'ga4', stats: { pageviews: 2 }, content_items: published('Keep', 'blog') },
+    ]
+    expect(rankTopPerformers(rows, 5).map((r) => r.topic)).toEqual(['Keep'])
+  })
+
   it('drops unpublished items and zero-scored rows', () => {
     const rows = [
       { content_item_id: 'd', source: 'ga4', stats: { pageviews: 99 }, content_items: { topic: 'Draft', platform: 'blog', status: 'draft' } },
