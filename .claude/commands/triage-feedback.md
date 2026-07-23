@@ -1,10 +1,10 @@
 ---
-description: Read untriaged in-app feedback (the `feedback` Supabase table — the source of truth for Bernard's Feedback button), investigate each report against the codebase, produce a prioritized punch list, spawn a task chip per actionable item, and stamp the rows triaged. Report-only by default — does NOT open fix PRs (review-before-ship). Sister command to /audit (code sweep) and /checkup (health pass).
+description: Read untriaged in-app feedback (the `feedback` Supabase table — the source of truth for Bernard's Feedback button), investigate each report against the codebase, produce a prioritized punch list, spawn a task chip per actionable item, and stamp the rows triaged. Report-only by default — does NOT open fix PRs (review-before-ship). Sister command to /bernard-audit (code sweep) and /bernard-checkup (health pass).
 ---
 
 Triage the **user-submitted feedback** captured by Bernard's in-app Feedback button. Every submission is stored durably in the `feedback` table in Supabase (see `api/_routes/feedback.js`) — the email to `ADMIN_NOTIFY_EMAIL` is only a notification copy, so **read the table, never the inbox**. This command turns that queue into an investigated, prioritized punch list and one task chip per actionable item.
 
-**Autonomy: investigate + punch list only.** Diagnose each item and spawn a task chip, but do NOT open fix PRs or edit product code in this run — Q reviews before anything ships. (To also fix, run `/audit` afterward or act on the chips.)
+**Autonomy: investigate + punch list only.** Diagnose each item and spawn a task chip, but do NOT open fix PRs or edit product code in this run — Q reviews before anything ships. (To also fix, run `/bernard-audit` afterward or act on the chips.)
 
 **State is DB-native.** A row is "new" when `triaged_at IS NULL`. This works identically for an interactive session and a headless scheduled routine — there's no local pointer file to get out of sync. Stamp every row you investigate with `triaged_at = now()` (+ a short `triage_note`) so it never re-surfaces.
 
@@ -90,7 +90,7 @@ Investigate the rows concurrently when they touch different areas (parallel Expl
 
 ## Notes
 
-- **Report-only by design.** This command never edits product code or opens PRs. Fixes happen when Q acts on the chips or runs `/audit`. This matches the review-before-ship autonomy Q chose for the feedback loop.
+- **Report-only by design.** This command never edits product code or opens PRs. Fixes happen when Q acts on the chips or runs `/bernard-audit`. This matches the review-before-ship autonomy Q chose for the feedback loop.
 - **Screenshots live in Blob** at `feedback/<workspace_id>/<uuid>.png` and the row carries the public `screenshot_url` — always look at it, it's usually the fastest path to the root cause.
 - **Pair with `/schedule`** to run automatically (e.g. Mondays 9am): `/schedule create "Triage feedback" cron="0 9 * * 1" "/triage-feedback"`. The DB-native `triaged_at` state means a scheduled headless run and a manual run never double-process a row.
 - **The `feedback` table is the "directory for Claude"** Q asked about — no email parsing, no copy-paste. To manually re-open a triaged item, `UPDATE feedback SET triaged_at = NULL WHERE id = '…'` and it rejoins the queue.
