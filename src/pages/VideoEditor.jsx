@@ -887,6 +887,20 @@ function HorizontalTimeline({ ctx }) {
     sc.addEventListener('wheel', onWheel, { passive: false })
     return () => sc.removeEventListener('wheel', onWheel)
   }, [])
+  // On first open, zoom so the trimmed clip roughly fills the timeline viewport
+  // instead of being crammed into a fraction of the whole-source view — this makes
+  // the caption boxes readable on arrival (CapCut-style) rather than truncated to a
+  // character each. Fires once, only after the real duration is known; the 100%
+  // button still fits the whole source, and the playhead-in-view effect below
+  // scrolls the clip start into view right after.
+  const didAutoZoom = useRef(false)
+  useEffect(() => {
+    if (didAutoZoom.current) return
+    const clipLen = endSec - startSec
+    if (videoDuration <= 0 || span <= 0 || clipLen <= 0) return
+    didAutoZoom.current = true
+    setZoom(clamp(+(span / clipLen * 0.92).toFixed(2), 1, 12))
+  }, [videoDuration, span, endSec, startSec])
   // Keep the playhead in view as it moves or the zoom changes.
   useEffect(() => {
     const sc = scrollRef.current, tr = trackRef.current; if (!sc || !tr) return
