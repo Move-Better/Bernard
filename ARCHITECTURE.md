@@ -1263,7 +1263,8 @@ Both editors — the carousel (`src/components/story-detail/SlideEditor.jsx`) an
   `PlainPreview` raw-dumps its content (the Story `LINK_STICKER_TEXT:` bug class). Every enabled
   channel now has a case; add one for any new channel.
 
-**`UnifiedEditor.jsx` (the non-carousel shell — `doc`/`email`/`textad`/`ad`/`vvideo`/`lvideo`/`storyvid`)
+**`UnifiedEditor.jsx` (the non-carousel shell — `doc`/`email`/`textad`/`ad`, plus `vvideo`/`lvideo`
+ONLY when they have no editable video asset yet — see the video-piece pathway below)
 consumes the SAME `editorArchetype.js` rail arrays, but its `RAIL_META` lookup silently drops any key
 with no matching entry — no error, the tab just never appears.** Every archetype's `rail: [...]` entries
 must have a matching `RAIL_META[key]`. This bit blog for over a month: the `doc` archetype's rail was
@@ -1298,10 +1299,36 @@ editor** — every `singleSlide`-capable archetype routes through it as a carous
 separate implementation: `carousel`, `visual` (single-photo LinkedIn/FB/X/GBP/Pinterest/Reddit, via
 `singleSlide={true}`), and `story` (photo Instagram Story, via `singleSlide={true}` + a `forcedAspect`
 prop that locks the aspect and hides the chrome's aspect switcher). Only `storyvid` (video Story) stays
-on the dedicated `StoryComposer` — `SlideEditor` is photo-only, same reason `vvideo`/`lvideo` stay on
-the timeline editor. **Lesson (re-confirmed twice now): when the ask is "same editor as X," route to X
-— don't build a parallel implementation that re-clones X's panels.** The two-column preview+schedule
-page is fully retired for photo/carousel content; it's only where `doc`/`email`/`textad`/`ad` land now.
+on the dedicated `StoryComposer` — `SlideEditor` is photo-only, same reason `vvideo`/`lvideo` route to
+the timeline editor (see the video-piece pathway below). **Lesson (re-confirmed twice now): when the
+ask is "same editor as X," route to X — don't build a parallel implementation that re-clones X's
+panels.** The two-column preview+schedule page is fully retired for photo/carousel content; it's only
+where `doc`/`email`/`textad`/`ad` land now.
+
+**Video pieces open `VideoEditor` INSIDE the publish shell (#2336/#2337, 2026-07-24) — the mirror of
+how photo pieces open `SlideEditor`.** `StoryboardPublish.jsx` routes `vvideo`/`lvideo` pieces that
+have an editable video asset (a `media_urls` entry with `type/kind === 'video'` and a `mediaAssetId`)
+to `src/pages/VideoEditor.jsx` — the SAME component the `/moments/clip/:assetId` route renders — passed
+`{ piece, embedded, onBack }`. This closed Philip's "no control over video editing/subtitling/design on
+the Reel publish screen" feedback: before, video pieces fell into the caption-only `UnifiedEditor` while
+the real timeline editor lived on a separate route with no publish chrome. The embedded-mode contract:
+- **`assetId` sources from the piece's video `media_urls` entry** (`pieceVideoEntry.mediaAssetId`), not
+  the route param. A video piece with NO editable asset falls through to `UnifiedEditor` so media can be
+  attached first (the only case `vvideo`/`lvideo` still use `UnifiedEditor`).
+- **`postId` seeds from `piece.id`**, so the header `EditorWorkflowBar` binds to the EXISTING piece
+  (Approve/Reject/Schedule/publish act on this reel) — no `clip-to-post` creation. The standalone
+  `/moments/clip` + `/slate/clip` routes pass no props → prior behavior (finalize-creates-new-post).
+- **"Save video" render-back** (the embedded-only CTA): renders the current edit via `render-clip` and
+  PATCHes the baked blob to the piece's `media_urls`, so **publish sends the EDITED clip, never the raw
+  source**. `mediaAssetId` stays the SOURCE asset (re-open re-edits from source + the per-asset
+  `video_edit_draft` autosave); only the `url` is the baked render. No `content_items.video_edit` write
+  needed — the draft covers restore, and the PATCH stays within the existing `mediaUrls` allowlist.
+  The clip-export dropdown (Save-to-Library / ads / whole-video-navigate-away) is hidden when embedded.
+- **Auto-transcribe on open**: an embedded video with no `transcript_words` (a raw upload / b-roll that
+  never went through the interview segmenter) auto-fires the same `genCaptions` transcription (`findClips`
+  + poll) ONCE per mount, so word-level caption editing (Script/Caps tabs, karaoke) works on every reel,
+  not just interview-derived clips. Ref-guarded; self-skips the instant words exist. Scoped to embedded
+  so standalone clip opens (already transcribed) don't spend a transcription.
 
 ### Autosave + undo/redo (#1927, 2026-07-07)
 
