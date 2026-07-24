@@ -609,8 +609,12 @@ array, blocks cross-workspace merges, and de-dups the 3 child tables with unique
 All production media lives in a single Vercel Blob store attached to the `bernard` Vercel project.
 
 Path conventions (always use `ws.id`, never `ws.slug` — slugs are mutable):
-- Thumbnails: `media/thumbs/<uuid>.jpg`
+- Thumbnails: `media/thumbs/<workspace-id>/<uuid>.jpg` (workspace-prefixed since #2318–#2334;
+  a handful of photo thumbnails generated before that by the old standalone backfill script
+  still live at the unprefixed `media/thumbs/<uuid>.jpg` — both resolve fine, don't "fix" the
+  old ones by moving them)
 - Originals: `media/raw/<workspace-id>/...`
+- Web-resolution photo variant (2000px long edge): `media/web/<workspace-id>/<uuid>.<ext>`
 
 **Large-file downloads must stream to disk**, not buffer with `arrayBuffer()`. `arrayBuffer()`
 materializes the full file in RAM and OOMs on anything over ~500 MB:
@@ -819,6 +823,39 @@ graphic, baked text), grep the renderer's callers — if it is called only in `*
 `*Editor` components and never in a publish/upload/export path, the published output is raw.
 The renderer needs a real produce-and-upload step on the publish path reusing the SAME renderer
 so it stays WYSIWYG.
+
+### Photo thumbnails — generated at upload, snapshotted into media_urls, so both sides can go stale independently
+`api/_lib/imagePipeline.js`'s `processImageUpload` decodes an uploaded photo **once**
+(`decodeBase`) and derives two variants from the same decoded pipeline via sharp's `.clone()` —
+a 2000px "web" variant (`media/web/`, always existed) and a 400px JPEG thumbnail (`media/thumbs/`,
+added #2332). Both `media_assets.thumbnail_url` and `content_items.media_urls[].thumbnailUrl` need
+this value, and they can drift independently:
+
+- **`media_assets.thumbnail_url`** is the live column — one row, one source of truth, always
+  current once generation succeeds (best-effort; a failure leaves it `null`, never blocks the
+  web variant).
+- **`content_items.media_urls`** is a SNAPSHOT taken at attach time (`clipToMediaEntry` /
+  `pickerItemToMediaEntry`, `src/lib/mediaEntry.js`), not a join. A photo attached to a post
+  BEFORE its thumbnail was generated (or before #2332 shipped generation at all) carries
+  `thumbnailUrl: null` forever unless something explicitly re-syncs it — the row never
+  self-heals just because the asset later gets a real thumbnail. This is the exact same
+  snapshot-not-a-join trap `applyEntryThumbnail`/`syncMediaEntriesForAsset` (`api/_lib/
+  thumbnail.js`) already solves for **video** posters; there is no live-sync equivalent for
+  photos — `scripts/backfill-photo-thumbnails.mjs`'s "REPOINT" phase is a one-time batch
+  fix, not a standing sync. If a photo's thumbnail can change after attach-time in some new
+  flow, that flow needs its own explicit resync into `content_items.media_urls`, mirroring
+  `applyEntryThumbnail`.
+
+`thumbnailUrl` is `null`, never the full-resolution `url`, when no thumbnail exists yet — for
+BOTH kinds. Every small-tile consumer (`api/_routes/content-plan/week-summary.js` `thumbOf`,
+`PhotoInspector.jsx`, `SlidePickerStrip.jsx`, `DraftContextPanel.jsx`) already falls back to
+`photoSourceUrl(entry) || entry.url` when `thumbnailUrl` is falsy, so `null` degrades gracefully;
+writing the full-res `url` into `thumbnailUrl` (the pre-#2331 behavior) does not — it silently
+defeats every one of those small-tile optimizations by making the "small" field just as
+expensive as the full one. `BundlePublisher._uploadCover`'s Reel-cover selection
+(`selectCoverEntry`) identifies the video entry by `type`/`kind`, not by `thumbnailUrl !== url`
+— that comparison stopped being a reliable video/photo discriminator once photos could carry a
+real, separately-hosted thumbnail (#2328).
 
 ### `interviews.messages` contract — alternating role turns, and consumers that can't assume it
 Most downstream consumers of an interview's transcript — `api/_lib/interviewStyleClassifier.js`
