@@ -1595,6 +1595,30 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     onSuccess: () => toast('Captions generated.'),
   })
 
+  // Auto-transcribe raw uploads (Phase 2). A Reel / long-video piece opened in
+  // the publish shell whose video is a raw upload (no transcript_words — e.g.
+  // b-roll that never went through the interview segmenter, like a phone-shot
+  // clip) has no word timings, so the Caps/Script tabs would start empty and the
+  // karaoke captions can't render. Fire the SAME transcription genCaptions uses,
+  // once on open, so word-level caption editing is ready without the manual
+  // "Generate captions" click — "video subtitle control works on every reel, not
+  // just interview-derived clips". Scoped to the embedded reel flow (Q's
+  // "auto-transcribe raw uploads"); standalone Moment Miner / Slate clips are
+  // interview-derived and already carry a transcript, so this stays off there and
+  // doesn't spend a transcription on every clip open. Guarded by a ref so it
+  // fires at most once per mount, and it self-skips the instant words exist
+  // (including right after it lands, since genCaptions writes them to the cache).
+  const autoTranscribedRef = useRef(false)
+  useEffect(() => {
+    if (!embedded || autoTranscribedRef.current) return
+    if (!asset || genCaptionsMutation.isPending) return
+    const hasWords = Array.isArray(asset.transcript_words) && asset.transcript_words.length > 0
+    if (asset.kind !== 'video' || hasWords) return
+    autoTranscribedRef.current = true
+    toast('Transcribing your video so you can edit the captions…')
+    genCaptionsMutation.mutate()
+  }, [embedded, asset, genCaptionsMutation])
+
   // Proposals (AI moments) — pick which moment to edit, discard, or find more.
   const applySegment = useCallback((seg) => {
     if (!seg) return
