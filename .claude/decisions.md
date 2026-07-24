@@ -65,3 +65,16 @@ Q: "Half the screen is used up with non-week stuff… could they just be in a dr
 **Known limit, accepted:** the strip measures *slots filled*, not *posts published*, so a channel whose whole week is scheduled on Friday reads as fine all week. That is correct for "have you planned enough" and wrong for "has anything gone out" — the latter is a different metric and a different chip, not a fix to this one.
 
 **Kill criterion:** if by **2026-08-19** the pace rule is still producing amber chips Q reads as noise (or he asks for the counts back as a card), the pacing denominator is wrong — try remaining-future-pinned-slots vs the gap (genuinely "can this still be hit?") before reverting to a flat threshold.
+
+## 2026-07-24 — Reels open the video editor inside the publish shell (Philip feedback)
+Feedback (Philip, `/publish/6ae7a5a5…`, 2026-07-24): "No control over video editing, subtitling, or design of reels within this screen." Direction chosen by Q via AskUserQuestion: **one pathway per media type — video pieces open the video editor; photos open the photo editor. No per-format divergence.** Approved the signed-off mockup `.claude/mockups/reel-editor-in-publish-shell.html`.
+
+**Root cause:** `StoryboardPublish` routes carousel/visual/story-photo → SlideEditor (editing canvas *inside* the publish shell), video-Story → StoryComposer, and everything else — including IG Reel (`vvideo`) and long video (`lvideo`) — → UnifiedEditor, which is caption/Media/Grade only with no editing canvas. The real editor (`VideoEditor`, `/moments/clip/:assetId`: trim, karaoke captions, reframe, overlays, grade, transcript editing) is a separate surface keyed on a media-asset id with no publish chrome.
+
+**Chosen shape (Option A):** video pieces route to `VideoEditor` rendered inside the publish shell — the exact mirror of how photos open SlideEditor. Confirmed reusable: VideoEditor already has inline `render-clip`, `clip-to-post`, a `finalizeToPost` flow that swaps in the shared `EditorWorkflowBar` (Approve/Schedule/publish) in place, and `genCaptions` (via `findClips`) that transcribes. So ~90% exists; the gap is the entry point (an existing reel piece opens UnifiedEditor) + render-back-to-existing-piece.
+
+**Raw-upload subtitles (Q's call): auto-transcribe.** For a raw uploaded reel (asset_purpose=broll, no transcript — Philip's case), word-level caption editing needs a transcript; auto-run transcription on open so it works everywhere. Note the honesty limit: Bernard captions overlay the video; an *original* subtitle baked into the uploaded file's pixels can't be erased.
+
+**Phases:** P1 = route video pieces → VideoEditor in publish shell + render-back-to-piece (this ships the fix for Philip). P2 = auto-transcribe raw b-roll for word-level subtitles everywhere.
+
+**Kill criterion:** if by **2026-08-24** reels edited through the new pathway don't show reduced "no control over reels" feedback and Philip/staff aren't using the trim/caption controls (check `content_items.video_edit` populated on reel pieces + feedback table), revisit whether the editor belongs on the publish screen vs a dedicated step.

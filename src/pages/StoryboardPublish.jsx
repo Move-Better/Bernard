@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { lazy, Suspense, useEffect, useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import BackLink from '@/components/ui/BackLink'
@@ -16,6 +16,12 @@ import { ApprovalPanel } from '@/components/story-detail/AssetsPane'
 import { useContentItem, useContentItems } from '@/lib/queries'
 import { posthogCapture } from '@/lib/posthog'
 import { PLATFORM_META } from '@/lib/contentMeta'
+
+// The full timeline video editor (trim / captions / reframe / overlays / grade)
+// is heavy — lazy so it only loads for video pieces, not every publish open.
+// It's the SAME component as the /moments/clip route, rendered embedded here so
+// a Reel / long-video post gets real video editing inside the publish shell.
+const VideoPieceEditor = lazy(() => import('@/pages/VideoEditor'))
 
 // Same predicate the Storyboard queue uses — a draft "needs media" when nothing
 // is attached. Shared shape keeps the "Next up" count honest against the queue.
@@ -196,10 +202,32 @@ export default function StoryboardPublish() {
     )
   }
 
-  // Everything else — video posts, doc (blog/landing), email, text ads, ad
-  // creative — flows through the unified shell editor (full-bleed, same chrome).
-  // (Photo/visual posts route to SlideEditor above; these types have no carousel
-  // analog.)
+  // Reel (vvideo) / long video (lvideo) → the full timeline video editor, in the
+  // publish shell. This is the mirror of the SlideEditor branch above: a video
+  // piece opens its real editor (trim / captions / reframe / overlays / design)
+  // with the same Approve / Schedule chrome, instead of the caption-only editor.
+  // The archetype config deliberately omits trim/overlay rail tools from the
+  // publish editor precisely because "they live in VideoEditor" — this routes
+  // there. Requires an editable video asset (mediaAssetId); a video piece with
+  // no attached asset yet falls through to UnifiedEditor so media can be added.
+  const isVideoPiece = archetype === 'vvideo' || archetype === 'lvideo'
+  const videoAssetId = Array.isArray(piece.media_urls)
+    ? (piece.media_urls.find((m) => m && (m.type === 'video' || m.kind === 'video'))?.mediaAssetId || null)
+    : null
+  if (isVideoPiece && videoAssetId) {
+    return (
+      <div className="-mx-4 -my-8 sm:-mx-6 lg:-mx-8 h-[100dvh] overflow-hidden">
+        <Suspense fallback={<LoadingState />}>
+          <VideoPieceEditor piece={piece} embedded onBack={goBack} />
+        </Suspense>
+      </div>
+    )
+  }
+
+  // Everything else — video posts with no editable asset yet, doc (blog/landing),
+  // email, text ads, ad creative — flows through the unified shell editor
+  // (full-bleed, same chrome). (Photo/visual posts route to SlideEditor above;
+  // these types have no carousel analog.)
   return (
     <div className="-mx-4 -my-8 sm:-mx-6 lg:-mx-8 h-[100dvh] overflow-hidden">
       <UnifiedEditor
