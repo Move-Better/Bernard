@@ -13,6 +13,7 @@ import { useAppMutation } from '@/lib/useAppMutation'
 import { BERNARD_PRIMARY, BERNARD_ACTION } from '@/lib/brand'
 import { workspaceCaptionAccent, WORKSPACE_DEFAULT_ACCENT } from '@/lib/brandSwatches'
 import { apiFetch } from '@/lib/api'
+import { posthogCapture } from '@/lib/posthog'
 import { getMediaAsset, updateMediaAsset } from '@/lib/mediaLib'
 import { getSegments, renderWholeVideo, findClips, updateSegment, exportClipToBroll } from '@/lib/clipsLib'
 import { updateBrandStyle } from '@/lib/brandKitLib'
@@ -117,7 +118,11 @@ function groupLines(words) {
 
 // ── CANVAS ───────────────────────────────────────────────────────────────────
 function Canvas({ ctx }) {
-  const { videoRef, asset, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, dragging, snap, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap, alignGuidesOn } = ctx
+  const { videoRef, asset, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, dragging, snap, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap, logCaptionCorrection, alignGuidesOn } = ctx
+  // Original caption text captured when inline editing starts, so we can log the
+  // (heard → fixed) correction once on commit — activeLine mutates on each
+  // keystroke (editLine re-splits), so it can't be read at blur time.
+  const capOrigRef = useRef('')
   const activeIdx = lines.findIndex((l) => playClipT >= l.start && playClipT < l.end)
   const activeLine = activeIdx >= 0 ? lines[activeIdx] : null
   const capCss = captionCss(caption.style, caption.accent)
@@ -189,9 +194,10 @@ function Canvas({ ctx }) {
                   autoFocus
                   defaultValue={activeLine.words.map((w) => w.word).join(' ')}
                   onClick={(e) => e.stopPropagation()}
+                  onFocus={(e) => { capOrigRef.current = e.target.value }}
                   onChange={(e) => editLine(activeIdx, e.target.value)}
-                  onBlur={() => setEditingCap(false)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setEditingCap(false) } }}
+                  onBlur={(e) => { logCaptionCorrection?.(capOrigRef.current, e.target.value, 'line'); setEditingCap(false) }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur() } }}
                   className="w-full bg-transparent text-center outline-none"
                   style={{ color: '#fff', font: 'inherit', textShadow: 'inherit' }}
                   aria-label="Edit caption line"
@@ -711,7 +717,7 @@ function silenceRanges(words, dur) {
 }
 
 function TranscriptInspector({ ctx }) {
-  const { words, cuts, toggleWordCut, editWord, addCuts, clearCuts, durationSec, genCaptions, genCaptionsPending } = ctx
+  const { words, cuts, toggleWordCut, editWord, logCaptionCorrection, addCuts, clearCuts, durationSec, genCaptions, genCaptionsPending } = ctx
   const kept = Math.max(0, durationSec - totalCutCli(cuts, durationSec))
   const fillers = words.filter((w) => FILLERS.has(fillerKey(w.word)) && !inCut((w.start + w.end) / 2, cuts))
   const sils = silenceRanges(words, durationSec).filter((r) => !inCut((r.start + r.end) / 2, cuts))
@@ -731,7 +737,7 @@ function TranscriptInspector({ ctx }) {
   }
   const commitEdit = (w, value, save) => {
     setEditingIdx(null)
-    if (save) editWord(w, value)
+    if (save) { editWord(w, value); logCaptionCorrection(w.word, value, 'word') }
   }
   return (
     <InspectorShell icon={FileText} title="Transcript" right={`${fmt(kept)} kept`}>
@@ -1267,6 +1273,25 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     const key = (w.start + s).toFixed(2)
     setWordEdits((prev) => (prev[key] === clean ? prev : { ...prev, [key]: clean }))
   }, [startSec])
+  // Instrument caption corrections (heard → fixed) so we can measure whether the
+  // new timeline caption track actually gets used to fix words, and which terms
+  // recur — the go/no-go signal for an auto-correct pass (Option A in
+  // .claude/decisions.md "Auto-correct captions"). MEASUREMENT ONLY: nothing is
+  // rewritten. Emits once at commit (blur/Enter), never per keystroke. PostHog
+  // already attaches the workspace group, so per-workspace rate is queryable
+  // without threading workspace through here.
+  const logCaptionCorrection = useCallback((heard, fixed, source) => {
+    const a = String(heard || '').trim(), b = String(fixed || '').trim()
+    if (!a || !b || a.toLowerCase() === b.toLowerCase()) return
+    posthogCapture('caption_correction', {
+      source, // 'line' | 'word'
+      heard: a.slice(0, 120),
+      fixed: b.slice(0, 120),
+      heard_words: a.split(/\s+/).length,
+      fixed_words: b.split(/\s+/).length,
+      asset_id: assetId || null,
+    })
+  }, [assetId])
   const derivedLines = useMemo(() => groupLines(words), [words])
   // captionLines / captionsEdited / captionsEditedRef are declared above (near
   // draftDoc) so the draft snapshot can persist edited caption text. Here we
@@ -1725,7 +1750,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     videoRef, asset, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
     format, setFormat, formatCss: (FORMATS[format] || FORMATS.reel).css, formatDim: (FORMATS[format] || FORMATS.reel).dim,
     reframe, setReframe: setReframeKey, autoReframe, autoReframing, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
-    setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, editWord, resetCaptions, captionsEdited, cuts, toggleWordCut, addCuts, clearCuts, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
+    setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, editWord, logCaptionCorrection, resetCaptions, captionsEdited, cuts, toggleWordCut, addCuts, clearCuts, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
     startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, dragging, snap, trimToLine,
     setVideoDuration, setPlaying, handleTimeUpdate,
     genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
