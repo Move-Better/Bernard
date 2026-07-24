@@ -822,7 +822,7 @@ function IconRail({ ctx }) {
 // the grab point) and resize via their edges. Dragging (or clicking) anywhere
 // on the track scrubs the red playhead, same as CapCut's timeline.
 function HorizontalTimeline({ ctx }) {
-  const { startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, overlays, selectKey, sel, setOverlayWindow, displayClipT, setScrubT, addOverlay, seekClip } = ctx
+  const { startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, overlays, selectKey, sel, setOverlayWindow, displayClipT, setScrubT, addOverlay, seekClip, lines, editCaptionLine } = ctx
   const span = videoDuration > 0 ? videoDuration : Math.max(endSec, 1)
   const trackRef = useRef(null)
   const scrollRef = useRef(null)
@@ -897,7 +897,7 @@ function HorizontalTimeline({ ctx }) {
   }, [displayClipT, zoom, startSec, span])
   const zoomBtn = 'flex h-6 items-center justify-center rounded border px-1.5 text-3xs hover:border-primary'
   return (
-    <div className="flex h-[144px] shrink-0 flex-col border-t bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
+    <div className="flex h-[172px] shrink-0 flex-col border-t bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
       <div className="flex items-center justify-between px-3 pt-2 text-3xs font-semibold uppercase" style={{ color: 'hsl(var(--muted-foreground))' }}>
         <span>Timeline</span>
         <div className="flex items-center gap-1.5 normal-case">
@@ -935,6 +935,27 @@ function HorizontalTimeline({ ctx }) {
             className="absolute inset-y-0 z-10 cursor-ew-resize rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
             style={{ left: `calc(${f(endSec)}% - 6px)`, width: 11, background: 'hsl(var(--primary))' }}
           />
+        </div>
+        {/* caption lane — every spoken line is a box; tap to jump the playhead
+            there and edit its words (reuses the on-video inline caption editor). */}
+        <div className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
+          {lines.length ? lines.map((l, i) => {
+            const isActive = sel === 'caption' && displayClipT >= l.start && displayClipT < l.end
+            const left = f(startSec + l.start)
+            const width = Math.max(2, f(startSec + l.end) - left)
+            return (
+              <div
+                key={i}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); editCaptionLine(i) }}
+                title={l.text}
+                className="absolute inset-y-0 flex cursor-pointer items-center overflow-hidden rounded-md px-1.5"
+                style={{ left: `${left}%`, width: `${width}%`, background: 'hsl(var(--info)/.9)', boxShadow: isActive ? '0 0 0 2px hsl(var(--info))' : undefined }}
+              >
+                <span className="truncate text-3xs font-medium" style={{ color: 'hsl(var(--info-foreground))' }}>{l.text}</span>
+              </div>
+            )
+          }) : <span className="absolute inset-y-0 left-2 flex items-center text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Captions appear here</span>}
         </div>
         <div className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
           {overlays.length ? overlays.map((o) => {
@@ -1667,6 +1688,22 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   }
   // Clear the flash timer on unmount so it can't fire setAlignGuidesOn after teardown.
   useEffect(() => () => { if (alignGuideTimerRef.current) clearTimeout(alignGuideTimerRef.current) }, [])
+  // Tap a caption box on the timeline → jump the playhead onto that spoken line
+  // and open the SAME inline caption editor the on-video tap uses (Canvas input →
+  // editLine). We turn captions on first so tapping a box can't be a dead click
+  // when the preset is off — you can't edit words you can't see.
+  const editCaptionLine = useCallback((i) => {
+    const l = lines[i]
+    if (!l) return
+    if (caption.preset === 'off') setCaption('preset', 'karaoke')
+    const mid = clamp((l.start + l.end) / 2, 0, durationSec)
+    const v = videoRef.current
+    if (v) { v.pause(); v.currentTime = startSec + mid }
+    setCurrentTime(startSec + mid)
+    setScrubT(mid)
+    selectKey('caption')
+    setEditingCap(true)
+  }, [lines, caption.preset, startSec, durationSec, selectKey, setCaption])
   const busy = exportMutation.isPending || wholeMutation.isPending || finalizeToPost.isPending || saveVideoToPiece.isPending
   const anyDest = dest.broll || dest.ad
 
@@ -1679,7 +1716,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     setVideoDuration, setPlaying, handleTimeUpdate,
     genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
     brandGrade, saveBrandGrade: () => saveBrandMutation.mutate(), savingBrand: saveBrandMutation.isPending,
-    editingCap, setEditingCap,
+    editingCap, setEditingCap, editCaptionLine,
     music, setMusic,
     alignGuidesOn, flashAlignGuides,
     proposals, selectedSegmentId, applySegment, discardSegment,
