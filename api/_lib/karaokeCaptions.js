@@ -76,12 +76,17 @@ export function sliceWordsToWindow(words, startSec, durationSec) {
     const ws = Number(w.start)
     const we = Number(w.end)
     if (!Number.isFinite(ws) || !Number.isFinite(we)) continue
-    if (we <= s || ws >= end) continue            // fully outside the window
+    // Zero-duration words (end === start) are real — see the note in
+    // whisper.js. They are a POINT, not a span, so they need their own
+    // containment test: a span is outside when it ends at/before the window
+    // start, but a point at exactly `s` is INSIDE it.
+    const isPoint = we === ws
+    if (isPoint ? (ws < s || ws >= end) : (we <= s || ws >= end)) continue
     const word = String(w.word || '').trim()
     if (!word) continue
     const start = Math.max(0, ws - s)
     const wEnd = Math.min(dur, we - s)
-    if (wEnd > start) out.push({ word, start, end: wEnd })
+    if (wEnd >= start) out.push({ word, start, end: wEnd })
   }
   return out
 }
@@ -126,7 +131,10 @@ const CAPTION_STYLES = {
 
 export function buildKaraokeAss({ words, width, height, captionPos = 'top', accentColor = '#FFFFFF', fontSizePx, fontName = 'Inter', anim = 'none', style = 'bold' }) {
   if (!Array.isArray(words) || words.length === 0) return null
-  const usable = words.filter((w) => w && w.word && Number.isFinite(w.start) && Number.isFinite(w.end) && w.end > w.start)
+  // `end >= start` — zero-duration words are kept (see whisper.js). The \k
+  // duration below already floors at 1 centisecond, so a point word renders as
+  // a 10ms highlight rather than being dropped from the line.
+  const usable = words.filter((w) => w && w.word && Number.isFinite(w.start) && Number.isFinite(w.end) && w.end >= w.start)
   if (usable.length === 0) return null
 
   const fontSize = Math.max(28, Math.round(fontSizePx || Math.min(width, height) * 0.05))

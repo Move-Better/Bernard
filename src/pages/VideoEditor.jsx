@@ -97,10 +97,14 @@ function sliceWords(words, startSec, durationSec) {
   for (const w of words) {
     if (!w) continue
     const ws = Number(w.start); const we = Number(w.end)
-    if (!Number.isFinite(ws) || !Number.isFinite(we) || we <= s || ws >= end) continue
+    if (!Number.isFinite(ws) || !Number.isFinite(we)) continue
+    // Zero-duration words are real (Whisper's 20ms frame hop) and are a POINT,
+    // not a span — kept when s <= t < end. Mirrors the server's sliceWordsToWindow.
+    const isPoint = we === ws
+    if (isPoint ? (ws < s || ws >= end) : (we <= s || ws >= end)) continue
     const word = String(w.word || '').trim(); if (!word) continue
     const start = Math.max(0, ws - s); const wEnd = Math.min(end - s, we - s)
-    if (wEnd > start) out.push({ word, start, end: wEnd })
+    if (wEnd >= start) out.push({ word, start, end: wEnd })
   }
   return out
 }

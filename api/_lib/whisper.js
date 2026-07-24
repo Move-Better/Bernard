@@ -104,7 +104,15 @@ export async function transcribeToWords(filePath) {
   const json = await res.json().catch(() => null)
   return (json?.words ?? [])
     .map((w) => ({ word: String(w.word || '').trim(), start: Number(w.start) || 0, end: Number(w.end) || 0 }))
-    .filter((w) => w.word && w.end > w.start)
+    // KEEP zero-duration words (end === start). Whisper quantises word
+    // timestamps to its 20ms frame hop, so a fast function word ("to", "the")
+    // or a clipped syllable legitimately lands in the 0.00s bucket — it is a
+    // real spoken word, not a malformed row. The old `end > start` here silently
+    // deleted ~4% of every transcript, which read downstream as duplicated or
+    // reordered speech: "how to do, how fast to do" lost its zero-duration "to"
+    // and burned into captions as "how do how fast". Reject only genuinely
+    // invalid geometry (non-finite, or end before start).
+    .filter((w) => w.word && Number.isFinite(w.start) && Number.isFinite(w.end) && w.end >= w.start)
 }
 
 /**
@@ -132,7 +140,15 @@ export async function transcribeToSegmentsAndWords(filePath) {
     .filter((s) => s.text && s.end > s.start)
   const words = (json?.words ?? [])
     .map((w) => ({ word: String(w.word || '').trim(), start: Number(w.start) || 0, end: Number(w.end) || 0 }))
-    .filter((w) => w.word && w.end > w.start)
+    // KEEP zero-duration words (end === start). Whisper quantises word
+    // timestamps to its 20ms frame hop, so a fast function word ("to", "the")
+    // or a clipped syllable legitimately lands in the 0.00s bucket — it is a
+    // real spoken word, not a malformed row. The old `end > start` here silently
+    // deleted ~4% of every transcript, which read downstream as duplicated or
+    // reordered speech: "how to do, how fast to do" lost its zero-duration "to"
+    // and burned into captions as "how do how fast". Reject only genuinely
+    // invalid geometry (non-finite, or end before start).
+    .filter((w) => w.word && Number.isFinite(w.start) && Number.isFinite(w.end) && w.end >= w.start)
   return { segments, words }
 }
 
