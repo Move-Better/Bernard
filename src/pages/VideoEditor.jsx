@@ -20,7 +20,7 @@ import AdVideoExportModal from '@/components/AdVideoExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
 import EditorIconRail from '@/components/editor/IconRail'
-import { useContentItem, useUpdateContentItemStatus } from '@/lib/queries'
+import { useContentItem, useUpdateContentItem, useUpdateContentItemStatus } from '@/lib/queries'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '@/lib/gradeParams'
 import { toast } from '@/lib/toast'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
@@ -958,16 +958,29 @@ function HorizontalTimeline({ ctx }) {
 }
 
 // ── MAIN ─────────────────────────────────────────────────────────────────────
-export default function VideoEditor() {
+export default function VideoEditor({ piece = null, embedded = false, onBack = null } = {}) {
   useDocumentTitle('Reel Editor · Moment Miner')
-  const { assetId } = useParams()
+  const { assetId: routeAssetId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  // Embedded from a video content piece: StoryboardPublish routes Reels /
+  // long-video posts (vvideo/lvideo) HERE instead of the caption-only
+  // UnifiedEditor, so "one pathway per media type" — video pieces get the full
+  // editor (trim/captions/design) with the publish shell around it, mirroring
+  // how photo pieces open SlideEditor. The clip to edit is then the piece's
+  // attached video asset; standalone (Moment Miner / Slate) it's the route param.
+  const pieceVideoEntry = useMemo(() => (
+    piece && Array.isArray(piece.media_urls)
+      ? piece.media_urls.find((m) => m && (m.type === 'video' || m.kind === 'video')) || null
+      : null
+  ), [piece])
+  const assetId = piece ? (pieceVideoEntry?.mediaAssetId || null) : routeAssetId
   // Routed at both /moments/clip/:assetId and /slate/clip/:assetId — the
   // fallback (used only when there's no real history to go back to) must
   // match whichever section the URL says we're actually in, not always
-  // Moment Miner.
-  const goBack = useSmartBack(() => (location.pathname.startsWith('/slate') ? '/slate' : '/moments'))
+  // Moment Miner. When embedded, the host (StoryboardPublish) owns "back".
+  const fallbackBack = useSmartBack(() => (location.pathname.startsWith('/slate') ? '/slate' : '/moments'))
+  const goBack = onBack || fallbackBack
   const videoRef = useRef(null)
   // When opened from a Media Hub edit brief ("Edit clip in Bernard"), the brief
   // id rides along as ?briefId=. Saving this clip to the Library then closes
@@ -1432,7 +1445,9 @@ export default function VideoEditor() {
   // trimmed clip, creates the content_item (clip-to-post), and approves it; the
   // header then swaps to the shared EditorWorkflowBar bound to that new post so
   // the publish controls (Schedule / queue / now) light up in place.
-  const [postId, setPostId] = useState(null)
+  // Embedded: bind the header workflow bar to the EXISTING piece from the start
+  // (no clip-to-post creation) so Approve / Schedule / publish act on this reel.
+  const [postId, setPostId] = useState(piece?.id ?? null)
   const updatePostStatus = useUpdateContentItemStatus()
   const { data: post } = useContentItem(postId)
   const finalizeToPost = useAppMutation({
@@ -1473,6 +1488,33 @@ export default function VideoEditor() {
     if (!render?.blobUrl) throw new Error('Render returned no output.')
     return render
   }
+
+  // Embedded (video content piece) render-back. Editing a Reel from the publish
+  // screen must bake the current edit (trim/captions/overlays/grade) and write
+  // the finished clip back onto THIS piece's media_urls — so Approve/Schedule
+  // publishes the EDITED video, never the untouched source. The per-asset edit
+  // spec itself is already persisted by the autosave draft (media_assets.
+  // video_edit_draft), so re-opening restores the timeline; here we only need to
+  // persist the baked output the publisher will send. mediaAssetId stays the
+  // SOURCE asset (so re-open re-edits from source), url is the baked render.
+  const updateItem = useUpdateContentItem()
+  const saveVideoToPiece = useAppMutation({
+    errorMessage: 'Could not save the video to this post.',
+    mutationFn: async () => {
+      const render = await doRenderClip()
+      const baked = {
+        url: render.blobUrl,
+        type: 'video',
+        kind: 'video',
+        mediaAssetId: pieceVideoEntry?.mediaAssetId || null,
+        thumbnailUrl: pieceVideoEntry?.thumbnailUrl || null,
+        ...(pieceVideoEntry?.name ? { name: pieceVideoEntry.name } : {}),
+      }
+      await updateItem.mutateAsync({ id: piece.id, patch: { mediaUrls: [baked] } })
+      return true
+    },
+    onSuccess: () => toast('Video saved to this post — approve & schedule when ready'),
+  })
 
   // ONE render → every selected destination. Post + b-roll share the single reel
   // render; ad export is its own (interactive) modal flow opened afterward.
@@ -1601,7 +1643,7 @@ export default function VideoEditor() {
   }
   // Clear the flash timer on unmount so it can't fire setAlignGuidesOn after teardown.
   useEffect(() => () => { if (alignGuideTimerRef.current) clearTimeout(alignGuideTimerRef.current) }, [])
-  const busy = exportMutation.isPending || wholeMutation.isPending || finalizeToPost.isPending
+  const busy = exportMutation.isPending || wholeMutation.isPending || finalizeToPost.isPending || saveVideoToPiece.isPending
   const anyDest = dest.broll || dest.ad
 
   const ctx = {
@@ -1698,7 +1740,28 @@ export default function VideoEditor() {
             "Sounds like me" renders the clip → creates the post → approves it;
             then the shared workflow bar takes over with the publish controls,
             all without leaving the clip editor. */}
-        {post ? (
+        {/* Embedded (Reel/long-video content piece): bake edits back to THIS
+            post, then the shared workflow bar (bound to the existing piece)
+            approves / schedules / publishes the edited video. */}
+        {embedded ? (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  disabled={busy}
+                  loading={saveVideoToPiece.isPending}
+                  onClick={() => saveVideoToPiece.mutate()}
+                >
+                  {!saveVideoToPiece.isPending && <Check className="mr-1.5 h-3.5 w-3.5" />}
+                  {saveVideoToPiece.isPending ? 'Saving video…' : 'Save video'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Renders your edits and saves the finished clip to this post</TooltipContent>
+            </Tooltip>
+            {post && <EditorWorkflowBar piece={post} />}
+          </>
+        ) : post ? (
           <EditorWorkflowBar piece={post} />
         ) : (
           <Tooltip>
@@ -1716,7 +1779,10 @@ export default function VideoEditor() {
             <TooltipContent>Renders this clip into a post and approves it — then publish right here</TooltipContent>
           </Tooltip>
         )}
-        {/* Export — b-roll + ad sizes (the post path is the inline bar above). */}
+        {/* Export — b-roll + ad sizes. Hidden when embedded: on the publish
+            screen the destination is THIS post, not a new Library clip / an ad
+            download / a navigate-away whole-video render. */}
+        {!embedded && (
         <div className="relative">
           <Button size="sm" disabled={busy} onClick={() => setExportOpen((v) => !v)} className="justify-center" style={{ background: 'hsl(var(--action))', color: 'hsl(var(--action-foreground))' }}>
             {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}Export this clip<ChevronDown className="ml-1 h-3.5 w-3.5" />
@@ -1747,6 +1813,7 @@ export default function VideoEditor() {
             </>
           )}
         </div>
+        )}
       </EditorChrome>
       {/* Brief-origin hint — this clip was opened from a Media Hub edit brief.
           "Save to Library" is the action that closes the brief (marks it

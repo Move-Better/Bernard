@@ -1,0 +1,221 @@
+<title>Reel editor in the publish shell — TODAY → CHANGE</title>
+<style>
+  :root{
+    --bg:#f4f6f6; --card:#ffffff; --ink:#0b111e; --ink-2:#4a5560; --ink-3:#8a949e;
+    --line:#e3e8e8; --line-2:#eef1f1;
+    --primary:#0C7580; --primary-ink:#ffffff; --primary-tint:#0C75800f;
+    --action:#d98219; --action-tint:#d982191a;
+    --muted:#f7f9f9; --stage:#0d1420; --add:#128a5b;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0c1016; --card:#141a22; --ink:#eef2f4; --ink-2:#aab4bd; --ink-3:#6c7883;
+      --line:#232c36; --line-2:#1c242d; --muted:#111820; --primary-tint:#0C758022; --stage:#080c12;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0c1016; --card:#141a22; --ink:#eef2f4; --ink-2:#aab4bd; --ink-3:#6c7883;
+    --line:#232c36; --line-2:#1c242d; --muted:#111820; --primary-tint:#0C758022; --stage:#080c12;
+  }
+  :root[data-theme="light"]{
+    --bg:#f4f6f6; --card:#ffffff; --ink:#0b111e; --ink-2:#4a5560; --ink-3:#8a949e;
+    --line:#e3e8e8; --line-2:#eef1f1; --muted:#f7f9f9; --primary-tint:#0C75800f; --stage:#0d1420;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:40px 24px 64px}
+  .eyebrow{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--primary);font-weight:700;margin:0 0 8px}
+  h1{font-size:27px;line-height:1.2;margin:0 0 10px;font-weight:750;text-wrap:balance;letter-spacing:-.01em}
+  .lede{color:var(--ink-2);font-size:15.5px;max-width:66ch;margin:0 0 8px}
+  .quote{margin:14px 0 30px;padding:11px 16px;border-left:3px solid var(--action);background:var(--action-tint);
+    border-radius:0 8px 8px 0;font-size:14px;color:var(--ink)}
+  .quote b{color:var(--action)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  @media (max-width:880px){.grid{grid-template-columns:1fr}}
+  .col-head{display:flex;align-items:center;gap:9px;margin:0 0 11px}
+  .tag{font-size:11px;font-weight:750;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:999px}
+  .tag.today{background:var(--line-2);color:var(--ink-2)}
+  .tag.change{background:var(--primary);color:var(--primary-ink)}
+  .col-head .desc{font-size:13px;color:var(--ink-2)}
+
+  /* editor shell */
+  .editor{background:var(--card);border:1px solid var(--line);border-radius:13px;overflow:hidden;
+    box-shadow:0 1px 2px rgba(10,20,30,.05),0 8px 26px -18px rgba(10,20,30,.28)}
+  .topbar{display:flex;align-items:center;gap:8px;padding:9px 11px;border-bottom:1px solid var(--line)}
+  .back{color:var(--ink-3);font-size:15px}
+  .title{font-weight:650;font-size:13.5px}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--primary);
+    background:var(--primary-tint);border:1px solid var(--primary);border-radius:999px;padding:2px 8px}
+  .spacer{flex:1}
+  .btn{font-size:11.5px;font-weight:700;border-radius:8px;padding:5px 11px;border:1px solid transparent;white-space:nowrap}
+  .btn.approve{background:var(--primary);color:var(--primary-ink)}
+  .btn.reject{color:var(--ink-2);border-color:var(--line)}
+  .btn.sched{background:var(--action-tint);color:var(--action);border-color:var(--action)}
+
+  .body{display:flex;min-height:372px}
+  .rail{width:66px;flex-shrink:0;border-right:1px solid var(--line);background:var(--muted);
+    display:flex;flex-direction:column;align-items:stretch;padding:8px 0;gap:2px}
+  .rail .r{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 2px;font-size:9.5px;
+    font-weight:600;color:var(--ink-3);border-left:2.5px solid transparent}
+  .rail .r .ic{width:20px;height:20px;display:grid;place-items:center;color:var(--ink-3)}
+  .rail .r.on{color:var(--primary);border-left-color:var(--primary);background:var(--primary-tint)}
+  .rail .r.on .ic{color:var(--primary)}
+  .rail .r.new{position:relative}
+  .rail .r.new::after{content:"NEW";position:absolute;top:3px;right:4px;font-size:6.5px;font-weight:800;
+    letter-spacing:.03em;color:var(--add);background:color-mix(in srgb,var(--add) 15%,transparent);
+    padding:1px 3px;border-radius:3px}
+
+  .inspector{width:190px;flex-shrink:0;border-right:1px solid var(--line);padding:13px;background:var(--card)}
+  .insp-title{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin:0 0 10px}
+  .field{font-size:11px;color:var(--ink-2);margin-bottom:9px}
+  .textarea{border:1px solid var(--line);border-radius:8px;background:var(--muted);height:66px;padding:8px;
+    font-size:11px;color:var(--ink-3);margin-bottom:11px}
+  .ctl{border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:11px;color:var(--ink-2);
+    display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;background:var(--card)}
+  .ctl .k{color:var(--ink)}
+  .seg{display:flex;gap:4px;margin-bottom:9px}
+  .seg span{flex:1;text-align:center;font-size:10px;font-weight:600;border:1px solid var(--line);border-radius:6px;padding:4px 0;color:var(--ink-3)}
+  .seg span.on{border-color:var(--primary);color:var(--primary);background:var(--primary-tint)}
+  .swatches{display:flex;gap:6px;margin-bottom:9px}
+  .swatches i{width:17px;height:17px;border-radius:999px;border:1px solid var(--line)}
+
+  .stage{flex:1;background:var(--muted);display:flex;align-items:center;justify-content:center;padding:16px}
+  .phone{width:150px;aspect-ratio:9/16;border-radius:14px;background:var(--stage);position:relative;overflow:hidden;
+    box-shadow:0 6px 20px -8px rgba(0,0,0,.5)}
+  .phone .runners{position:absolute;inset:0;background:
+    linear-gradient(180deg,#c98b5a 0%,#c98b5a 24%,#8a8f86 24%,#7d857b 62%,#6f7770 100%)}
+  .phone .hdr{position:absolute;top:0;left:0;right:0;height:24%;background:#c67f43;
+    display:flex;align-items:center;justify-content:center;text-align:center;padding:0 8px}
+  .phone .hdr span{font-size:8px;font-weight:800;color:#fff;line-height:1.15}
+  .phone .sub{position:absolute;left:0;right:0;top:41%;text-align:center}
+  .phone .sub b{font-size:8px;font-weight:800;color:#fff;background:#000;padding:1px 3px;border-radius:2px}
+  .phone .reel{position:absolute;top:6px;right:6px;font-size:7px;font-weight:700;color:#fff;
+    background:rgba(0,0,0,.4);padding:1px 5px;border-radius:999px}
+  /* timeline (change only) */
+  .timeline{position:absolute;left:8px;right:8px;bottom:8px;height:26px;border-radius:6px;
+    background:rgba(255,255,255,.14);display:flex;align-items:center;padding:0 4px;gap:2px}
+  .timeline .fr{flex:1;height:16px;border-radius:2px;background:rgba(255,255,255,.28)}
+  .timeline .handle{width:4px;height:22px;border-radius:2px;background:var(--action)}
+  .stage-note{position:absolute;bottom:-1px;left:0;right:0}
+
+  .footnote{display:flex;gap:7px;align-items:flex-start;margin-top:13px;font-size:12px;color:var(--ink-2)}
+  .footnote .dot{width:6px;height:6px;border-radius:999px;margin-top:6px;flex-shrink:0}
+  .missing .dot{background:#c0392b}
+  .have .dot{background:var(--add)}
+
+  .legend{margin-top:34px;border-top:1px solid var(--line);padding-top:20px}
+  .legend h2{font-size:14px;margin:0 0 12px;letter-spacing:.01em}
+  .rows{display:grid;grid-template-columns:150px 1fr 1fr;gap:0;font-size:12.5px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .rows>div{padding:9px 12px;border-bottom:1px solid var(--line-2)}
+  .rows .h{background:var(--muted);font-weight:700;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
+  .rows .lbl{font-weight:600;color:var(--ink)}
+  .no{color:var(--ink-3)}
+  .yes{color:var(--add);font-weight:600}
+  .rows>div:nth-last-child(-n+3){border-bottom:none}
+  .mirror{margin-top:22px;font-size:12.5px;color:var(--ink-2);background:var(--primary-tint);
+    border:1px solid color-mix(in srgb,var(--primary) 35%,transparent);border-radius:10px;padding:13px 15px}
+  .mirror b{color:var(--ink)}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Reel editor · Philip's feedback</p>
+  <h1>One pathway per media type: videos open the video editor — inside the publish shell</h1>
+  <p class="lede">Photos already open <b>SlideEditor</b> (editing canvas wrapped in the publish shell). Video pieces are the exception — they land on a caption‑only screen with no editing. This change makes a Reel open the real video editor with the same Approve / Schedule chrome around it.</p>
+  <p class="quote">Philip, on the Reel publish screen: “<b>No control over video editing, subtitling, or design of reels within this screen.</b>”</p>
+
+  <div class="grid">
+    <!-- TODAY -->
+    <div>
+      <div class="col-head"><span class="tag today">Today</span><span class="desc">Reel → UnifiedEditor (caption only)</span></div>
+      <div class="editor">
+        <div class="topbar">
+          <span class="back">←</span><span class="title">Untitled draft</span>
+          <span class="badge">◎ Instagram Reel</span>
+          <span class="spacer"></span>
+          <span class="btn approve">✓ Approve</span><span class="btn reject">Reject</span><span class="btn sched">Schedule ▾</span>
+        </div>
+        <div class="body">
+          <div class="rail">
+            <div class="r on"><span class="ic">➤</span>Publish</div>
+            <div class="r"><span class="ic">▤</span>Words</div>
+            <div class="r"><span class="ic">▣</span>Media</div>
+            <div class="r"><span class="ic">◑</span>Grade</div>
+          </div>
+          <div class="inspector">
+            <p class="insp-title">Publish</p>
+            <div class="ctl"><span class="k">Status</span><span>Draft</span></div>
+            <div class="field" style="margin-top:10px">“This posts as a Reel. A video publishes on its own — on‑screen text is baked into the clip itself.”</div>
+          </div>
+          <div class="stage">
+            <div class="phone">
+              <div class="runners"></div>
+              <div class="hdr"><span>The reason high knees naturally want to be fast…</span></div>
+              <span class="reel">Reel</span>
+              <div class="sub"><b>Again I did not tell</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footnote missing"><span class="dot"></span><span>No trim, no way to fix the burned‑in subtitle, no design controls. The video is a dead end once it reaches publish.</span></div>
+    </div>
+
+    <!-- CHANGE -->
+    <div>
+      <div class="col-head"><span class="tag change">Change</span><span class="desc">Reel → video editor, same shell</span></div>
+      <div class="editor">
+        <div class="topbar">
+          <span class="back">←</span><span class="title">Untitled draft</span>
+          <span class="badge">◎ Instagram Reel</span>
+          <span class="spacer"></span>
+          <span class="btn approve">✓ Approve</span><span class="btn reject">Reject</span><span class="btn sched">Schedule ▾</span>
+        </div>
+        <div class="body">
+          <div class="rail">
+            <div class="r new"><span class="ic">✂</span>Trim</div>
+            <div class="r on new"><span class="ic">💬</span>Captions</div>
+            <div class="r new"><span class="ic">◧</span>Design</div>
+            <div class="r"><span class="ic">▤</span>Words</div>
+            <div class="r"><span class="ic">➤</span>Publish</div>
+          </div>
+          <div class="inspector">
+            <p class="insp-title">Captions</p>
+            <div class="seg"><span class="on">On</span><span>Off</span></div>
+            <div class="field">Position</div>
+            <div class="seg"><span>Top</span><span class="on">Mid</span><span>Low</span></div>
+            <div class="field">Style · colour</div>
+            <div class="swatches"><i style="background:#d98219"></i><i style="background:#0C7580"></i><i style="background:#fff"></i><i style="background:#000"></i></div>
+            <div class="ctl"><span class="k">Edit words</span><span>✎</span></div>
+          </div>
+          <div class="stage">
+            <div class="phone">
+              <div class="runners"></div>
+              <div class="hdr"><span>The reason high knees naturally want to be fast…</span></div>
+              <span class="reel">Reel</span>
+              <div class="sub"><b>Yes — I did tell you</b></div>
+              <div class="timeline">
+                <span class="handle"></span>
+                <span class="fr"></span><span class="fr"></span><span class="fr"></span><span class="fr"></span><span class="fr"></span>
+                <span class="handle"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footnote have"><span class="dot"></span><span>Trim the clip, retype the on‑screen subtitle, restyle captions and reframe — then Approve / Schedule right there. Same top bar, same publish actions.</span></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <h2>What each media type opens</h2>
+    <div class="rows">
+      <div class="h">Piece type</div><div class="h">Today</div><div class="h">After</div>
+      <div class="lbl">Photo / carousel</div><div class="yes">SlideEditor — canvas + publish shell</div><div class="yes">Unchanged</div>
+      <div class="lbl">Reel · long video</div><div class="no">UnifiedEditor — caption only</div><div class="yes">Video editor + publish shell</div>
+      <div class="lbl">Text / blog / email / ad</div><div class="no">UnifiedEditor</div><div class="no">UnifiedEditor (unchanged)</div>
+    </div>
+    <div class="mirror"><b>Why this shape:</b> it's the exact mirror of the photo pathway. A photo piece already opens its editor <i>inside</i> the publish shell; this gives video pieces the same deal. No new second screen, no jumping between an editor and a publisher — one surface, chosen by the media on the piece.</div>
+    <div class="footnote" style="margin-top:16px"><span class="dot" style="background:var(--action)"></span><span><b>One caveat to confirm:</b> when a Reel's video is a <i>raw uploaded</i> clip (no transcript, like Philip's here), the subtitle is baked into the file's pixels. The editor can lay <i>new</i> Bernard captions over it, but can't erase the original burned‑in text. Clips Bernard generated from an interview have full word‑level subtitle editing.</span></div>
+  </div>
+</div>
