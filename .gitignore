@@ -40,3 +40,4 @@ _voice-samples/
 __pycache__/
 *.pyc
 .env*
+.backfill-backups/
