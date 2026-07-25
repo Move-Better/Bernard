@@ -30,6 +30,8 @@
 // `clinical_texture`, `specificity`, and `brand_fit` are gone (folded in or dropped).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { extractJsonObject } from './jsonFromModel.js'
+
 export const FIDELITY_DIMENSIONS = ['said_fidelity', 'voice_match', 'naturalness', 'tightness']
 
 /**
@@ -141,15 +143,12 @@ Score each dimension 1–10 and return EXACTLY this JSON shape (no other keys):
  * @param {object} [extra] — merged into breakdown (e.g. has_phrases, model)
  */
 export function parseFidelity(rawText, extra = {}) {
-  const raw = String(rawText || '').trim()
-  const tryParse = (s) => { try { return JSON.parse(s) } catch { return null } }
-  let r = tryParse(raw)
-  if (!r) r = tryParse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim())
-  // The judge occasionally wraps the object in a sentence of preamble/trailer
-  // despite the "ONLY valid JSON" instruction — recover the first {...} object
-  // rather than dropping the whole score to null (a null silently disables the gate).
-  if (!r) { const m = raw.match(/\{[\s\S]*\}/); if (m) r = tryParse(m[0]) }
-  if (!r || typeof r !== 'object') return null
+  // The judge occasionally wraps the object in preamble/trailing prose despite the
+  // "ONLY valid JSON" instruction — extractJsonObject recovers the object rather
+  // than dropping the score to null (a null silently disables the gate). Shared
+  // with parseAnswerFidelity so the two can't drift apart again.
+  const r = extractJsonObject(rawText)
+  if (!r) return null
   const valid = FIDELITY_DIMENSIONS.filter((d) => typeof r[d] === 'number' && isFinite(r[d]))
   if (!valid.length) return null
   const clampedScores = valid.map((d) => Math.max(1, Math.min(10, r[d])))

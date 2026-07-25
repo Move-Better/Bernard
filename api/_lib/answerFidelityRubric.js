@@ -28,6 +28,8 @@
 //                     visit, flags genuinely-urgent presentations. This is the one
 //                     that must not slip on content the clinician's name is on.
 
+import { extractJsonObject } from './jsonFromModel.js'
+
 export const ANSWER_FIDELITY_DIMENSIONS = ['said_fidelity', 'voice_match', 'safety']
 
 const REF_MAX = 3200   // gold-reference (practice memory) budget
@@ -83,7 +85,11 @@ single worst failure here.
 CRITICAL — you are NOT a "sounds clinical" detector. Do NOT reward anatomy, technique
 names, or jargon for their own sake, and do NOT penalize a warm, plain, jargon-free
 answer — plain is the target. Register is the clinician's choice; only faithfulness,
-voice, and safety are quality. Return ONLY valid JSON — no markdown, no preamble.`,
+voice, and safety are quality.
+
+OUTPUT CONTRACT: return ONLY the JSON object — no markdown fences, no preamble, and
+NO rationale, explanation, or commentary after it. Your entire reply is parsed as JSON.
+Everything you want to say about the answer belongs inside "red_flag".`,
     user:
 `Evaluate this public answer, written as ${staffName} at ${workspaceName}.
 
@@ -128,20 +134,16 @@ Score each dimension 1–10 and return EXACTLY this JSON shape (no other keys):
 
 /**
  * Parse the evaluator's raw JSON text into { overall, breakdown }.
- * Tolerant of ```json fences. Returns null if no scorable dimensions parsed
- * (a null score is a real signal — the caller must fail closed, never publish).
+ * Tolerant of ```json fences and of prose wrapped around the object (see
+ * extractJsonObject). Returns null only when nothing scorable is present — a
+ * null is a real signal, and the caller must fail closed and never publish.
  *
  * @param {string} rawText
  * @param {object} [extra] — merged into breakdown (e.g. model, scored_at, has_reference)
  */
 export function parseAnswerFidelity(rawText, extra = {}) {
-  let r = {}
-  try {
-    r = JSON.parse(String(rawText || '').trim())
-  } catch {
-    const cleaned = String(rawText || '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    try { r = JSON.parse(cleaned) } catch { return null }
-  }
+  const r = extractJsonObject(rawText)
+  if (!r) return null
   const valid = ANSWER_FIDELITY_DIMENSIONS.filter((d) => typeof r[d] === 'number' && isFinite(r[d]))
   if (!valid.length) return null
   const clamped = valid.map((d) => Math.max(1, Math.min(10, r[d])))
