@@ -106,7 +106,16 @@ export function kenBurnsFilter(kb, W, H, durationSec) {
   return `${cover},zoompan=z='${z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':${base}[scaled]`
 }
 
-const OVERLAY_ROLE_FS = { title: 0.055, lower_third: 0.034, callout: 0.042 }
+const OVERLAY_ROLE_FS = { title: 0.055, lower_third: 0.034, callout: 0.042, hook_card: 0.048 }
+
+const OVERLAY_ROLES = ['title', 'lower_third', 'callout', 'hook_card']
+
+// hook_card geometry, as fractions of frame width. An INSET card — the point of
+// the role is that it is visibly placed on the frame rather than stamped across
+// it, which is what the old full-bleed brand band did (18% of frame height, raw
+// brand colour, edge to edge). The accent appears as a rule, not a fill.
+const HOOK_CARD_W = 0.88
+const HOOK_CARD_RULE_W = 0.012
 
 /**
  * Sanitize + clamp an overlays array against the clip duration. Drops empty /
@@ -125,7 +134,7 @@ export function normalizeOverlays(overlays, clipDur, max = 6) {
     outT = Math.min(outT, clipDur)
     if (outT <= inT) continue
     out.push({
-      role: ['title', 'lower_third', 'callout'].includes(o.role) ? o.role : 'title',
+      role: OVERLAY_ROLES.includes(o.role) ? o.role : 'title',
       text: text.slice(0, 200),
       x: clamp01(o.x), y: clamp01(o.y),
       size: Math.max(0.4, Math.min(2.5, Number(o.size) || 1)),
@@ -144,9 +153,17 @@ export function normalizeOverlays(overlays, clipDur, max = 6) {
  *   callout     — text on an accent rounded box
  * Mirrors the editor canvas overlay (renderFreeformSlide block) so preview==publish.
  */
-export function buildOverlaySvg({ width, height, overlay, accentColor = '#0C7580', fontBuffer }) {
+/**
+ * `brandColor` is the TENANT's brand colour and is distinct from `accentColor`.
+ * resolveBrandColors() reads brand_style.accent_color into `primaryColor`, while
+ * `accentColor` comes from a different chain that falls back to a sage
+ * DEFAULT_ACCENT — so a hook_card rule drawn in `accentColor` renders sage-green
+ * on a workspace whose brand is orange. hook_card takes brandColor for that
+ * reason; every other role keeps using accentColor unchanged.
+ */
+export function buildOverlaySvg({ width, height, overlay, accentColor = '#0C7580', brandColor, fontBuffer }) {
   const o = overlay || {}
-  const role = ['title', 'lower_third', 'callout'].includes(o.role) ? o.role : 'title'
+  const role = OVERLAY_ROLES.includes(o.role) ? o.role : 'title'
   const baseDim = Math.min(width, height)
   const sizeScale = Math.max(0.4, Math.min(2.5, Number(o.size) || 1))
   const fs = Math.round(baseDim * OVERLAY_ROLE_FS[role] * sizeScale)
@@ -154,17 +171,66 @@ export function buildOverlaySvg({ width, height, overlay, accentColor = '#0C7580
   const cx = Math.round(clamp01(o.x) * width)
   const cy = Math.round(clamp01(o.y) * height)
 
+  const fontFamily = fontBuffer ? 'BrandFont' : 'sans-serif'
+  const fontFaceCss = fontBuffer
+    ? `<style>@font-face{font-family:'BrandFont';src:url(data:font/ttf;base64,${fontBuffer.toString('base64')}) format('truetype');}</style>`
+    : ''
+  const svgOpen =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
+    `<defs>${fontFaceCss}<filter id="sh" x="-20%" y="-20%" width="140%" height="140%">` +
+    `<feDropShadow dx="0" dy="2" stdDeviation="${Math.round(fs * 0.08)}" flood-color="#000000" flood-opacity="0.55"/></filter></defs>`
+
+  // ── hook_card ──────────────────────────────────────────────────────────────
+  // Fixed-width inset card, left-aligned text, accent as a left rule. Separate
+  // branch because every other role is centre-anchored on x/y and derives its
+  // box from the text width; this one derives text width from the card.
+  if (role === 'hook_card') {
+    const rule = /^#[0-9a-fA-F]{6}$/.test(brandColor || '') ? brandColor : accentColor
+    const cardW = Math.round(width * HOOK_CARD_W)
+    const ruleW = Math.max(4, Math.round(width * HOOK_CARD_RULE_W))
+    const padX = Math.round(fs * 0.62)
+    const padY = Math.round(fs * 0.46)
+    const innerW = cardW - ruleW - 2 * padX
+    // 0.5 em average glyph width. The 0.55 used elsewhere over-estimates for a
+    // bold sans and broke a 31-character headline onto two lines inside a card
+    // wide enough for 33 — leaving one orphaned word on line two.
+    const maxChars = Math.max(8, Math.round(innerW / (fs * 0.5)))
+    const lines = wrapLines(o.text, maxChars, 3)
+    const lineH = Math.round(fs * 1.2)
+    const blockH = lines.length * lineH
+    const cardH = blockH + 2 * padY
+    const cardX = Math.round(cx - cardW / 2)
+    const cardY = Math.round(cy - cardH / 2)
+    const r = Math.round(fs * 0.18)
+    const textX = cardX + ruleW + padX
+    const firstBaseline = cardY + padY + fs * 0.86
+    const clipId = 'hc'
+
+    const cardTspans = lines.map((l, i) =>
+      `<text x="${textX}" y="${Math.round(firstBaseline + i * lineH)}" font-size="${fs}" fill="${color}" ` +
+      `text-anchor="start" font-family="${fontFamily}" font-weight="700">${svgEscape(l)}</text>`
+    ).join('\n')
+
+    // The rule is clipped to the card's rounded shape rather than composed from
+    // overlapping rects — stacking a translucent rect back over the rule to fake
+    // the corner tinted it instead of masking it.
+    return Buffer.from(
+      `${svgOpen}` +
+      `<defs><clipPath id="${clipId}">` +
+      `<rect x="${cardX}" y="${cardY}" width="${cardW}" height="${cardH}" rx="${r}" ry="${r}" />` +
+      `</clipPath></defs>` +
+      `<rect x="${cardX}" y="${cardY}" width="${cardW}" height="${cardH}" rx="${r}" ry="${r}" fill="#0A0E0F" fill-opacity="0.66" />` +
+      `<rect x="${cardX}" y="${cardY}" width="${ruleW}" height="${cardH}" fill="${rule}" clip-path="url(#${clipId})" />` +
+      `${cardTspans}</svg>`,
+    )
+  }
+
   const maxChars = Math.max(8, Math.round((width * 0.84) / (fs * 0.55)))
   const lines = wrapLines(o.text, maxChars, 3)
   const lineH = Math.round(fs * 1.18)
   const blockH = lines.length * lineH
   const longest = lines.reduce((m, l) => Math.max(m, l.length), 0)
   const textW = Math.round(longest * fs * 0.55)
-
-  const fontFamily = fontBuffer ? 'BrandFont' : 'sans-serif'
-  const fontFaceCss = fontBuffer
-    ? `<style>@font-face{font-family:'BrandFont';src:url(data:font/ttf;base64,${fontBuffer.toString('base64')}) format('truetype');}</style>`
-    : ''
 
   const firstBaseline = cy - blockH / 2 + fs
   const tspans = lines.map((l, i) =>
@@ -184,10 +250,5 @@ export function buildOverlaySvg({ width, height, overlay, accentColor = '#0C7580
     box = `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="${r}" ry="${r}" fill="${fill}" fill-opacity="${op}" />`
   }
 
-  return Buffer.from(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
-    `<defs>${fontFaceCss}<filter id="sh" x="-20%" y="-20%" width="140%" height="140%">` +
-    `<feDropShadow dx="0" dy="2" stdDeviation="${Math.round(fs * 0.08)}" flood-color="#000000" flood-opacity="0.55"/></filter></defs>` +
-    `${box}${tspans}</svg>`,
-  )
+  return Buffer.from(`${svgOpen}${box}${tspans}</svg>`)
 }

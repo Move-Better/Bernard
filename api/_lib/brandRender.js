@@ -253,12 +253,19 @@ export function buildBrandOverlaySvg({
     return `<text x="${Math.round(width / 2)}" y="${y}" font-size="${captionFontSize}" fill="#FFFFFF" text-anchor="middle" font-family="${fontFamily}" font-weight="700">${svgEscape(line)}</text>`
   }).join('\n')
 
+  // The band is drawn ONLY when there is text to put in it. It used to be
+  // unconditional, so a caller passing no captionText still got a full-width
+  // slab of brand colour across 18% of the frame with nothing in it. That is
+  // also what lets the reel factory opt out of the band entirely and place an
+  // inset hook_card overlay instead (see videoOverlays.js).
+  const hasCaption = captionLines.some((l) => l && l.trim())
+
   return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <defs>${fontFaceCss}</defs>
 
   <!-- Caption band -->
-  <rect x="0" y="${captionBandY}" width="${width}" height="${captionBandHeight}" fill="${primaryColor}" fill-opacity="${captionOpacity}" />
-  ${captionLines.length ? captionTspans : ''}
+  ${hasCaption ? `<rect x="0" y="${captionBandY}" width="${width}" height="${captionBandHeight}" fill="${primaryColor}" fill-opacity="${captionOpacity}" />` : ''}
+  ${hasCaption ? captionTspans : ''}
 
   <!-- Accent bar above lower-third -->
   <rect x="0" y="${lowerThirdY - accentBarHeight}" width="${width}" height="${accentBarHeight}" fill="${accentColor}" />
