@@ -28,6 +28,11 @@ import { put as blobPut } from '@vercel/blob'
 import { renderVideoChannel } from './brandRenderVideo.js'
 import { sliceWordsToWindow } from './karaokeCaptions.js'
 import { generateCaption } from './captionGen.js'
+import { generateHeadline, headlineWindow } from './headlineGen.js'
+
+// Vertical placement of the hook card, as a fraction of frame height. Sits in
+// the upper third but clear of Instagram's own top UI zone (~7% of a 9:16 frame).
+const HOOK_CARD_Y = 0.17
 import { saveBroll } from './saveBroll.js'
 import { createClipDraft } from './clipDraft.js'
 import { assignSlots, dateAtLocalHour } from './strategist.js'
@@ -168,22 +173,56 @@ export async function renderSegmentToReel({ ws, seg, asset, staffName, createDra
       console.error('[reelFactory] caption gen failed, using hook:', e?.stack || e?.message)
     }
 
+    // ON-SCREEN HEADLINE — a different piece of copy from the post caption above.
+    // captionText is a 1-2 sentence Instagram caption (150-220 chars); it used to
+    // be passed as `captionText` to the renderer AND written to the draft, so the
+    // brand band truncated it mid-sentence at ~102 chars and burned a meaningless
+    // fragment onto the most prominent part of the frame. The caption now goes
+    // only to the draft; the frame gets a ≤8-word headline in an inset card.
+    //
+    // GRACEFUL DEGRADE: a null headline renders NO card, and the reel ships as a
+    // clean captions-only frame. Never truncate — that is the bug being closed.
+    let headline = null
+    try {
+      headline = await generateHeadline({ hook, clipTranscript: transcriptExcerpt, workspace: ws })
+    } catch (e) {
+      console.error('[reelFactory] headline gen failed, shipping without a card:', e?.stack || e?.message)
+    }
+    const overlays = headline
+      ? [{
+          role: 'hook_card',
+          text: headline,
+          x: 0.5,
+          y: HOOK_CARD_Y,
+          size: 1,
+          color: '#FFFFFF',
+          // Hook-then-drop: on at frame 0 (no fade-in, so the cover frame carries
+          // it), gone once the speaker is going.
+          in: 0,
+          out: headlineWindow(headline, durationSec),
+        }]
+      : []
+
     // Persisted captions (migration 137): slice the source's stored words to this
     // segment's window so the render reuses them instead of re-transcribing.
     const captionWords = Array.isArray(asset.transcript_words) && asset.transcript_words.length
       ? sliceWordsToWindow(asset.transcript_words, startSec, durationSec)
       : null
 
-    // Render the ≤60s window as a reel-format clip with the caption burned in.
+    // Render the ≤60s window as a reel-format clip.
+    // No captionText → no brand band (brandRender.js draws it only when there is
+    // text for it). Captions sit in the lower third so they never collide with
+    // the hook card, which the old top-positioned default did on every reel.
     const { buffer, width, height } = await renderVideoChannel({
       videoUrl: asset.blob_url,
       channel: CLIP_CHANNEL,
-      captionText,
       workspace: ws,
       staffName,
       startSec,
       durationSec,
       subtitles: true,
+      overlayPosition: 'bottom',
+      ...(overlays.length ? { overlays } : {}),
       ...(captionWords && captionWords.length ? { captionWords } : {}),
     })
 

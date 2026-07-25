@@ -511,7 +511,10 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     const overlayItems = []
     for (let i = 0; i < normedOverlays.length; i++) {
       const ov = normedOverlays[i]
-      const ovSvg = buildOverlaySvg({ width: spec.width, height: spec.height, overlay: ov, accentColor, fontBuffer })
+      // brandColor is the tenant's own brand colour (resolveBrandColors puts
+      // brand_style.accent_color in primaryColor); accentColor comes from a
+      // different chain whose fallback is sage. hook_card's rule needs the former.
+      const ovSvg = buildOverlaySvg({ width: spec.width, height: spec.height, overlay: ov, accentColor, brandColor: primaryColor, fontBuffer })
       const ovPng = await sharp(ovSvg).png().toBuffer()
       const ovPath = `/tmp/vid-ovl-${id}-${i}.png`
       await writeFileP(ovPath, ovPng)
@@ -593,6 +596,11 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // fade length, capped so very short overlays still fully fade. With fade-in at
     // `in` and fade-out ending at `out`, the alpha envelope IS the visibility
     // window — no enable= needed.
+    // An overlay starting at t=0 gets NO fade-in. Frame 0 doubles as the clip's
+    // cover image in the feed and grid before playback starts, and a 0.25s ramp
+    // leaves that frame at alpha 0 — so a hook card set to appear "immediately"
+    // would be invisible on the exact frame most people see first. Fading out is
+    // unaffected.
     const OVL_FADE = 0.25
     let stage = '[branded]'
     renderOverlays.forEach((ov, i) => {
@@ -600,7 +608,10 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
       const faded = `[ovf${i}]`
       const win = Math.max(0.01, ov.out - ov.in)
       const d = Math.min(OVL_FADE, win / 3)
-      filterComplex.push(`[${2 + i}:v]format=yuva420p,fade=t=in:st=${ov.in.toFixed(2)}:d=${d.toFixed(2)}:alpha=1,fade=t=out:st=${(ov.out - d).toFixed(2)}:d=${d.toFixed(2)}:alpha=1${faded}`)
+      const fadeIn = ov.in > 0.001
+        ? `fade=t=in:st=${ov.in.toFixed(2)}:d=${d.toFixed(2)}:alpha=1,`
+        : ''
+      filterComplex.push(`[${2 + i}:v]format=yuva420p,${fadeIn}fade=t=out:st=${(ov.out - d).toFixed(2)}:d=${d.toFixed(2)}:alpha=1${faded}`)
       filterComplex.push(`${stage}${faded}overlay=0:0${next}`)
       stage = next
     })
