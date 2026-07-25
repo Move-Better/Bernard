@@ -1026,11 +1026,6 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
         </div>
       )}
 
-      {/* Sits ABOVE Style, not at the bottom of the page. Below the asset
-          library it was past 59 logo tiles — a setting nobody would scroll to
-          and therefore, in practice, a setting that does not exist. */}
-      {!isOnboarding && !mockup && <ReelLookPicker />}
-
       {/* ===== STYLE PANEL ================================================== */}
       {!isOnboarding && (
         <section className="space-y-3">
@@ -1346,102 +1341,6 @@ function ColorBucket({ label, colors, suggestions, isAdding, draft, onDraftChang
         )}
       </div>
     </div>
-  )
-}
-
-// Which look auto-generated Reels are rendered with — `workspaces.reel_preset`
-// (migration 189). Mirrors REEL_PRESETS in api/_lib/reelPresets.js.
-//
-// null is a real, meaningful value here, not "unset": it means ROTATE across
-// every look, so each one accrues real use and the one a human keeps becomes
-// measurable. Pinning ends that. The copy says so, because a picker whose
-// default option looks like "nothing chosen" invites people to pick something
-// just to feel finished.
-const REEL_LOOKS = [
-  { id: null, label: 'Rotate', hint: 'Try all four and compare. Recommended while you decide.' },
-  { id: 'hook_card', label: 'Hook card', hint: 'Short headline in an inset card, gone after ~2.5s.' },
-  { id: 'captions_only', label: 'Captions only', hint: 'No headline. Just spoken words, lower third.' },
-  { id: 'kinetic', label: 'Kinetic', hint: 'Big centred captions in a filled brand-colour box.' },
-  { id: 'editorial', label: 'Editorial', hint: 'Headline set straight on the frame, no card behind it.' },
-]
-
-function ReelLookPicker() {
-  const { getToken } = useAuth()
-  const [pristine, setPristine] = useState(undefined) // undefined = loading
-  const [value, setValue] = useState(null)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    apiFetch('/api/workspace/me')
-      .then((ws) => { setValue(ws?.reel_preset ?? null); setPristine(ws?.reel_preset ?? null) })
-      .catch(() => { setValue(null); setPristine(null) })
-  }, [])
-
-  async function save(next) {
-    setValue(next)
-    setSaving(true); setError(null); setSaved(false)
-    try {
-      const token = await getToken()
-      const r = await fetch('/api/workspace/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ reel_preset: next }),
-      })
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}))
-        setError(err.error || 'save-failed')
-        setValue(pristine)
-      } else {
-        setPristine(next)
-        setSaved(true)
-        setTimeout(() => setSaved(false), 3000)
-      }
-    } catch {
-      setError('network-error')
-      setValue(pristine)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  if (pristine === undefined) return null
-
-  return (
-    <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Reel look</h2>
-      <div className="rounded-xl border bg-card p-4 space-y-3">
-        <p className="text-xs text-muted-foreground">
-          How Bernard renders captions and headlines on auto-generated Reels. Changing this affects
-          reels made from here on — it does not re-render ones already drafted.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {REEL_LOOKS.map((o) => {
-            const active = value === o.id
-            return (
-              <button
-                key={o.id ?? 'rotate'}
-                type="button"
-                disabled={saving}
-                onClick={() => save(o.id)}
-                aria-pressed={active}
-                className={`text-left rounded-lg border p-3 transition-colors disabled:opacity-60 ${
-                  active
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-primary/40'
-                }`}
-              >
-                <span className="block text-sm font-medium text-foreground">{o.label}</span>
-                <span className="mt-0.5 block text-2xs text-muted-foreground">{o.hint}</span>
-              </button>
-            )
-          })}
-        </div>
-        {error && <p className="text-xs text-destructive">Couldn&apos;t save that ({error}).</p>}
-        {saved && <p className="text-xs text-muted-foreground">Saved.</p>}
-      </div>
-    </section>
   )
 }
 
