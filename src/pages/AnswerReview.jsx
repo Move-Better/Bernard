@@ -105,7 +105,56 @@ function VoiceCheckChip({ answer }) {
       </span>
     )
   }
+  // 'unscored' is NOT a verdict on the answer — the check never completed. Neutral
+  // muted, deliberately not the destructive red a held answer earns.
+  if (gate === 'unscored') {
+    return (
+      <span
+        className="ml-auto inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-3xs font-bold text-muted-foreground"
+        title="The voice check didn't finish — this says nothing about the answer"
+      >
+        <RotateCcw className="h-3 w-3" /> Voice check didn&rsquo;t finish
+      </span>
+    )
+  }
   return null
+}
+
+// Shown when the voice check could not complete (gate 'unscored'). This is an
+// infrastructure failure, NOT a judgement of the writing — so it's neutral/info,
+// never the destructive red of a real hold, and it says so in as many words. The
+// clinician's way out is one click that re-runs the check, not a re-read of an
+// answer that was never actually scored.
+function UnscoredBanner({ onRecheck, busy }) {
+  return (
+    <div className="nx-alert nx-alert-info mt-4 items-start">
+      <span className="nx-alert-chip nx-alert-chip-info">
+        <RotateCcw className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">
+          Voice check didn&rsquo;t finish
+        </div>
+        <p className="mt-1.5 text-2xs text-foreground">
+          This one&rsquo;s on us, not your answer — the check couldn&rsquo;t complete, so nothing was
+          scored. Your writing hasn&rsquo;t been judged, and nothing was published.
+        </p>
+        <p className="mt-2 text-2xs text-muted-foreground">
+          Press <span className="font-semibold text-foreground">Re-check voice</span>. If it fails
+          twice in a row that&rsquo;s a bug on our side, not a problem with your draft — tell us.
+        </p>
+        <Button
+          type="button"
+          size="sm"
+          loading={busy}
+          onClick={onRecheck}
+          className="mt-2.5 gap-1.5 font-semibold"
+        >
+          <RotateCcw className="h-3.5 w-3.5" /> Re-check voice
+        </Button>
+      </div>
+    </div>
+  )
 }
 
 // The loud, act-now banner shown above the actions when an answer is held.
@@ -245,13 +294,21 @@ export default function AnswerReview() {
         body: JSON.stringify(payload),
       }),
     onSuccess: (res, payload) => {
-      if (payload.action === 'approve') {
+      if (payload.action === 'recheck') {
+        // Never publishes — it only re-runs the check, so the only question is
+        // whether we got a verdict this time. refetch() brings the banner with it.
+        if (res?.gate === 'unscored') {
+          toast.error("Still couldn't finish the voice check — that's a bug on our side, not your draft")
+        } else {
+          toast.success('Voice check finished')
+        }
+      } else if (payload.action === 'approve') {
         if (res?.blocked) {
           // The hard voice gate refused to publish. Stay on this answer so its
-          // held banner is visible; refetch() pulls the fresh score/flag in.
+          // held/unscored banner is visible; refetch() pulls the fresh score in.
           toast.error(
             res.gate === 'unscored'
-              ? "Couldn't check the voice on this one — try again in a moment"
+              ? "The voice check didn't finish — nothing was scored. Re-check to try again."
               : 'Held — tighten it back to your voice before it can go public',
           )
         } else {
@@ -500,6 +557,12 @@ export default function AnswerReview() {
                 ) : (
                   <>
                     {voiceGate(active) === 'held' && <HeldBanner answer={active} />}
+                    {voiceGate(active) === 'unscored' && (
+                      <UnscoredBanner
+                        busy={busy}
+                        onRecheck={() => mutation.mutate({ id: active.id, action: 'recheck' })}
+                      />
+                    )}
                     <div className="mt-4 flex flex-wrap gap-2">
                       {voiceGate(active) === 'held' ? (
                         <button
@@ -509,6 +572,17 @@ export default function AnswerReview() {
                           className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-dashed border-border bg-muted px-4 py-2 text-sm font-semibold text-muted-foreground"
                         >
                           <Lock className="h-4 w-4" /> Approve — fix the voice check first
+                        </button>
+                      ) : voiceGate(active) === 'unscored' ? (
+                        // Not a verdict on the answer — but approving would just be
+                        // refused server-side, so don't dangle a green button.
+                        <button
+                          type="button"
+                          disabled
+                          title="The voice check didn't finish — re-check it first"
+                          className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-dashed border-border bg-muted px-4 py-2 text-sm font-semibold text-muted-foreground"
+                        >
+                          <Lock className="h-4 w-4" /> Approve — needs a voice check first
                         </button>
                       ) : (
                         <Button
