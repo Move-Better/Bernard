@@ -311,6 +311,18 @@ function runFfmpeg(args) {
  */
 const OVERLAY_SIZE_SCALE = { small: 0.75, medium: 1.0, large: 1.35 }
 
+// Karaoke caption font, as a fraction of the frame's SHORT edge.
+//
+// Was 0.05 — 54px on a 1080-wide reel, which lands Small at 40px and Medium at
+// 54px. Captions that read on a phone are ~70-110px, so Medium was roughly where
+// Large should have been and Small was unusable. At 0.068 the ladder becomes
+// 55 / 73 / 99px.
+//
+// KEEP IN SYNC with the editor preview (CAPTION_PREVIEW_VH in VideoEditor.jsx) —
+// the preview and the bake styling the same clip differently is how a Size
+// control ends up lying about what it will export.
+export const CAPTION_BASE_FS = 0.068
+
 export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionAccent, captionWords, captionAnim, captionStyle, grade, reframe, kenBurns, overlays, speed, cuts, music }) {
   const spec = VIDEO_CHANNEL_SPECS[channel]
   if (!spec) throw new Error(`Unknown video channel: ${channel}`)
@@ -496,7 +508,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
         // to feed only buildBrandOverlaySvg, so `overlaySize` was inert for
         // karaoke captions — a caller asking for 'large' got medium and nothing
         // reported the request had been dropped.
-        fontSizePx: Math.round(Math.min(spec.width, spec.height) * 0.05 * captionSizeScale * ((workspace?.brand_style?.subtitle_font_size ?? 10) / 10)),
+        fontSizePx: Math.round(Math.min(spec.width, spec.height) * CAPTION_BASE_FS * captionSizeScale * ((workspace?.brand_style?.subtitle_font_size ?? 10) / 10)),
         fontName: workspace?.brand_style?.heading_font || 'Inter',
         anim: ['pop', 'fade'].includes(captionAnim) ? captionAnim : 'none',
         style: captionStyle,
@@ -658,8 +670,12 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
         // roughly N*(1080/PlayRes) px of actual text. We normalise against 1080 so the
         // visual size stays consistent across 1:1, 9:16, and 16:9 channels. Target ≈
         // 10px ref units at 1080p; tune via workspace.brand_style.subtitle_font_size.
+        // captionSizeScale applies here too. The SRT fallback ignored it, so a
+        // clip with no word timings rendered size-agnostic captions and the Size
+        // control silently did nothing on exactly the clips least likely to be
+        // checked.
         const subtitleFontSize = Math.round(
-          (workspace?.brand_style?.subtitle_font_size ?? 10) * (1080 / spec.height)
+          (workspace?.brand_style?.subtitle_font_size ?? 10) * captionSizeScale * (1080 / spec.height)
         )
         const marginV = effectiveCaptionPos === 'bottom' ? 220 : effectiveCaptionPos === 'center' ? 160 : 120
         filterComplex.push(
