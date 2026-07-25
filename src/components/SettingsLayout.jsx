@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import {
   Settings, Mic2, Radio, Puzzle, Palette, Users, CreditCard, MapPin,
-  Sliders, Target, Zap, LayoutGrid, Shield, Compass, Brain, Music,
+  Sliders, Target, Zap, LayoutGrid, Shield, Compass, Brain, Music, Film,
 } from 'lucide-react'
 import { useUserRole } from '@/lib/useUserRole'
 import { LoadingState } from '@/components/ui/LoadingState'
@@ -24,6 +24,7 @@ const MOBILE_NAV = [
   { to: '/settings/integrations',            label: 'Integrations',      icon: Puzzle },
   { to: '/settings/music',                   label: 'Music',             icon: Music },
   { to: '/settings/photo-templates',          label: 'Photo templates',   icon: LayoutGrid },
+  { to: '/settings/video-templates',          label: 'Reel templates',    icon: Film },
   { to: '/settings/members',                 label: 'Members & roles',   icon: Users },
   { to: '/settings/access',                  label: 'Permissions',     icon: Shield },
   { to: '/settings/workspace/billing',       label: 'Plan & billing',    icon: CreditCard },
@@ -50,6 +51,7 @@ const GROUPS = [
       { to: '/settings/integrations',        label: 'Integrations',       icon: Puzzle },
       { to: '/settings/music',               label: 'Music',              icon: Music },
       { to: '/settings/photo-templates',      label: 'Photo templates',    icon: LayoutGrid },
+      { to: '/settings/video-templates',      label: 'Reel templates',     icon: Film },
     ],
   },
   {

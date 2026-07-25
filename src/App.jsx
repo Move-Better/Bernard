@@ -45,6 +45,7 @@ const BrandKitPreview = lazy(() => import('@/pages/BrandKitPreview'))
 const BrandKitSettings = lazy(() => import('@/pages/BrandKitSettings'))
 const MusicSettings = lazy(() => import('@/pages/MusicSettings'))
 const PhotoTemplatesSettings  = lazy(() => import('@/pages/settings/PhotoTemplatesSettings'))
+const VideoTemplatesSettings  = lazy(() => import('@/pages/settings/VideoTemplatesSettings'))
 const BrandIdentitySettings = lazy(() => import('@/pages/settings/BrandIdentitySettings'))
 const CampaignsSettings = lazy(() => import('@/pages/settings/CampaignsSettings'))
 const AutoPublishSettings = lazy(() => import('@/pages/settings/AutoPublishSettings'))
@@ -708,6 +709,7 @@ function AppRoutes() {
               <Route path="/settings/brand-kit-preview" element={guarded(<BrandKitPreview />)} />
               <Route path="/settings/music" element={guarded(<MusicSettings />)} />
               <Route path="/settings/photo-templates" element={guarded(<PhotoTemplatesSettings />)} />
+              <Route path="/settings/video-templates" element={guarded(<VideoTemplatesSettings />)} />
               <Route path="/settings/carousel-themes" element={<Navigate to="/settings/photo-templates" replace />} />
               <Route path="/settings/campaigns" element={guarded(<CampaignsSettings />)} />
               <Route path="/settings/workspace/auto-publish" element={guarded(<AutoPublishSettings />)} />

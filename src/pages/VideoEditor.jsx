@@ -1765,11 +1765,25 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     setTplOpen(true)
   }
   const saveTemplateMutation = useAppMutation({
-    mutationFn: async ({ name, makeDefault }) => apiFetch('/api/video-templates', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, is_default: !!makeDefault, config: tplDraft.config }),
-    }),
+    mutationFn: async ({ name, makeDefault }) => {
+      const row = await apiFetch('/api/video-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, is_default: !!makeDefault, config: tplDraft.config }),
+      })
+      // The PIN is what the factory reads first (reelFactory resolves pin →
+      // default row → built-in), so setting is_default alone is a silent no-op
+      // for any workspace that already has one. "Use for new reels" has to move
+      // the pin or it does nothing visible.
+      if (makeDefault && row?.id) {
+        await apiFetch('/api/workspace/me', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reel_preset: row.id }),
+        })
+      }
+      return row
+    },
     onSuccess: (_d, vars) => {
       setTplOpen(false)
       toast(vars?.makeDefault
