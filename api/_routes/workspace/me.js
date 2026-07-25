@@ -19,6 +19,7 @@ import { resolveCapabilities, CAP_SETTINGS_EDIT } from '../../_lib/capabilities.
 import { getActiveCampaigns } from '../../_lib/activeCampaigns.js'
 import { getCadencePrior } from '../../_lib/cadenceDefaults.js'
 import { listConfiguredServices } from '../../_lib/getCredential.js'
+import { BUILTIN_VIDEO_TEMPLATE_IDS, isCustomTemplateId } from '../../_lib/videoTemplates.js'
 
 // Hard allowlist — only these columns may be patched via this endpoint.
 // slug, clerk_org_id, capabilities, status are developer-owned.
@@ -55,10 +56,12 @@ const PATCHABLE_FIELDS = new Set([
   'reel_preset',
 ])
 
-// Reel looks the factory can render — mirrors REEL_PRESET_IDS in
-// api/_lib/reelPresets.js and the CHECK constraint added in migration 189.
-// null means "rotate across all of them", which is the default.
-const REEL_PRESETS = new Set(['captions_only', 'hook_card', 'kinetic', 'editorial'])
+// Reel template ids the factory can render. Imported rather than re-listed —
+// this was one of four duplicated copies of the id list, which is exactly how a
+// list drifts. Migration 190 dropped the DB CHECK that hardcoded them, so a
+// custom template's uuid is now storable and validation lives here alone.
+const isValidReelTemplateId = (v) =>
+  BUILTIN_VIDEO_TEMPLATE_IDS.includes(v) || isCustomTemplateId(v)
 
 // Platforms recognized in schedule_prefs. Mirrors PLATFORM_SCHEDULE_PREFS in
 // src/lib/scheduleHeuristics.js. Unknown platforms are silently dropped.
@@ -688,11 +691,11 @@ async function handler(req, res) {
         continue
       }
       if (key === 'reel_preset') {
-        // null / '' clears the pin and resumes rotation. Validated here as well
-        // as by the CHECK constraint so an unknown id gets a clear 400 rather
-        // than a generic db_error from Postgres.
+        // null / '' clears the pin, falling back to the workspace's default
+        // template and then the built-in. Accepts a built-in slug OR a custom
+        // template uuid — same convention as content_items.photo_template_id.
         if (value === null || value === '') { patch.reel_preset = null; continue }
-        if (typeof value !== 'string' || !REEL_PRESETS.has(value)) {
+        if (typeof value !== 'string' || !isValidReelTemplateId(value)) {
           return res.status(400).json({ error: 'invalid-reel-preset' })
         }
         patch.reel_preset = value

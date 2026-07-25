@@ -28,12 +28,31 @@ import { put as blobPut } from '@vercel/blob'
 import { renderVideoChannel } from './brandRenderVideo.js'
 import { sliceWordsToWindow } from './karaokeCaptions.js'
 import { generateCaption } from './captionGen.js'
-import { generateHeadline, headlineWindow } from './headlineGen.js'
-import { pickReelPreset } from './reelPresets.js'
+import { generateHeadline } from './headlineGen.js'
+import { resolveVideoTemplate, headlineHoldSeconds, isCustomTemplateId } from './videoTemplates.js'
 
-// Vertical placement of the hook card, as a fraction of frame height. Sits in
-// the upper third but clear of Instagram's own top UI zone (~7% of a 9:16 frame).
-const HOOK_CARD_Y = 0.17
+/**
+ * The look this workspace's reels render with: its pin, else its default custom
+ * template, else the built-in hook_card. Custom rows are fetched only when the
+ * pin is a uuid or no pin is set, so the common built-in case costs no query.
+ */
+async function resolveWorkspaceTemplate(ws) {
+  const pin = ws?.reel_preset || null
+  if (pin && !isCustomTemplateId(pin)) return resolveVideoTemplate(pin, [])
+
+  let customs = []
+  try {
+    const r = await sb(
+      `workspace_video_templates?workspace_id=eq.${ws.id}&select=id,name,config,is_default`,
+    )
+    if (r.ok) customs = await r.json()
+  } catch (e) {
+    console.error('[reelFactory] custom template read failed, using built-in:', e?.message)
+  }
+  if (pin) return resolveVideoTemplate(pin, customs)
+  const dflt = customs.find((t) => t.is_default)
+  return resolveVideoTemplate(dflt?.id || 'hook_card', customs)
+}
 import { saveBroll } from './saveBroll.js'
 import { createClipDraft } from './clipDraft.js'
 import { assignSlots, dateAtLocalHour } from './strategist.js'
@@ -189,25 +208,35 @@ export async function renderSegmentToReel({ ws, seg, asset, staffName, createDra
     } catch (e) {
       console.error('[reelFactory] headline gen failed, shipping without a card:', e?.stack || e?.message)
     }
-    // Which look this reel gets. Deterministic rotation across the preset library
-    // so each one accrues real use — the preset a human keeps or changes is the
-    // signal worth learning from. A workspace that has pinned a preset wins.
-    const preset = pickReelPreset(seg.id, ws?.reel_preset || null)
+    // Which look this reel gets.
+    //
+    // Rotation is gone. It existed to make "which of these four did a human
+    // keep" measurable at N=5, which only works for a small FIXED set — once a
+    // workspace can author its own templates that stops being an experiment and
+    // starts being a reel rendered in a look nobody chose. Resolution order is
+    // now explicit: the workspace's pin, else its default template, else the
+    // built-in hook_card. Usage is still recorded on the asset's variant_label.
+    const template = await resolveWorkspaceTemplate(ws)
 
-    // A preset with no headline role IS captions-only; a headline that doesn't
-    // fit degrades any preset to the same place.
-    const overlays = headline && preset.headlineRole
+    // A template with no headline role IS captions-only; a headline that doesn't
+    // fit degrades any template to the same place.
+    const overlays = headline && template.headline.role
       ? [{
-          role: preset.headlineRole,
+          role: template.headline.role,
           text: headline,
           x: 0.5,
-          y: preset.headlineY ?? HOOK_CARD_Y,
+          y: template.headline.yFrac,
+          widthFrac: template.headline.widthFrac,
           size: 1,
-          color: '#FFFFFF',
-          // Hook-then-drop: on at frame 0 (no fade-in, so the cover frame carries
-          // it), gone once the speaker is going.
+          color: template.blocks.headline.color,
+          shadow: template.blocks.headline.shadow,
+          fontWeight: template.blocks.headline.fontWeight,
+          uppercase: template.blocks.headline.uppercase,
+          // Hook-then-drop. fadeIn defaults false so frame 0 — which doubles as
+          // the feed cover image — actually carries the headline.
           in: 0,
-          out: headlineWindow(headline, durationSec),
+          fadeIn: template.headline.fadeIn,
+          out: headlineHoldSeconds(template, headline, durationSec),
         }]
       : []
 
@@ -228,10 +257,10 @@ export async function renderSegmentToReel({ ws, seg, asset, staffName, createDra
       staffName,
       startSec,
       durationSec,
-      subtitles: true,
-      overlayPosition: preset.captionPosition,
-      overlaySize: preset.captionSize,
-      captionStyle: preset.captionStyle,
+      subtitles: template.captions.enabled,
+      overlayPosition: template.captions.position,
+      captionSizeScale: template.captions.sizeScale,
+      captionStyle: template.captions.style,
       ...(overlays.length ? { overlays } : {}),
       ...(captionWords && captionWords.length ? { captionWords } : {}),
     })
@@ -263,7 +292,7 @@ export async function renderSegmentToReel({ ws, seg, asset, staffName, createDra
       // Which look this reel was rendered with. Recorded so "did the human keep
       // this preset or change it" is answerable later — without it the rotation
       // produces variety but teaches nothing.
-      variantLabel: headline && preset.headlineRole ? preset.id : `${preset.id}:no_headline`,
+      variantLabel: headline && template.headline.role ? template.id : `${template.id}:no_headline`,
     })
     const newAsset = saved?.[0] || null
     const newAssetId = newAsset?.id || null

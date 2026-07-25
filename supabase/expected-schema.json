@@ -881,6 +881,15 @@
     "updated_at",
     "workspace_id"
   ],
+  "workspace_video_templates": [
+    "config",
+    "created_at",
+    "id",
+    "is_default",
+    "name",
+    "updated_at",
+    "workspace_id"
+  ],
   "workspaces": [
     "activity_context",
     "ai_topics_cache",

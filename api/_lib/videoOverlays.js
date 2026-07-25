@@ -162,6 +162,17 @@ export function normalizeOverlays(overlays, clipDur, max = 6) {
       size: Math.max(0.4, Math.min(2.5, Number(o.size) || 1)),
       color: /^#[0-9a-fA-F]{6}$/.test(o.color || '') ? o.color : '#FFFFFF',
       in: inT, out: outT,
+      // Template-supplied styling. Each falls back to the value the role used
+      // before templates existed, so an overlay built by hand (the editor) is
+      // unchanged. Dropping these here would silently discard the template —
+      // normalizeOverlays is the last thing between a config and the renderer.
+      widthFrac: Number.isFinite(Number(o.widthFrac))
+        ? Math.min(1, Math.max(0.3, Number(o.widthFrac))) : null,
+      shadow: ['none', 'soft', 'medium', 'strong'].includes(o.shadow) ? o.shadow : null,
+      fontWeight: ['normal', 'medium', 'semibold', 'bold', 'extrabold'].includes(o.fontWeight)
+        ? o.fontWeight : null,
+      uppercase: o.uppercase === true,
+      fadeIn: o.fadeIn === true,
     })
     if (out.length >= max) break
   }
@@ -193,6 +204,14 @@ export function buildOverlaySvg({ width, height, overlay, accentColor = '#0C7580
   const cx = Math.round(clamp01(o.x) * width)
   const cy = Math.round(clamp01(o.y) * height)
 
+  // Template-supplied typography. Each falls back to what the role hardcoded
+  // before templates existed, so a hand-built overlay renders identically.
+  const WEIGHT = { normal: 400, medium: 500, semibold: 600, bold: 700, extrabold: 800 }
+  const weight = WEIGHT[o.fontWeight] ?? (role === 'title' ? 800 : 700)
+  const SHADOW_OPACITY = { none: 0, soft: 0.35, medium: 0.55, strong: 0.8 }
+  const shadowOpacity = SHADOW_OPACITY[o.shadow] ?? 0.55
+  const text = o.uppercase === true ? String(o.text ?? '').toUpperCase() : o.text
+
   const fontFamily = fontBuffer ? 'BrandFont' : 'sans-serif'
   const fontFaceCss = fontBuffer
     ? `<style>@font-face{font-family:'BrandFont';src:url(data:font/ttf;base64,${fontBuffer.toString('base64')}) format('truetype');}</style>`
@@ -200,7 +219,7 @@ export function buildOverlaySvg({ width, height, overlay, accentColor = '#0C7580
   const svgOpen =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
     `<defs>${fontFaceCss}<filter id="sh" x="-20%" y="-20%" width="140%" height="140%">` +
-    `<feDropShadow dx="0" dy="2" stdDeviation="${Math.round(fs * 0.08)}" flood-color="#000000" flood-opacity="0.55"/></filter></defs>`
+    `<feDropShadow dx="0" dy="2" stdDeviation="${Math.round(fs * 0.08)}" flood-color="#000000" flood-opacity="${shadowOpacity}"/></filter></defs>`
 
   // ── hook_card ──────────────────────────────────────────────────────────────
   // Fixed-width inset card, left-aligned text, accent as a left rule. Separate
@@ -208,7 +227,7 @@ export function buildOverlaySvg({ width, height, overlay, accentColor = '#0C7580
   // box from the text width; this one derives text width from the card.
   if (role === 'hook_card') {
     const rule = /^#[0-9a-fA-F]{6}$/.test(brandColor || '') ? brandColor : accentColor
-    const cardW = Math.round(width * HOOK_CARD_W)
+    const cardW = Math.round(width * (Number(o.widthFrac) || HOOK_CARD_W))
     const ruleW = Math.max(4, Math.round(width * HOOK_CARD_RULE_W))
     const padX = Math.round(fs * 0.62)
     const padY = Math.round(fs * 0.46)
@@ -217,7 +236,7 @@ export function buildOverlaySvg({ width, height, overlay, accentColor = '#0C7580
     // bold sans and broke a 31-character headline onto two lines inside a card
     // wide enough for 33 — leaving one orphaned word on line two.
     const maxChars = Math.max(8, Math.round(innerW / (fs * 0.5)))
-    const lines = wrapLines(o.text, maxChars, 3)
+    const lines = wrapLines(text, maxChars, 3)
     const lineH = Math.round(fs * 1.2)
     const blockH = lines.length * lineH
     const cardH = blockH + 2 * padY
@@ -230,7 +249,7 @@ export function buildOverlaySvg({ width, height, overlay, accentColor = '#0C7580
 
     const cardTspans = lines.map((l, i) =>
       `<text x="${textX}" y="${Math.round(firstBaseline + i * lineH)}" font-size="${fs}" fill="${color}" ` +
-      `text-anchor="start" font-family="${fontFamily}" font-weight="700">${svgEscape(l)}</text>`
+      `text-anchor="start" font-family="${fontFamily}" font-weight="${weight}">${svgEscape(l)}</text>`
     ).join('\n')
 
     // The rule is clipped to the card's rounded shape rather than composed from
@@ -251,7 +270,7 @@ export function buildOverlaySvg({ width, height, overlay, accentColor = '#0C7580
   // the available width was still pushed onto a second line, orphaning its last
   // word — visible on the `title` role in the editorial preset.
   const maxChars = Math.max(8, Math.round((width * 0.84) / (fs * 0.5)))
-  const lines = wrapLines(o.text, maxChars, 3)
+  const lines = wrapLines(text, maxChars, 3)
   const lineH = Math.round(fs * 1.18)
   const blockH = lines.length * lineH
   const longest = lines.reduce((m, l) => Math.max(m, l.length), 0)
@@ -260,7 +279,7 @@ export function buildOverlaySvg({ width, height, overlay, accentColor = '#0C7580
   const firstBaseline = cy - blockH / 2 + fs
   const tspans = lines.map((l, i) =>
     `<text x="${cx}" y="${Math.round(firstBaseline + i * lineH)}" font-size="${fs}" fill="${color}" ` +
-    `text-anchor="middle" font-family="${fontFamily}" font-weight="${role === 'title' ? 800 : 700}"` +
+    `text-anchor="middle" font-family="${fontFamily}" font-weight="${weight}"` +
     `${role === 'title' ? ' filter="url(#sh)"' : ''}>${svgEscape(l)}</text>`
   ).join('\n')
 
