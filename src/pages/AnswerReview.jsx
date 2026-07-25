@@ -233,6 +233,32 @@ function LiveChip() {
 // The informational banner shown when a confirmed supersession re-drafted a
 // still-live answer (F16 Phase 3). Amber act-now, not an alarm — the page stays
 // up until the clinician approves the replacement or retracts it.
+// Shown when the scheduled re-check found a LIVE answer drifting from the
+// clinician's voice (review_reason 'voice_drift'). Distinct from SupersededBanner:
+// that one means their thinking changed, this one means the answer never quite
+// matched it and the growing corpus has made that visible. Informational amber —
+// the page is still up and nothing is wrong with it beyond sounding off.
+function DriftBanner() {
+  return (
+    <div className="nx-alert nx-alert-act mt-4 items-start">
+      <span className="nx-alert-chip nx-alert-chip-act">
+        <ShieldCheck className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-wide text-action">
+          Doesn&rsquo;t sound like you any more
+        </div>
+        <p className="mt-1.5 text-2xs text-foreground">
+          Bernard re-checked this page against everything you&rsquo;ve taught it since, and it&rsquo;s
+          drifted from how you talk about this now.{' '}
+          <span className="font-semibold">It&rsquo;s still live on movebetter.co</span> — nothing was
+          taken down. Edit it, ask Bernard to re-draft it in your current voice, or leave it as it is.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function SupersededBanner() {
   return (
     <div className="nx-alert nx-alert-act mt-4 items-start">
@@ -453,6 +479,7 @@ export default function AnswerReview() {
                 <h2 className="mb-3 text-lg font-bold text-foreground">{active.question}</h2>
 
                 {mode !== 'edit' && active.review_reason === 'superseded' && <SupersededBanner />}
+                {mode !== 'edit' && active.review_reason === 'voice_drift' && <DriftBanner />}
 
                 {mode === 'edit' ? (
                   <div className="space-y-3">

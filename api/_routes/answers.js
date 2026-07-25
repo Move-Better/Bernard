@@ -185,7 +185,16 @@ export default async function handler(req, res) {
         patch.voice_fidelity_score = scored.score100
         patch.voice_audit = scored.gate === 'passed'
           ? scored.voiceAudit
-          : { ...scored.voiceAudit, published_over_flag: true, overridden_at: now }
+          // accepted_score is the durable record of what the clinician actually
+          // signed off on. The drift sweep needs it to tell "still the flag they
+          // accepted" from "materially worse than what they accepted" — and it
+          // must survive later re-scores that overwrite voice_fidelity_score.
+          : {
+              ...scored.voiceAudit,
+              published_over_flag: true,
+              overridden_at: now,
+              accepted_score: scored.overall,
+            }
       }
       if (ws.answer_publish_enabled) {
         const pub = await publishAnswerToMovebetter({ ws, answer: row })
