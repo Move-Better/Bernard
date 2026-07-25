@@ -1,7 +1,33 @@
 #!/usr/bin/env node
 /**
- * Re-transcribe media_assets.transcript_words to repair the words deleted by
- * the `end > start` filter fixed in #2342.
+ * Populate media_assets.transcript_words. Two modes:
+ *
+ *   repair (default)  — re-transcribe assets that ALREADY have words, to recover
+ *                       the ones deleted by the `end > start` filter fixed in #2342.
+ *   --fill-empty      — transcribe assets that have NO words at all, so clip
+ *                       renders stop falling back to live Whisper on every render.
+ *
+ * WHY --fill-empty EXISTS
+ * transcript_words is the persisted word-level Whisper output (migration 137).
+ * When present, a clip render slices it (sliceWordsToWindow). When absent,
+ * brandRenderVideo.js extracts audio and re-runs Whisper on EVERY render —
+ * slow (a 25-28s clip blew a 10-minute shell timeout during a re-render
+ * migration on 2026-07-25) and billed again each time.
+ *
+ * TWO GUARDS THAT ONLY MATTER IN --fill-empty, because inverting the WHERE
+ * clause widens it in ways the repair mode never had to think about:
+ *   kind = 'video'          — every photo in the library has NULL transcript_words
+ *                             (517 of them as of 2026-07-25). Without this the
+ *                             mode selects them all and hands stills to ffmpeg.
+ *   parent_asset_id IS NULL — derived clips are rendered OUTPUTS whose parent
+ *                             already carries the words; transcribing them again
+ *                             pays twice for the same audio.
+ *
+ * A transcript that comes back EMPTY is not written. An empty array is
+ * indistinguishable from NULL to brandRenderVideo.js (it tests
+ * `captionWords.length`), so writing one buys no render speedup while making
+ * the "how many are left?" verification query under-report. Those assets are
+ * counted and reported as `silent` instead.
  *
  * WHY A RE-TRANSCRIPTION AND NOT A DATA MIGRATION
  * Whisper quantises word timestamps to a 20ms frame hop, so a fast function
@@ -39,6 +65,8 @@
  *   node scripts/backfill-transcript-words.mjs --ids=<uuid>,<uuid>
  *   node scripts/backfill-transcript-words.mjs
  *   node scripts/backfill-transcript-words.mjs --restore=.backfill-backups/<file>.json
+ *   node scripts/backfill-transcript-words.mjs --fill-empty --dry-run
+ *   node scripts/backfill-transcript-words.mjs --fill-empty --purpose=interview
  *
  * Requires: MULTITENANT_DATABASE_URL + OPENAI_API_KEY.
  */
@@ -57,6 +85,9 @@ const args = process.argv.slice(2)
 const DRY_RUN = args.includes('--dry-run')
 const VERBOSE = args.includes('--verbose')
 const ALLOW_SHRINK = args.includes('--allow-shrink')
+const FILL_EMPTY = args.includes('--fill-empty')
+const purposeArg = args.find((a) => a.startsWith('--purpose='))
+const PURPOSE = purposeArg ? purposeArg.split('=')[1].split(',').map((s) => s.trim()).filter(Boolean) : null
 const limitArg = args.find((a) => a.startsWith('--limit='))
 const LIMIT = limitArg ? parseInt(limitArg.split('=')[1], 10) : null
 const idsArg = args.find((a) => a.startsWith('--ids='))
@@ -171,16 +202,25 @@ async function runRestore() {
 // backfill
 // ---------------------------------------------------------------------------
 async function runBackfill() {
-  const where = [
-    `transcript_words IS NOT NULL`,
-    `jsonb_array_length(transcript_words) > 0`,
-    `blob_url IS NOT NULL`,
-    `archived_at IS NULL`,
-  ]
+  const where = [`blob_url IS NOT NULL`, `archived_at IS NULL`]
+  if (FILL_EMPTY) {
+    where.push(`(transcript_words IS NULL OR jsonb_array_length(transcript_words) = 0)`)
+    // See header. Photos all have NULL words; derived clips inherit their
+    // parent's. Neither belongs in a "transcribe the gaps" sweep.
+    where.push(`kind = 'video'`)
+    where.push(`parent_asset_id IS NULL`)
+  } else {
+    where.push(`transcript_words IS NOT NULL`)
+    where.push(`jsonb_array_length(transcript_words) > 0`)
+  }
   const params = []
   if (ONLY_IDS && ONLY_IDS.length) {
     params.push(ONLY_IDS)
     where.push(`id = ANY($${params.length}::uuid[])`)
+  }
+  if (PURPOSE && PURPOSE.length) {
+    params.push(PURPOSE)
+    where.push(`asset_purpose = ANY($${params.length}::text[])`)
   }
   const { rows } = await pool.query(
     `SELECT id, filename, blob_url, duration_s, transcript_words
@@ -191,7 +231,10 @@ async function runBackfill() {
     params,
   )
 
-  console.log(`${rows.length} assets to re-transcribe${DRY_RUN ? '  (DRY RUN — no writes)' : ''}\n`)
+  const mode = FILL_EMPTY ? 'fill-empty' : 'repair'
+  const mins = (rows.reduce((a, r) => a + (Number(r.duration_s) || 0), 0) / 60).toFixed(1)
+  console.log(`mode: ${mode}${PURPOSE ? `  purpose: ${PURPOSE.join(',')}` : ''}`)
+  console.log(`${rows.length} assets to transcribe (~${mins} min audio)${DRY_RUN ? '  (DRY RUN — no writes)' : ''}\n`)
   if (!rows.length) { await pool.end(); return }
 
   // Back up BEFORE touching anything. The current words are unrecoverable.
@@ -206,7 +249,7 @@ async function runBackfill() {
     console.log(`Restore with:   node scripts/backfill-transcript-words.mjs --restore=${backupPath}\n`)
   }
 
-  const stats = { ok: 0, grew: 0, same: 0, shrank: 0, skipped: 0, failed: 0, before: 0, after: 0, recovered: 0 }
+  const stats = { ok: 0, grew: 0, same: 0, shrank: 0, skipped: 0, failed: 0, silent: 0, nozero: 0, before: 0, after: 0, recovered: 0 }
 
   await mapLimit(rows, CONCURRENCY, async (row) => {
     const audioPath = `/tmp/bf-words-${row.id}.mp3`
@@ -238,6 +281,23 @@ async function runBackfill() {
 
       if (delta > 0) stats.grew++; else if (delta === 0) stats.same++; else stats.shrank++
 
+      // An empty result is never worth writing: brandRenderVideo.js tests
+      // `captionWords.length`, so [] falls back to live Whisper exactly like
+      // NULL does, and it would hide the row from the remaining-work query.
+      if (!newWords.length) {
+        stats.silent++
+        console.log(`  SILENT ${row.filename} — Whisper returned no words; left as-is`)
+        return
+      }
+
+      // A real transcription of real speech always contains some zero-duration
+      // words (Whisper quantises to a 20ms frame hop). None at all is the
+      // signature of the runs that came back broken, so flag rather than trust.
+      if (!zeros) {
+        stats.nozero++
+        console.log(`  WARN  ${row.filename} — ${newWords.length} words but ZERO zero-duration; suspect transcript`)
+      }
+
       if (delta < 0 && !ALLOW_SHRINK) {
         stats.skipped++
         console.log(`  SKIP  ${row.filename} — new transcript is SHORTER (${oldWords.length} → ${newWords.length}); pass --allow-shrink to force`)
@@ -267,8 +327,10 @@ async function runBackfill() {
 
   const pct = stats.before ? ((stats.recovered / stats.before) * 100).toFixed(1) : '0.0'
   console.log(`\n${'─'.repeat(60)}`)
-  console.log(`written ${stats.ok}   grew ${stats.grew}   unchanged ${stats.same}   shorter ${stats.shrank}   skipped ${stats.skipped}   failed ${stats.failed}`)
-  console.log(`words ${stats.before} → ${stats.after}   recovered ${stats.recovered} (+${pct}%)`)
+  console.log(`written ${stats.ok}   grew ${stats.grew}   unchanged ${stats.same}   shorter ${stats.shrank}   skipped ${stats.skipped}   silent ${stats.silent}   failed ${stats.failed}`)
+  if (FILL_EMPTY) console.log(`words 0 → ${stats.after}`)
+  else console.log(`words ${stats.before} → ${stats.after}   recovered ${stats.recovered} (+${pct}%)`)
+  if (stats.nozero) console.log(`WARN ${stats.nozero} transcript(s) had no zero-duration words — re-check those before trusting them`)
   if (backupPath) console.log(`backup ${backupPath}`)
   await pool.end()
 }
