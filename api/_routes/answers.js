@@ -6,7 +6,7 @@ import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { draftAnswer } from '../_lib/producer/draftAnswer.js'
 import { publishAnswerToMovebetter, retractAnswerFromMovebetter } from '../_lib/publishAnswer.js'
-import { scoreAnswerFidelity } from '../_lib/scoreAnswerFidelity.js'
+import { scoreAnswerFidelity, ANSWER_GATE } from '../_lib/scoreAnswerFidelity.js'
 
 // Going live to the public site is per-workspace (F16 Phase 2). An approved
 // answer publishes to movebetter.co only when the workspace has
@@ -67,6 +67,39 @@ async function resolveStaff(wsId, clerkUserId) {
 
 const isAdmin = (staff) => staff?.permission_tier === 'admin'
 
+// Queue an interview topic from a faithfulness flag the clinician published over.
+// The flag means "this isn't in the captured practice memory" — which, on text a
+// human wrote or edited, is new teaching rather than invention. Idempotent on
+// (workspace, answer) so re-publishing the same answer can't stack duplicates.
+async function queueAnswerGapTopic({ ws, row, breakdown }) {
+  const rationale = String(breakdown?.red_flag || '').trim()
+  if (!rationale || rationale.toLowerCase() === 'none') return
+  const topic = row.condition
+    ? `${row.condition} — ${row.question}`
+    : row.question
+  const key = `answer_gap:${row.id}`
+  const existing = await sb(
+    `topic_backlog?workspace_id=eq.${ws.id}&idempotency_key=eq.${encodeURIComponent(key)}&select=id&limit=1`,
+  )
+  if (existing.ok && (await existing.json().catch(() => []))[0]) return
+  const r = await sb('topic_backlog', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      workspace_id: ws.id,
+      topic: String(topic || '').slice(0, 300),
+      rationale:
+        `Published over a voice-check flag — this is teaching Bernard hasn't captured yet. ` +
+        `The check said: ${rationale}`.slice(0, 1000),
+      source: 'answer_gap',
+      status: 'pending',
+      priority: 2,
+      idempotency_key: key,
+    }),
+  })
+  if (!r.ok) console.error('[answers] topic_backlog insert:', r.status, (await r.text()).slice(0, 200))
+}
+
 export default async function handler(req, res) {
   const ws = await workspaceContext(req)
   if (!ws) return res.status(400).json({ error: 'Workspace not resolved' })
@@ -112,50 +145,39 @@ export default async function handler(req, res) {
 
     const patch = { updated_at: new Date().toISOString() }
     if (action === 'approve') {
-      // ---- HARD voice-fidelity gate (F16 Phase 1) ----
-      // Re-score the LIVE text about to publish — a public answer carrying the
-      // clinician's name must clear the bar. Below it (or unverifiable) → block:
-      // persist the fresh score, keep it in review, publish nothing. This is the
-      // authoritative gate; the disabled client button is only the first line.
+      // ---- ADVISORY voice-fidelity check (was a HARD gate; Q, 2026-07-25) ----
+      // The check scores and explains, but never stops a clinician from publishing
+      // their own answer. Two reasons it stopped being a gate:
+      //   1. said_fidelity measures drift from the clinician's captured practice
+      //      memory. Once a HUMAN edits the text, that corpus is no longer the
+      //      source of truth — the clinician is — so the judge cannot tell "the AI
+      //      invented this" from "the doctor just taught something new". It reliably
+      //      reads the second as the first (see the running-form answer: real new
+      //      teaching on hip flexion/extension, flagged as "not in the source").
+      //   2. Blocking a licensed clinician from publishing their own words, on their
+      //      own site, under their own name is the wrong default — and it was feeding
+      //      the approval backlog that is the product's actual bottleneck.
+      // What we DO keep: always score, always show the score and the critique, and
+      // record on the row what was known at the moment of publish (below).
       const scored = await scoreAnswerFidelity({
         ws, staffId: row.staff_id, question: row.question, condition: row.condition,
         answerLead: row.answer_lead, body: row.body,
       })
+      const now = new Date().toISOString()
       if (!scored.ok) {
-        // Couldn't verify (scorer outage / no key) → fail closed, mark unscored,
-        // let the clinician retry. Never publish an unverified public answer.
-        await sb(`answers?workspace_id=eq.${ws.id}&id=eq.${id}`, {
-          method: 'PATCH',
-          headers: { Prefer: 'return=minimal' },
-          body: JSON.stringify({
-            voice_audit: { gate: 'unscored', reason: scored.reason, scored_at: new Date().toISOString() },
-            updated_at: new Date().toISOString(),
-          }),
-        }).catch(() => {})
-        return res.status(200).json({ blocked: true, gate: 'unscored', reason: scored.reason })
+        // The check couldn't run. Publish anyway (never block), but record that this
+        // one went out unverified — an honest audit trail matters more than a gate.
+        console.error('[answers] approve proceeding without a voice check:', scored.reason, id)
+        patch.voice_audit = {
+          gate: 'unscored', reason: scored.reason, scored_at: now,
+          published_without_check: true,
+        }
+      } else {
+        patch.voice_fidelity_score = scored.score100
+        patch.voice_audit = scored.gate === 'passed'
+          ? scored.voiceAudit
+          : { ...scored.voiceAudit, published_over_flag: true, overridden_at: now }
       }
-      if (scored.gate !== 'passed') {
-        const held = await sb(`answers?workspace_id=eq.${ws.id}&id=eq.${id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({
-            voice_fidelity_score: scored.score100,
-            voice_audit: scored.voiceAudit,
-            status: 'needs_review',
-            updated_at: new Date().toISOString(),
-          }),
-        })
-        if (!held.ok) return dbErr(res, held, 'gate_persist')
-        return res.status(200).json({
-          blocked: true,
-          gate: scored.gate,
-          voice_fidelity_score: scored.score100,
-          voice_audit: scored.voiceAudit,
-        })
-      }
-      // PASSED the voice gate — record the fresh score, then publish IF this
-      // workspace is live (per-workspace go-live), else just mark approved.
-      patch.voice_fidelity_score = scored.score100
-      patch.voice_audit = scored.voiceAudit
       if (ws.answer_publish_enabled) {
         const pub = await publishAnswerToMovebetter({ ws, answer: row })
         if (pub.ok) {
@@ -168,6 +190,18 @@ export default async function handler(req, res) {
         }
       } else {
         patch.status = 'approved'
+      }
+      // A faithfulness flag the clinician published over is the most valuable
+      // signal this screen produces: it marks teaching that ISN'T in the captured
+      // corpus yet. Queue it as an interview topic so the corpus catches up and
+      // the same passage stops getting flagged. waitUntil — never let a backlog
+      // insert delay or fail the publish the clinician just asked for.
+      if (scored.ok && scored.gate !== 'passed' && scored.breakdown?.said_fidelity < ANSWER_GATE) {
+        waitUntil(
+          queueAnswerGapTopic({ ws, row, breakdown: scored.breakdown }).catch((e) =>
+            console.error('[answers] answer-gap topic queue failed:', e?.message),
+          ),
+        )
       }
     } else if (action === 'edit') {
       const { answer_lead, body, question } = req.body || {}
