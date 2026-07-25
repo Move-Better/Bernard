@@ -97,7 +97,7 @@ export default async function handler(req, res) {
   if (req.method === 'PATCH') {
     const { id, action } = req.body || {}
     if (!UUID_RE.test(id || '')) return res.status(400).json({ error: 'invalid_id' })
-    if (!['approve', 'edit', 'revise', 'retract'].includes(action)) return res.status(400).json({ error: 'invalid_action' })
+    if (!['approve', 'edit', 'revise', 'retract', 'recheck'].includes(action)) return res.status(400).json({ error: 'invalid_action' })
     if (!me) return res.status(403).json({ error: 'forbidden' })
 
     // Ownership gate — fetch the row (workspace-scoped) and confirm it's the caller's.
@@ -191,6 +191,28 @@ export default async function handler(req, res) {
       } else {
         patch.voice_audit = { gate: 'unscored', reason: scored.reason, scored_at: new Date().toISOString() }
       }
+    } else if (action === 'recheck') {
+      // Re-run the voice check only. Never publishes and never changes status —
+      // this exists so a clinician whose check failed to complete ('unscored')
+      // has a way forward that isn't re-reading an answer that was never scored.
+      const scored = await scoreAnswerFidelity({
+        ws, staffId: row.staff_id, question: row.question, condition: row.condition,
+        answerLead: row.answer_lead, body: row.body,
+      })
+      if (!scored.ok) {
+        console.error('[answers] recheck could not score:', scored.reason, id)
+        await sb(`answers?workspace_id=eq.${ws.id}&id=eq.${id}`, {
+          method: 'PATCH',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            voice_audit: { gate: 'unscored', reason: scored.reason, scored_at: new Date().toISOString() },
+            updated_at: new Date().toISOString(),
+          }),
+        }).catch(() => {})
+        return res.status(200).json({ rechecked: true, gate: 'unscored', reason: scored.reason })
+      }
+      patch.voice_fidelity_score = scored.score100
+      patch.voice_audit = scored.voiceAudit
     } else if (action === 'revise') {
       const note = typeof req.body?.note === 'string' ? req.body.note.trim() : ''
       if (!note) return res.status(400).json({ error: 'note_required' })
