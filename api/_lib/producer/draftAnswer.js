@@ -11,6 +11,7 @@
 import { generateText } from 'ai'
 import { buildTopicScopedHistoryBlock } from '../practiceMemory.js'
 import { scoreAnswerFidelity } from '../scoreAnswerFidelity.js'
+import { joinSoftWraps } from '../joinSoftWraps.js'
 
 const MODEL = 'anthropic/claude-sonnet-4-6'
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -57,24 +58,6 @@ function buildUserPrompt({ question, condition, staffName, voiceNotes, voicePhra
     parts.push(`\nTHE REQUESTED CHANGE: ${reviseNote}`)
   }
   return parts.join('\n')
-}
-
-// The model sometimes hard-wraps prose with a `\n` at every line-wrap point
-// instead of only at paragraph breaks, so a single paragraph renders as one
-// broken line per wrap in any UI that preserves whitespace (e.g. a textarea).
-// Collapse single newlines into spaces while leaving real paragraph breaks
-// (blank lines) and markdown structural lines (headings, list items) intact.
-function joinSoftWraps(text) {
-  const raw = String(text || '')
-  if (!raw.trim()) return raw
-  const withParagraphBreaks = raw
-    .replace(/\n(?=\s*#{1,6}\s)/g, '\n\n')
-    .replace(/\n(?=\s*(?:[-*+]\s|\d+\.\s))/g, '\n\n')
-  return withParagraphBreaks
-    .split(/\n{2,}/)
-    .map((block) => block.replace(/\n/g, ' ').trim())
-    .filter(Boolean)
-    .join('\n\n')
 }
 
 function parseOutput(text) {
