@@ -1465,3 +1465,51 @@ The "practice brain" (`api/_lib/practiceMemoryRag.js` + the `match_practice_memo
 - **`match_practice_memory_chunks` is retrieve-then-rerank** (migration 150/151): an inner CTE takes top candidates by pure cosine (this is what uses the **HNSW index**), an outer query re-ranks by `similarity * exp(-ln2·age/half_life)`. Do NOT collapse it to a single `ORDER BY <expression>` — that drops the index and full-scans. `p_half_life_days` defaults 365 (gentle); `NULL`/≤0 disables decay — **Author Mode (`searchAuthorCorpus`) passes null** so a clinician's older blogs aren't down-ranked when they author from their own corpus.
 - **Supersession only suppresses CONFIRMED edges.** The RPC excludes a chunk only if it's the `old_chunk_id` of a `status='confirmed'` row in `practice_memory_supersessions`; `pending`/`rejected` have zero retrieval effect (recency still gently down-weights). Candidates are clinician-confirmed via `/api/practice-memory/supersessions` — nothing is suppressed silently, nothing deleted.
 - **The conflict judge (`supersessionJudge.js`) must stay conservative.** Its hardest job is NOT false-positiving on derivations (a blog and the interview it came from read near-identically) — only a genuine *change of stance* is "supersedes"; derivations/rewrites are "duplicate". Validate any prompt change with `scripts/validate-supersession-judge.mjs` (synthetic positives + real derivation negatives, ≥3 samples) before trusting it — see `memory/feedback-validate-the-validator.md`. Detection runs as the weekly `cron/detect-supersessions`, not per-index (most pairs are derivations; per-index would burn tokens). See `memory/project-f6-practice-brain.md`.
+
+## Public answers — the voice check is ADVISORY, and what that costs to keep true
+
+The public answer library (`answers`, F16) drafts in a clinician's voice, publishes
+to movebetter.co under their name, and scores every answer against their captured
+practice memory. Three contracts hold it together; each has already been broken
+once.
+
+- **`said_fidelity` scores against the corpus, so it CANNOT gate human-edited text.**
+  It asks "is this consistent with what we have on record?" — correct for an AI
+  first draft, wrong the moment a human edits, because the clinician *is* the
+  record and the corpus is the stale side. The judge cannot tell "the model
+  invented this" from "the doctor just taught something new" and reports the
+  second as the first. It shipped as a hard gate and blocked a clinician from
+  publishing his own teaching (2026-07-25). **The check now advises and never
+  blocks** — `approve` always publishes, recording `published_over_flag`,
+  `overridden_at` and `accepted_score` rather than refusing. Do not restore a hard
+  gate on a corpus-relative dimension. See `.claude/decisions.md` 2026-07-25.
+- **`accepted_score` must be carried forward through every re-score.** It is the
+  durable record of the flag a clinician consciously accepted, and it is what
+  `sweepDriftedAnswers` uses to tell "still the flag they accepted" from
+  "materially worse than what they accepted" (threshold `MATERIAL_DROP` 0.5 — the
+  judge moves ±0.33 run-to-run on identical input, so anything tighter re-queues
+  on sampling noise). Any code path that overwrites `voice_fidelity_score` must
+  preserve it, or the next sweep sees no baseline and re-raises a flag the author
+  already stood behind. `acceptedBaseline()` also derives it from
+  `published_over_flag` + the stored score for rows predating the field.
+- **Every `draftAnswer()` caller must persist `voiceFidelityScore`/`voiceAudit`.**
+  `draftAnswer` scores its output and may burn a coached regenerate getting it
+  over the bar; that work is wasted unless the caller writes it to the row.
+  `authorAnswers.js` didn't, so producer-authored answers arrived unscored — three
+  of four callers were correct, which is why it survived. Pinned by
+  `tests/lib/answerDraftScorePersisted.test.js`.
+
+**Two sweeps re-queue a LIVE answer, and both leave the public page up.**
+`sweepSupersededAnswers` fires when the clinician's thinking *changed*
+(`review_reason: 'superseded'`); `sweepDriftedAnswers` fires when the answer
+*never matched it* and the growing corpus made that visible
+(`review_reason: 'voice_drift'`, weekly cron, 90-day per-answer cadence paced off
+`voice_rechecked_at` — **not** `updated_at`, which moves for unrelated reasons).
+Off-voice is not dangerous, so neither sweep unpublishes anything.
+
+**Ownership is strict and deliberately diverges from the self-or-admin pattern
+used for staff rows and voice clone**: every `/api/answers` row action requires
+`staff_id === me.id`, with **no admin exception** — an answer publishes under a
+named clinician as medical-adjacent advice. `tests/lib/answersOwnership.test.js`
+fails if `isAdmin` returns or an ownership check is widened with `&&`. A future
+consistency pass "fixing" the inconsistency is the most likely regression.
