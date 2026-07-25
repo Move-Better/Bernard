@@ -464,6 +464,7 @@
     "tone",
     "topic",
     "transcribe_status",
+    "turn_timings",
     "updated_at",
     "verbatim_flags",
     "video_media_asset_id",
