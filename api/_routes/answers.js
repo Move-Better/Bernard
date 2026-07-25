@@ -21,14 +21,24 @@ import { scoreAnswerFidelity, ANSWER_GATE } from '../_lib/scoreAnswerFidelity.js
  * GET                 → the current clinician's answers awaiting their sign-off
  *                       (needs_review + changes_requested), newest first.
  * PATCH { id, action } → act on ONE of THEIR OWN answers:
- *     action:'approve' → status=approved (ready to publish)
- *     action:'edit'    → save inline edits (answer_lead/body/question); stays needs_review
- *     action:'revise'  → status=changes_requested + review_notes (Bernard re-drafts later)
+ *     action:'approve'  → publish/approve (the voice check advises, never blocks)
+ *     action:'edit'     → save inline edits (answer_lead/body/question); stays needs_review
+ *     action:'revise'   → status=changes_requested + review_notes (Bernard re-drafts later)
+ *     action:'recheck'  → re-run the voice check only; never publishes, never changes status
+ *     action:'retract'  → take a published answer back off the public site
  *
  * Authorization is two-layered: requireRole proves workspace membership, then every
- * row action is gated on ownership (the answer's staff_id must be the caller's own
- * staff row) — a doctor only reviews answers that carry THEIR name. Admins may act on
- * any. Mirrors the staff-row self-or-admin contract (voice-clone authz fix).
+ * row action is gated on STRICT ownership — the answer's staff_id must be the caller's
+ * own staff row. A doctor only ever acts on answers that carry THEIR name.
+ *
+ * There is deliberately NO admin exception (Q, 2026-07-25: "Clinicians should score and
+ * edit their own content. No admin back door should exist right now."). A public answer
+ * publishes under a named clinician as medical-adjacent advice, so nobody else — however
+ * privileged — approves, edits, scores, or retracts it on their behalf. This diverges on
+ * purpose from the self-or-admin contract used for staff rows; do not "restore
+ * consistency" by adding isAdmin back here. Revisit only if a tenant asks for it, and
+ * make it an explicit per-workspace capability rather than a blanket admin power.
+ * Guarded by tests/lib/answersOwnership.test.js.
  */
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -58,14 +68,13 @@ async function resolveStaff(wsId, clerkUserId) {
   if (!clerkUserId) return null
   const r = await sb(
     `staff?workspace_id=eq.${wsId}&user_id=eq.${encodeURIComponent(clerkUserId)}` +
-      `&select=id,permission_tier,answer_review_enabled&limit=1`,
+      `&select=id,answer_review_enabled&limit=1`,
   )
   if (!r.ok) return null
   const rows = await r.json().catch(() => [])
   return rows[0] || null
 }
 
-const isAdmin = (staff) => staff?.permission_tier === 'admin'
 
 // Queue an interview topic from a faithfulness flag the clinician published over.
 // The flag means "this isn't in the captured practice memory" — which, on text a
@@ -141,7 +150,7 @@ export default async function handler(req, res) {
     if (!cur.ok) return dbErr(res, cur, 'fetch')
     const row = (await cur.json())[0]
     if (!row) return res.status(404).json({ error: 'not_found' })
-    if (row.staff_id !== me.id && !isAdmin(me)) return res.status(403).json({ error: 'forbidden' })
+    if (row.staff_id !== me.id) return res.status(403).json({ error: 'forbidden' })
 
     const patch = { updated_at: new Date().toISOString() }
     if (action === 'approve') {
@@ -301,8 +310,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'question_required' })
     }
     if (!UUID_RE.test(staffId)) return res.status(400).json({ error: 'invalid_staff' })
-    // Only draft for yourself, unless you're an admin authoring for a colleague.
-    if (staffId !== me.id && !isAdmin(me)) return res.status(403).json({ error: 'forbidden' })
+    // Only draft for yourself. No admin exception — see the ownership note above.
+    if (staffId !== me.id) return res.status(403).json({ error: 'forbidden' })
 
     const drafted = await draftAnswer({ ws, staffId, question: question.trim(), condition })
     if (!drafted) return res.status(502).json({ error: 'draft_failed' })
