@@ -249,6 +249,85 @@ Worked examples of the global "validate the validator" rules:
 - **`said_fidelity` can't gate human-edited text** (the global corpus-vs-human rule, discovered here): it scores against topic-scoped practice memory, so Q's own new teaching on hip flexion→hip extension came back as *"invented mechanical specifics not in the source material."* The answer voice check is therefore **advisory, never blocking** (#2351) — see `.claude/decisions.md` 2026-07-25 for the reversal of F16 Phase 1 and its accepted risk. Publishing over a faithfulness flag queues a `topic_backlog` row (`source: 'answer_gap'`) so the corpus catches up instead of re-flagging forever.
 - **A scored answer whose score was thrown away:** `draftAnswer()` scores at draft time (and burns a coached regenerate when the first attempt is held), but `authorAnswers.js` — the producer path — never persisted `voiceFidelityScore`/`voiceAudit` onto the row, so producer-authored answers reached the queue unscored. Three of four callers were correct, so a spot-check missed it (#2357). `tests/lib/answerDraftScorePersisted.test.js` pins every caller. **Same shape as the Buffer/bundle divergence: the primitive was fine, one call site wasn't.**
 
+## Templates are authored in the REAL editors, not a separate template screen (Q, 2026-07-25)
+
+A look is created by dialling it in on an actual clip or carousel and hitting **Save as … template**
+(VideoEditor's Captions panel; SlideEditor's Theme panel), not in a settings-page style editor. Q's call,
+and it is the better architecture for a reason worth keeping: **the editor already renders the real
+thing, so there is no second styling surface to drift out of sync with the bake.** Video renders
+server-side in ffmpeg, so a canvas "template preview" would be a mirror — and mirrors here have already
+lied (the caption Size control previewed one size and exported another; the glow preview kept an accent
+halo after the bake moved to a dark one).
+
+The settings pages (`/settings/photo-templates`, `/settings/video-templates`) are **libraries, not
+editors**: browse, rename, delete, choose which one new content uses. Adding style controls there
+recreates exactly the surface this design removed.
+
+Capture is a STYLE/CONTENT split, and the split is the design work — `src/lib/videoTemplateCapture.js`
+and `src/lib/photoTemplateCapture.js`, both pure and tested. Two rules that generalise:
+
+- **A value that is a property of THIS clip must not be pinned into the template.** A headline hold that
+  runs to the end of a 9s clip is saved as the reading-time rule, not as "9 seconds".
+- **Take the most common value per role across slides, not the first.** A template is "how you style
+  hooks", not "how slide one looked".
+- **Name what was skipped in the save dialog.** The photo capture can only promote the five block fields
+  the template schema holds (`fontWeight`, `color`, `shadow`, `uppercase`, and `fontScale` folded into a
+  named size); the editor sets six more it cannot. Silently dropping half a user's styling is worse than
+  saying so.
+
+## Client/server mirror pairs — a fix to one is not a fix to the other
+
+Several render decisions exist twice by design (the import boundary forbids sharing a file), and every
+one has bitten. When changing any of these, change both in the same commit:
+
+| Server (bake) | Client (preview) |
+|---|---|
+| `api/_lib/gradeParams.js` | `src/lib/gradeParams.js` |
+| `brandRenderVideo.js` `CAPTION_BASE_FS` × `OVERLAY_SIZE_SCALE` | `VideoEditor.jsx` `CAPTION_BASE_FS_PCT` / `CAPTION_SIZE_SCALE` |
+| `karaokeCaptions.js` `CAPTION_STYLES` | `VideoEditor.jsx` `captionCss()` |
+| `brandRender.js` `resolveBrandColors()` | `src/lib/brandSwatches.js` |
+| `api/_lib/videoTemplates.js` | `src/lib/videoTemplateCapture.js` |
+
+Real failures from this list: the Size control previewing identically for Medium and Large while baking
+1.0× vs 1.35× (`vh` with a 40px clamp vs a frame-relative bake); `glow` previewing an accent halo for a
+commit after the bake moved to a dark one.
+
+## Caption style invariants (`karaokeCaptions.js` `CAPTION_STYLES`)
+
+Two rules, both pinned by `tests/lib/captionStyleContrast.test.js`, both violated in shipped styles:
+
+- **A halo must not be the same colour as the fill it surrounds.** `glow` drew an accent outline while
+  karaoke fills the *spoken* word with the accent — an accent fill inside an accent stroke 15% of the
+  font size thick, which dissolved into a blob. Making the halo translucent does NOT fix it; same hue at
+  any alpha is still no contrast. It also was never a size bug: the stroke is `fontSize × 0.08 ×
+  outlineMul`, a constant *fraction*, so it was equally wrong at every size.
+- **Every style must have `PrimaryColour !== SecondaryColour`.** `\k` karaoke works by swapping secondary
+  (upcoming) to primary (spoken); `accent_fill` set both to white via `whiteText`, so the per-word timing
+  was computed and thrown away. On a `BorderStyle=3` style the box cannot carry the highlight — libass
+  draws ONE box behind the whole line, not per word — so it has to be a text colour.
+
+## `gradeToCanvasFilter` is the carousel BAKE, not just a preview
+
+`src/lib/gradeParams.js` `gradeToCanvasFilter()` feeds three places: the Brand vibe preview
+(`BrandKit.jsx`), the video editor preview (`VideoEditor.jsx`), **and `overlayTemplates.js:1525`, which is
+the carousel slide bake**. A change here alters published images, not only what someone sees while
+editing. (2026-07-25: a flat `hue-rotate(185deg)` on any cool grade — the sepia scaled with warmth, the
+rotation did not — was spinning skin tones to cyan in *published* carousels for the two stock vibes with
+negative warmth.) There is no CSS/canvas primitive for the server's cool, which is a per-channel gain, so
+cool is deliberately a client-side no-op and the Sharp/ffmpeg bake is authoritative for it.
+
+## `generateAndPersistThumbnail(asset, scope)` wants the workspace OBJECT, and swallows the error
+
+`requireScope()` checks `scope?.workspace`, so the shape is
+`{ column: 'workspace_id', id: ws.id, workspace: ws }` — passing `{ workspaceId: ws.id }` throws. Because
+posters are deliberately best-effort (a poster is a nicety; losing it must never cost the clip), callers
+wrap the call in `.catch()`, so the throw is swallowed and every asset silently ends up with a blank
+tile. (2026-07-25: a re-render migration produced four clips with no poster this way; found by querying
+`thumbnail_url` afterwards, not from the script's exit code.) **After any batch that generates posters,
+verify with a `thumbnail_url IS NULL` count rather than trusting a zero exit.** And note `media_urls` is
+a SNAPSHOT, not a join: repointing an asset's `blob_url` without also rewriting the entry leaves `/week`
+and the editors rendering the old file.
+
 ## Multi-tenant SaaS
 Bernard runs as a single shared deployment that serves multiple workspaces by subdomain (`<slug>.withbernard.ai`). Move Better People, Equine, and Animals are the three seed workspaces; external tenants self-onboard at `withbernard.ai/onboard`. All tenant-editable config — display name, voice/tone modifiers, interview/patient context, topic suggestions, output channels, publish credentials — lives in the `workspaces` row in the shared bernard Supabase, edited via `/settings/workspace`.
 
