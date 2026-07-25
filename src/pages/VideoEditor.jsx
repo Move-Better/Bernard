@@ -6,13 +6,14 @@ import {
   Play, Pause, Film, Sparkles, Captions, Type,
   Plus, Trash2, Check, Loader2, AlertCircle, Move,
   FolderOpen, Megaphone, ChevronDown, Scissors, ChevronLeft, ChevronRight, FileText, History,
-  Music, Volume2,
+  Music, Volume2, LayoutTemplate,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { BERNARD_PRIMARY, BERNARD_ACTION } from '@/lib/brand'
 import { workspaceCaptionAccent, WORKSPACE_DEFAULT_ACCENT } from '@/lib/brandSwatches'
 import { apiFetch } from '@/lib/api'
+import { buildTemplateFromEditor, suggestTemplateName } from '@/lib/videoTemplateCapture'
 import { posthogCapture } from '@/lib/posthog'
 import { getMediaAsset, updateMediaAsset } from '@/lib/mediaLib'
 import { getSegments, renderWholeVideo, findClips, updateSegment, exportClipToBroll } from '@/lib/clipsLib'
@@ -61,8 +62,10 @@ const isOverlaySel = (s) => s != null && typeof s === 'object'
 const MAX_CLIP_SECONDS = 60
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const HEX6_RE = /^#[0-9a-fA-F]{6}$/
-const OVERLAY_ROLES = [['title', 'Title'], ['lower_third', 'Caption bar'], ['callout', 'Callout']]
-const ROLE_FS = { title: 0.044, lower_third: 0.030, callout: 0.034 }
+// hook_card and title are the two roles a TEMPLATE can express (see
+// videoTemplateCapture.js); lower_third and callout are per-clip annotations.
+const OVERLAY_ROLES = [['hook_card', 'Hook card'], ['title', 'Title'], ['lower_third', 'Caption bar'], ['callout', 'Callout']]
+const ROLE_FS = { title: 0.044, lower_third: 0.030, callout: 0.034, hook_card: 0.040 }
 // Caption preview sizing — client mirror of CAPTION_BASE_FS (0.068) and
 // OVERLAY_SIZE_SCALE in api/_lib/brandRenderVideo.js, expressed in cqw (percent
 // of the video frame's width) so the preview and the bake agree.
@@ -425,7 +428,7 @@ function GradeInspector({ ctx }) {
 }
 
 function CaptionInspector({ ctx }) {
-  const { caption, setCaption, lines, genCaptions, genCaptionsPending, captionsEdited, resetCaptions } = ctx
+  const { caption, setCaption, lines, genCaptions, genCaptionsPending, captionsEdited, resetCaptions, openSaveTemplate } = ctx
   const seg = (label, opts, key) => (
     <div className="mb-3">
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -497,6 +500,15 @@ function CaptionInspector({ ctx }) {
           )}
         </>
       )}
+      {/* Mirrors "Save as Brand look" in the Grade inspector — dial the look in
+          on a real clip, then promote it. */}
+      <button
+        onClick={openSaveTemplate}
+        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs"
+        style={{ borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.06)', color: 'hsl(var(--primary))' }}
+      >
+        <LayoutTemplate className="h-3.5 w-3.5" />Save as reel template
+      </button>
     </InspectorShell>
   )
 }
@@ -1737,6 +1749,35 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     onSuccess: () => toast("Saved as your Brand look — it's now a vibe preset."),
   })
 
+  // Save-as-template — the look of THIS clip becomes a reusable reel template.
+  // Authoring happens in the editor rather than a separate template screen, so
+  // what you signed off on is literally what the bake produces. The dialog shows
+  // the captured/skipped split before committing: a template that silently took
+  // the wrong things is only discovered on the next reel.
+  const [tplOpen, setTplOpen] = useState(false)
+  const [tplName, setTplName] = useState('')
+  const tplDraft = useMemo(
+    () => buildTemplateFromEditor({ caption, overlays, durationSec }),
+    [caption, overlays, durationSec],
+  )
+  function openSaveTemplate() {
+    setTplName(suggestTemplateName({ caption, overlays }))
+    setTplOpen(true)
+  }
+  const saveTemplateMutation = useAppMutation({
+    mutationFn: async ({ name, makeDefault }) => apiFetch('/api/video-templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, is_default: !!makeDefault, config: tplDraft.config }),
+    }),
+    onSuccess: (_d, vars) => {
+      setTplOpen(false)
+      toast(vars?.makeDefault
+        ? `Saved "${vars.name}" — new reels use it from now on.`
+        : `Saved "${vars?.name}" as a template.`)
+    },
+  })
+
   const [editingCap, setEditingCap] = useState(false)
   const [alignGuidesOn, setAlignGuidesOn] = useState(false)
   const alignGuideTimerRef = useRef(null)
@@ -1775,6 +1816,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     setVideoDuration, setPlaying, handleTimeUpdate,
     genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
     brandGrade, saveBrandGrade: () => saveBrandMutation.mutate(), savingBrand: saveBrandMutation.isPending,
+    openSaveTemplate,
     editingCap, setEditingCap, editCaptionLine,
     music, setMusic,
     alignGuidesOn, flashAlignGuides,
@@ -1968,6 +2010,52 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
           clip={{ assetId, startSec, durationSec, captionText: captionSummary(), overlayPosition: caption.position, overlaySize: caption.size, title: asset?.display_title || asset?.filename }}
           onClose={() => setAdExportOpen(false)}
         />
+      )}
+
+      {tplOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50" aria-hidden="true" onClick={() => setTplOpen(false)} />
+          <div role="dialog" aria-modal="true" aria-label="Save as reel template"
+            className="relative w-full max-w-md rounded-xl border bg-card p-5 shadow-lg">
+            <h2 className="text-base font-semibold">Save as reel template</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              New reels will be able to use this look. It saves the styling, not this clip&apos;s content.
+            </p>
+
+            <label className="mt-4 block text-2xs font-semibold uppercase tracking-wide text-muted-foreground" htmlFor="tpl-name">Name</label>
+            <input id="tpl-name" value={tplName} onChange={(e) => setTplName(e.target.value)} maxLength={80}
+              className="mt-1 w-full rounded-md border bg-background px-2.5 py-1.5 text-sm" />
+
+            <div className="mt-4 space-y-1.5">
+              <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">What carries over</p>
+              {tplDraft.captured.map((c) => (
+                <p key={c} className="flex gap-1.5 text-xs text-foreground"><Check className="mt-0.5 h-3 w-3 shrink-0 text-primary" />{c}</p>
+              ))}
+            </div>
+            <div className="mt-3 space-y-1.5">
+              <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Stays with this clip</p>
+              {tplDraft.skipped.map((s) => (
+                <p key={s} className="pl-4.5 text-xs text-muted-foreground">{s}</p>
+              ))}
+            </div>
+
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <button type="button" onClick={() => setTplOpen(false)} className="text-xs text-muted-foreground hover:underline">Cancel</button>
+              <div className="flex gap-2">
+                <button type="button" disabled={!tplName.trim() || saveTemplateMutation.isPending}
+                  onClick={() => saveTemplateMutation.mutate({ name: tplName.trim(), makeDefault: false })}
+                  className="rounded-md border px-3 py-1.5 text-xs disabled:opacity-60">Save</button>
+                <button type="button" disabled={!tplName.trim() || saveTemplateMutation.isPending}
+                  onClick={() => saveTemplateMutation.mutate({ name: tplName.trim(), makeDefault: true })}
+                  className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-primary-foreground disabled:opacity-60"
+                  style={{ background: 'hsl(var(--primary))' }}>
+                  {saveTemplateMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Save &amp; use for new reels
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
