@@ -807,6 +807,12 @@ export default function PhotoTemplates() {
   const selectedTheme = allThemes.find((t) => t.id === selectedThemeId) || allThemes[0] || null
 
   const [editing, setEditing] = useState(null)  // null | 'new' | { theme }
+  const editorRef = useRef(null)
+  // The editor renders inline below the template list, often below the fold —
+  // without this it looks like the Edit button does nothing.
+  useEffect(() => {
+    if (editing) editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [editing])
   // Defaults to 4:5, the frame most real posts render at. It used to default to
   // square — the one shape in this list that nothing Bernard publishes uses.
   const [formatId, setFormatId] = useState('portrait')
@@ -1074,20 +1080,24 @@ export default function PhotoTemplates() {
       </div>
 
       {/* Theme editor — inline below the panel when creating or editing */}
-      {editing === 'new' && (
-        <ThemeEditor
-          onSave={handleCreate}
-          onCancel={() => setEditing(null)}
-          saving={createTheme.isPending}
-        />
-      )}
-      {editing?.theme && (
-        <ThemeEditor
-          initial={{ name: editing.theme.name, is_default: editing.theme.is_default, config: editing.theme.config }}
-          onSave={(body) => handleUpdate(editing.theme.id, body)}
-          onCancel={() => setEditing(null)}
-          saving={updateTheme.isPending}
-        />
+      {editing && (
+        <div ref={editorRef}>
+          {editing === 'new' && (
+            <ThemeEditor
+              onSave={handleCreate}
+              onCancel={() => setEditing(null)}
+              saving={createTheme.isPending}
+            />
+          )}
+          {editing?.theme && (
+            <ThemeEditor
+              initial={{ name: editing.theme.name, is_default: editing.theme.is_default, config: editing.theme.config }}
+              onSave={(body) => handleUpdate(editing.theme.id, body)}
+              onCancel={() => setEditing(null)}
+              saving={updateTheme.isPending}
+            />
+          )}
+        </div>
       )}
        </>
       )}
