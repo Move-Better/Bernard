@@ -90,8 +90,12 @@ function captionCss(style, accent) {
   const a = accent || WORKSPACE_DEFAULT_ACCENT
   switch (style) {
     case 'word_box':    return { active: { color: '#fff', background: 'rgba(0,0,0,.72)', padding: '0 5px', borderRadius: 4 }, base: { color: '#fff', background: 'rgba(0,0,0,.72)', padding: '0 5px', borderRadius: 4 }, wrap: {} }
-    case 'accent_fill': return { active: { color: '#fff' }, base: { color: '#fff' }, wrap: { background: a, padding: '3px 10px', borderRadius: 8 } }
-    case 'glow':        return { active: { color: a, textShadow: `0 0 12px ${a}, 0 0 4px ${a}` }, base: { color: '#fff', textShadow: `0 0 10px ${a}` }, wrap: {} }
+    // base is DARK, not white: the spoken word is white here, so a white base
+    // erases the highlight entirely. Words light up as they're said.
+    case 'accent_fill': return { active: { color: '#fff' }, base: { color: '#1A1A1A' }, wrap: { background: a, padding: '3px 10px', borderRadius: 8 } }
+    // The halo is dark, matching the bake. An accent halo around an accent-
+    // filled spoken word is the same hue on itself — no contrast at any alpha.
+    case 'glow':        return { active: { color: a, textShadow: '0 0 14px rgba(0,0,0,.8), 0 2px 6px rgba(0,0,0,.65)' }, base: { color: '#fff', textShadow: '0 0 14px rgba(0,0,0,.8), 0 2px 6px rgba(0,0,0,.65)' }, wrap: {} }
     case 'underline':   return { active: { color: '#fff', borderBottom: `3px solid ${a}` }, base: { color: '#fff' }, wrap: {} }
     case 'pop':         return { active: { color: a, display: 'inline-block', transform: 'scale(1.14)' }, base: { color: '#fff' }, wrap: {} }
     default:            return { active: { color: a }, base: { color: '#fff' }, wrap: {} } // bold
