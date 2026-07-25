@@ -6,9 +6,9 @@ Generic build/verification methodology (challenge gate, design interview, mockup
 
 Bernard's SaaS-productization strategy (plan tiers, pricing, managed-vs-BYO analytics, onboarding/activation, what's tenant-product vs Move-Better-private) is tracked in the **Vigil** repo, not here: `specs/bernard-saas-productization.md` (plus follow-on specs `specs/bernard-tier-assignment.md` and `specs/bernard-onboarding-path.md` as they land). Vigil is the read-only oversight layer that authors these specs and hands them to Bernard. Key decisions as of 2026-07-11: per-location flat pricing + free trial; jobs-based tiers (Get Found → Grow → Scale/Pro); base-tier analytics is *managed* (OAuth channel data + bought SEO data), never make a clinic wire up GA4/GSC/PostHog. Before building anything tiering-, pricing-, onboarding-, or feature-gating-shaped, read that spec so you don't build against the plan.
 
-## API handler checklist — 5 rules every new route must follow
+## API handler checklist — 7 rules every new route must follow
 
-These five patterns caused 26+ consecutive audit rounds because each appeared in one reference handler and got copy-pasted to ~15 others without being caught. The ESLint rule `bernard/no-detail-in-error-response` catches #1 at lint time; the PR review job's Claude prompt explicitly checks all five. But check them manually before opening a PR:
+These patterns caused 26+ consecutive audit rounds because each appeared in one reference handler and got copy-pasted to ~15 others without being caught. The ESLint rule `bernard/no-detail-in-error-response` catches #1 at lint time; the PR review job's Claude prompt checks these. But check them manually before opening a PR:
 
 1. **No `detail:` in error responses.** `res.status(NNN).json({ error: 'key', detail: text })` leaks server internals to callers. Always: `console.error('[handler] msg:', e?.message)` + `res.status(500).json({ error: 'opaque_key' })`. The `bernard/no-detail-in-error-response` lint rule enforces this automatically.
 
@@ -40,6 +40,10 @@ These five patterns caused 26+ consecutive audit rounds because each appeared in
    import { waitUntil } from '@vercel/functions'
    waitUntil(someCacheWrite().catch((e) => console.error('[handler] cache write failed:', e?.message)))
    ```
+
+6. **Parse `:id` from `req.url`'s pathname, not `searchParams`.** `api/index.js`'s `wrap()` restores `req.url = req.originalUrl` (the full path) specifically so `[id].js` handlers can do `const id = new URL(req.url, 'http://localhost').pathname.split('/').pop()`. A handler that instead reads `searchParams.get('id')` silently gets `null` on every request — DELETE/PATCH to `/api/foo/:id` never carries an `?id=` query string. This shipped broken for an unknown period in `photo-templates/[id].js` (#2366) with zero errors anywhere except a client toast. Grep sibling `[id].js` files for the pattern before writing a new one; don't reinvent the parsing.
+
+7. **DELETE handlers must return a JSON body, never a bare `204`.** The shared client `apiFetch` (`src/lib/api.js`) unconditionally calls `res.json()` on any non-error response — there's no 204/empty-body branch. `res.status(204).end()` makes `res.json()` throw, surfacing as `"Invalid JSON from <path>"` even though the delete succeeded server-side. Return `res.status(200).json({ deleted: true })` instead, matching `collections/[id].js`. (#2368 — found live on `movebetter`, one delete attempt appeared to fail in the UI but had actually already removed the row.)
 
 ## Verifying authed pages — use Q's logged-in Chrome (on PROD), don't stop at the Clerk lock
 
