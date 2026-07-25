@@ -452,6 +452,23 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // Resolve brand colors + opacity from the priority chain (see brandRender.js header)
     const { primaryColor, accentColor: brandAccentColor, captionOpacity } = resolveBrandColors(workspace)
     const accentColor = captionAccent ?? brandAccentColor
+    // The karaoke highlight is an ACCENT WORD, so it takes the workspace's hero
+    // accent — the colour brandSwatches.js documents as "the one color the
+    // templates put on the rule / CTA pill / badge ring / accent word", i.e. the
+    // primaryColor chain (colors.primary → brand_style.accent_color → …).
+    //
+    // It used to default to resolveBrandColors().accentColor, a DIFFERENT chain
+    // (colors.accent → palette.accent → DEFAULT_ACCENT '#83957C'). On Move Better
+    // that resolves to a sage green held in colors.accent — legacy seed data no
+    // route ever writes — while the brand's real accent (#E36525) sits in
+    // brand_style.accent_color. So every reel highlighted spoken words in a
+    // muted secondary green instead of the brand colour, and it read as
+    // deliberate rather than as a bug.
+    //
+    // An explicit captionAccent (the editor always sends one) still wins, so
+    // only the unattended default moves. KEEP IN SYNC with the client mirror,
+    // workspaceCaptionAccent() in src/lib/brandSwatches.js.
+    const captionAccentColor = captionAccent ?? primaryColor
 
     // Resolve brand font (workspace.brand_style.heading_font → Google Fonts → bundled Inter).
     // Embedding the font via @font-face data-URI is what fixes the garbled-text bug —
@@ -474,7 +491,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
         width: spec.width,
         height: spec.height,
         captionPos: effectiveCaptionPos,
-        accentColor,
+        accentColor: captionAccentColor,
         fontSizePx: Math.round(Math.min(spec.width, spec.height) * 0.05 * ((workspace?.brand_style?.subtitle_font_size ?? 10) / 10)),
         fontName: workspace?.brand_style?.heading_font || 'Inter',
         anim: ['pop', 'fade'].includes(captionAnim) ? captionAnim : 'none',
