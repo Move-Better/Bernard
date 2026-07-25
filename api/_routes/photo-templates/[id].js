@@ -49,8 +49,8 @@ export default async function handler(req, res) {
 
   if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
-  const { searchParams } = new URL(req.url, 'http://localhost')
-  const id = searchParams.get('id')
+  const { pathname } = new URL(req.url, 'http://localhost')
+  const id = pathname.split('/').pop()
   if (!id) return err(res, 'Missing id')
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (!UUID_RE.test(id)) return err(res, 'Invalid id')
