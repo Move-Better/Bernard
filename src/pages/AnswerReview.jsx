@@ -20,6 +20,23 @@ import { useAppMutation } from '@/lib/useAppMutation.js'
 import { useConfirm } from '@/lib/useConfirm'
 import { Button } from '@/components/ui/button'
 
+// Some drafts arrive with a hard `\n` at every soft line-wrap (a model quirk),
+// so a paragraph renders as one broken line per edit box row. Collapse single
+// newlines into spaces while leaving real paragraph breaks (blank lines) and
+// markdown structural lines (headings, list items) intact.
+function joinSoftWraps(text) {
+  const raw = String(text || '')
+  if (!raw.trim()) return raw
+  const withParagraphBreaks = raw
+    .replace(/\n(?=\s*#{1,6}\s)/g, '\n\n')
+    .replace(/\n(?=\s*(?:[-*+]\s|\d+\.\s))/g, '\n\n')
+  return withParagraphBreaks
+    .split(/\n{2,}/)
+    .map((block) => block.replace(/\n/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n\n')
+}
+
 // Markdown element styling (module scope — never define components inside render).
 const MD_COMPONENTS = {
   h2: (props) => <h3 className="mt-4 mb-1.5 text-sm font-bold text-foreground" {...props} />,
@@ -265,7 +282,11 @@ export default function AnswerReview() {
   })
 
   function startEdit(a) {
-    setDraft({ question: a.question || '', answer_lead: a.answer_lead || '', body: a.body || '' })
+    setDraft({
+      question: a.question || '',
+      answer_lead: joinSoftWraps(a.answer_lead || ''),
+      body: joinSoftWraps(a.body || ''),
+    })
     setMode('edit')
   }
 

@@ -59,12 +59,30 @@ function buildUserPrompt({ question, condition, staffName, voiceNotes, voicePhra
   return parts.join('\n')
 }
 
+// The model sometimes hard-wraps prose with a `\n` at every line-wrap point
+// instead of only at paragraph breaks, so a single paragraph renders as one
+// broken line per wrap in any UI that preserves whitespace (e.g. a textarea).
+// Collapse single newlines into spaces while leaving real paragraph breaks
+// (blank lines) and markdown structural lines (headings, list items) intact.
+function joinSoftWraps(text) {
+  const raw = String(text || '')
+  if (!raw.trim()) return raw
+  const withParagraphBreaks = raw
+    .replace(/\n(?=\s*#{1,6}\s)/g, '\n\n')
+    .replace(/\n(?=\s*(?:[-*+]\s|\d+\.\s))/g, '\n\n')
+  return withParagraphBreaks
+    .split(/\n{2,}/)
+    .map((block) => block.replace(/\n/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n\n')
+}
+
 function parseOutput(text) {
   const raw = String(text || '')
   const leadMatch = raw.match(/\[LEAD\]\s*([\s\S]*?)\s*\[BODY\]/i)
   const bodyMatch = raw.match(/\[BODY\]\s*([\s\S]*)$/i)
-  const answer_lead = leadMatch ? leadMatch[1].trim() : ''
-  const body = bodyMatch ? bodyMatch[1].trim() : ''
+  const answer_lead = leadMatch ? joinSoftWraps(leadMatch[1].trim()) : ''
+  const body = bodyMatch ? joinSoftWraps(bodyMatch[1].trim()) : ''
   return { answer_lead, body }
 }
 
