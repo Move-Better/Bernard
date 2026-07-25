@@ -128,7 +128,20 @@ const CAPTION_STYLES = {
   // the one thing its name promises it does not do. The accent belongs on the
   // outline for a boxed style.
   accent_fill: { border: 3, underline: 0,  outline: 'accent', outlineMul: 0.4, back: 'accent', whiteText: true },
-  glow:        { border: 1, underline: 0,  outline: 'accent', outlineMul: 1.9, back: '&H50000000' },
+  // A soft DARK halo, not an accent one. Karaoke fills the spoken word with the
+  // accent, so an accent halo put an accent fill inside an accent stroke 15% of
+  // the font size thick — the glyph dissolved into a solid blob. Making the halo
+  // translucent did not fix it: same hue at any alpha is still no contrast. A
+  // halo has to contrast with the fill it surrounds, so it has to be dark.
+  //
+  // This was never a size bug either — the stroke is fontSize x 0.08 x
+  // outlineMul, a constant FRACTION of the type, so it was equally wrong at
+  // every size and merely more obvious when large.
+  //
+  // What separates it from `bold` is the halo's weight and softness (1.9x and
+  // translucent, vs 1x opaque): it holds up over busy footage where a thin hard
+  // outline does not.
+  glow:        { border: 1, underline: 0,  outline: 'black', outlineAlpha: '40', outlineMul: 1.9, back: '&H50000000' },
   underline:   { border: 1, underline: -1, outline: 'black',  outlineMul: 1,   back: '&H64000000' },
   pop:         { border: 1, underline: 0,  outline: 'black',  outlineMul: 1,   back: '&H64000000', anim: 'pop' },
 }
@@ -153,7 +166,11 @@ export function buildKaraokeAss({ words, width, height, captionPos = 'top', acce
   const white = '&H00FFFFFF'
   const primary = st.whiteText ? white : assColor(accentColor)  // spoken → accent (or white on an accent box)
   const secondary = white                                        // upcoming words → white
-  const outline = st.outline === 'accent' ? assColor(accentColor) : '&H00000000'
+  // outlineAlpha applies to either colour — a translucent halo reads as a glow
+  // and lets footage through, where an opaque one reads as a sticker.
+  const outline = st.outline === 'accent'
+    ? assColor(accentColor, st.outlineAlpha || '00')
+    : `&H${st.outlineAlpha || '00'}000000`
   const back = st.back === 'accent' ? assColor(accentColor, '28') : st.back
   const oW = Math.max(1, Math.round(outlineW * st.outlineMul))
   const effAnim = st.anim || anim
