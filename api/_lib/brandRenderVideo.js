@@ -323,7 +323,7 @@ const OVERLAY_SIZE_SCALE = { small: 0.75, medium: 1.0, large: 1.35 }
 // control ends up lying about what it will export.
 export const CAPTION_BASE_FS = 0.068
 
-export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionAccent, captionWords, captionAnim, captionStyle, grade, reframe, kenBurns, overlays, speed, cuts, music }) {
+export async function renderVideoChannel({ videoUrl, channel, captionText, workspace, staffName, startSec, durationSec, subtitles = true, overlayPosition, overlaySize, captionSizeScale: captionSizeScaleIn, captionAccent, captionWords, captionAnim, captionStyle, grade, reframe, kenBurns, overlays, speed, cuts, music }) {
   const spec = VIDEO_CHANNEL_SPECS[channel]
   if (!spec) throw new Error(`Unknown video channel: ${channel}`)
 
@@ -489,7 +489,11 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     const { buffer: fontBuffer } = await getBrandFont(workspace).catch(() => ({ buffer: null }))
 
     const effectiveCaptionPos = overlayPosition ?? spec.captionPos
-    const captionSizeScale = OVERLAY_SIZE_SCALE[overlaySize] ?? 1.0
+    // A template supplies a continuous scale; the editor's Size control still
+    // sends the small/medium/large enum. An explicit numeric scale wins.
+    const captionSizeScale = Number.isFinite(Number(captionSizeScaleIn))
+      ? Math.min(2.5, Math.max(0.4, Number(captionSizeScaleIn)))
+      : (OVERLAY_SIZE_SCALE[overlaySize] ?? 1.0)
 
     // Karaoke ASS captions (built here because it needs the resolved accent
     // colour + caption position). Falls back to the SRT path written above if
@@ -645,7 +649,10 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
       const faded = `[ovf${i}]`
       const win = Math.max(0.01, ov.out - ov.in)
       const d = Math.min(OVL_FADE, win / 3)
-      const fadeIn = ov.in > 0.001
+      // A template can ask for a fade-in explicitly; otherwise anything starting
+      // at t=0 gets none, so the cover frame carries it.
+      const wantsFadeIn = ov.fadeIn === true || ov.in > 0.001
+      const fadeIn = wantsFadeIn
         ? `fade=t=in:st=${ov.in.toFixed(2)}:d=${d.toFixed(2)}:alpha=1,`
         : ''
       filterComplex.push(`[${2 + i}:v]format=yuva420p,${fadeIn}fade=t=out:st=${(ov.out - d).toFixed(2)}:d=${d.toFixed(2)}:alpha=1${faded}`)

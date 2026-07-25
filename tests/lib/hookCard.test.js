@@ -8,7 +8,15 @@ import {
 } from '../../api/_lib/headlineGen.js'
 import { normalizeOverlays, buildOverlaySvg } from '../../api/_lib/videoOverlays.js'
 import { buildBrandOverlaySvg } from '../../api/_lib/brandRender.js'
-import { REEL_PRESETS, REEL_PRESET_IDS, pickReelPreset } from '../../api/_lib/reelPresets.js'
+import {
+  BUILTIN_VIDEO_TEMPLATE_IDS,
+  CAPTION_POSITIONS,
+  CAPTION_STYLE_IDS,
+  resolveVideoTemplate,
+  sanitizeVideoTemplate,
+  headlineHoldSeconds,
+  isCustomTemplateId,
+} from '../../api/_lib/videoTemplates.js'
 
 // The real hooks from the five reels that were drafted and never published.
 // Each is 149-219 chars against a band that fits ~102, so each shipped
@@ -175,33 +183,82 @@ describe('wrapping — no orphaned final word', () => {
   })
 })
 
-describe('reel presets', () => {
-  it('every preset names a caption position, style and size the renderer knows', () => {
-    for (const id of REEL_PRESET_IDS) {
-      const p = REEL_PRESETS[id]
-      expect(['top', 'center', 'bottom']).toContain(p.captionPosition)
-      expect(['small', 'medium', 'large']).toContain(p.captionSize)
-      expect(['bold', 'word_box', 'accent_fill', 'glow', 'underline', 'pop']).toContain(p.captionStyle)
-      if (p.headlineRole) expect(['title', 'hook_card', 'callout', 'lower_third']).toContain(p.headlineRole)
+describe('video templates — built-ins', () => {
+  it('every built-in resolves to something the renderer understands', () => {
+    for (const id of BUILTIN_VIDEO_TEMPLATE_IDS) {
+      const t = resolveVideoTemplate(id)
+      expect(CAPTION_POSITIONS).toContain(t.captions.position)
+      expect(CAPTION_STYLE_IDS).toContain(t.captions.style)
+      expect(t.captions.sizeScale).toBeGreaterThan(0)
+      if (t.headline.role) expect(['title', 'hook_card']).toContain(t.headline.role)
     }
   })
 
-  it('rotates deterministically — same segment always gets the same look', () => {
-    expect(pickReelPreset('seg-abc').id).toBe(pickReelPreset('seg-abc').id)
+  it('keeps its id so an existing workspace pin still resolves', () => {
+    // These ids are stored in workspaces.reel_preset. Renaming one silently
+    // repoints every workspace that pinned it.
+    expect(BUILTIN_VIDEO_TEMPLATE_IDS.sort()).toEqual(
+      ['captions_only', 'editorial', 'hook_card', 'kinetic'],
+    )
   })
 
-  it('spreads across the library rather than favouring one', () => {
-    const seen = new Set()
-    for (let i = 0; i < 200; i++) seen.add(pickReelPreset(`segment-${i}`).id)
-    expect(seen.size).toBe(REEL_PRESET_IDS.length)
+  it('falls back to hook_card for an unknown id rather than throwing', () => {
+    expect(resolveVideoTemplate('not-a-template').id).toBe('hook_card')
+    expect(resolveVideoTemplate(null).id).toBe('hook_card')
+  })
+})
+
+describe('video templates — custom rows', () => {
+  const customs = [{
+    id: '11111111-2222-3333-4444-555555555555',
+    name: 'My look',
+    config: {
+      headline: { role: 'hook_card', yFrac: 0.4, widthFrac: 0.7, hold: 2, fadeIn: true },
+      captions: { enabled: true, position: 'center', style: 'glow', sizeScale: 1.6 },
+      blocks: { headline: { fontWeight: 'extrabold', color: '#FF0000', shadow: 'strong', uppercase: true } },
+    },
+  }]
+
+  it('resolves a custom row by uuid with the same shape as a built-in', () => {
+    const t = resolveVideoTemplate('11111111-2222-3333-4444-555555555555', customs)
+    expect(t.name).toBe('My look')
+    expect(t.headline.role).toBe('hook_card')
+    expect(t.headline.yFrac).toBeCloseTo(0.4)
+    expect(t.captions.style).toBe('glow')
+    expect(t.captions.sizeScale).toBeCloseTo(1.6)
+    expect(t.blocks.headline.uppercase).toBe(true)
   })
 
-  it('lets a workspace pin a preset, overriding rotation', () => {
-    expect(pickReelPreset('seg-abc', 'kinetic').id).toBe('kinetic')
+  it('recognises a uuid as a custom id and a slug as a built-in', () => {
+    expect(isCustomTemplateId('11111111-2222-3333-4444-555555555555')).toBe(true)
+    expect(isCustomTemplateId('hook_card')).toBe(false)
   })
 
-  it('falls back to rotation for an unknown pinned value', () => {
-    expect(REEL_PRESET_IDS).toContain(pickReelPreset('seg-abc', 'not-a-preset').id)
+  it('sanitises a half-written config instead of failing the reel', () => {
+    const t = resolveVideoTemplate('x', [{ id: 'x', name: 'Broken', config: { captions: { position: 'sideways', style: 'nope', sizeScale: 99 } } }])
+    expect(CAPTION_POSITIONS).toContain(t.captions.position)
+    expect(CAPTION_STYLE_IDS).toContain(t.captions.style)
+    expect(t.captions.sizeScale).toBeLessThanOrEqual(2.5)
+  })
+})
+
+describe('headline hold', () => {
+  const t = (over = {}) => sanitizeVideoTemplate({ headline: { role: 'hook_card', ...over } })
+
+  it('derives from reading time by default', () => {
+    const short = headlineHoldSeconds(t(), 'Two words', 30)
+    const long = headlineHoldSeconds(t(), 'one two three four five six seven eight', 30)
+    expect(long).toBeGreaterThan(short)
+    expect(long).toBeLessThanOrEqual(3.0)
+  })
+
+  it('honours an explicit numeric hold', () => {
+    expect(headlineHoldSeconds(t({ hold: 2.2 }), 'Two words', 30)).toBeCloseTo(2.2)
+  })
+
+  it('still caps at a third of the clip, even for an explicit hold', () => {
+    // A template must not be able to ask for more frames than the clip has.
+    expect(headlineHoldSeconds(t({ hold: 10 }), 'Two words', 3)).toBeLessThanOrEqual(3 * 0.35 + 1e-9)
   })
 })
 
