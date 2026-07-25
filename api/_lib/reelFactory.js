@@ -29,6 +29,7 @@ import { renderVideoChannel } from './brandRenderVideo.js'
 import { sliceWordsToWindow } from './karaokeCaptions.js'
 import { generateCaption } from './captionGen.js'
 import { generateHeadline, headlineWindow } from './headlineGen.js'
+import { pickReelPreset } from './reelPresets.js'
 
 // Vertical placement of the hook card, as a fraction of frame height. Sits in
 // the upper third but clear of Instagram's own top UI zone (~7% of a 9:16 frame).
@@ -188,12 +189,19 @@ export async function renderSegmentToReel({ ws, seg, asset, staffName, createDra
     } catch (e) {
       console.error('[reelFactory] headline gen failed, shipping without a card:', e?.stack || e?.message)
     }
-    const overlays = headline
+    // Which look this reel gets. Deterministic rotation across the preset library
+    // so each one accrues real use — the preset a human keeps or changes is the
+    // signal worth learning from. A workspace that has pinned a preset wins.
+    const preset = pickReelPreset(seg.id, ws?.reel_preset || null)
+
+    // A preset with no headline role IS captions-only; a headline that doesn't
+    // fit degrades any preset to the same place.
+    const overlays = headline && preset.headlineRole
       ? [{
-          role: 'hook_card',
+          role: preset.headlineRole,
           text: headline,
           x: 0.5,
-          y: HOOK_CARD_Y,
+          y: preset.headlineY ?? HOOK_CARD_Y,
           size: 1,
           color: '#FFFFFF',
           // Hook-then-drop: on at frame 0 (no fade-in, so the cover frame carries
@@ -221,7 +229,9 @@ export async function renderSegmentToReel({ ws, seg, asset, staffName, createDra
       startSec,
       durationSec,
       subtitles: true,
-      overlayPosition: 'bottom',
+      overlayPosition: preset.captionPosition,
+      overlaySize: preset.captionSize,
+      captionStyle: preset.captionStyle,
       ...(overlays.length ? { overlays } : {}),
       ...(captionWords && captionWords.length ? { captionWords } : {}),
     })
@@ -250,6 +260,10 @@ export async function renderSegmentToReel({ ws, seg, asset, staffName, createDra
       notes: `AI clip from asset ${asset.id}${hook ? ` — "${hook.slice(0, 80)}"` : ''}`,
       parentAssetId: asset.id,
       awaitThumbnails: true,
+      // Which look this reel was rendered with. Recorded so "did the human keep
+      // this preset or change it" is answerable later — without it the rotation
+      // produces variety but teaches nothing.
+      variantLabel: headline && preset.headlineRole ? preset.id : `${preset.id}:no_headline`,
     })
     const newAsset = saved?.[0] || null
     const newAssetId = newAsset?.id || null

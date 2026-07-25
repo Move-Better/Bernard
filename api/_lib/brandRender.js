@@ -198,6 +198,13 @@ export function buildBrandOverlaySvg({
   fontBuffer,
   captionOpacity = 0.88,
   captionSizeScale = 1,
+  // Draw the black attribution bar (clinician + workspace) across the bottom.
+  // ON for photos, where the image is viewed in isolation and nothing else says
+  // who is in it. OFF for video: it lands at y1823-1920 on a 9:16 frame, inside
+  // the zone Instagram covers with its own caption/username/action UI, so it is
+  // very likely never seen — and Instagram already shows the account name next
+  // to every Reel, tappable, which burned pixels cannot be.
+  lowerThird = true,
 }) {
   // Layout constants — proportional to the smaller dimension so they scale
   // sensibly across 1:1, 9:16, and 16:9.
@@ -266,14 +273,14 @@ export function buildBrandOverlaySvg({
   <!-- Caption band -->
   ${hasCaption ? `<rect x="0" y="${captionBandY}" width="${width}" height="${captionBandHeight}" fill="${primaryColor}" fill-opacity="${captionOpacity}" />` : ''}
   ${hasCaption ? captionTspans : ''}
-
+${lowerThird ? `
   <!-- Accent bar above lower-third -->
   <rect x="0" y="${lowerThirdY - accentBarHeight}" width="${width}" height="${accentBarHeight}" fill="${accentColor}" />
 
   <!-- Lower-third bar -->
   <rect x="0" y="${lowerThirdY}" width="${width}" height="${lowerThirdHeight}" fill="#000000" fill-opacity="0.78" />
   <text x="${Math.round(width * 0.05)}" y="${lowerThirdY + Math.round(lowerThirdHeight * 0.62)}" font-size="${lowerFontSize}" fill="#FFFFFF" font-family="${fontFamily}" font-weight="500">${lowerLeftText}</text>
-  <text x="${Math.round(width * 0.95)}" y="${lowerThirdY + Math.round(lowerThirdHeight * 0.62)}" font-size="${lowerFontSize}" fill="#FFFFFF" font-family="${fontFamily}" font-weight="400" text-anchor="end">${lowerRightText}</text>
+  <text x="${Math.round(width * 0.95)}" y="${lowerThirdY + Math.round(lowerThirdHeight * 0.62)}" font-size="${lowerFontSize}" fill="#FFFFFF" font-family="${fontFamily}" font-weight="400" text-anchor="end">${lowerRightText}</text>` : ''}
 </svg>`)
 }
 
