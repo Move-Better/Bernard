@@ -1872,9 +1872,44 @@ export default function InterviewSession() {
         </div>
       )}
 
-      {fromRealtimeWrap && (
-        <div className="flex-1 flex items-center justify-center py-6">
+      {/* Realtime (voice) wrap. The attach-video affordance below is the ONLY
+          way this path can reach VideoAttachPrompt: the chat completion card
+          that normally hosts it is gated on !fromRealtimeWrap, so a clinician
+          who ran the interview on an iPad while a phone filmed them — the exact
+          workflow migration 114 was written for — had no route to attaching the
+          recording. video_media_asset_id was set on zero rows in prod.
+
+          Gated on !showVideoPrompt so the reveal steps aside while attaching,
+          mirroring how the chat card hides itself. Deliberately NOT gated on
+          completionData: on this path blog generation is still running when the
+          reveal first mounts, and the recording is ready to attach right then. */}
+      {fromRealtimeWrap && !showVideoPrompt && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 py-6">
           <PostCallReveal />
+          <button
+            type="button"
+            onClick={() => setShowVideoPrompt(true)}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Video className="h-3.5 w-3.5" aria-hidden="true" />
+            Recorded a video too? Attach it
+            <span className="text-muted-foreground/70">(optional)</span>
+          </button>
+        </div>
+      )}
+
+      {fromRealtimeWrap && showVideoPrompt && (
+        <div className="flex-1 flex items-center justify-center py-6">
+          <div className="rounded-xl border bg-card max-w-md w-full">
+            <VideoAttachPrompt
+              interviewId={interviewId}
+              staffName={staffMember?.name || completionData?.staffName || ''}
+              // Return to the reveal rather than navigating: the realtime flow's
+              // own handoff is its "Review this week's N" button, and attaching
+              // a recording shouldn't quietly redirect somewhere else.
+              onDone={() => setShowVideoPrompt(false)}
+            />
+          </div>
         </div>
       )}
 
