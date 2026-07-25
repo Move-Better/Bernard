@@ -107,28 +107,40 @@ export async function scoreAnswerFidelity({ ws, staffId, question, condition, an
     staffName: g.staffName, workspaceName: workspaceName(ws),
   })
 
-  let raw = ''
-  try {
-    const res = await generateText({
-      model: EVAL_MODEL,
-      instructions: prompt.instructions,
-      messages: [{ role: 'user', content: prompt.user }],
-      maxOutputTokens: 300,
+  // This is a HARD gate a clinician is standing in front of: an unparseable reply
+  // blocks them with "couldn't check the voice", so try twice before failing closed.
+  // MAX_TOKENS is generous because the judge sometimes writes a long red_flag —
+  // truncating mid-object is the one failure the parser genuinely cannot recover.
+  let parsed = null
+  let lastReason = 'no_dims_parsed'
+  for (let attempt = 0; attempt < 2 && !parsed; attempt++) {
+    let raw = ''
+    try {
+      const res = await generateText({
+        model: EVAL_MODEL,
+        instructions: prompt.instructions,
+        messages: [{ role: 'user', content: prompt.user }],
+        maxOutputTokens: 700,
+      })
+      raw = res.text
+    } catch (err) {
+      console.error('[scoreAnswerFidelity] LLM call failed:', err?.message || err)
+      lastReason = 'llm_error'
+      continue
+    }
+    parsed = parseAnswerFidelity(raw, {
+      has_reference: !!(g.historyBlock || '').trim(),
+      has_voice:     !!((g.voiceNotes || '').trim() || (g.voicePhrases || []).length),
+      model:         EVAL_MODEL,
+      rubric:        'answer-fidelity-v1',
+      scored_at:     new Date().toISOString(),
     })
-    raw = res.text
-  } catch (err) {
-    console.error('[scoreAnswerFidelity] LLM call failed:', err?.message || err)
-    return { ok: false, reason: 'llm_error' }
+    if (!parsed) {
+      lastReason = 'no_dims_parsed'
+      console.error('[scoreAnswerFidelity] unparseable judge reply (attempt %d):', attempt + 1, String(raw).slice(0, 300))
+    }
   }
-
-  const parsed = parseAnswerFidelity(raw, {
-    has_reference: !!(g.historyBlock || '').trim(),
-    has_voice:     !!((g.voiceNotes || '').trim() || (g.voicePhrases || []).length),
-    model:         EVAL_MODEL,
-    rubric:        'answer-fidelity-v1',
-    scored_at:     new Date().toISOString(),
-  })
-  if (!parsed) return { ok: false, reason: 'no_dims_parsed' }
+  if (!parsed) return { ok: false, reason: lastReason }
 
   const { overall, breakdown } = parsed
   const gate = overall >= ANSWER_GATE ? 'passed' : 'held'
