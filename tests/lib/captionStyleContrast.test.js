@@ -67,3 +67,23 @@ describe('caption styles — the halo must contrast with the fill', () => {
     }
   })
 })
+
+// The point of this caption system is the per-word highlight: \k timing swaps
+// SecondaryColour (upcoming) to PrimaryColour (spoken). If a style sets both to
+// the same colour, that timing is computed and thrown away and the captions are
+// static text — which is what accent_fill did, on the one style whose entire job
+// is emphasis.
+describe('caption styles — every style actually highlights', () => {
+  it.each(STYLES)('%s uses a different colour for spoken vs upcoming', (style) => {
+    const s = styleFields(style)
+    expect(s.primary).not.toBe(s.secondary)
+  })
+
+  it('accent_fill lights words UP to white from dark, not white on white', () => {
+    // A filled box cannot carry the highlight itself — BorderStyle=3 draws one
+    // box behind the whole LINE, not per word — so it has to be a text colour.
+    const s = styleFields('accent_fill')
+    expect(rgbOf(s.primary)).toBe('FFFFFF')
+    expect(rgbOf(s.secondary)).not.toBe('FFFFFF')
+  })
+})

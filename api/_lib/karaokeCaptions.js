@@ -127,7 +127,13 @@ const CAPTION_STYLES = {
   // This style set outline:'black' + back:'accent' and so rendered a BLACK box —
   // the one thing its name promises it does not do. The accent belongs on the
   // outline for a boxed style.
-  accent_fill: { border: 3, underline: 0,  outline: 'accent', outlineMul: 0.4, back: 'accent', whiteText: true },
+  // Words LIGHT UP to white from a dark unspoken state. whiteText alone made
+  // primary and secondary both white, so every word stayed white and the style
+  // had no per-word highlight at all — the \k timing was computed and thrown
+  // away, on the one style whose whole job is emphasis. The box cannot carry the
+  // highlight itself: BorderStyle=3 draws one box behind the whole LINE, not per
+  // word, so on a filled box the highlight has to be a text-colour change.
+  accent_fill: { border: 3, underline: 0,  outline: 'accent', outlineMul: 0.4, back: 'accent', whiteText: true, secondary: '&H001A1A1A' },
   // A soft DARK halo, not an accent one. Karaoke fills the spoken word with the
   // accent, so an accent halo put an accent fill inside an accent stroke 15% of
   // the font size thick — the glyph dissolved into a solid blob. Making the halo
@@ -165,7 +171,9 @@ export function buildKaraokeAss({ words, width, height, captionPos = 'top', acce
   const st = CAPTION_STYLES[style] || CAPTION_STYLES.bold
   const white = '&H00FFFFFF'
   const primary = st.whiteText ? white : assColor(accentColor)  // spoken → accent (or white on an accent box)
-  const secondary = white                                        // upcoming words → white
+  // Upcoming words. White by default; a style may override it when white would
+  // erase the highlight (accent_fill's spoken word is ALSO white).
+  const secondary = st.secondary || white
   // outlineAlpha applies to either colour — a translucent halo reads as a glow
   // and lets footage through, where an opaque one reads as a sticker.
   const outline = st.outline === 'accent'
