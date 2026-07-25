@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useUpdateContentItem, usePhotoTemplates, useMediaSuggestions } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { resolveTheme, DEFAULT_DECK_THEME } from '@/lib/photoTemplates'
+import { buildPhotoTemplateFromEditor, suggestPhotoTemplateName } from '@/lib/photoTemplateCapture'
+import { apiFetch } from '@/lib/api'
 import { normalizeGrade, isNeutralGrade } from '@/lib/gradeParams'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import { photoSourceUrl, clipToMediaEntry, mediaEntryKey, slidePhotos } from '@/lib/mediaEntry'
@@ -449,6 +451,42 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     : null
   const activeTheme = resolveTheme(activeSlide?.template_id || themeId, customThemes)
 
+  // Save the look as a reusable photo template. Same principle as the reel
+  // editor: promote what you dialled in on real slides, rather than styling in a
+  // separate template screen. Here it closes a specific gap — the Text-layer
+  // controls are richer than the template schema, so a beautifully styled
+  // carousel left nothing behind and the next deck started from defaults again.
+  const [tplOpen, setTplOpen] = useState(false)
+  const [tplName, setTplName] = useState('')
+  const [tplSaving, setTplSaving] = useState(false)
+  const tplDraft = useMemo(
+    () => buildPhotoTemplateFromEditor({ slides, themeId, customThemes }),
+    [slides, themeId, customThemes],
+  )
+  function openSaveTemplate() {
+    setTplName(suggestPhotoTemplateName({ themeId, customThemes }))
+    setTplOpen(true)
+  }
+  async function saveTemplate(makeDefault) {
+    setTplSaving(true)
+    try {
+      const row = await apiFetch('/api/photo-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: tplName.trim(), is_default: !!makeDefault, config: tplDraft.config }),
+      })
+      setTplOpen(false)
+      // Apply it to THIS deck straight away — otherwise you save a look and the
+      // story you saved it from carries on using the old one.
+      if (row?.id) setThemeId(row.id)
+      toast.success(makeDefault ? `Saved "${tplName.trim()}" as your default template.` : `Saved "${tplName.trim()}".`)
+    } catch (e) {
+      toast.error('Could not save that template', { description: e?.message?.slice(0, 120) })
+    } finally {
+      setTplSaving(false)
+    }
+  }
+
   function goBack() {
     if (onBack) onBack()
     else smartBack()
@@ -484,6 +522,48 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
           onClose={() => setAdExportOpen(false)}
         />
       )}
+      <Dialog open={tplOpen} onOpenChange={setTplOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Save this look as a template</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Future carousels can start from this. It saves the styling, not this story&apos;s content.
+          </p>
+
+          <label className="mt-2 block text-2xs font-semibold uppercase tracking-wide text-muted-foreground" htmlFor="ptpl-name">Name</label>
+          <input
+            id="ptpl-name" value={tplName} onChange={(e) => setTplName(e.target.value)} maxLength={80}
+            className="w-full rounded-md border bg-background px-2.5 py-1.5 text-sm"
+          />
+
+          <div className="mt-3 space-y-1.5">
+            <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">What carries over</p>
+            {tplDraft.captured.map((c) => (
+              <p key={c} className="text-xs text-foreground">{c}</p>
+            ))}
+          </div>
+          <div className="mt-3 space-y-1.5">
+            <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Stays with this story</p>
+            {tplDraft.skipped.map((s) => (
+              <p key={s} className="text-xs text-muted-foreground">{s}</p>
+            ))}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <button type="button" onClick={() => setTplOpen(false)} className="text-xs text-muted-foreground hover:underline">Cancel</button>
+            <div className="flex gap-2">
+              <button type="button" disabled={!tplName.trim() || tplSaving} onClick={() => saveTemplate(false)}
+                className="rounded-md border px-3 py-1.5 text-xs disabled:opacity-60">Save</button>
+              <button type="button" disabled={!tplName.trim() || tplSaving} onClick={() => saveTemplate(true)}
+                className="rounded-md px-3 py-1.5 text-xs text-primary-foreground disabled:opacity-60"
+                style={{ background: 'hsl(var(--primary))' }}>
+                {tplSaving ? 'Saving…' : 'Save & make default'}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Schedule & publish — folded into the top bar, opens here */}
       {scheduleNode && (
@@ -641,6 +721,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                     globalThemeId={themeId}
                     onChange={(next) => updateSlide(activeSlideIdx, next)}
                     onApplyThemeToAll={handleApplyThemeToAll}
+                    onSaveAsTemplate={openSaveTemplate}
                     onAddBlock={(role) => {
                       const blocks = activeSlide.blocks.concat(emptyBlockFor(activeSlide.template, role))
                       updateSlide(activeSlideIdx, { ...activeSlide, blocks })

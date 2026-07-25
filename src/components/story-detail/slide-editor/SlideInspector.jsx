@@ -10,6 +10,7 @@ import { ROLE_META } from './shared'
 export default function SlideInspector({
   slide, slideIdx, totalSlides, photoUrl, brandStyle, allThemes, customThemes, globalThemeId,
   onChange, onApplyThemeToAll, onAddBlock, onMoveLeft, onMoveRight, onRemove,
+  onSaveAsTemplate,
 }) {
   const [addOpen, setAddOpen] = useState(false)
   // Signature of everything (besides the theme) that changes a thumbnail's pixels.
@@ -92,6 +93,15 @@ export default function SlideInspector({
         >
           Apply this theme to all slides
         </button>
+        {onSaveAsTemplate && (
+          <button
+            type="button"
+            onClick={onSaveAsTemplate}
+            className="w-full rounded-lg border border-primary bg-primary/5 px-3 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+          >
+            Save this look as a template
+          </button>
+        )}
       </div>
 
       {/* Add text block */}
