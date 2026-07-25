@@ -127,6 +127,12 @@ export async function authorAnswersForGaps({ ws, maxDrafts }) {
         status: 'needs_review',
         source: 'producer',
         grounding_source: `Bernard drafted this from ${d.staffName}'s practice memory — a question you're not cited on yet.`,
+        // draftAnswer already scored this (and may have burned a coached
+        // regenerate getting it over the bar). Persist it — dropping these left
+        // every producer-authored answer arriving in the clinician's queue with
+        // no score at all, so the work was paid for and thrown away.
+        voice_fidelity_score: d.voiceFidelityScore,
+        voice_audit: d.voiceAudit,
       }),
     })
     if (ins.status === 409) continue // slug already taken — skip
