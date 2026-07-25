@@ -8,7 +8,6 @@ import {
   RotateCcw,
   ChevronLeft,
   ShieldCheck,
-  Lock,
   AlertTriangle,
   Radio,
   Trash2,
@@ -98,9 +97,13 @@ function VoiceCheckChip({ answer }) {
       </span>
     )
   }
+  // Below the bar is advice, not a block — amber, not destructive red.
   if (gate === 'held') {
     return (
-      <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-3xs font-bold text-destructive">
+      <span
+        className="ml-auto inline-flex items-center gap-1 rounded-full bg-action/15 px-2 py-0.5 text-3xs font-bold text-action"
+        title="The voice check flagged this — you can still publish it"
+      >
         <AlertTriangle className="h-3 w-3" /> Voice check{s ? ` ${s}` : ''}
       </span>
     )
@@ -157,8 +160,12 @@ function UnscoredBanner({ onRecheck, busy }) {
   )
 }
 
-// The loud, act-now banner shown above the actions when an answer is held.
-function HeldBanner({ answer }) {
+// Shown above the actions when the voice check scored below the bar. ADVISORY,
+// not a wall (Q, 2026-07-25): it states the score and the specific critique, then
+// gets out of the way. Amber act-now rather than destructive red — red is for
+// "you cannot", and the clinician always can. See the answers.js approve comment
+// for why said_fidelity can't be a gate on human-edited text.
+function AdvisoryBanner({ answer }) {
   const va = answer?.voice_audit || {}
   const s = voiceScore10(answer)
   const threshold = typeof va.threshold === 'number' ? va.threshold : 7.5
@@ -167,23 +174,29 @@ function HeldBanner({ answer }) {
     { label: 'Sounds like you', v: va.voice_match },
     { label: 'Non-diagnostic & safe', v: va.safety },
   ].filter((d) => typeof d.v === 'number')
+  // Faithfulness is scored against the clinician's captured practice memory. On
+  // text they wrote or edited themselves, a low score usually means "this isn't
+  // in the corpus yet" — new teaching, not invention. Say so plainly rather than
+  // letting them read it as "you got this wrong".
+  const fidIsTheWeakOne =
+    typeof va.said_fidelity === 'number' && va.said_fidelity < threshold
   return (
-    <div className="nx-alert nx-alert-crit mt-4 items-start">
-      <span className="nx-alert-chip nx-alert-chip-crit">
-        <Lock className="h-4 w-4" />
+    <div className="nx-alert nx-alert-act mt-4 items-start">
+      <span className="nx-alert-chip nx-alert-chip-act">
+        <AlertTriangle className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1">
       <div className="flex items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 text-2xs font-bold uppercase tracking-wide text-destructive">
-          Held — can&rsquo;t publish yet
+        <span className="inline-flex items-center gap-1.5 text-2xs font-bold uppercase tracking-wide text-action">
+          Voice check flagged this — your call
         </span>
-        <span className="ml-auto text-2xs font-bold tabular-nums text-destructive">
+        <span className="ml-auto text-2xs font-bold tabular-nums text-action">
           {s ? `${s} / 10 · ` : ''}bar is {threshold}
         </span>
       </div>
       {va.red_flag && va.red_flag !== 'none' && (
         <p className="mt-2 text-2xs text-foreground">
-          <span className="font-bold">What drifted:</span> {va.red_flag}
+          <span className="font-bold">What it flagged:</span> {va.red_flag}
         </p>
       )}
       {dims.length > 0 && (
@@ -191,15 +204,24 @@ function HeldBanner({ answer }) {
           {dims.map((d) => (
             <span key={d.label} className="inline-flex items-center gap-1 text-3xs font-bold text-muted-foreground">
               {d.label}
-              <span className={d.v < threshold ? 'text-destructive' : 'text-success'}>{d.v}</span>
+              <span className={d.v < threshold ? 'text-action' : 'text-success'}>{d.v}</span>
             </span>
           ))}
         </div>
       )}
+      {fidIsTheWeakOne && (
+        <p className="mt-2 text-2xs text-muted-foreground">
+          &ldquo;Faithful to you&rdquo; is measured against what Bernard has captured from your
+          interviews — so if you&rsquo;ve just taught something new here, a low score is expected
+          and isn&rsquo;t a reason to change it. We&rsquo;ll queue it as an interview topic so
+          Bernard catches up.
+        </p>
+      )}
       <p className="mt-2 text-2xs text-muted-foreground">
-        Fix it with <span className="font-semibold text-foreground">Edit inline</span>, or{' '}
-        <span className="font-semibold text-foreground">Ask Bernard to revise</span> — it re-drafts in
-        your voice and re-scores. Approve unlocks once it clears {threshold}.
+        You can publish this as it stands. Or fix it with{' '}
+        <span className="font-semibold text-foreground">Edit inline</span>, or{' '}
+        <span className="font-semibold text-foreground">Ask Bernard to revise</span> — it re-drafts
+        in your voice and re-scores.
       </p>
       </div>
     </div>
@@ -303,16 +325,15 @@ export default function AnswerReview() {
           toast.success('Voice check finished')
         }
       } else if (payload.action === 'approve') {
-        if (res?.blocked) {
-          // The hard voice gate refused to publish. Stay on this answer so its
-          // held/unscored banner is visible; refetch() pulls the fresh score in.
-          toast.error(
-            res.gate === 'unscored'
-              ? "The voice check didn't finish — nothing was scored. Re-check to try again."
-              : 'Held — tighten it back to your voice before it can go public',
+        {
+          const overFlag = res?.voice_audit?.published_over_flag
+          toast.success(
+            res?.status === 'published'
+              ? overFlag
+                ? 'Published to movebetter.co ✓ — flagged passage queued as an interview topic'
+                : 'Published to movebetter.co ✓'
+              : 'Approved — ready to publish',
           )
-        } else {
-          toast.success(res?.status === 'published' ? 'Published to movebetter.co ✓' : 'Approved — ready to publish')
           // Approve moves the answer out of the review queue (approved/published),
           // so drop it from the cache immediately. Without this the screen only
           // advances once refetch() round-trips — which read as "nothing happened
@@ -556,7 +577,7 @@ export default function AnswerReview() {
                   </div>
                 ) : (
                   <>
-                    {voiceGate(active) === 'held' && <HeldBanner answer={active} />}
+                    {voiceGate(active) === 'held' && <AdvisoryBanner answer={active} />}
                     {voiceGate(active) === 'unscored' && (
                       <UnscoredBanner
                         busy={busy}
@@ -564,37 +585,28 @@ export default function AnswerReview() {
                       />
                     )}
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {voiceGate(active) === 'held' ? (
-                        <button
-                          type="button"
-                          disabled
-                          title="Fix the voice check first — edit it or ask Bernard to revise"
-                          className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-dashed border-border bg-muted px-4 py-2 text-sm font-semibold text-muted-foreground"
-                        >
-                          <Lock className="h-4 w-4" /> Approve — fix the voice check first
-                        </button>
-                      ) : voiceGate(active) === 'unscored' ? (
-                        // Not a verdict on the answer — but approving would just be
-                        // refused server-side, so don't dangle a green button.
-                        <button
-                          type="button"
-                          disabled
-                          title="The voice check didn't finish — re-check it first"
-                          className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-dashed border-border bg-muted px-4 py-2 text-sm font-semibold text-muted-foreground"
-                        >
-                          <Lock className="h-4 w-4" /> Approve — needs a voice check first
-                        </button>
-                      ) : (
-                        <Button
-                          type="button"
-                          loading={busy}
-                          onClick={() => mutation.mutate({ id: active.id, action: 'approve' })}
-                          className="gap-1.5 bg-success font-semibold text-success-foreground hover:bg-success/90"
-                        >
-                          <Check className="h-4 w-4" />{' '}
-                          {active.movebetterco_slug ? 'Approve — replace the live page' : 'Looks right — approve'}
-                        </Button>
-                      )}
+                      {/* The voice check never blocks (Q, 2026-07-25) — Approve is always
+                          live. Below the bar it just stops wearing "everything's fine"
+                          green, so a flagged publish is a deliberate act, not a reflex. */}
+                      <Button
+                        type="button"
+                        loading={busy}
+                        onClick={() => mutation.mutate({ id: active.id, action: 'approve' })}
+                        className={
+                          voiceGate(active) === 'passed'
+                            ? 'gap-1.5 bg-success font-semibold text-success-foreground hover:bg-success/90'
+                            : 'gap-1.5 bg-action font-semibold text-white hover:bg-action/90'
+                        }
+                      >
+                        <Check className="h-4 w-4" />{' '}
+                        {voiceGate(active) === 'passed'
+                          ? active.movebetterco_slug
+                            ? 'Approve — replace the live page'
+                            : 'Looks right — approve'
+                          : active.movebetterco_slug
+                            ? 'Publish anyway — replace the live page'
+                            : 'Publish anyway'}
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
