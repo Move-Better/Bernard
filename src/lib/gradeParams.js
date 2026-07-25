@@ -82,11 +82,21 @@ export function gradeToCanvasFilter(params) {
   const brightness = (1 + p.exposure * K.exposure).toFixed(3)
   const contrast = (1 + p.contrast * K.contrast).toFixed(3)
   const saturate = Math.max(0, 1 + p.saturation * K.satMul).toFixed(3)
-  // warmth → sepia for warm; for COOL (negative) a sepia + hue-rotate to blue so
-  // the preview actually cools instead of staying neutral (closer to the Sharp
-  // bake's per-channel cool). Still a proxy; the bake remains the source of truth.
-  let tone = ''
-  if (p.warmth > 0) tone = ` sepia(${(p.warmth * 0.003).toFixed(3)})`
-  else if (p.warmth < 0) tone = ` sepia(${(-p.warmth * 0.0026).toFixed(3)}) hue-rotate(185deg)`
+  // warmth → sepia for WARM only.
+  //
+  // Cool used to emit `sepia(x) hue-rotate(185deg)`. The sepia scaled with the
+  // grade but the hue-rotate did NOT — it was a flat 185° at every negative
+  // warmth. sepia(0.042) leaves the image 96% intact, so the rotation dominated
+  // and spun every hue half a turn: skin landed on cyan. That shipped on the two
+  // stock vibes with negative warmth ("Bright & clean" -16, "Editorial" -6), and
+  // this function is not preview-only — overlayTemplates.js uses it as the
+  // carousel slide BAKE, so cool-graded photos were being published hue-spun.
+  //
+  // There is no CSS/canvas filter primitive for the server's actual cool, which
+  // is a per-channel gain (gradeToSharp: R×(1+w·K), B×(1−w·K)) — hue-rotate
+  // rotates all hues rather than biasing channels, so it cannot approximate it
+  // at any strength. Emitting nothing under-represents cool; emitting a rotation
+  // actively destroys the image. The bake is authoritative for cool.
+  const tone = p.warmth > 0 ? ` sepia(${(p.warmth * 0.003).toFixed(3)})` : ''
   return `brightness(${brightness}) contrast(${contrast}) saturate(${saturate})${tone}`
 }
