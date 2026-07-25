@@ -38,7 +38,7 @@ function sb(path, init = {}) {
   })
 }
 
-export async function saveBroll({ ws, renders, staffId, notes, parentAssetId, awaitThumbnails = false }) {
+export async function saveBroll({ ws, renders, staffId, notes, parentAssetId, awaitThumbnails = false, variantLabel = null }) {
   const assetRows = renders.map((r) => {
     const isVideo = String(r.blobUrl || '').toLowerCase().endsWith('.mp4')
     const kind = isVideo ? 'video' : 'photo'
@@ -65,6 +65,9 @@ export async function saveBroll({ ws, renders, staffId, notes, parentAssetId, aw
       // Renders are already processed mp4s — skip Mux re-transcode.
       transcode_status: kind === 'video' ? 'skipped' : null,
       notes:            notes || null,
+      // Which render preset produced this. Callers that don't rotate looks pass
+      // nothing and the column stays null, exactly as before.
+      variant_label:    variantLabel || null,
     }
   })
 

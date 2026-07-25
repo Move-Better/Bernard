@@ -15,8 +15,7 @@ function svgEscape(s) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-function wrapLines(text, maxCharsPerLine, maxLines = 3) {
-  const words = String(text || '').trim().split(/\s+/).filter(Boolean)
+function greedyWrap(words, maxCharsPerLine, maxLines) {
   const lines = []
   let cur = ''
   for (const w of words) {
@@ -25,7 +24,30 @@ function wrapLines(text, maxCharsPerLine, maxLines = 3) {
     else { if (cur) lines.push(cur); cur = w; if (lines.length >= maxLines) break }
   }
   if (cur && lines.length < maxLines) lines.push(cur)
-  return lines.length ? lines : ['']
+  return lines
+}
+
+/**
+ * Wrap to at most maxLines, avoiding an orphaned final word.
+ *
+ * Greedy wrapping packs each line to the limit, so a headline one character over
+ * the budget drops its last word alone onto line two — "Your tendons do most of
+ * the / work". Once the line COUNT is known, re-wrapping to an even target width
+ * gives the same number of lines with the break in a sensible place, at no cost
+ * when the text already fits on one line.
+ */
+function wrapLines(text, maxCharsPerLine, maxLines = 3) {
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean)
+  if (!words.length) return ['']
+  const lines = greedyWrap(words, maxCharsPerLine, maxLines)
+  if (lines.length < 2) return lines.length ? lines : ['']
+
+  const longestWord = words.reduce((m, w) => Math.max(m, w.length), 0)
+  const total = words.join(' ').length
+  const target = Math.max(longestWord, Math.ceil(total / lines.length))
+  const balanced = greedyWrap(words, target, maxLines)
+  // Only accept the rebalance if it didn't cost a line (or drop content).
+  return balanced.length === lines.length ? balanced : lines
 }
 
 const clamp01 = (v, dflt = 0.5) => {
@@ -225,7 +247,10 @@ export function buildOverlaySvg({ width, height, overlay, accentColor = '#0C7580
     )
   }
 
-  const maxChars = Math.max(8, Math.round((width * 0.84) / (fs * 0.55)))
+  // 0.5em average glyph width, matching hook_card. At 0.55 a headline that fits
+  // the available width was still pushed onto a second line, orphaning its last
+  // word — visible on the `title` role in the editorial preset.
+  const maxChars = Math.max(8, Math.round((width * 0.84) / (fs * 0.5)))
   const lines = wrapLines(o.text, maxChars, 3)
   const lineH = Math.round(fs * 1.18)
   const blockH = lines.length * lineH

@@ -123,7 +123,11 @@ function entrancePrefix(anim) {
 const CAPTION_STYLES = {
   bold:        { border: 1, underline: 0,  outline: 'black',  outlineMul: 1,   back: '&H64000000' },
   word_box:    { border: 3, underline: 0,  outline: 'black',  outlineMul: 0.6, back: '&HA0000000' },
-  accent_fill: { border: 3, underline: 0,  outline: 'black',  outlineMul: 0.4, back: 'accent', whiteText: true },
+  // With BorderStyle=3 libass fills the box from OutlineColour, NOT BackColour.
+  // This style set outline:'black' + back:'accent' and so rendered a BLACK box —
+  // the one thing its name promises it does not do. The accent belongs on the
+  // outline for a boxed style.
+  accent_fill: { border: 3, underline: 0,  outline: 'accent', outlineMul: 0.4, back: 'accent', whiteText: true },
   glow:        { border: 1, underline: 0,  outline: 'accent', outlineMul: 1.9, back: '&H50000000' },
   underline:   { border: 1, underline: -1, outline: 'black',  outlineMul: 1,   back: '&H64000000' },
   pop:         { border: 1, underline: 0,  outline: 'black',  outlineMul: 1,   back: '&H64000000', anim: 'pop' },

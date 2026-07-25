@@ -8,6 +8,7 @@ import {
 } from '../../api/_lib/headlineGen.js'
 import { normalizeOverlays, buildOverlaySvg } from '../../api/_lib/videoOverlays.js'
 import { buildBrandOverlaySvg } from '../../api/_lib/brandRender.js'
+import { REEL_PRESETS, REEL_PRESET_IDS, pickReelPreset } from '../../api/_lib/reelPresets.js'
 
 // The real hooks from the five reels that were drafted and never published.
 // Each is 149-219 chars against a band that fits ~102, so each shipped
@@ -139,6 +140,68 @@ describe('hook_card overlay', () => {
     const svg = buildOverlaySvg({ width: 1080, height: 1920, overlay: card()[0] }).toString()
     expect(svg).toContain('text-anchor="start"')
     expect(svg).not.toContain('text-anchor="middle"')
+  })
+})
+
+describe('wrapping — no orphaned final word', () => {
+  const linesOf = (role, text) => {
+    const svg = buildOverlaySvg({
+      width: 1080, height: 1920,
+      overlay: { role, text, x: 0.5, y: 0.2, size: 1, color: '#FFFFFF' },
+      brandColor: '#E36525',
+    }).toString()
+    return [...svg.matchAll(/>([^<]+)<\/text>/g)].map((m) => m[1])
+  }
+
+  it('balances a two-line title instead of stranding one word', () => {
+    // Greedy wrapping packed line one to the limit and dropped "work" alone.
+    const lines = linesOf('title', 'Your tendons do most of the work')
+    expect(lines).toHaveLength(2)
+    expect(lines[1].split(/\s+/).length).toBeGreaterThan(1)
+  })
+
+  it('balances a longer headline too', () => {
+    const lines = linesOf('title', 'The same reward loop that works in your nervous system')
+    expect(lines.every((l) => l.split(/\s+/).length > 1)).toBe(true)
+  })
+
+  it('does not split text that fits on one line', () => {
+    expect(linesOf('hook_card', 'Your tendons do most of the work')).toHaveLength(1)
+  })
+
+  it('never loses words when rebalancing', () => {
+    const text = 'The same reward loop that works in your nervous system'
+    expect(linesOf('title', text).join(' ')).toBe(text)
+  })
+})
+
+describe('reel presets', () => {
+  it('every preset names a caption position, style and size the renderer knows', () => {
+    for (const id of REEL_PRESET_IDS) {
+      const p = REEL_PRESETS[id]
+      expect(['top', 'center', 'bottom']).toContain(p.captionPosition)
+      expect(['small', 'medium', 'large']).toContain(p.captionSize)
+      expect(['bold', 'word_box', 'accent_fill', 'glow', 'underline', 'pop']).toContain(p.captionStyle)
+      if (p.headlineRole) expect(['title', 'hook_card', 'callout', 'lower_third']).toContain(p.headlineRole)
+    }
+  })
+
+  it('rotates deterministically — same segment always gets the same look', () => {
+    expect(pickReelPreset('seg-abc').id).toBe(pickReelPreset('seg-abc').id)
+  })
+
+  it('spreads across the library rather than favouring one', () => {
+    const seen = new Set()
+    for (let i = 0; i < 200; i++) seen.add(pickReelPreset(`segment-${i}`).id)
+    expect(seen.size).toBe(REEL_PRESET_IDS.length)
+  })
+
+  it('lets a workspace pin a preset, overriding rotation', () => {
+    expect(pickReelPreset('seg-abc', 'kinetic').id).toBe('kinetic')
+  })
+
+  it('falls back to rotation for an unknown pinned value', () => {
+    expect(REEL_PRESET_IDS).toContain(pickReelPreset('seg-abc', 'not-a-preset').id)
   })
 })
 

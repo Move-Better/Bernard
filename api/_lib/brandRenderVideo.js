@@ -492,7 +492,11 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
         height: spec.height,
         captionPos: effectiveCaptionPos,
         accentColor: captionAccentColor,
-        fontSizePx: Math.round(Math.min(spec.width, spec.height) * 0.05 * ((workspace?.brand_style?.subtitle_font_size ?? 10) / 10)),
+        // captionSizeScale applies HERE too, not just to the brand band. It used
+        // to feed only buildBrandOverlaySvg, so `overlaySize` was inert for
+        // karaoke captions — a caller asking for 'large' got medium and nothing
+        // reported the request had been dropped.
+        fontSizePx: Math.round(Math.min(spec.width, spec.height) * 0.05 * captionSizeScale * ((workspace?.brand_style?.subtitle_font_size ?? 10) / 10)),
         fontName: workspace?.brand_style?.heading_font || 'Inter',
         anim: ['pop', 'fade'].includes(captionAnim) ? captionAnim : 'none',
         style: captionStyle,
@@ -516,6 +520,10 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
       fontBuffer,
       captionOpacity,
       captionSizeScale,
+      // Video never gets the attribution bar — see buildBrandOverlaySvg. It sits
+      // under Instagram's own UI and duplicates the account name IG already
+      // shows. Photos keep it: there, nothing else identifies who is in frame.
+      lowerThird: false,
     })
     const overlayPng = await sharp(overlaySvg).png().toBuffer()
     await writeFileP(tmpOverlay, overlayPng)
