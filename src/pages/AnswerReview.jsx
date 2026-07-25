@@ -128,7 +128,7 @@ function VoiceCheckChip({ answer }) {
 // never the destructive red of a real hold, and it says so in as many words. The
 // clinician's way out is one click that re-runs the check, not a re-read of an
 // answer that was never actually scored.
-function UnscoredBanner({ onRecheck, busy }) {
+function UnscoredBanner() {
   return (
     <div className="nx-alert nx-alert-info mt-4 items-start">
       <span className="nx-alert-chip nx-alert-chip-info">
@@ -143,18 +143,10 @@ function UnscoredBanner({ onRecheck, busy }) {
           scored. Your writing hasn&rsquo;t been judged, and nothing was published.
         </p>
         <p className="mt-2 text-2xs text-muted-foreground">
-          Press <span className="font-semibold text-foreground">Re-check voice</span>. If it fails
-          twice in a row that&rsquo;s a bug on our side, not a problem with your draft — tell us.
+          Press <span className="font-semibold text-foreground">Re-check voice</span> below. If it
+          fails twice in a row that&rsquo;s a bug on our side, not a problem with your draft — tell
+          us. You can also publish as-is without waiting for a score.
         </p>
-        <Button
-          type="button"
-          size="sm"
-          loading={busy}
-          onClick={onRecheck}
-          className="mt-2.5 gap-1.5 font-semibold"
-        >
-          <RotateCcw className="h-3.5 w-3.5" /> Re-check voice
-        </Button>
       </div>
     </div>
   )
@@ -578,34 +570,30 @@ export default function AnswerReview() {
                 ) : (
                   <>
                     {voiceGate(active) === 'held' && <AdvisoryBanner answer={active} />}
-                    {voiceGate(active) === 'unscored' && (
-                      <UnscoredBanner
-                        busy={busy}
-                        onRecheck={() => mutation.mutate({ id: active.id, action: 'recheck' })}
-                      />
-                    )}
+                    {voiceGate(active) === 'unscored' && <UnscoredBanner />}
                     <div className="mt-4 flex flex-wrap gap-2">
                       {/* The voice check never blocks (Q, 2026-07-25) — Approve is always
-                          live. Below the bar it just stops wearing "everything's fine"
-                          green, so a flagged publish is a deliberate act, not a reflex. */}
+                          live. ONLY a real flag ('held') dresses it as "Publish anyway";
+                          a never-scored answer has had nothing flagged against it, so
+                          calling it an override would be a lie about what we know. */}
                       <Button
                         type="button"
                         loading={busy}
                         onClick={() => mutation.mutate({ id: active.id, action: 'approve' })}
                         className={
-                          voiceGate(active) === 'passed'
-                            ? 'gap-1.5 bg-success font-semibold text-success-foreground hover:bg-success/90'
-                            : 'gap-1.5 bg-action font-semibold text-white hover:bg-action/90'
+                          voiceGate(active) === 'held'
+                            ? 'gap-1.5 bg-action font-semibold text-white hover:bg-action/90'
+                            : 'gap-1.5 bg-success font-semibold text-success-foreground hover:bg-success/90'
                         }
                       >
                         <Check className="h-4 w-4" />{' '}
-                        {voiceGate(active) === 'passed'
+                        {voiceGate(active) === 'held'
                           ? active.movebetterco_slug
-                            ? 'Approve — replace the live page'
-                            : 'Looks right — approve'
-                          : active.movebetterco_slug
                             ? 'Publish anyway — replace the live page'
-                            : 'Publish anyway'}
+                            : 'Publish anyway'
+                          : active.movebetterco_slug
+                            ? 'Approve — replace the live page'
+                            : 'Looks right — approve'}
                       </Button>
                       <Button
                         type="button"
@@ -614,6 +602,21 @@ export default function AnswerReview() {
                         className="gap-1.5 font-semibold"
                       >
                         <Pencil className="h-4 w-4" /> Edit inline
+                      </Button>
+                      {/* Re-check belongs on EVERY answer, not just the one whose check
+                          failed. Scores go stale whenever the rubric changes, and most
+                          answers reach this screen never scored at all — without this the
+                          only ways to get a score were to edit the text or to publish. */}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        loading={busy}
+                        onClick={() => mutation.mutate({ id: active.id, action: 'recheck' })}
+                        className="gap-1.5 font-semibold"
+                        title="Re-run the voice check on the text as it stands — never publishes"
+                      >
+                        <ShieldCheck className="h-4 w-4" />{' '}
+                        {voiceGate(active) ? 'Re-check voice' : 'Check voice'}
                       </Button>
                       <Button
                         type="button"
