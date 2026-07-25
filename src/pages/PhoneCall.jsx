@@ -153,6 +153,25 @@ export default function PhoneCall() {
   const lastSpeechDurMsRef = useRef(0)
   const greetedRef         = useRef(false) // true once Bernard's first turn finished
   const responseInFlightRef = useRef(false) // true between response.created and response.done
+  // Per-turn speech windows (migration 188), persisted to interviews.turn_timings.
+  //
+  // `messages` records WHAT was said and in what order but carries no timing, so
+  // a separately-recorded video of this session can only be cut at AI-detected
+  // "moments" — never per question. This ref is the missing input: an ordered log
+  // of who was making sound and when, in epoch ms. Combined with
+  // video_offset_seconds (migration 114, seconds into the recording where speech
+  // begins), a turn maps onto the video timeline as:
+  //   videoTime = video_offset_seconds + (window.startedAt - firstWindow.startedAt) / 1000
+  //
+  // Kept deliberately separate from the turn array rather than threaded through
+  // the append/upsert helpers: those objects go to the model verbatim (see the
+  // persist comment below), and a window log doesn't need to know about turn
+  // merging — it only records audio activity, which is what a clip cutter wants.
+  const speechWindowsRef = useRef(/** @type {{role:'user'|'assistant',startedAt:number,endedAt:number}[]} */ ([]))
+  // Start of Bernard's current spoken response — set on response.created, closed
+  // out on output_audio_buffer.stopped (the event that means his audio actually
+  // finished playing, not just that token generation ended).
+  const assistantSpokeAtRef = useRef(/** @type {number | null} */ (null))
   // Session start timestamp for the daily-cap accounting. Set when the
   // peer connection moves to 'connected', read on hangUp to PATCH
   // realtime_voice_seconds. durationPersistedRef guards against
@@ -315,7 +334,13 @@ export default function PhoneCall() {
       // Tag capture_mode separately — createInterview's signature doesn't
       // accept it (designed before the multi-lane Capture Picker existed).
       // A PATCH right after creation is the same shape voice-memo uses.
-      await updateInterview(interview.id, { capture_mode: 'realtime_voice' })
+      //
+      // The key is captureMode, NOT capture_mode: db/interviews.js PATCH is a
+      // strict per-field allowlist keyed on camelCase body fields. This call
+      // sent snake_case and so was silently dropped on every browser voice
+      // interview ever run — prod had exactly one capture_mode='realtime_voice'
+      // row, and it came from producer/outbound-call.js writing server-side.
+      await updateInterview(interview.id, { captureMode: 'realtime_voice' })
       interviewIdRef.current = interview.id
       posthogCapture('capture_started', { topic: topic.trim(), capture_mode: 'realtime_voice' })
 
@@ -718,7 +743,15 @@ export default function PhoneCall() {
     }
     if (evt.type === 'input_audio_buffer.speech_stopped') {
       const startedAt = speechStartedAtRef.current
-      lastSpeechDurMsRef.current = startedAt ? Date.now() - startedAt : 0
+      const stoppedAt = Date.now()
+      lastSpeechDurMsRef.current = startedAt ? stoppedAt - startedAt : 0
+      // Record the window for video alignment, gated on the SAME 500ms floor the
+      // transcript path applies below. Recording sub-500ms blips would put
+      // windows in turn_timings that have no corresponding entry in `messages`
+      // (the blip is suppressed there), so the two would drift out of step.
+      if (startedAt && lastSpeechDurMsRef.current >= 500) {
+        speechWindowsRef.current.push({ role: 'user', startedAt, endedAt: stoppedAt })
+      }
       speechStartedAtRef.current = null
       return
     }
@@ -811,6 +844,9 @@ export default function PhoneCall() {
     if (evt.type === 'response.created') {
       responseInFlightRef.current = true
       greetedRef.current = true
+      // Open Bernard's speech window. Closed on output_audio_buffer.stopped
+      // rather than response.done — see that handler for why those differ.
+      assistantSpokeAtRef.current = Date.now()
       // Pause Web Speech while Bernard is speaking. Web Speech runs its own
       // audio capture session that doesn't see WebRTC's echo cancellation,
       // so without this it transcribes Bernard's own voice (coming out of
@@ -839,6 +875,16 @@ export default function PhoneCall() {
     // Audio playback actually finished — now it's safe to restart SR. This
     // is the correct restart trigger, not response.done.
     if (evt.type === 'output_audio_buffer.stopped') {
+      // Close Bernard's speech window. This event (not response.done) is when
+      // his audio actually stopped coming out of the speaker, so it is also the
+      // honest end of the question as heard in the room — and therefore on any
+      // video recording it. No minimum-duration gate here: unlike user VAD,
+      // every response.created corresponds to a real spoken turn.
+      const spokeAt = assistantSpokeAtRef.current
+      if (spokeAt) {
+        speechWindowsRef.current.push({ role: 'assistant', startedAt: spokeAt, endedAt: Date.now() })
+        assistantSpokeAtRef.current = null
+      }
       srPausedRef.current = false
       const r = recognitionRef.current
       if (r) {
@@ -876,7 +922,15 @@ export default function PhoneCall() {
       // request doesn't lose turns — InterviewSession's restore (same key) recovers
       // them on the next open of this interview.
       saveLocalMessages(interviewIdRef.current, snapshot)
-      updateInterview(interviewIdRef.current, { messages: snapshot }).catch((err) => {
+      // turnTimings rides along with every messages snapshot so the two are
+      // written from the same tick and can never disagree about how far the
+      // conversation got. Note the map above deliberately reduces each turn to
+      // { role, content } — api/stream.js forwards `messages` verbatim into
+      // streamText(), so timings could not live there even if we wanted them to.
+      updateInterview(interviewIdRef.current, {
+        messages: snapshot,
+        turnTimings: speechWindowsRef.current,
+      }).catch((err) => {
         console.warn('[phone-call] persist failed', err?.status, err?.message)
       })
     }, 1500)
@@ -898,6 +952,7 @@ export default function PhoneCall() {
     try {
       await updateInterview(interviewIdRef.current, {
         messages: snapshot,
+        turnTimings: speechWindowsRef.current,
         // Don't set status='completed' here — InterviewSession's auto-gen
         // effect keys off the COMPLETE_TOKEN in the last assistant message
         // and handles status itself once the blog post is generated. Setting
@@ -1045,7 +1100,10 @@ export default function PhoneCall() {
     if (startedAt && ivId && !durationPersistedRef.current) {
       durationPersistedRef.current = true
       const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000))
-      updateInterview(ivId, { realtime_voice_seconds: seconds }).catch((err) => {
+      // camelCase for the same reason as captureMode above — this PATCH was
+      // silently dropped, which is why realtime_voice_seconds was null on all
+      // 29 interviews in prod despite this line running on every hangUp.
+      updateInterview(ivId, { realtimeVoiceSeconds: seconds }).catch((err) => {
         console.warn('[phone-call] duration persist failed', err?.status, err?.message)
       })
     }
@@ -1098,7 +1156,10 @@ export default function PhoneCall() {
 
     if (snapshot.length) saveLocalMessages(interviewIdRef.current, snapshot) // mirror token-appended snapshot
     const persistP = snapshot.length
-      ? updateInterview(interviewIdRef.current, { messages: snapshot }).catch(() => {})
+      ? updateInterview(interviewIdRef.current, {
+          messages: snapshot,
+          turnTimings: speechWindowsRef.current,
+        }).catch(() => {})
       : Promise.resolve()
     persistP.finally(() => {
       hangUp()

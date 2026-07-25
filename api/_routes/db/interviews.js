@@ -25,6 +25,42 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const VALID_INTERVIEW_STATUSES = new Set(['in_progress', 'completed', 'abandoned'])
+// Mirrors the live interviews_capture_mode_check constraint exactly (read from
+// prod, not reconstructed from migration history — 067/068/069 each widened it).
+// A value outside this set would 400 at the DB with an opaque error instead of
+// a named one.
+const VALID_CAPTURE_MODES = new Set([
+  'interview', 'voice_memo', 'seminar', 'text_import', 'realtime_voice', 'patient_handout',
+])
+// A 45-minute interview runs ~100 speech windows; 2000 is a generous ceiling
+// that still bounds the jsonb payload a client can push into the column.
+const MAX_TURN_TIMINGS = 2000
+
+/**
+ * Sanitize client-supplied speech windows before they land in the
+ * interviews.turn_timings jsonb column (migration 188).
+ *
+ * Exported for tests: this is the one place untrusted JSON becomes stored
+ * structure, and the downstream consumer (mapping a turn onto a separately
+ * recorded video timeline) does arithmetic on startedAt/endedAt, so a NaN or a
+ * reversed window would propagate silently into a bad clip cut rather than
+ * erroring anywhere visible.
+ *
+ * @param {unknown[]} windows
+ * @returns {{role:'user'|'assistant',startedAt:number,endedAt:number}[]}
+ */
+export function sanitizeTurnTimings(windows) {
+  if (!Array.isArray(windows)) return []
+  return windows
+    .slice(0, MAX_TURN_TIMINGS)
+    .filter((w) => w && (w.role === 'user' || w.role === 'assistant'))
+    .map((w) => ({
+      role: w.role,
+      startedAt: Number(w.startedAt),
+      endedAt: Number(w.endedAt),
+    }))
+    .filter((w) => Number.isFinite(w.startedAt) && Number.isFinite(w.endedAt) && w.endedAt >= w.startedAt)
+}
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -275,6 +311,34 @@ export default async function handler(req, res) {
     // session_state: null clears it (interview complete); object saves it
     if ('session_state' in body) patch.session_state = body.session_state ?? null
     if ('paused_at' in body) patch.paused_at = body.paused_at ?? null
+    // captureMode / realtimeVoiceSeconds — PhoneCall.jsx has always PATCHed
+    // these two (a separate call right after createInterview, plus the duration
+    // on hangUp), but neither had a branch here, so this allowlist silently
+    // dropped both. Confirmed against prod before adding: realtime_voice_seconds
+    // was null on all 29 interviews, and the single capture_mode='realtime_voice'
+    // row came from producer/outbound-call.js, which writes server-side with the
+    // service key and never passes through here. Without capture_mode there is
+    // no way to tell a browser voice interview from a typed one — which is
+    // exactly the distinction the video-alignment work below depends on.
+    if (body.captureMode !== undefined) {
+      if (!VALID_CAPTURE_MODES.has(body.captureMode)) return err(res, 'invalid_capture_mode')
+      patch.capture_mode = body.captureMode
+    }
+    if (body.realtimeVoiceSeconds !== undefined) {
+      const secs = Number(body.realtimeVoiceSeconds)
+      if (!Number.isFinite(secs) || secs < 0) return err(res, 'invalid_realtime_voice_seconds')
+      patch.realtime_voice_seconds = Math.round(secs)
+    }
+    // turnTimings — ordered speech windows for a realtime voice interview
+    // (migration 188). Deliberately NOT stored on `messages`: api/stream.js
+    // forwards that array straight into streamText({ messages }), so extra keys
+    // on those objects would reach the model as unknown message properties.
+    // Sanitized rather than trusted: this is client-supplied JSON landing in a
+    // jsonb column, so cap the length and drop anything malformed.
+    if (body.turnTimings !== undefined) {
+      if (!Array.isArray(body.turnTimings)) return err(res, 'invalid_turn_timings')
+      patch.turn_timings = sanitizeTurnTimings(body.turnTimings)
+    }
 
     const r = await sb(`interviews?id=eq.${id}&${wsFilter}`, {
       method: 'PATCH',
