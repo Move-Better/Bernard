@@ -52,7 +52,13 @@ const PATCHABLE_FIELDS = new Set([
   'engagement_digest_recipients',
   'publish_intent',
   'social_length_lean',
+  'reel_preset',
 ])
+
+// Reel looks the factory can render — mirrors REEL_PRESET_IDS in
+// api/_lib/reelPresets.js and the CHECK constraint added in migration 189.
+// null means "rotate across all of them", which is the default.
+const REEL_PRESETS = new Set(['captions_only', 'hook_card', 'kinetic', 'editorial'])
 
 // Platforms recognized in schedule_prefs. Mirrors PLATFORM_SCHEDULE_PREFS in
 // src/lib/scheduleHeuristics.js. Unknown platforms are silently dropped.
@@ -679,6 +685,17 @@ async function handler(req, res) {
         const cleaned = sanitizePatientContext(value)
         if (cleaned === null) return res.status(400).json({ error: 'invalid-patient-context' })
         patch.patient_context = cleaned
+        continue
+      }
+      if (key === 'reel_preset') {
+        // null / '' clears the pin and resumes rotation. Validated here as well
+        // as by the CHECK constraint so an unknown id gets a clear 400 rather
+        // than a generic db_error from Postgres.
+        if (value === null || value === '') { patch.reel_preset = null; continue }
+        if (typeof value !== 'string' || !REEL_PRESETS.has(value)) {
+          return res.status(400).json({ error: 'invalid-reel-preset' })
+        }
+        patch.reel_preset = value
         continue
       }
       if (key === 'interview_context') {

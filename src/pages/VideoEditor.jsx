@@ -63,6 +63,13 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const HEX6_RE = /^#[0-9a-fA-F]{6}$/
 const OVERLAY_ROLES = [['title', 'Title'], ['lower_third', 'Caption bar'], ['callout', 'Callout']]
 const ROLE_FS = { title: 0.044, lower_third: 0.030, callout: 0.034 }
+// Caption preview sizing — client mirror of CAPTION_BASE_FS (0.068) and
+// OVERLAY_SIZE_SCALE in api/_lib/brandRenderVideo.js, expressed in cqw (percent
+// of the video frame's width) so the preview and the bake agree.
+// KEEP IN SYNC — a Size control that previews one size and exports another is
+// worse than no control, because it teaches the user the wrong thing.
+const CAPTION_BASE_FS_PCT = 6.8
+const CAPTION_SIZE_SCALE = { small: 0.75, medium: 1.0, large: 1.35 }
 const CAPTION_STYLE_OPTS = [
   { id: 'bold', label: 'Bold' },
   { id: 'word_box', label: 'Word box' },
@@ -164,7 +171,10 @@ function Canvas({ ctx }) {
       <div className="relative h-full max-h-full" style={{ aspectRatio: ctx.formatCss }}>
         <div
           className={`group relative h-full w-full cursor-pointer overflow-hidden rounded-2xl bg-black ${clipSelRing ? 'ring-2 ring-offset-2' : ''}`}
-          style={clipSelRing ? { boxShadow: '0 0 0 2px hsl(var(--primary))' } : undefined}
+          // containerType makes cqw units resolve against THIS box — the video
+          // frame — so the caption preview can be sized the same way the bake
+          // sizes it (a fraction of frame width) instead of against the viewport.
+          style={{ containerType: 'inline-size', ...(clipSelRing ? { boxShadow: '0 0 0 2px hsl(var(--primary))' } : null) }}
           onClick={togglePlay}
         >
           {asset?.blob_url ? (
@@ -188,7 +198,13 @@ function Canvas({ ctx }) {
                 maxWidth: '86%',
                 top: caption.position === 'top' ? '11%' : caption.position === 'center' ? '46%' : 'auto',
                 bottom: caption.position === 'bottom' ? '15%' : 'auto',
-                fontSize: `clamp(14px, ${caption.size === 'large' ? 4.6 : caption.size === 'small' ? 3.0 : 3.8}vh, 40px)`,
+                // Sized off the FRAME (cqw), matching the bake's
+                // CAPTION_BASE_FS × OVERLAY_SIZE_SCALE in brandRenderVideo.js.
+                // It used to be `clamp(14px, N vh, 40px)` — viewport-relative
+                // with a hard ceiling — so on a tall display Medium and Large
+                // previewed IDENTICALLY while baking 1.0× vs 1.35×. The control
+                // appeared to do nothing and then changed the export.
+                fontSize: `${(CAPTION_BASE_FS_PCT * (CAPTION_SIZE_SCALE[caption.size] ?? 1)).toFixed(2)}cqw`,
                 color: '#fff', textShadow: '0 2px 10px rgba(0,0,0,.6)',
                 outline: sel === 'caption' ? '1.5px dashed #fff' : 'none', outlineOffset: '4px',
               }}

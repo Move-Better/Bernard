@@ -70,6 +70,7 @@
     "updated_at",
     "voice_audit",
     "voice_fidelity_score",
+    "voice_rechecked_at",
     "workspace_id"
   ],
   "app_config": [
@@ -940,6 +941,7 @@
     "rag_hot_tier_enabled",
     "realtime_voice_daily_cap_min",
     "realtime_voice_enabled",
+    "reel_preset",
     "region",
     "region_short",
     "role_templates",

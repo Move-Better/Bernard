@@ -66,7 +66,10 @@ export const REEL_PRESETS = {
     headlineRole: 'title',
     captionPosition: 'bottom',
     captionStyle: 'bold',
-    captionSize: 'small',
+    // 'medium', not 'small'. Small is 0.75x the base — legible on a desktop
+    // preview and too small on the phone these are actually watched on. It reads
+    // as restrained in a mockup and as an accident in the feed.
+    captionSize: 'medium',
     headlineY: 0.20,
   },
 }
