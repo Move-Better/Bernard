@@ -1481,34 +1481,10 @@ export function useDeletePhotoTemplate() {
   })
 }
 
-// "From your brand": Claude generates N on-brand templates server-side and saves
-// them as editable custom templates. Returns { templates, count }.
-export function useGenerateBrandTemplates() {
-  const qc = useQueryClient()
-  return useAppMutation({
-    errorMessage: "Couldn't generate templates",
-    mutationFn: (body = {}) => apiFetch('/api/photo-templates/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.carouselThemes.all }),
-  })
-}
-
-// "Design with AI": conversational template designer. Each turn sends the
-// conversation + current draft config; returns { name, config, reply, summary }.
-// Does NOT persist — the client saves the draft via useCreatePhotoTemplate when
-// the user clicks "Save as template".
-export function useDesignTemplateChat() {
-  return useAppMutation({
-    errorMessage: "Couldn't reach the designer",
-    mutationFn: ({ messages, currentConfig }) =>
-      apiFetch('/api/photo-templates/chat', {
-        method: 'POST',
-        // Content-Type is required or Vercel's Node runtime leaves req.body empty
-        // (apiFetch does not auto-set it) — the handler needs the parsed messages.
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages, currentConfig: currentConfig ?? null }),
-      }),
-  })
-}
+// Templates are authored in the SlideEditor ("Save this look as a template" in
+// the Theme panel), which saves through useCreatePhotoTemplate above. There is
+// deliberately no prompt-to-config authoring hook here — see .claude/decisions.md
+// 2026-07-25 "Templates are authored in the real editors".
 
 // Back-compat aliases — remove after all callers are updated
 export const useCarouselThemes       = usePhotoTemplates
