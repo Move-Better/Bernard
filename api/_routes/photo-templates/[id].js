@@ -102,7 +102,7 @@ export default async function handler(req, res) {
       { method: 'DELETE', headers: { Prefer: 'return=minimal' } }
     )
     if (!r.ok) return dbErr(res, r, 'Failed to delete template')
-    return res.status(204).end()
+    return ok(res, { deleted: true })
   }
 
   return err(res, 'Method not allowed', 405)
