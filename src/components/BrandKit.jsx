@@ -1026,6 +1026,11 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
         </div>
       )}
 
+      {/* Sits ABOVE Style, not at the bottom of the page. Below the asset
+          library it was past 59 logo tiles — a setting nobody would scroll to
+          and therefore, in practice, a setting that does not exist. */}
+      {!isOnboarding && !mockup && <ReelLookPicker />}
+
       {/* ===== STYLE PANEL ================================================== */}
       {!isOnboarding && (
         <section className="space-y-3">
@@ -1135,7 +1140,6 @@ export default function BrandKit({ variant = 'settings', mockup = false, onAdvan
         </section>
       )}
 
-      {!isOnboarding && !mockup && <ReelLookPicker />}
       {!isOnboarding && !mockup && <BrandBookReference />}
 
       <AssetDetail
@@ -1358,7 +1362,7 @@ const REEL_LOOKS = [
   { id: 'hook_card', label: 'Hook card', hint: 'Short headline in an inset card, gone after ~2.5s.' },
   { id: 'captions_only', label: 'Captions only', hint: 'No headline. Just spoken words, lower third.' },
   { id: 'kinetic', label: 'Kinetic', hint: 'Big centred captions in a filled brand-colour box.' },
-  { id: 'editorial', label: 'Editorial', hint: 'Headline set straight on the frame, smaller captions.' },
+  { id: 'editorial', label: 'Editorial', hint: 'Headline set straight on the frame, no card behind it.' },
 ]
 
 function ReelLookPicker() {
