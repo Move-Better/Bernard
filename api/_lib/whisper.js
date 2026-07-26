@@ -22,6 +22,64 @@ function apiKey() {
   return key
 }
 
+// ---------------------------------------------------------------------------
+// Hallucination filter
+//
+// Whisper is trained on a lot of YouTube, and on silent or near-silent audio it
+// does not return nothing — it returns the stock outro it heard ten thousand
+// times: "Thank you for watching". That is indistinguishable from a real
+// transcript to every caller, so it gets persisted and burned into a reel as a
+// karaoke caption over footage of someone doing a pull-up.
+//
+// Measured on the 2026-07-25 backfill: 17 of 448 transcripts (3.8%) were this,
+// across exactly four texts, and in EVERY case it was the entire transcript —
+// never a phrase appended to real speech.
+//
+// So the rule is deliberately narrow: the WHOLE transcript must be filler. A
+// 500-word interview that happens to end with "thanks for watching" is real
+// speech and is left alone. That asymmetry matters — a false positive here
+// silently deletes a genuine transcript, which is far worse than letting one
+// hallucination through. tests/lib/whisperHallucination.test.js pins both
+// directions, including short real speech that CONTAINS the phrase.
+const HALLUCINATION_PATTERNS = [
+  /^thank(s| you)?(?: you)? for watching(?: my video| this video| everyone| and see you (?:in )?(?:the )?next (?:video|time)| and see you next time)?$/,
+  /^(?:please )?(?:don'?t forget to )?(?:like(?: and|,)? )?(?:subscribe(?: to (?:my|our) channel)?)$/,
+  /^subtitles?(?: and translation)? by .*$/,
+  /^amara org.*$/,
+  /^(?:you|thank you|thanks|bye|okay)$/,
+]
+
+// Above this, a transcript carries enough real content that a stock phrase
+// cannot plausibly be the whole of it. Belt-and-braces: every pattern is
+// already whole-string anchored, so this only guards future looser edits.
+const HALLUCINATION_MAX_WORDS = 15
+
+/**
+ * True when a transcript is nothing but Whisper's silent-audio filler.
+ *
+ * @param {string} text — the full transcript, in reading order
+ * @returns {boolean}
+ */
+export function isHallucinatedTranscript(text) {
+  const norm = String(text ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s']/g, ' ')   // keep apostrophes so "don't" stays one word
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!norm) return false
+  if (norm.split(' ').length > HALLUCINATION_MAX_WORDS) return false
+  return HALLUCINATION_PATTERNS.some((re) => re.test(norm))
+}
+
+// SRT is index / timestamp / text triplets; pull out just the spoken lines.
+function srtToText(srt) {
+  return String(srt ?? '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !/^\d+$/.test(l) && !l.includes('-->'))
+    .join(' ')
+}
+
 async function whisper(form) {
   const res = await fetch(WHISPER_URL, {
     method:  'POST',
@@ -62,7 +120,13 @@ export async function transcribeToSrt(filePath) {
   form.append('model',           'whisper-1')
   form.append('response_format', 'srt')
   const res = await whisper(form)
-  return res.text()
+  const srt = await res.text()
+  // brandRenderVideo falls back to this path whenever the word pass yields
+  // nothing — including when the word pass was suppressed as a hallucination.
+  // Without the same check here the filler comes straight back as a burned-in
+  // subtitle and the filter buys nothing.
+  if (isHallucinatedTranscript(srtToText(srt))) return ''
+  return srt
 }
 
 /**
@@ -81,9 +145,11 @@ export async function transcribeToSegments(filePath) {
   form.append('timestamp_granularities[]', 'segment')
   const res  = await whisper(form)
   const json = await res.json().catch(() => null)
-  return (json?.segments ?? [])
+  const segments = (json?.segments ?? [])
     .map((s) => ({ start: Number(s.start) || 0, end: Number(s.end) || 0, text: String(s.text || '').trim() }))
     .filter((s) => s.text && s.end > s.start)
+  if (isHallucinatedTranscript(segments.map((s) => s.text).join(' '))) return []
+  return segments
 }
 
 /**
@@ -102,7 +168,7 @@ export async function transcribeToWords(filePath) {
   form.append('timestamp_granularities[]', 'word')
   const res  = await whisper(form)
   const json = await res.json().catch(() => null)
-  return (json?.words ?? [])
+  const words = (json?.words ?? [])
     .map((w) => ({ word: String(w.word || '').trim(), start: Number(w.start) || 0, end: Number(w.end) || 0 }))
     // KEEP zero-duration words (end === start). Whisper quantises word
     // timestamps to its 20ms frame hop, so a fast function word ("to", "the")
@@ -113,6 +179,8 @@ export async function transcribeToWords(filePath) {
     // and burned into captions as "how do how fast". Reject only genuinely
     // invalid geometry (non-finite, or end before start).
     .filter((w) => w.word && Number.isFinite(w.start) && Number.isFinite(w.end) && w.end >= w.start)
+  if (isHallucinatedTranscript(words.map((w) => w.word).join(' '))) return []
+  return words
 }
 
 /**
@@ -149,6 +217,9 @@ export async function transcribeToSegmentsAndWords(filePath) {
     // and burned into captions as "how do how fast". Reject only genuinely
     // invalid geometry (non-finite, or end before start).
     .filter((w) => w.word && Number.isFinite(w.start) && Number.isFinite(w.end) && w.end >= w.start)
+  // Judge on the word stream (the richer of the two) and drop BOTH together, so
+  // a caller can never persist filler segments alongside empty words.
+  if (isHallucinatedTranscript(words.map((w) => w.word).join(' '))) return { segments: [], words: [] }
   return { segments, words }
 }
 
