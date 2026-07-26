@@ -54,6 +54,13 @@
  * Every run writes a timestamped backup of the CURRENT words for each asset it
  * is about to touch, before touching it (--backup-dir, default .backfill-backups/).
  * The old words are otherwise unrecoverable. Restore with --restore=<file>.
+ *
+ * A BACKUP FROM A --fill-empty RUN IS NOT AN UNDO. It records the words as they
+ * were before the run, which in that mode is NULL for every row — so restoring
+ * it would delete exactly what the run produced. runRestore therefore refuses
+ * to shrink a populated row (same principle as the write-side guard below), and
+ * a fill-empty backup will skip every row it contains. That is correct, not a
+ * malfunction.
  * A row is only written when the new transcript has at least as many words as
  * the old one, unless --allow-shrink is passed — a shorter result means the
  * re-transcription went worse, and silently overwriting good data with it is
@@ -189,11 +196,37 @@ async function mapLimit(items, limit, fn) {
 async function runRestore() {
   const rows = JSON.parse(readFileSync(RESTORE_FILE, 'utf8'))
   console.log(`Restoring ${rows.length} assets from ${RESTORE_FILE}\n`)
+
+  // A backup holds the words as they were BEFORE its run. After a --fill-empty
+  // run that is NULL for every row, so restoring the file deletes exactly the
+  // work the run produced — an undo that destroys rather than protects. Guard
+  // on the same principle as the backfill's shrink check: never let a restore
+  // reduce a row's word count unless it is asked for explicitly.
+  const ids = rows.map((r) => r.id)
+  const { rows: live } = await pool.query(
+    `SELECT id, coalesce(jsonb_array_length(transcript_words), 0) AS n
+       FROM media_assets WHERE id = ANY($1::uuid[])`, [ids],
+  )
+  const liveLen = new Map(live.map((r) => [r.id, Number(r.n) || 0]))
+
+  const stats = { restored: 0, skipped: 0 }
   for (const r of rows) {
-    if (DRY_RUN) { console.log(`  [dry] ${r.id} ← ${r.transcript_words?.length ?? 0} words`); continue }
+    const backupLen = r.transcript_words?.length ?? 0
+    const currentLen = liveLen.get(r.id) ?? 0
+    if (backupLen < currentLen && !ALLOW_SHRINK) {
+      stats.skipped++
+      console.log(`  SKIP  ${r.id} — backup has ${backupLen} words but the row now has ${currentLen}; pass --allow-shrink to force`)
+      continue
+    }
+    if (DRY_RUN) { console.log(`  [dry] ${r.id} ← ${backupLen} words`); continue }
     await pool.query('UPDATE media_assets SET transcript_words = $1::jsonb WHERE id = $2::uuid',
       [JSON.stringify(r.transcript_words), r.id])
-    console.log(`  restored ${r.id} ← ${r.transcript_words?.length ?? 0} words`)
+    stats.restored++
+    console.log(`  restored ${r.id} ← ${backupLen} words`)
+  }
+  if (stats.skipped) {
+    console.log(`\n${stats.skipped} row(s) skipped to avoid overwriting a populated transcript with a shorter or empty one.`)
+    console.log(`If this is a --fill-empty backup, that is expected: every row in it is empty, and restoring would undo the backfill.`)
   }
   await pool.end()
 }
@@ -290,12 +323,21 @@ async function runBackfill() {
         return
       }
 
-      // A real transcription of real speech always contains some zero-duration
-      // words (Whisper quantises to a 20ms frame hop). None at all is the
-      // signature of the runs that came back broken, so flag rather than trust.
+      // WEAK HEURISTIC — do not read a warning here as "this transcript is bad".
+      // The original claim ("real speech ALWAYS contains zero-duration words")
+      // was wrong. Measured over 448 real transcripts on 2026-07-25, the share
+      // with NO zero-duration word is entirely length-driven:
+      //   <20 words 67%   20-49 14%   50-149 5%   150+ 0%
+      // Zero-duration words run ~8% of tokens, so a short transcript simply may
+      // not contain one. In the b-roll run 36 rows warned and at most 5 were
+      // genuinely bad (~86% false positive), and every flagged 50-112 word
+      // transcript was verified as real coherent speech.
+      // Useful only as: a LONG transcript with none is worth a look. It is NOT
+      // a hallucination detector — Whisper's silent-audio filler ("Thank you
+      // for watching") is short, which is exactly where this signal is noise.
       if (!zeros) {
         stats.nozero++
-        console.log(`  WARN  ${row.filename} — ${newWords.length} words but ZERO zero-duration; suspect transcript`)
+        console.log(`  WARN  ${row.filename} — ${newWords.length} words but ZERO zero-duration${newWords.length >= 50 ? '; worth a look' : ' (short transcript — usually chance, not a defect)'}`)
       }
 
       if (delta < 0 && !ALLOW_SHRINK) {
@@ -330,7 +372,7 @@ async function runBackfill() {
   console.log(`written ${stats.ok}   grew ${stats.grew}   unchanged ${stats.same}   shorter ${stats.shrank}   skipped ${stats.skipped}   silent ${stats.silent}   failed ${stats.failed}`)
   if (FILL_EMPTY) console.log(`words 0 → ${stats.after}`)
   else console.log(`words ${stats.before} → ${stats.after}   recovered ${stats.recovered} (+${pct}%)`)
-  if (stats.nozero) console.log(`WARN ${stats.nozero} transcript(s) had no zero-duration words — re-check those before trusting them`)
+  if (stats.nozero) console.log(`WARN ${stats.nozero} transcript(s) had no zero-duration words — a weak, length-driven signal (mostly false positives on short clips); only the long ones are worth checking`)
   if (backupPath) console.log(`backup ${backupPath}`)
   await pool.end()
 }
