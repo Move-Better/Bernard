@@ -287,6 +287,7 @@ one has bitten. When changing any of these, change both in the same commit:
 | `karaokeCaptions.js` `CAPTION_STYLES` | `VideoEditor.jsx` `captionCss()` |
 | `brandRender.js` `resolveBrandColors()` | `src/lib/brandSwatches.js` |
 | `api/_lib/videoTemplates.js` | `src/lib/videoTemplateCapture.js` |
+| `api/_lib/captionOverlayDedup.js` `normCaptionText` | `VideoEditor.jsx` `normCaptionText` |
 
 Real failures from this list: the Size control previewing identically for Medium and Large while baking
 1.0× vs 1.35× (`vh` with a 40px clamp vs a frame-relative bake); `glow` previewing an accent halo for a
