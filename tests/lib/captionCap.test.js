@@ -103,3 +103,38 @@ describe('client and server caption ceilings stay in step', () => {
     }
   })
 })
+
+// Every path that generates a caption with its OWN model call and writes it to
+// content_items.content must clamp before persisting. draftAtom.js has done this
+// since #2181, but the two hand-rolled paths beside it (the editor's Regenerate
+// button and the producer's Revise) each re-implement generation and silently
+// missed it — the same divergence that made regenerate.js miss sibling-dedup in
+// #2278. Measured on prod 2026-07-27: 6 machine-written rows over cap, 3 of them
+// written after #2181 shipped, including a 3,015-char LinkedIn draft that Approve
+// refuses. A curated list, not a discovery regex: a regex that stops matching
+// would leave this passing while guarding nothing.
+describe('every self-generating caption path clamps before it persists', () => {
+  const MUST_CLAMP = [
+    'api/_lib/producer/draftAtom.js',
+    'api/_routes/content-items/regenerate.js',
+    'api/_lib/producer/reviseContentItem.js',
+  ]
+
+  it('pins the known set, so the list can never silently empty out', () => {
+    expect(MUST_CLAMP).toContain('api/_routes/content-items/regenerate.js')
+    expect(MUST_CLAMP).toContain('api/_lib/producer/reviseContentItem.js')
+    expect(MUST_CLAMP.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it.each(MUST_CLAMP)('%s calls clampToCap on the generated caption', async (rel) => {
+    const { readFileSync } = await import('node:fs')
+    const { fileURLToPath } = await import('node:url')
+    // fileURLToPath, not .pathname: every project path here contains a space.
+    const src = readFileSync(fileURLToPath(new URL(`../../${rel}`, import.meta.url)), 'utf8')
+    // `clampToCap(` — a real call. `includes('clampToCap')` would be satisfied by
+    // the word appearing in a comment, which is exactly how a guard passes on a
+    // file that no longer does the thing.
+    expect(src, `${rel} does not call clampToCap()`).toMatch(/\bclampToCap\s*\(/)
+    expect(src, `${rel} does not import clampToCap`).toMatch(/import\s*\{[^}]*\bclampToCap\b[^}]*\}/)
+  })
+})

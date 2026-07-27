@@ -28,6 +28,7 @@ import { getContextBlock } from '../../_lib/conceptRetrieval.js'
 import { resolveOwnHistoryBlock, buildRagQuery } from '../../_lib/practiceMemory.js'
 import { loadCurrentTentpole, getTentpolePromptContext } from '../../_lib/tentpoleCampaignContext.js'
 import { resolveSiblingCaptionsBlock } from '../../_lib/producer/draftAtom.js'
+import { clampToCap, platformCap } from '../../_lib/socialLengthTargets.js'
 import { extractProvenanceBlock } from '../../../src/lib/provenance.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -263,7 +264,13 @@ export default async function handler(req, res) {
     // and strip the <PROVENANCE> trailer (per-paragraph source metadata
     // that the prompt asks the model to append — must not reach the editor).
     const [captionRaw, overlayRaw] = extractProvenanceBlock(text.trim()).content.split('---OVERLAY---')
-    newContent = captionRaw.trim()
+    // Same hard guardrail draftAtom.js applies: the length prompt asks the model
+    // to stay under the platform ceiling, but that is a soft instruction it can
+    // overshoot. Without this, a regenerate could write an over-cap caption that
+    // then blocks Approve (checkCaptionCap) with no way forward but hand-editing
+    // — measured live on 2026-07-27: a 3,015-char LinkedIn draft, machine-written
+    // and untouched, sitting over the 3,000 ceiling.
+    newContent = clampToCap(captionRaw.trim(), platformCap(item.platform))
 
     if (overlayRaw) {
       const hookMatch    = overlayRaw.match(/^HOOK:\s*(.+)$/m)
