@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { Type, AlertTriangle } from 'lucide-react'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { CAPTION_LIMITS, PLATFORM_META } from '@/lib/contentMeta'
+import RegenerateCaptionButton, { canRegenerateCaption } from '@/components/editor/RegenerateCaptionButton'
 
 // ── Caption panel (the "Words" rail tool) ─────────────────────────────────────
 // Renders inside the inspector when the Words tool is selected.
@@ -12,12 +13,17 @@ export default function CaptionPanel({ piece, onUseAsHook, updateItem }) {
   const savedRef = useRef(draft)
   const taRef = useRef(null)
 
+  // Re-seed the textarea on piece switch AND when the persisted content changes
+  // underneath us — e.g. Regenerate replaces content in place (same id). The
+  // savedRef guard means unsaved local edits (which differ from savedRef while
+  // the incoming prop still equals it) are never clobbered.
   useEffect(() => {
     const next = typeof piece?.content === 'string' ? piece.content : ''
-    setDraft(next)
-    savedRef.current = next
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [piece?.id])
+    if (next !== savedRef.current) {
+      setDraft(next)
+      savedRef.current = next
+    }
+  }, [piece?.id, piece?.content])
 
   async function handleBlur() {
     if (draft === savedRef.current) return
@@ -89,6 +95,11 @@ export default function CaptionPanel({ piece, onUseAsHook, updateItem }) {
             {limit ? `${draft.length} / ${limit}` : `${draft.length} chars`}
           </span>
         </div>
+        {canRegenerateCaption(piece) && (
+          <div className="shrink-0 border-t pt-3">
+            <RegenerateCaptionButton piece={piece} />
+          </div>
+        )}
       </div>
     </div>
   )

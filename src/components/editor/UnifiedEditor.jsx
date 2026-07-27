@@ -18,6 +18,7 @@ import { useUpdateContentItem, useMediaSuggestions, useInterview, queryKeys } fr
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { resolveGbpLocationIds } from '@/lib/gbpLocations'
 import { BlogStyleSwitcher, BlogGenerationActions } from '@/components/editor/BlogWordsExtras'
+import RegenerateCaptionButton, { canRegenerateCaption } from '@/components/editor/RegenerateCaptionButton'
 import { apiFetch } from '@/lib/api'
 import { clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey, photoSourceUrl, isVideoEntry } from '@/lib/mediaEntry'
 import { resolveArchetype, ARCHETYPES, railFor, mediaTierFor, MEDIA_TIER } from '@/lib/editorArchetype'
@@ -71,12 +72,17 @@ function WordsPanel({ piece, updateItem }) {
   const isEmail = piece?.platform === 'email'
   const { data: interview } = useInterview(isBlog ? piece?.interview_id : null)
 
+  // Re-seed the textarea on piece switch AND when the persisted content changes
+  // underneath us — e.g. Regenerate replaces content in place (same id). The
+  // savedRef guard means unsaved local edits (which differ from savedRef while
+  // the incoming prop still equals it) are never clobbered.
   useEffect(() => {
     const next = typeof piece?.content === 'string' ? piece.content : ''
-    setDraft(next)
-    savedRef.current = next
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [piece?.id])
+    if (next !== savedRef.current) {
+      setDraft(next)
+      savedRef.current = next
+    }
+  }, [piece?.id, piece?.content])
 
   async function handleBlur() {
     if (draft === savedRef.current) return
@@ -114,6 +120,11 @@ function WordsPanel({ piece, updateItem }) {
             : 'Saves when you click away. The live preview updates as you type.'}
         </p>
         {isBlog && <BlogGenerationActions piece={piece} interview={interview} />}
+        {canRegenerateCaption(piece) && (
+          <div className="shrink-0 border-t pt-3">
+            <RegenerateCaptionButton piece={piece} />
+          </div>
+        )}
       </div>
     </div>
   )
