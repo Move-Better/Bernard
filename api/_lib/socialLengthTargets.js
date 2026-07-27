@@ -46,9 +46,21 @@ export const SOCIAL_LENGTH = {
     community:   { lane: 'short',  unit: 'words', lo: 25, hi: 50, frontLoad: true, shape: 'warm and neighborly — a couple of sentences, ends on a question' },
     educational: { lane: 'medium', unit: 'words', lo: 50, hi: 90, frontLoad: true, shape: 'one myth-bust with substance, plainly explained' },
   },
+  // GBP sits in the SHORT lane, not medium. A Google Business post is a local
+  // listing card, not a place to go deep — Google shows ~100 characters before
+  // truncating and the rest is a click away. Putting it in `medium` also let the
+  // indepth dial inflate it 1.15x, which contradicts this module's own rule that
+  // the dial decides how deep the DEEP posts go: a listing card stays a listing
+  // card for an in-depth clinic, the same way a hook stays a hook.
+  //
+  // Measured on prod 2026-07-27 before this change: movebetter (indepth) was
+  // told 518–897 characters and produced 1083–1650 across all 14 GBP posts —
+  // every single one above the top of its range. The old numbers were not being
+  // narrowly missed, they were being ignored, so they were shortened AND the
+  // prompt's structural beats trimmed to match (see atomPrompts.js).
   gbp: {
-    local_authority: { lane: 'medium', unit: 'chars', lo: 300, hi: 550, cap: 1500, frontLoad: true, shape: 'lead with the hook in the first ~100 characters (all Google shows), then a short authority body' },
-    patient_outcome: { lane: 'medium', unit: 'chars', lo: 450, hi: 780, cap: 1500, frontLoad: true, shape: 'lead with the hook in the first ~100 characters, then the recovery/outcome narrative' },
+    local_authority: { lane: 'short', unit: 'chars', lo: 220, hi: 400, cap: 1500, frontLoad: true, shape: 'lead with the hook in the first ~100 characters (all Google shows), then a short authority body' },
+    patient_outcome: { lane: 'short', unit: 'chars', lo: 260, hi: 480, cap: 1500, frontLoad: true, shape: 'lead with the hook in the first ~100 characters, then the recovery/outcome in brief' },
   },
   tiktok: {
     myth_buster: { lane: 'medium', unit: 'words', lo: 110, hi: 150, shape: 'a 45–60 second spoken script' },
