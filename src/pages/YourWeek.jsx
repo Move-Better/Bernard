@@ -167,22 +167,57 @@ function categoryTag(item) {
   return primary && primary !== item.label ? item.label : null
 }
 
-// A single backlog ("banked") item — links through to its source draft/interview.
-function BacklogRow({ item, onNavigate }) {
+// A single backlog ("banked") item. A drafted-and-banked atom links straight to
+// its singular post (/publish/:id). An atom with no draft yet has nothing
+// singular to open — drillTo() would fall back to the whole source-interview
+// post list (the "menu of content around a certain article/interview" the
+// feedback flagged), so it offers a Draft action instead, exactly like the
+// board's needs-draft cards (PlanCard/DayPlanCard). Same handler + single-flight
+// lock as the board, so drafting here is identical to drafting from a card.
+function BacklogRow({ item, onDraft, drafting, draftBusy, onNavigate }) {
   const meta = PLATFORM_META[item.platform] || { label: item.platform, icon: null }
   const Icon = meta.icon
   const tag = categoryTag(item)
+  const needsDraft = cardState(item).action === 'draft'
+
+  const inner = (
+    <>
+      {Icon && <Icon className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-2xs font-medium">{contentLabel(item)}</span>
+        {tag && <span className="block truncate text-3xs text-muted-foreground">{tag}</span>}
+      </span>
+    </>
+  )
+
+  if (needsDraft) {
+    // Dashed neutral border = the same "needs draft" status language the board
+    // uses (STATUS_LEGEND / cardState). No navigate-hover: this row doesn't go
+    // anywhere until it has a draft; Draft is the only action.
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-dashed border-muted-foreground/40 px-2 py-1.5">
+        {inner}
+        <button
+          type="button"
+          disabled={drafting || draftBusy}
+          title={!drafting && draftBusy ? 'Already drafting another post — please wait' : undefined}
+          onClick={() => onDraft(item)}
+          className="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold hover:bg-muted disabled:opacity-50"
+        >
+          {drafting ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3 w-3" aria-hidden="true" />}
+          Draft
+        </button>
+      </div>
+    )
+  }
+
   return (
     <Link
       to={drillTo(item)}
       onClick={onNavigate}
       className="flex items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors hover:border-primary/40 hover:bg-primary/5"
     >
-      {Icon && <Icon className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />}
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-2xs font-medium">{contentLabel(item)}</span>
-        {tag && <span className="block truncate text-3xs text-muted-foreground">{tag}</span>}
-      </span>
+      {inner}
       <span className="shrink-0 text-3xs text-muted-foreground">held</span>
       <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
     </Link>
@@ -1719,7 +1754,14 @@ export default function YourWeek() {
                 </DrawerHeader>
                 <div className="flex-1 space-y-1.5 overflow-y-auto p-4">
                   {(data.held || []).map((item) => (
-                    <BacklogRow key={item.id} item={item} onNavigate={() => setBacklogOpen(false)} />
+                    <BacklogRow
+                      key={item.id}
+                      item={item}
+                      onDraft={handleDraft}
+                      drafting={draftingAtom === item.id}
+                      draftBusy={!!draftingAtom}
+                      onNavigate={() => setBacklogOpen(false)}
+                    />
                   ))}
                 </div>
               </DrawerContent>
