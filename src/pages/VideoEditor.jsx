@@ -134,6 +134,14 @@ function groupLines(words) {
   return lines.map((ws) => ({ start: ws[0].start, end: ws[ws.length - 1].end, words: ws, text: ws.map((w) => w.word).join(' ') }))
 }
 
+// Trim, lowercase, collapse whitespace — mirror of normCaptionText in
+// api/_lib/captionOverlayDedup.js (the src/ ↔ api/ boundary forbids sharing it,
+// so keep the two identical). Used to skip a manual overlay that merely
+// duplicates a spoken caption line, so the preview matches the deduped bake.
+function normCaptionText(s) {
+  return String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
 // ── CANVAS ───────────────────────────────────────────────────────────────────
 function Canvas({ ctx }) {
   const { videoRef, asset, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, dragging, snap, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap, logCaptionCorrection, alignGuidesOn } = ctx
@@ -144,6 +152,18 @@ function Canvas({ ctx }) {
   const activeIdx = lines.findIndex((l) => playClipT >= l.start && playClipT < l.end)
   const activeLine = activeIdx >= 0 ? lines[activeIdx] : null
   const capCss = captionCss(caption.style, caption.accent)
+  // Caption lines currently on the karaoke track. A manual overlay whose text
+  // equals one of these would double-draw a spoken line (a persisted draft can
+  // hold such an overlay), so it's skipped in the overlay map below to match the
+  // deduped bake (dropCaptionDupeOverlays in api/_lib/captionOverlayDedup.js).
+  // Captions off → no track → keep every overlay (it's then the only place that
+  // text shows).
+  const captionLineTexts = useMemo(() => {
+    if (caption.preset === 'off') return null
+    const set = new Set()
+    for (const l of lines) { const t = normCaptionText(l?.text || ''); if (t) set.add(t) }
+    return set.size ? set : null
+  }, [caption.preset, lines])
   const clipSelRing = sel === 'clip' || sel === 'grade'
   const z = (Number(reframe.zoom) || 100) / 100
   // Ken Burns takes over the transform when active (matches the bake's precedence
@@ -243,6 +263,9 @@ function Canvas({ ctx }) {
           {/* manual overlays */}
           {overlays.map((o) => {
             if (playClipT < o.in || playClipT > o.out) return null
+            // Skip an overlay that just duplicates a spoken caption line (mirror
+            // of the bake's dropCaptionDupeOverlays) — keeps a distinct hook card.
+            if (captionLineTexts && captionLineTexts.has(normCaptionText(o.text))) return null
             const isSel = isOverlaySel(sel) && sel.id === o.id
             const box = o.role === 'lower_third'
               ? { background: 'rgba(12,26,46,.62)', backdropFilter: 'blur(2px)', borderRadius: 8, padding: '6px 12px' }

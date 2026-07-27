@@ -32,6 +32,7 @@ import { buildKaraokeAss } from './karaokeCaptions.js'
 import { normalizeCuts, keptRanges, remapWords, remapOverlays, buildCutFilter, totalCut } from './transcriptCuts.js'
 import { gradeToFfmpeg } from './gradeParams.js'
 import { reframeFilter, isNeutralReframe, buildOverlaySvg, normalizeOverlays, kenBurnsFilter, isKenBurnsActive } from './videoOverlays.js'
+import { captionLineTextSet, dropCaptionDupeOverlays } from './captionOverlayDedup.js'
 import { channelSpec } from './postFrames.js'
 
 // Fast-path threshold: sources at/below this stream to /tmp untouched (the
@@ -548,7 +549,15 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
     // below the brand overlay with an enable='between(t,in,out)' time window, so
     // each card shows only during its window. Reuses the resolved brand font +
     // accent so they match the editor canvas (preview==publish).
-    const normedOverlays = normalizeOverlays(overlays, clipDur)
+    // Drop any manual overlay whose text duplicates a burned caption line. A
+    // persisted video_edit_draft can hold an overlay equal to a spoken line,
+    // which would double-draw it (once as karaoke, once as the un-highlighted
+    // overlay). Only applies when the karaoke word track is actually rendering;
+    // a genuinely distinct overlay (e.g. an editorial hook card) is kept, and
+    // with captions off the overlay is the only place that text shows. Mirror of
+    // the client guard in VideoEditor.jsx (see captionOverlayDedup.js).
+    const captionLineTexts = karaokeWords ? captionLineTextSet(karaokeWords) : null
+    const normedOverlays = dropCaptionDupeOverlays(normalizeOverlays(overlays, clipDur), captionLineTexts)
     const overlayItems = []
     for (let i = 0; i < normedOverlays.length; i++) {
       const ov = normedOverlays[i]
