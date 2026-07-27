@@ -208,13 +208,19 @@ export default async function handler(req, res) {
   // Pull voice phrases for the prompt (top-weighted, capped).
   let voiceNotes = ''
   let voicePhrases = []
+  // Default to the clinic's plural "we/our team" voice; honor a per-clinician
+  // "personal" (first-person) preference only when explicitly set (mirrors
+  // outboundCall.js). Previously hard-coded 'personal', which silently bypassed
+  // the plural default every other capture path uses (movebetter feedback 2026-07-26).
+  let defaultVoiceMode = 'practice'
   {
     const r = await sb(
-      `staff?id=eq.${staffId}&${wsFilter}&select=voice_notes`
+      `staff?id=eq.${staffId}&${wsFilter}&select=voice_notes,default_voice_mode`
     )
     if (r.ok) {
       const rows = await r.json()
       voiceNotes = rows[0]?.voice_notes || ''
+      defaultVoiceMode = rows[0]?.default_voice_mode === 'personal' ? 'personal' : 'practice'
     }
   }
   {
@@ -246,7 +252,7 @@ export default async function handler(req, res) {
         source_audio_duration_sec: durationSec,
         messages:                  [{ role: 'user', content: transcript }],
         tone:                      'smart',
-        voice_mode:                'personal',
+        voice_mode:                defaultVoiceMode,
         generation_style:          'blog_post',
       }),
     })

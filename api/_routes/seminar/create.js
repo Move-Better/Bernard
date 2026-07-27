@@ -102,15 +102,21 @@ export default async function handler(req, res) {
   const wsFilter = `workspace_id=eq.${ws.id}`
   let staffId
   let defaultTone = 'smart'
+  // Default to the clinic's plural "we/our team" voice; honor a per-clinician
+  // "personal" (first-person) preference only when explicitly set (mirrors
+  // outboundCall.js). Previously hard-coded 'personal', which silently bypassed
+  // the plural default every other capture path uses (movebetter feedback 2026-07-26).
+  let defaultVoiceMode = 'practice'
 
   const staffRes = await sb(
-    `staff?${wsFilter}&user_id=eq.${encodeURIComponent(auth.userId)}&select=id,default_tone&limit=1`
+    `staff?${wsFilter}&user_id=eq.${encodeURIComponent(auth.userId)}&select=id,default_tone,default_voice_mode&limit=1`
   )
   if (staffRes.ok) {
     const rows = await staffRes.json()
     if (rows.length) {
       staffId = rows[0].id
       defaultTone = rows[0].default_tone || 'smart'
+      defaultVoiceMode = rows[0].default_voice_mode === 'personal' ? 'personal' : 'practice'
     }
   }
 
@@ -160,7 +166,7 @@ export default async function handler(req, res) {
       source_audio_duration_sec: durationSec,
       messages: [],
       tone: defaultTone,
-      voice_mode: 'personal',
+      voice_mode: defaultVoiceMode,
       generation_style: 'blog_post',
     }),
   })
