@@ -15,6 +15,7 @@ import { generateText } from 'ai'
 import { getContextBlock } from '../conceptRetrieval.js'
 import { resolveOwnHistoryBlock, buildRagQuery } from '../practiceMemory.js'
 import { buildFidelityPrompt, parseFidelity } from '../captionFidelityRubric.js'
+import { clampToCap, platformCap } from '../socialLengthTargets.js'
 import { recordAgentAction } from '../agentActions.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -208,7 +209,13 @@ export async function reviseContentItem({ ws, contentItemId, changeRequest, comm
   // Persist the revision — GUARDED on status so a piece the human re-approved
   // between claim and now is never clobbered. ai_original_content is left as the
   // pristine baseline. Returns to in_review for the human to re-review.
-  const patchBody = { content: revised, status: 'in_review', updated_at: new Date().toISOString() }
+  // Hard guardrail, mirroring draftAtom.js: clamp to the platform's character
+  // ceiling AFTER the judge, so fidelity is scored on the full generated text
+  // rather than the clamped copy. A revision that answers the change request but
+  // grows past the cap would otherwise land back in the reviewer's queue only to
+  // be blocked at Approve.
+  const cappedRevised = clampToCap(revised, platformCap(piece.platform))
+  const patchBody = { content: cappedRevised, status: 'in_review', updated_at: new Date().toISOString() }
   if (score !== null) { patchBody.voice_fidelity_score = score; patchBody.voice_audit = audit }
   const patchRes = await sb(
     `content_items?id=eq.${contentItemId}&${wsFilter}&status=in.(draft,in_review)`,
