@@ -217,20 +217,22 @@ End with a question that invites comments. 1–2 hashtags max.`,
       local_authority: `Write a Google Business Profile post about ${condition} for ${workspace.display_name} in ${workspace.location_keyword ?? 'your area'}.
 ${lengthLine('gbp', 'local_authority', lean)}
 ANGLE: Establish local authority.
-VOICE FIRST: Open with 1–2 sentences that use the clinician's distinctive diagnostic framing from the VOICE PHRASE ANCHORS above — their specific clinical insight or "how" explanation about ${condition}. Do NOT open with a generic "At [clinic] we treat..." line.
-Then connect that insight to the local context: what ${workspace.display_name} does differently for ${condition} patients in ${workspace.location_keyword ?? 'your area'}.
-Use "we" and "our team" throughout.
-Close with 1–2 sentences that echo the specific insight above before the booking ask — not a bare "book now." E.g. "If that pattern sounds familiar, a movement screen at ${workspace.display_name} is how we start untangling it: ${website || 'book online'}"
-If the clinician described a specific patient or example in the conversation, USE it — a real, specific story is vivid and welcome here. Only avoid INVENTING a new patient, name, age, or recovery timeline that wasn't actually described.
+VOICE FIRST: Open with ONE sentence that uses the clinician's distinctive diagnostic framing from the VOICE PHRASE ANCHORS above — their specific clinical insight or "how" explanation about ${condition}. Do NOT open with a generic "At [clinic] we treat..." line.
+Then ONE sentence connecting that insight to what ${workspace.display_name} does differently for ${condition} patients in ${workspace.location_keyword ?? 'your area'}.
+Use "we" and "our team".
+Close with ONE line that echoes the specific insight above before the booking ask — not a bare "book now." E.g. "If that pattern sounds familiar, a movement screen at ${workspace.display_name} is how we start untangling it: ${website || 'book online'}"
+SHAPE: about four short sentences. This is a listing card, not an article — when a beat above will not fit in its one sentence, cut the supporting detail, never the clinician's voice.
+If the clinician described a specific patient or example in the conversation, USE it — briefly, in the sentence you already have. Only avoid INVENTING a new patient, name, age, or recovery timeline that wasn't actually described.
 No hashtags. Conversational, not salesy.`,
 
       patient_outcome: `Write a Google Business Profile post about ${condition} for ${workspace.display_name} in ${workspace.location_keyword ?? 'your area'}.
 ${lengthLine('gbp', 'patient_outcome', lean)}
 ANGLE: Results framing.
-VOICE FIRST: Open with 1–2 sentences in the clinician's authentic voice — pull a specific clinical mechanism or patient insight from the VOICE PHRASE ANCHORS above rather than leading with a generic outcomes statement.
-Then pivot to results: what does recovery from ${condition} actually look like at ${workspace.display_name}? If the clinician described a specific patient outcome in the conversation, use it — a real, specific result lands harder than a generic one. Otherwise describe a realistic general outcome ("patients typically find…" or "the goal is…"). Either way, do NOT invent a patient, name, or timeline that wasn't in the conversation.
-Use "we" and "our team" throughout.
-Close with 1–2 sentences that connect the outcome above to the next step — not a bare "book now." E.g. "If you're ready to find out what recovery actually looks like for your situation: ${website || 'book online'}"
+VOICE FIRST: Open with ONE sentence in the clinician's authentic voice — pull a specific clinical mechanism or patient insight from the VOICE PHRASE ANCHORS above rather than leading with a generic outcomes statement.
+Then ONE or TWO sentences on results: what does recovery from ${condition} actually look like at ${workspace.display_name}? If the clinician described a specific patient outcome in the conversation, use it — a real, specific result lands harder than a generic one. Otherwise describe a realistic general outcome ("patients typically find…" or "the goal is…"). Either way, do NOT invent a patient, name, or timeline that wasn't in the conversation.
+Use "we" and "our team".
+Close with ONE line that connects the outcome above to the next step — not a bare "book now." E.g. "If you're ready to find out what recovery actually looks like for your situation: ${website || 'book online'}"
+SHAPE: about four short sentences. This is a listing card, not an article — when a beat above will not fit, cut the supporting detail, never the clinician's voice.
 No hashtags. Conversational, results-focused.`,
     },
 
