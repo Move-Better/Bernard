@@ -427,7 +427,11 @@ async function handler(req, res) {
       version: 1,
       provenance: 'bernard',
       trust_stage: 'approve_all',
-      quiet_days: ['sat', 'sun'],
+      // Weekends are open by default — a clinic's audience is on social on
+      // Saturday/Sunday too, and a frozen sat/sun quiet default is self-sealing
+      // (no weekend inventory ⇒ no weekend data). A clinic that wants weekends
+      // quiet toggles them off per-day on /week. (feedback 2026-07-26)
+      quiet_days: [],
       channels: cadenceChannels,
       digests: [
         { id: 'patients', label: 'Patients', channel: 'email',

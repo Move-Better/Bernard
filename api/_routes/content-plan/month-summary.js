@@ -46,7 +46,7 @@ export default async function handler(req, res) {
   const daysInMonth = Math.round((monthEnd - monthStart) / 86_400_000)
 
   const tz = ws.cadence_policy?.timezone || 'America/Los_Angeles'
-  const quietDays = ws.cadence_policy?.quiet_days || ['sat', 'sun']
+  const quietDays = ws.cadence_policy?.quiet_days || [] // weekends open by default (feedback 2026-07-26)
   const WEEKDAY_CODES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
   // Static per-weekday slot count (a weekly-recurring template, not simulated

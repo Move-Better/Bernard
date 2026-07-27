@@ -137,7 +137,7 @@ const TIMEZONE_OPTIONS = [
 // the static map is empty here (no hardcoded trio).
 const DEFAULT_CADENCE_POLICY = {
   version: 1, provenance: 'bernard', trust_stage: 'approve_all',
-  quiet_days: ['sat', 'sun'],
+  quiet_days: [], // weekends open by default (feedback 2026-07-26)
   channels: {},
   digests: [], goals: [],
 }
@@ -163,7 +163,7 @@ const NEWSLETTER_OPTIONS = [
 function CadenceCard({ cadence, onChange, onProposalResolved, enabledOutputs, prior }) {
   const isAuto = (cadence?.provenance ?? 'bernard') !== 'user'
   const channels = cadence?.channels || {}
-  const quietDays = Array.isArray(cadence?.quiet_days) ? cadence.quiet_days : ['sat', 'sun']
+  const quietDays = Array.isArray(cadence?.quiet_days) ? cadence.quiet_days : [] // weekends open by default
   const timezone = cadence?.timezone || 'America/Los_Angeles'
   const dayProposal = cadence?.day_time_proposal || null
   const [proposalBusy, setProposalBusy] = useState(false)

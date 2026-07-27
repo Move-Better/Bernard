@@ -497,7 +497,7 @@ export async function composeWeeklyPlan({
   promoCampaignIds = [],
   campaignTuning = null,
   backlog = [],
-  quietDays = ['sat', 'sun'],
+  quietDays = [], // weekends open by default (feedback 2026-07-26); real caller passes the workspace's own
   timezone = 'America/Los_Angeles',
   weekMonday,
   generate = defaultGenerate,
