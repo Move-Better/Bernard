@@ -215,7 +215,9 @@ export default async function handler(req, res) {
   // not just what happened to get planned this week. Additive-only (existing
   // consumers of cadence[platform].target_per_week/.enabled are unaffected).
   const rawChannels = ws.cadence_policy?.channels || {}
-  const cadenceQuietDays = ws.cadence_policy?.quiet_days || ['sat', 'sun']
+  // Default is weekends-OPEN (feedback 2026-07-26); a workspace opts specific
+  // days quiet via cadence_policy.quiet_days.
+  const cadenceQuietDays = ws.cadence_policy?.quiet_days || []
   const cadenceWithSlots = mergeSlotsIntoCadence(rawChannels, rawChannels, cadenceQuietDays)
 
   return res.status(200).json({

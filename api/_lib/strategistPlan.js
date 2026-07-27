@@ -138,7 +138,7 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
   // there and produce real engagement_snapshots for computeDayProposal()
   // (called from replanWorkspaceWeek below) to eventually act on. See
   // api/_lib/cadenceAdaptive.js and .claude/decisions.md 2026-07-21 T4 scoping.
-  const configuredQuietDays = policy?.quiet_days || ['sat', 'sun']
+  const configuredQuietDays = policy?.quiet_days || [] // weekends open by default (feedback 2026-07-26)
   const dismissedDays = policy?.day_time_dismissed || []
   const { effectiveQuietDays, exploring } = applyExplorationSlots(configuredQuietDays, dismissedDays, weekMonday)
 
@@ -180,7 +180,7 @@ async function maybeProposeDayChange({ workspace, sb }) {
   try {
     const policy = workspace.cadence_policy || {}
     if (policy.day_time_proposal) return // already have one pending — don't overwrite
-    const quietDays = policy.quiet_days || ['sat', 'sun']
+    const quietDays = policy.quiet_days || [] // weekends open by default (feedback 2026-07-26)
     const dismissedDays = policy.day_time_dismissed || []
     const timezone = policy.timezone || 'America/Los_Angeles'
     const proposal = await computeDayProposal(workspace.id, quietDays, dismissedDays, timezone, sb)

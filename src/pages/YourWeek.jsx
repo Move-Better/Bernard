@@ -976,7 +976,7 @@ export default function YourWeek() {
     if (togglingQuietDay) return
     setTogglingQuietDay(day)
     const current = workspace?.cadence_policy || {}
-    const currentQuiet = Array.isArray(current.quiet_days) ? current.quiet_days : ['sat', 'sun']
+    const currentQuiet = Array.isArray(current.quiet_days) ? current.quiet_days : [] // weekends open by default
     const nextQuiet = currentQuiet.includes(day) ? currentQuiet.filter((d) => d !== day) : [...currentQuiet, day]
     try {
       await apiFetch('/api/workspace/me', {
@@ -996,7 +996,7 @@ export default function YourWeek() {
 
   if (roleLoading || isLoading) return <PageSkeleton variant="dashboard" />
 
-  const quiet = new Set((data?.quietDays || ['sat', 'sun']).map((q) => q.toLowerCase()))
+  const quiet = new Set((data?.quietDays || []).map((q) => q.toLowerCase())) // weekends open by default
   const cadence = data?.cadence || {}
   const scheduled = data?.scheduled || []
   const tz = data?.timezone || wsTz

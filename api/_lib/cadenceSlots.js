@@ -29,6 +29,10 @@ import { defaultFormatForPlatform } from './atomPlan.js'
 // strategist.js style coupling once reelFactory.js also depends on this file).
 const WEEKDAY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
+// Monday-first ordering — the order the /week board (and a human) reads the
+// posting week in. distributeEvenSlots lays slots out along this.
+const MONFIRST = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+
 // Mirrors strategist.js BEST_HOUR exactly — keep both in lockstep. Duplicated
 // (not imported) so this module has no dependency on strategist.js.
 const BEST_HOUR = { instagram: 12, instagram_story: 8, linkedin: 7, gbp: 8, facebook: 12, tiktok: 18, twitter: 9, threads: 12, bluesky: 10, mastodon: 9 }
@@ -89,8 +93,16 @@ function dedupeWeekdayHour(slots) {
 }
 
 /**
- * Compute a sensible default slot list for one channel from its weekly
- * target — the seed used when a channel has no persisted slots yet. Pure.
+ * Compute a sensible default slot list for ONE channel from its weekly
+ * target, spread over the open days independently of any other channel. Pure.
+ *
+ * NOTE: this is the legacy per-channel spread. Because every channel's spread
+ * starts on Monday and ends on Sunday, laying several channels out this way
+ * piles the whole workspace onto Monday/Sunday and leaves Saturday nearly
+ * empty. The live read-path default (mergeSlotsIntoCadence) now uses
+ * `distributeEvenSlots`, which balances ACROSS channels. This function is
+ * retained only for the one-time `scripts/seed-cadence-slots.mjs` backfill;
+ * prefer distributeEvenSlots for anything new.
  *
  * Instagram is the one platform that carries more than one format (post +
  * reel; story is its own separate atom-platform key, see atomPlan.js), so its
@@ -115,26 +127,104 @@ export function defaultSlotsForChannel(platform, targetPerWeek, quietDays) {
   return dedupeWeekdayHour(slots)
 }
 
+// Expand a channel's weekly target into an ordered list of slot FORMATS.
+// Instagram is the only multi-format platform (post + reel) — its target is
+// split by the reel worker's own ratio, posts first so a single-slot week is a
+// post, not a reel. Shared by distributeEvenSlots (and mirrors the split
+// defaultSlotsForChannel does inline).
+function unitFormats(platform, target) {
+  if (platform !== 'instagram') return Array(target).fill(defaultFormatForPlatform(platform))
+  const reelCount = target > 0 ? Math.min(target, Math.max(1, Math.round(target * DEFAULT_REEL_SHARE))) : 0
+  const postCount = Math.max(0, target - reelCount)
+  return [...Array(postCount).fill('post'), ...Array(reelCount).fill('reel')]
+}
+
+/**
+ * Compute an even weekly slot layout across ALL of a workspace's channels at
+ * once — the "compute on read" default mergeSlotsIntoCadence uses for any
+ * channel with no persisted slots. Pure and deterministic.
+ *
+ * Why this exists (feedback 2026-07-26 → .claude/decisions.md): laying each
+ * channel out independently (defaultSlotsForChannel) piles every channel's
+ * first slot onto Monday and its last onto Sunday, leaving Saturday nearly
+ * empty — so weekends read as "not real posting days". This deals slots across
+ * channels with a rotating start day so the aggregate week is balanced
+ * (~even posts/day) and BOTH weekend days get coverage whenever they're open.
+ *
+ * Channels are processed largest-target-first (a high-cadence channel spans
+ * most days on its own) with a start offset `g` that advances one open day per
+ * channel, so each subsequent channel staggers off the previous one instead of
+ * stacking on the same days. Within a channel the slots are evenly spaced; a
+ * target larger than the open-day count doubles up on days (hour-bumped by
+ * dedupeWeekdayHour, never a colliding instant).
+ *
+ * @param {Record<string,{target_per_week?:number,enabled?:boolean}>} channels
+ * @param {string[]} quietDays day codes to exclude (e.g. ['sat','sun'] or [])
+ * @returns {Record<string,object[]>} platform -> slots[]
+ */
+export function distributeEvenSlots(channels, quietDays) {
+  const quiet = new Set((quietDays || []).map((d) => String(d).toLowerCase()))
+  const openDays = MONFIRST.filter((d) => !quiet.has(d))
+  const D = openDays.length
+  if (!D) return {} // every day quiet — nothing schedules
+
+  const active = Object.entries(channels || {})
+    .filter(([, c]) => c?.enabled && Number(c.target_per_week) > 0)
+    .sort((a, b) => (b[1].target_per_week - a[1].target_per_week) || a[0].localeCompare(b[0]))
+
+  const out = {}
+  let g = 0
+  for (const [platform, cfg] of active) {
+    const target = Math.max(0, Math.round(Number(cfg.target_per_week) || 0))
+    const formats = unitFormats(platform, target)
+    const baseHour = BEST_HOUR[platform] ?? 11
+    const C = formats.length
+    const slots = formats.map((format, i) => ({
+      weekday: openDays[(g + Math.round((i * D) / C)) % D],
+      hour: baseHour,
+      format,
+      enabled: true,
+    }))
+    out[platform] = dedupeWeekdayHour(slots)
+    g = (g + 1) % D // stagger the next channel off this one's start day
+  }
+  return out
+}
+
 /**
  * Attach a `.slots` array onto every enabled channel in `cadence` — the
  * persisted list from `policyChannels[platform].slots` when present and
- * non-empty, else a freshly-computed default. `cadence` carries the
+ * non-empty, else a freshly-computed even default. `cadence` carries the
  * target_per_week/enabled that may come from Auto/Manual/Adaptive resolution
  * (getWeekInputs); `policyChannels` is always the RAW persisted
  * `workspace.cadence_policy.channels`, the one place slots are actually
  * stored — the two are threaded separately because Auto mode recomputes
  * `cadence` fresh every call and never itself carries slots. Pure.
+ *
+ * Channels without persisted slots are filled from a SINGLE cross-channel
+ * distributeEvenSlots pass (not one channel at a time) so the computed default
+ * is balanced across the week. Because nothing is persisted on this path, a
+ * quiet-day change is reflected on the very next read — which is what makes the
+ * /week quiet-day toggle (and Settings day-pills, and T4's day-proposal accept)
+ * actually re-open a weekend rather than silently no-op.
  */
 export function mergeSlotsIntoCadence(cadence, policyChannels, quietDays) {
-  const out = {}
-  for (const [platform, cfg] of Object.entries(cadence || {})) {
+  const entries = Object.entries(cadence || {})
+  const persistedByPlatform = {}
+  const needDefaults = {}
+  for (const [platform, cfg] of entries) {
     const persisted = policyChannels?.[platform]?.slots
-    const enabledPersisted = Array.isArray(persisted) ? persisted.filter((s) => s?.enabled !== false) : []
     // A persisted list that nets to zero enabled slots (every one toggled off)
-    // falls back to the computed default too — a channel must not go
-    // invisible on the calendar while its atoms still schedule somewhere via
-    // assignSlots' legacy fallback.
-    const slots = enabledPersisted.length ? enabledPersisted : defaultSlotsForChannel(platform, cfg?.target_per_week || 0, quietDays)
+    // falls back to the computed default too — a channel must not go invisible
+    // on the calendar while its atoms still schedule somewhere.
+    const enabledPersisted = Array.isArray(persisted) ? persisted.filter((s) => s?.enabled !== false) : []
+    persistedByPlatform[platform] = enabledPersisted
+    if (!enabledPersisted.length) needDefaults[platform] = cfg
+  }
+  const computed = distributeEvenSlots(needDefaults, quietDays)
+  const out = {}
+  for (const [platform, cfg] of entries) {
+    const slots = persistedByPlatform[platform].length ? persistedByPlatform[platform] : (computed[platform] || [])
     out[platform] = slots.length ? { ...cfg, slots } : { ...cfg }
   }
   return out
