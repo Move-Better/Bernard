@@ -578,7 +578,13 @@ function AddToDayModal({ slot, cadence, weekMonday, heldItems, onClose }) {
           </div>
         </div>
         {eligible.length > 0 && (
-          <div>
+          // min-w-0 is load-bearing: this div is a grid item of DialogContent's
+          // grid, so it defaults to min-width:auto. The nowrap-truncated row
+          // titles below give it a large min-content, which forces the single
+          // auto track wider than max-w-md — the rows then spill out the right
+          // side over the backdrop (in-app Feedback: "UI breaks … selecting a
+          // platform"). min-w-0 lets the track collapse so the titles truncate.
+          <div className="min-w-0">
             <div className="mb-2 text-2xs font-medium text-muted-foreground">
               Backlog — {meta.label}-eligible
             </div>
