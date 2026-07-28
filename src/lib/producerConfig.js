@@ -40,8 +40,7 @@ export const PRODUCER_LANES = [
   {
     key: 'escalation_email',
     label: 'Email me when something needs me',
-    description: 'A single email only for things you must act on — a failed publish, a caption Bernard couldn’t fix, a gap he can’t fill. Never more than one a day. For now, these surface in “Needs you” on this page.',
-    comingSoon: true, // no email sender wired yet — surfaced in-app via NeedsYouStrip
+    description: 'A daily email when a finished post has gone past its slot without your approval, with a one-tap link to each one. Never more than one a day, and nothing at all when your queue is clear.',
   },
 ]
 
