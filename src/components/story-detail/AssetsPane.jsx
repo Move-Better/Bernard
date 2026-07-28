@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { StaffChip } from '@/components/StaffChip'
+import MomentProvenance from '@/components/MomentProvenance'
 import { PLATFORM_META, STATUS_META } from '@/lib/contentMeta'
 import { getStageToken } from '@/lib/stageTokens'
 import { useUserRole } from '@/lib/useUserRole'
@@ -554,6 +555,11 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
 
   return (
     <div className="mt-3 pt-3 border-t space-y-3">
+      {/* Provenance (Moments IA ①) — the banked moment this piece was composed
+          from, shown where clinicians approve. Null for legacy pieces (the
+          detail read in db/content.js only sets it when the plan atom carries
+          a moment_id), so this renders nothing on non-bank content. */}
+      {piece.moment && <MomentProvenance moment={piece.moment} />}
       {/* Voice-drift scorecard — sourced from provenance.summary (PR1 substrate) */}
       {provSummary && (
         <div className="flex items-center gap-1.5 flex-wrap">
