@@ -187,6 +187,9 @@ export default function OnHandTab({ moments, isLoading, error, refetch, staffMap
       }),
     onSuccess: (_data, { status }) => {
       queryClient.invalidateQueries({ queryKey: ['moment-bank'] })
+      // The header stats (usable count, runway) come from the shared summary
+      // endpoint — refresh it too so retire/restore moves the numbers live.
+      queryClient.invalidateQueries({ queryKey: ['moments-summary'] })
       setRetireTarget(null)
       toast(status === 'retired' ? 'Retired — Bernard won’t use this moment again.' : 'Restored — back on hand.')
     },

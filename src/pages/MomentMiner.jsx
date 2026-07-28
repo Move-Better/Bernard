@@ -63,6 +63,17 @@ function videoLabel(asset) {
     .trim() || 'Untitled video'
 }
 
+// GET /api/moments/summary returns newestInterviewAt as a date-only string
+// (YYYY-MM-DD). new Date() would read that as UTC midnight, which displays as
+// the PREVIOUS day in any negative-offset timezone — parse date-only as local.
+function parseLocalDay(v) {
+  if (!v) return null
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v))
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  const d = new Date(v)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
 function fmtClock(s) {
   const n = Math.max(0, Math.floor(Number(s) || 0))
   return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`
@@ -398,9 +409,8 @@ export default function MomentMiner({ initialTab = 'onhand' }) {
     return ['onhand', 'video', 'coverage'].includes(t) ? t : initialTab
   }) // 'onhand' | 'video' | 'coverage'
 
-  // The workspace's moment inventory + on-hand summary (runway, newest
-  // capture, planner gaps) — one fetch shared by the header stats, the tab
-  // count, and the On-hand list.
+  // The workspace's moment inventory — shared by the On-hand list and the
+  // tab count.
   const {
     data: bankData,
     isLoading: bankLoading,
@@ -413,7 +423,16 @@ export default function MomentMiner({ initialTab = 'onhand' }) {
     refetchOnWindowFocus: false,
   })
   const bankMoments = useMemo(() => bankData?.moments || [], [bankData])
-  const bankSummary = bankData?.summary || null
+
+  // On-hand summary (runway, newest capture, planner gaps) — the shared
+  // endpoint the /week chip and Home nudge also read (Lane A, IA step ②),
+  // so every surface shows one consistent set of numbers.
+  const { data: bankSummary } = useQuery({
+    queryKey: ['moments-summary'],
+    queryFn: () => apiFetch('/api/moments/summary'),
+    enabled: !!ws,
+    refetchOnWindowFocus: false,
+  })
   const onHandCount = useMemo(
     () => bankMoments.filter((m) => m.status === 'banked').length,
     [bankMoments],
@@ -633,8 +652,9 @@ export default function MomentMiner({ initialTab = 'onhand' }) {
     : !s.started ? 'capture your first conversation'
     : s.runwayWeeks == null ? 'usable moments'
     : `${s.usable} usable ÷ ${s.weeklySlotDemand} weekly slots`
-  const newestDays = s?.newestInterviewAt
-    ? Math.floor((Date.now() - new Date(s.newestInterviewAt).getTime()) / 86_400_000)
+  const newestDate = parseLocalDay(s?.newestInterviewAt)
+  const newestDays = newestDate
+    ? Math.floor((Date.now() - newestDate.getTime()) / 86_400_000)
     : null
   const newestSub = newestDays == null ? ''
     : newestDays === 0 ? 'today'
@@ -672,8 +692,8 @@ export default function MomentMiner({ initialTab = 'onhand' }) {
           </div>
           <div>
             <span className="text-lg font-extrabold tabular-nums">
-              {s.newestInterviewAt
-                ? new Date(s.newestInterviewAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+              {newestDate
+                ? newestDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
                 : '—'}
             </span>{' '}
             <span className="text-2xs font-bold text-muted-foreground uppercase tracking-wide">newest capture</span>
