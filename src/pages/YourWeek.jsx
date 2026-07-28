@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUser } from '@clerk/react'
 import {
-  CalendarRange, Sparkles, Archive, Mail, Moon, ChevronRight, ChevronLeft, Shield, Plus,
+  CalendarRange, Sparkles, Archive, Mail, Moon, ChevronRight, ChevronLeft, Shield, Plus, ShoppingBasket,
   Check, Loader2, Clock, Eye, Send, BookOpen, AlertTriangle, Pencil,
   History, CalendarPlus, Bot, Image as ImageIcon, Play, Film, CircleDot, FlaskConical, BellOff, Bell,
   Palette,
@@ -21,6 +21,7 @@ import { publishPieceToBuffer } from '@/lib/publishPiece'
 import { adHocSlotOptions, computeEmptySlots, localSlotParts } from '@/lib/postingSlots'
 import { toast } from '@/lib/toast'
 import MomentProvenance from '@/components/MomentProvenance'
+import { onHandChipState } from '@/lib/onHand'
 import PageHelp from '@/components/PageHelp'
 import PageSkeleton from '@/components/PageSkeleton'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
@@ -570,6 +571,7 @@ function AddToDayModal({ slot, cadence, weekMonday, heldItems, onClose }) {
       })
       toast.success('Draft ready — in review')
       qc.invalidateQueries({ queryKey: ['week-summary'] })
+      qc.invalidateQueries({ queryKey: ['moments-summary'] })
       onClose()
       if (result?.content_piece?.id) navigate(`/publish/${result.content_piece.id}`)
     } catch (e) {
@@ -596,6 +598,7 @@ function AddToDayModal({ slot, cadence, weekMonday, heldItems, onClose }) {
       })
       toast.success('Placed on the board')
       qc.invalidateQueries({ queryKey: ['week-summary'] })
+      qc.invalidateQueries({ queryKey: ['moments-summary'] })
       onClose()
     } catch (e) {
       toast.error('Could not place', { description: e?.message })
@@ -918,6 +921,10 @@ export default function YourWeek() {
   const [weekOffset, setWeekOffset] = useState(0) // 0 = this week; <0 past (read-only); >0 future (plannable)
   const [planningWeek, setPlanningWeek] = useState(false)
   const [backlogOpen, setBacklogOpen] = useState(false)
+  // Legacy-backlog section inside the on-hand drawer — collapsed by default
+  // (it's the self-liquidating old pile); "Pull from backlog" affordances
+  // open the drawer WITH it expanded so the pullable list is visible.
+  const [legacyOpen, setLegacyOpen] = useState(false)
   const [viewMode, setViewMode] = useState('week')   // 'week' board | 'day' focused work surface | 'month' light overview
   const [selectedDay, setSelectedDay] = useState(null) // day key ('mon'..'sun'); null = auto (today/first)
   const [togglingQuietDay, setTogglingQuietDay] = useState(null) // day key being toggled, for the inline spinner
@@ -929,6 +936,16 @@ export default function YourWeek() {
     enabled: !roleLoading,
     refetchOnWindowFocus: false,
   })
+  // Moments IA ② — the on-hand inventory summary driving the header chip and
+  // the "What's on hand" drawer. Not week-scoped: runway is one workspace
+  // number (usable moments ÷ weekly slot demand), never per-channel.
+  const { data: onHand } = useQuery({
+    queryKey: ['moments-summary'],
+    queryFn: () => apiFetch('/api/moments/summary'),
+    enabled: !roleLoading,
+    refetchOnWindowFocus: false,
+  })
+  const onHandChip = onHandChipState(onHand)
   // T3 — Month overview data, fetched only while that view is active (a
   // separate lightweight endpoint, not a fan-out over week-summary — see
   // api/_routes/content-plan/month-summary.js for why).
@@ -958,6 +975,7 @@ export default function YourWeek() {
       })
       toast.success('Draft ready — in review')
       qc.invalidateQueries({ queryKey: ['week-summary'] })
+      qc.invalidateQueries({ queryKey: ['moments-summary'] })
       if (result?.content_piece?.id) navigate(`/publish/${result.content_piece.id}`)
     } catch (e) {
       toast.error('Draft failed', { description: e?.message })
@@ -1020,6 +1038,7 @@ export default function YourWeek() {
         toast.success('Approved')
       }
       qc.invalidateQueries({ queryKey: ['week-summary'] })
+      qc.invalidateQueries({ queryKey: ['moments-summary'] })
     } catch (e) {
       // Over the platform's hard character ceiling. The piece was left alone and
       // is still a draft, so name the exact overage and what to do about it.
@@ -1055,6 +1074,7 @@ export default function YourWeek() {
         toast.success('Planned ahead — review when ready')
       }
       qc.invalidateQueries({ queryKey: ['week-summary'] })
+      qc.invalidateQueries({ queryKey: ['moments-summary'] })
     } catch (e) {
       toast.error('Plan failed', { description: e?.message })
     } finally {
@@ -1085,6 +1105,7 @@ export default function YourWeek() {
       })
       qc.invalidateQueries({ queryKey: queryKeys.workspace.me })
       qc.invalidateQueries({ queryKey: ['week-summary'] })
+      qc.invalidateQueries({ queryKey: ['moments-summary'] })
       toast.success(nextQuiet.includes(day) ? `${DAY_FULL[day]} is now quiet` : `${DAY_FULL[day]} is open for posting`)
     } catch (e) {
       toast.error('Could not update quiet days', { description: e?.message })
@@ -1257,6 +1278,7 @@ export default function YourWeek() {
       setScheduling(false)
       setScheduleConfirmOpen(false)
       qc.invalidateQueries({ queryKey: ['week-summary'] })
+      qc.invalidateQueries({ queryKey: ['moments-summary'] })
       if (!outerError && okCount) toast.success(`Scheduled ${okCount} post${okCount === 1 ? '' : 's'}`)
       if (!outerError && wordsBlockedCount) {
         toast.warning(`${wordsBlockedCount} skipped — words not approved yet`, {
@@ -1419,16 +1441,23 @@ export default function YourWeek() {
               Schedule {approvedSchedulable.length} approved
             </button>
           )}
-          {/* Backlog moved out of the right rail and into the header: the rail
-              was a 6-row preview of the drawer below, and cost the board 288px
-              of width on every week. The button opens that same drawer. */}
-          {data?.heldCount > 0 && (
+          {/* On-hand chip (Moments IA ② — replaces the legacy "Backlog · N"
+              chip). One runway number; states per the mockup's verbatim rules
+              (quiet ≥ 4 wks · amber < 4 · red < 1 · "Not started" always
+              quiet). Opens the "What's on hand" drawer. */}
+          {onHandChip && (
             <button
               type="button"
               onClick={() => setBacklogOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-1 text-2xs font-semibold text-muted-foreground hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-2xs font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                onHandChip.tone === 'red'
+                  ? 'border-destructive/30 bg-destructive/10 text-destructive hover:border-destructive'
+                  : onHandChip.tone === 'amber'
+                    ? 'border-action/40 bg-action/10 text-action hover:border-action'
+                    : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-primary'
+              }`}
             >
-              <Archive className="h-3 w-3" aria-hidden="true" /> Backlog · {data.heldCount}
+              <ShoppingBasket className="h-3 w-3" aria-hidden="true" /> {onHandChip.label}
             </button>
           )}
           {/* Trust mode is display-only (see LADDER) and changes at most a few
@@ -1553,7 +1582,7 @@ export default function YourWeek() {
               Bernard pre-drafted your week — {data.predraftSummary.predrafted} of {data.predraftSummary.total} planned posts
             </div>
             <div className="text-xs text-muted-foreground">
-              {weekStages.review} ready to review · {weekStages.scheduled} scheduled · {data.heldCount} in backlog
+              {weekStages.review} ready to review · {weekStages.scheduled} scheduled{onHandChip ? ` · ${onHandChip.label.replace(/^On hand · /, '')} on hand` : ''}
               {data.predraftSummary.needsYou > 0 ? ` · ${data.predraftSummary.needsYou} flagged for a closer look` : ''}
               {' · '}nothing publishes without your yes.
             </div>
@@ -1585,7 +1614,7 @@ export default function YourWeek() {
             <CalendarPlus className="mx-auto h-8 w-8 text-primary/60" aria-hidden="true" />
             <p className="mt-2 text-sm font-medium text-foreground">Nothing planned for {weekRangeLabel(weekOffset, wsTz)} yet</p>
             <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
-              I&apos;ll compose this week from your backlog and any captures in its window — paced across your channels. You review and approve before anything schedules.
+              I&apos;ll compose this week from what you&apos;ve said — your moments on hand — and any captures in its window, paced across your channels. You review and approve before anything schedules.
             </p>
             <button
               type="button"
@@ -1610,7 +1639,7 @@ export default function YourWeek() {
             <Sparkles className="mx-auto h-8 w-8 text-primary/60" aria-hidden="true" />
             <p className="mt-2 text-sm font-medium text-foreground">No plan for this week yet</p>
             <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
-              Complete an interview and I&apos;ll compose your week — paced across your channels, with the rest banked as backlog.
+              Complete an interview and I&apos;ll compose your week — paced across your channels; the rest goes on hand for future weeks.
             </p>
             <Link to="/new" className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
               <Plus className="h-4 w-4" aria-hidden="true" /> Start a capture
@@ -1691,7 +1720,7 @@ export default function YourWeek() {
                           <Moon className="mx-auto h-7 w-7 text-muted-foreground/50" aria-hidden="true" />
                           <p className="mt-2 text-sm font-medium text-foreground">Nothing planned {DAY_FULL[activeDay]}</p>
                           {!isPast && data.heldCount > 0 && (
-                            <button type="button" onClick={() => setBacklogOpen(true)} className="mt-1 text-xs font-semibold text-primary hover:underline">
+                            <button type="button" onClick={() => { setLegacyOpen(true); setBacklogOpen(true) }} className="mt-1 text-xs font-semibold text-primary hover:underline">
                               Pull from backlog
                             </button>
                           )}
@@ -1802,7 +1831,7 @@ export default function YourWeek() {
                               {!isPast && data.heldCount > 0 && (
                                 <button
                                   type="button"
-                                  onClick={() => setBacklogOpen(true)}
+                                  onClick={() => { setLegacyOpen(true); setBacklogOpen(true) }}
                                   className="text-3xs font-semibold text-primary hover:underline focus:outline-none focus-visible:underline"
                                 >
                                   View backlog
@@ -1862,24 +1891,119 @@ export default function YourWeek() {
               )}
             </div>
 
-            {/* Opened from the header button — the rail was only ever a
-                preview of this list. Unchanged. */}
-            <Drawer open={backlogOpen} onOpenChange={setBacklogOpen}>
+            {/* "What's on hand" drawer (Moments IA ② — mockup §02 right).
+                Composition of this week's slots, gaps, strongest moments, and
+                the self-liquidating Legacy backlog section wrapping the
+                existing BacklogRow list. */}
+            <Drawer open={backlogOpen} onOpenChange={(v) => { setBacklogOpen(v); if (!v) setLegacyOpen(false) }}>
               <DrawerContent side="right">
                 <DrawerHeader>
-                  <DrawerTitle>Backlog — {data.heldCount} banked</DrawerTitle>
+                  <DrawerTitle>What&apos;s on hand</DrawerTitle>
                 </DrawerHeader>
-                <div className="flex-1 space-y-1.5 overflow-y-auto p-4">
-                  {(data.held || []).map((item) => (
-                    <BacklogRow
-                      key={item.id}
-                      item={item}
-                      onDraft={handleDraft}
-                      drafting={draftingAtom === item.id}
-                      draftBusy={!!draftingAtom}
-                      onNavigate={() => setBacklogOpen(false)}
-                    />
-                  ))}
+                <div className="flex-1 overflow-y-auto">
+                  {/* This week's slot composition — a bar, never a hit-rate % */}
+                  {(() => {
+                    const c = onHand?.composition || { momentSlots: 0, legacySlots: 0, openSlots: 0 }
+                    const total = c.momentSlots + c.legacySlots + c.openSlots
+                    const pct = (n) => (total > 0 ? `${(n / total) * 100}%` : '0%')
+                    return (
+                      <div className="border-b px-4 pb-4">
+                        {total > 0 ? (
+                          <>
+                            <div className="flex h-2 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                              <span className="h-full bg-primary" style={{ width: pct(c.momentSlots) }} />
+                              <span className="h-full bg-muted-foreground/40" style={{ width: pct(c.legacySlots) }} />
+                              <span className="h-full rounded-r-full border border-dashed border-muted-foreground/40 bg-transparent" style={{ width: pct(c.openSlots) }} />
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-x-3.5 gap-y-1 text-3xs text-muted-foreground">
+                              <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-primary" aria-hidden="true" /> {c.momentSlots} from moments</span>
+                              <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-muted-foreground/40" aria-hidden="true" /> {c.legacySlots} legacy</span>
+                              <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm border border-dashed border-muted-foreground/50" aria-hidden="true" /> {c.openSlots} open slot{c.openSlots === 1 ? '' : 's'}</span>
+                            </div>
+                            <p className="mt-1.5 text-3xs text-muted-foreground/80">This week&apos;s {total} slots — composition, not a hit-rate %</p>
+                          </>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">No slots planned this week yet.</p>
+                        )}
+                      </div>
+                    )
+                  })()}
+
+                  {/* Gaps — open bank_gap topics; honestly empty most weeks */}
+                  <div className="border-b p-4">
+                    <div className="mb-2 text-2xs font-bold uppercase tracking-wide text-muted-foreground">Gaps</div>
+                    {(onHand?.gaps || []).length === 0 ? (
+                      <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                        No gaps — every planned slot found a matching moment. When the planner misses (say, a campaign topic with nothing on hand), the topic appears here with &ldquo;ask about it next interview.&rdquo;
+                      </p>
+                    ) : (
+                      onHand.gaps.map((g) => (
+                        <div key={g.id} className="flex items-baseline justify-between gap-2 py-1.5 text-xs">
+                          <span className="min-w-0 flex-1 truncate font-medium text-foreground">{g.topic}</span>
+                          <span className="shrink-0 text-2xs text-muted-foreground">ask about it next interview</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Strongest on hand */}
+                  <div className="border-b p-4">
+                    <div className="mb-2 text-2xs font-bold uppercase tracking-wide text-muted-foreground">Strongest on hand</div>
+                    {(onHand?.strongest || []).length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Nothing on hand yet — capture a conversation to stock up.</p>
+                    ) : (
+                      <>
+                        {onHand.strongest.map((m) => (
+                          <div key={m.id} className="flex items-center gap-2 py-1.5">
+                            {Number.isFinite(m.score) && (
+                              <span className="inline-flex shrink-0 justify-center rounded-md bg-primary/10 px-1.5 py-0.5 text-2xs font-bold text-primary tabular-nums">{m.score}</span>
+                            )}
+                            <span className="min-w-0 flex-1 truncate text-xs text-foreground">&ldquo;{m.excerpt}&rdquo;</span>
+                          </div>
+                        ))}
+                        <Link
+                          to="/moments"
+                          onClick={() => setBacklogOpen(false)}
+                          className="mt-1 inline-block text-xs font-semibold text-primary hover:underline"
+                        >
+                          Browse all {onHand?.usable ?? 0} →
+                        </Link>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Legacy backlog — the old pre-composed pile; self-liquidating.
+                      Section renders only while it still holds anything. */}
+                  {data.heldCount > 0 && (
+                    <div className="p-4">
+                      <button
+                        type="button"
+                        onClick={() => setLegacyOpen((v) => !v)}
+                        aria-expanded={legacyOpen}
+                        className="flex w-full items-center gap-1.5"
+                      >
+                        <span className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">Legacy backlog · {data.heldCount}</span>
+                        <ChevronRight className={`h-3 w-3 text-muted-foreground transition-transform ${legacyOpen ? 'rotate-90' : ''}`} aria-hidden="true" />
+                      </button>
+                      <p className="mt-1 text-3xs text-muted-foreground/80">
+                        The old pre-composed pile. Drains as it&apos;s used; nothing new lands here. This section disappears at zero.
+                      </p>
+                      {legacyOpen && (
+                        <div className="mt-2.5 space-y-1.5">
+                          {(data.held || []).map((item) => (
+                            <BacklogRow
+                              key={item.id}
+                              item={item}
+                              onDraft={handleDraft}
+                              drafting={draftingAtom === item.id}
+                              draftBusy={!!draftingAtom}
+                              onNavigate={() => setBacklogOpen(false)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </DrawerContent>
             </Drawer>
