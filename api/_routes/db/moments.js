@@ -138,14 +138,21 @@ export default async function handler(req, res) {
     if (!UUID_RE.test(interviewId)) return res.status(400).json({ error: 'invalid_interview_id' })
     const r = await sb(
       `moments?workspace_id=eq.${ws.id}&interview_id=eq.${interviewId}` +
-      `&select=id,excerpt,hook,moment_type,topic,region,tags,score,cluster_id,is_exemplar,status,usage_count,last_used_at,created_at` +
+      `&select=id,excerpt,hook,moment_type,topic,region,tags,score,cluster_id,is_exemplar,status,usage_count,last_used_at,created_at,planned:content_plan_atoms(count)` +
       `&order=score.desc.nullslast,created_at.asc`,
     )
     if (!r.ok) {
       console.error('[db/moments] query failed:', r.status, (await r.text().catch(() => '')).slice(0, 300))
       return res.status(500).json({ error: 'db_error' })
     }
-    const moments = await r.json().catch(() => [])
+    const rows = await r.json().catch(() => [])
+    // Same planned_count mapping as the bank listing below — StoryDetail's
+    // retire dialog states how many planned pieces keep their drafts.
+    const moments = rows.map((m) => ({
+      ...m,
+      planned_count: Array.isArray(m.planned) ? (m.planned[0]?.count ?? 0) : 0,
+      planned: undefined,
+    }))
     return res.status(200).json({ moments })
   }
 
