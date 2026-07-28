@@ -29,6 +29,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/Drawer'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import MediaUsageBadge from '@/components/ui/MediaUsageBadge'
 
 // T3 — format badges shown on cards/slots. Mirrors the atom.format vocabulary
 // (api/_lib/atomPlan.js ATOM_FORMATS): post/reel/story. (Status-color legend
@@ -103,6 +104,10 @@ function CardPreview({ item }) {
           <Play className="h-3.5 w-3.5 text-white" fill="currentColor" aria-hidden="true" />
         </span>
       )}
+      {/* Reuse counter — a UI overlay ON TOP of the tile, never drawn into the
+          rendered preview itself (that must always show exactly what the post
+          will look like). Renders nothing when the photo is unused. */}
+      <MediaUsageBadge asset={{ usage: item.mediaUsage }} className="absolute top-1 right-1" />
       {frame && frame.crop >= MATERIAL_CROP_PCT && (
         <span
           className="absolute inset-x-0 bottom-0 bg-action/90 px-1 py-0.5 text-center text-3xs font-bold text-white"
@@ -823,6 +828,7 @@ function DayPlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approv
             <Play className="h-4 w-4 text-white" fill="currentColor" aria-hidden="true" />
           </span>
         )}
+        <MediaUsageBadge asset={{ usage: item.mediaUsage }} className="absolute top-0.5 right-0.5" />
       </div>
       <div className="min-w-0 flex-1">
       <div className="mb-1.5 flex items-center gap-2">

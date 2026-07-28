@@ -68,6 +68,11 @@ async function sb(path, init = {}) {
  * @param {boolean} [params.preferFresh=true] — discount already-used assets so
  *   a recurring topic stops resolving to the same shot every time. See the
  *   freshness notes above. Pass false for a pure-similarity search.
+ * @param {Iterable<string>} [params.excludeAssetIds] — asset ids to hard-drop
+ *   from the candidate pool before ranking (e.g. photos already used elsewhere
+ *   in this week's plan for this platform — see suggest-media.js). Unlike the
+ *   freshness discount above, this is an absolute exclusion: an excluded asset
+ *   can never be returned, no matter how strong its match.
  *
  * @returns {Promise<Array>} shaped clip objects (camelCase), each carrying
  *   `usage` ({ total, published }) and the `effectiveScore` it was ranked on.
@@ -81,6 +86,7 @@ export async function searchClips({
   minScore = 0.5,
   staffId = null,
   preferFresh = true,
+  excludeAssetIds = null,
 }) {
   // Embed the query text
   const [queryEmbedding] = await embedTexts([query])
@@ -115,7 +121,13 @@ export async function searchClips({
     throw new Error(`match_rpc_failed: ${rpcRes.status} ${errText.slice(0, 200)}`)
   }
 
-  const rows = await rpcRes.json()
+  let rows = await rpcRes.json()
+
+  // Hard exclusion happens BEFORE the freshness discount, on the over-fetched
+  // pool — not a post-hoc filter of the final k, which could return fewer than
+  // k results even when good alternatives exist in the pool.
+  const excludeSet = excludeAssetIds instanceof Set ? excludeAssetIds : new Set(excludeAssetIds || [])
+  if (excludeSet.size) rows = rows.filter((r) => !excludeSet.has(r.source_id))
 
   // Usage is fetched regardless of preferFresh, because callers RENDER it (the
   // picker badges every tile from this field). Gating the lookup on the ranking

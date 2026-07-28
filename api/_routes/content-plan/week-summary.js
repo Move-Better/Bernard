@@ -209,7 +209,7 @@ export default async function handler(req, res) {
       if (!m) continue
       const isVideo = m.type === 'video' || m.kind === 'video'
       const src = isVideo ? m.thumbnailUrl : (m.thumbnailUrl || m.url)
-      if (src) return { url: src, kind: isVideo ? 'video' : 'image' }
+      if (src) return { url: src, kind: isVideo ? 'video' : 'image', mediaAssetId: m.mediaAssetId || null }
     }
     return null
   }
@@ -227,6 +227,12 @@ export default async function handler(req, res) {
       scheduled_at: a.scheduled_at || (ci?.status === 'published' ? ci.published_at : null),
       thumbnailUrl: thumb?.url || null,
       mediaKind: thumb?.kind || null,
+      // The thumbnail's asset id + reuse counter, so the board can show a
+      // "used ×N" badge on the card without drawing it into the rendered
+      // preview itself. mediaUsage is filled in below via a single batched
+      // media_asset_usage lookup across the whole week (not per-card).
+      mediaAssetId: thumb?.mediaAssetId || null,
+      mediaUsage: null,
       label: a.angle_label,
       brief: a.brief,
       // Output format for the slot (migration 179). NULL on every pre-format
@@ -261,6 +267,32 @@ export default async function handler(req, res) {
   const scheduledShaped = scheduled
     .map(shape)
     .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))
+  const heldShaped = heldAtoms.map(shape)
+
+  // Batched reuse-counter lookup (media_asset_usage, migration 185) across
+  // every card's thumbnail asset in one round trip — never per-card. Mirrors
+  // MediaUsageBadge's { total, published } shape so the client can reuse that
+  // same component. Best-effort: a failed lookup just leaves mediaUsage null,
+  // same as an asset with no usage row.
+  async function attachMediaUsage(items) {
+    const ids = [...new Set(items.map((it) => it.mediaAssetId).filter((v) => UUID_RE.test(v || '')))]
+    if (!ids.length) return
+    const quoted = ids.map((v) => `"${v}"`).join(',')
+    const r = await sb(
+      `media_asset_usage?workspace_id=eq.${ws.id}&asset_id=in.(${quoted})&select=asset_id,use_count,published_count`,
+    )
+    if (!r.ok) { console.error('[week-summary] media usage lookup failed:', r.status); return }
+    const rows = await r.json()
+    const byId = new Map((Array.isArray(rows) ? rows : []).map((u) => [u.asset_id, { total: u.use_count || 0, published: u.published_count || 0 }]))
+    for (const it of items) {
+      if (it.mediaAssetId && byId.has(it.mediaAssetId)) it.mediaUsage = byId.get(it.mediaAssetId)
+    }
+  }
+  try {
+    await attachMediaUsage([...scheduledShaped, ...heldShaped])
+  } catch (e) {
+    console.error('[week-summary] media usage lookup threw:', e?.message)
+  }
 
   // Pre-draft summary (Phase 3): how much of the week Bernard drafted ahead, and
   // how much cleared the voice check vs. still needs the human. 'held' short
@@ -298,7 +330,7 @@ export default async function handler(req, res) {
     scheduled: scheduledShaped,
     predraftSummary,
     heldCount: heldAtoms.length,
-    held: heldAtoms.map(shape),
+    held: heldShaped,
     digest: digest ? { label: digest.label, frequency: digest.frequency, next_send: digest.next_send || null } : null,
     yourReview,
   })
