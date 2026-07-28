@@ -11,11 +11,13 @@
 // match — any face is on-brand, and weak matches are simply rejectable (the
 // producer doesn't pick them).
 //
-// Photos already attached to the workspace's other recent pieces (last
-// RECENT_EXCLUDE_LIMIT, by created_at) are excluded from results, so a
-// recurring topic doesn't keep resurfacing the same identical top-ranked shot
-// on every new draft — the underlying vector search is otherwise fully
-// deterministic for a given query.
+// Reuse is handled two ways. Workspace-wide, all-time reuse is a soft
+// discount applied inside searchClips (clipSearch.js) — a heavily-used asset
+// ranks lower but can still win if it's the clearly best match. Within the
+// SAME plan week and SAME platform, reuse is a hard exclusion instead (see
+// the plan_week lookup below): every post for a platform in a given week gets
+// a distinct photo, full stop, because a topically-strong match can easily
+// beat the soft discount 2-3 times in one week (2026-07-28).
 //
 // Body:
 //   { id: string }                  — content_items.id to suggest media for
@@ -113,6 +115,53 @@ export default async function handler(req, res) {
   if (!query) return res.status(400).json({ error: 'query_required' })
   if (query.length > 2000) query = query.slice(0, 2000)
 
+  // --- Same-platform, same-week exclusion (Q, 2026-07-28) ---
+  //
+  // The freshness discount above is soft and workspace-wide — it doesn't stop
+  // a strong topical match from winning 2-3 posts in the same week. Q's call:
+  // no repeats within a platform's own posts for the week (e.g. every
+  // Instagram post this week uses a different photo), so this is a hard
+  // exclusion, scoped to the draft's plan_week + platform, not a discount.
+  //
+  // Only applies when the draft is actually on the plan board (has a linked
+  // content_plan_atoms row with a plan_week) — an ad-hoc/unscheduled draft has
+  // no week to scope against, so it falls back to the plain freshness ranking.
+  let excludeAssetIds = null
+  if (id && draft.platform) {
+    try {
+      const weekRes = await sb(
+        `content_plan_atoms?workspace_id=eq.${ws.id}&content_piece_id=eq.${encodeURIComponent(id)}` +
+        `&select=plan_week&limit=1`,
+      )
+      const planWeek = weekRes.ok ? (await weekRes.json())?.[0]?.plan_week : null
+      if (planWeek) {
+        const siblingsRes = await sb(
+          `content_plan_atoms?workspace_id=eq.${ws.id}&plan_week=eq.${encodeURIComponent(planWeek)}` +
+          `&platform=eq.${encodeURIComponent(draft.platform)}&content_piece_id=not.is.null` +
+          `&select=content_piece_id,content_item:content_items!content_piece_id(media_urls)`,
+        )
+        if (siblingsRes.ok) {
+          const siblings = await siblingsRes.json()
+          const ids = new Set()
+          for (const s of Array.isArray(siblings) ? siblings : []) {
+            if (s.content_piece_id === id) continue // don't exclude the draft's own already-attached media
+            const urls = Array.isArray(s.content_item?.media_urls) ? s.content_item.media_urls : []
+            for (const m of urls) {
+              if (m?.mediaAssetId) ids.add(m.mediaAssetId)
+            }
+          }
+          if (ids.size) excludeAssetIds = ids
+        } else {
+          console.error('[content-items/suggest-media] week-sibling lookup failed:', siblingsRes.status)
+        }
+      }
+    } catch (e) {
+      // Best-effort: a failed week-scoping lookup falls back to the plain
+      // freshness ranking rather than failing the whole suggestion request.
+      console.error('[content-items/suggest-media] week-scope exclusion failed:', e?.message)
+    }
+  }
+
   const k = Math.min(Math.max(parseInt(body.k, 10) || DEFAULT_K, 1), 50)
   // Default the kind from the draft so we never suggest media it can't use (no
   // photos for YouTube/TikTok; no raw video for a blog hero; and no photos for
@@ -129,16 +178,17 @@ export default async function handler(req, res) {
 
   // --- Search the workspace's visual memory via the shared helper ---
   //
-  // This route used to hard-exclude every asset appearing on the 20 most recent
-  // pieces, to stop a recurring topic resurfacing the same top-ranked shot. That
-  // was a blunt instrument: it could remove the ONLY good match for a topic and
-  // leave nothing but weak alternatives, and it was invisible — a suggestion
-  // that never appears can't be judged. searchClips now applies a proportional
-  // freshness discount instead, which handles the same problem without ever
-  // making a good option unreachable.
+  // This route once hard-excluded every asset on the 20 most recent pieces
+  // workspace-wide, found to be a blunt instrument (it could remove the ONLY
+  // good match for a topic) and replaced with searchClips' proportional
+  // freshness discount. excludeAssetIds (above) reintroduces a hard exclusion,
+  // but narrowly scoped to this platform's OTHER posts in this same plan
+  // week — small enough a set that it can't strand a topic with nothing but
+  // weak alternatives, since it's never excluding more than a handful of
+  // recent same-week, same-platform picks.
   let clips
   try {
-    clips = await searchClips({ query, workspaceId: ws.id, k, kind, minScore })
+    clips = await searchClips({ query, workspaceId: ws.id, k, kind, minScore, excludeAssetIds })
   } catch (e) {
     console.error('[content-items/suggest-media] search failed:', e?.message)
     return res.status(500).json({ error: 'search_failed'})
