@@ -222,19 +222,27 @@ async function maybeProposeDayChange({ workspace, sb }) {
  * that's been drafted/approved/held-by-a-human, or is a legacy 'grid' atom, is
  * left untouched.
  *
- * @returns {{ toDelete: string[], toInsert: object[], toUpdate: Array<{id, patch}> }}
+ * Bank mode (`reholdLegacy: true`): replaced LEGACY pending atoms (no
+ * moment_id) are RE-HELD to backlog instead of deleted — they're the only copy
+ * of their brief, and deleting a previously-promoted backlog atom on the next
+ * replan silently drains the legacy pool without anything publishing. Replaced
+ * MOMENT atoms are still deleted: the moments table holds their inventory, so
+ * the atom row is disposable by design.
+ *
+ * @returns {{ toDelete: string[], toRehold: string[], toInsert: object[], toUpdate: Array<{id, patch}> }}
  */
-export function planToDbOps(plan, existingAtoms = []) {
+export function planToDbOps(plan, existingAtoms = [], { reholdLegacy = false } = {}) {
   const untouched = existingAtoms.filter(
     (a) => a.planned_by === 'strategist' && a.status === 'pending' && !a.content_piece_id,
   )
-  const toDelete = untouched.map((a) => a.id)
+  const toDelete = untouched.filter((a) => !reholdLegacy || a.moment_id).map((a) => a.id)
+  const toRehold = reholdLegacy ? untouched.filter((a) => !a.moment_id).map((a) => a.id) : []
   const toInsert = [...plan.thisWeek, ...plan.held]
   const toUpdate = plan.promoted.map((a) => ({
     id: a.id,
     patch: { held_at: null, scheduled_at: a.scheduled_at, plan_week: a.plan_week },
   }))
-  return { toDelete, toInsert, toUpdate }
+  return { toDelete, toRehold, toInsert, toUpdate }
 }
 
 /**
@@ -252,6 +260,15 @@ async function persistPlan({ ops, sb = defaultSb, workspaceId }) {
     const ids = ops.toDelete.map((id) => `"${id}"`).join(',')
     const delR = await sb(`content_plan_atoms?id=in.(${ids})${wsFilter}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
     if (!delR.ok) throw new Error(`atom delete ${delR.status}: ${(await delR.text().catch(() => '')).slice(0, 200)}`)
+  }
+  if (ops.toRehold?.length) {
+    const ids = ops.toRehold.map((id) => `"${id}"`).join(',')
+    const rhR = await sb(`content_plan_atoms?id=in.(${ids})${wsFilter}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ held_at: new Date().toISOString(), plan_week: null, scheduled_at: null, updated_at: new Date().toISOString() }),
+      headers: { Prefer: 'return=minimal' },
+    })
+    if (!rhR.ok) throw new Error(`atom rehold ${rhR.status}: ${(await rhR.text().catch(() => '')).slice(0, 200)}`)
   }
   if (ops.toInsert.length) {
     const r = await sb('content_plan_atoms', {
@@ -307,6 +324,24 @@ export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultS
     return { weekMonday: planWeek, skipped: 'no-inputs', exploring }
   }
 
+  // Read the week's existing atoms BEFORE composing: replace-untouched needs
+  // them for the delete/rehold set, and the compose needs a per-channel count
+  // of the atoms it can NOT replace (drafted/approved/human-touched) so a
+  // mid-week replan tops the week up instead of composing a full second week
+  // on top of an already-drafted one.
+  const exRes = await sb(
+    `content_plan_atoms?workspace_id=eq.${workspace.id}&plan_week=eq.${planWeek}` +
+      `&select=id,platform,planned_by,status,content_piece_id,moment_id`,
+  )
+  const existing = exRes.ok ? await exRes.json() : []
+  const isReplaceable = (a) => a.planned_by === 'strategist' && a.status === 'pending' && !a.content_piece_id
+  const existingFilledByChannel = {}
+  for (const a of existing) {
+    if (!isReplaceable(a)) {
+      existingFilledByChannel[a.platform] = (existingFilledByChannel[a.platform] || 0) + 1
+    }
+  }
+
   const plan = await composeWeeklyPlan({
     workspaceId: workspace.id,
     interviews,
@@ -322,24 +357,19 @@ export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultS
     weekMonday: planWeek,
     moments,
     promoMomentIds,
+    existingFilledByChannel,
     ...(generate ? { generate } : {}),
     ...(generateBank ? { generateBank } : {}),
   })
 
-  // Read existing strategist atoms for this week to apply replace-untouched.
-  const exRes = await sb(
-    `content_plan_atoms?workspace_id=eq.${workspace.id}&plan_week=eq.${planWeek}` +
-      `&select=id,planned_by,status,content_piece_id`,
-  )
-  const existing = exRes.ok ? await exRes.json() : []
-
-  const ops = planToDbOps(plan, existing)
+  const ops = planToDbOps(plan, existing, { reholdLegacy: bankMode })
   await persistPlan({ ops, sb, workspaceId: workspace.id })
 
   return {
     weekMonday: planWeek,
     ...plan.stats,
     replaced: ops.toDelete.length,
+    reheld: ops.toRehold.length,
     promoted: ops.toUpdate.length,
     exploring,
   }
