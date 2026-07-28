@@ -5,6 +5,21 @@
 //
 // `summary` is the GET /api/moments/summary payload.
 
+// Home restock nudge (Moments IA ⑤ — mockup §04): renders ONLY while
+// started && runwayWeeks < 2. "Not started" NEVER nudges — silence before the
+// first capture is deliberate, and a workspace with no cadence demand
+// (runwayWeeks null) has nothing to run out of. Returns null (no nudge) or
+// { days, gaps } for the amber block inside the interview CTA card.
+export function restockNudgeState(summary) {
+  if (!summary?.started) return null
+  const wks = summary.runwayWeeks
+  if (wks == null || wks >= 2) return null
+  return {
+    days: Math.max(1, Math.round(wks * 7)),
+    gaps: Array.isArray(summary.gaps) ? summary.gaps : [],
+  }
+}
+
 export function onHandChipState(summary) {
   if (!summary) return null
   if (!summary.started) return { label: 'On hand · Not started', tone: 'quiet' }
