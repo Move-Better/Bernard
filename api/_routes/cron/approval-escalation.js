@@ -106,8 +106,28 @@ async function handler(req, res) {
     return res.status(400).json({ error: 'invalid_slug' })
   }
 
+  // Rehearsal: send the REAL email, built from the REAL overdue query, to one
+  // named address instead of the workspace's actual recipients. Exists because
+  // dryRun cannot prove the one thing that matters most about a new sender —
+  // that a real inbox receives it and the deep links resolve — while a live run
+  // would email staff who have had no warning.
+  //
+  // Three deliberate properties: it requires an explicit `slug` (a test can
+  // never fan out), it does NOT record an approval_nudge row (a rehearsal is not
+  // a nudge, and the 4-week measurement must not count it), and it neither
+  // checks nor consumes the daily cooldown (so rehearsing does not suppress the
+  // real send, and vice versa).
+  const testTo = url.searchParams.get('testTo') || null
+  if (testTo && !/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(testTo)) {
+    return res.status(400).json({ error: 'invalid_test_recipient' })
+  }
+  if (testTo && !onlySlug) {
+    return res.status(400).json({ error: 'test_send_requires_slug' })
+  }
+
   if (!dryRun && !RESEND_API_KEY) return res.status(503).json({ error: 'RESEND_API_KEY not configured' })
-  if (!CLERK_SECRET)              return res.status(503).json({ error: 'CLERK_SECRET_KEY not configured' })
+  // A rehearsal resolves no Clerk users, so it must not be blocked on that key.
+  if (!CLERK_SECRET && !testTo)   return res.status(503).json({ error: 'CLERK_SECRET_KEY not configured' })
 
   const wsRes = await sb(
     'workspaces?status=eq.active' +
@@ -133,7 +153,7 @@ async function handler(req, res) {
         continue
       }
 
-      if (!dryRun && await hasRecentNudge({ workspaceId: ws.id, sb, now })) {
+      if (!dryRun && !testTo && await hasRecentNudge({ workspaceId: ws.id, sb, now })) {
         results.push({ workspace: ws.slug, skipped: 'cooldown' })
         continue
       }
@@ -145,7 +165,9 @@ async function handler(req, res) {
       }
 
       const shown = overdue.slice(0, MAX_ITEMS_PER_EMAIL)
-      const recipients = await resolveRecipients(ws.id)
+      const recipients = testTo
+        ? [{ email: testTo, name: null }]
+        : await resolveRecipients(ws.id)
       if (recipients.length === 0) {
         results.push({ workspace: ws.slug, skipped: 'no_recipients', overdue: overdue.length })
         continue
@@ -193,6 +215,16 @@ async function handler(req, res) {
         // Nothing was delivered, so nothing is recorded — the ledger must mean
         // "a human was actually emailed", or the 4-week measurement is fiction.
         results.push({ workspace: ws.slug, sent: false, error: 'all_recipients_failed', failures })
+        continue
+      }
+
+      if (testTo) {
+        // Rehearsal — deliberately no ledger row. See the testTo comment above.
+        results.push({
+          workspace: ws.slug, test_send: true, sent_to: testTo,
+          overdue: overdue.length, recorded: false,
+          links: shown.map((it) => pieceUrl(ws.slug, it.pieceId)),
+        })
         continue
       }
 
