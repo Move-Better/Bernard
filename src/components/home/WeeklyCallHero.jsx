@@ -18,8 +18,13 @@ import { PhoneCall, Mic, ArrowRight, CalendarClock } from 'lucide-react'
  * @param {number|null} lastOwnCallAt - epoch ms of the current user's most
  *   recent completed interview, or null. Drives the "N days since your last"
  *   nudge; omitted when the user has never completed one.
+ * @param {{days:number, gaps:Array<{id:string,topic:string}>}|null} restock -
+ *   Moments IA ⑤ (mockup §04): the restock nudge, computed by
+ *   restockNudgeState() — non-null ONLY while the workspace has started
+ *   capturing AND runway is under 2 weeks. Null renders nothing new: no
+ *   badge, no email, no recurring nag — the line simply exists while true.
  */
-export default function WeeklyCallHero({ lastOwnCallAt = null }) {
+export default function WeeklyCallHero({ lastOwnCallAt = null, restock = null }) {
   const days =
     lastOwnCallAt != null
       ? Math.floor((Date.now() - lastOwnCallAt) / (24 * 60 * 60 * 1000))
@@ -50,6 +55,20 @@ export default function WeeklyCallHero({ lastOwnCallAt = null }) {
             blog, social posts, carousels and email are already drafting — in
             your voice.
           </p>
+          {restock && (
+            <div className="mb-4 max-w-xl rounded-r-lg border-l-2 border-action bg-action/[0.07] px-3 py-2">
+              <p className="text-3xs font-bold uppercase tracking-wider text-action">Running low</p>
+              <p className="mt-0.5 text-xs text-foreground">
+                About <b>{restock.days} day{restock.days === 1 ? '' : 's'}</b> of content on hand.
+                A 20-minute conversation restocks roughly a month.
+              </p>
+              {restock.gaps.length > 0 && (
+                <p className="mt-1 text-2xs text-muted-foreground">
+                  Patients keep asking about {restock.gaps.slice(0, 3).map((g) => g.topic).join(', ')} — nothing on hand yet.
+                </p>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2.5 flex-wrap">
             <Link
               to="/new/live-interview"

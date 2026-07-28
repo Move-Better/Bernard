@@ -13,6 +13,7 @@ import { getSuggestedTopics } from '@/lib/topicSuggestions'
 import { getPatientPrototypesUi } from '@/lib/patientPrototypes'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { greetingFor } from '@/components/home/helpers'
+import { restockNudgeState } from '@/lib/onHand'
 import GettingStarted from '@/components/home/GettingStarted'
 import WeeklyCallHero from '@/components/home/WeeklyCallHero'
 import OnboardingCard, { isSnoozed as isOnboardingSnoozed } from '@/components/home/OnboardingCard'
@@ -106,6 +107,17 @@ export default function Home() {
     if (mine.length === 0) return null
     return mine.reduce((max, i) => Math.max(max, new Date(i.updated_at).getTime()), 0)
   }, [allInterviews, user])
+
+  // Moments IA ⑤ — on-hand inventory summary for the restock nudge inside the
+  // interview CTA card. Same cache key /week uses, so this is usually free.
+  // Renders ONLY while started && runwayWeeks < 2 (restockNudgeState) — on a
+  // healthy workspace this query changes nothing on the page.
+  const { data: onHandSummary } = useQuery({
+    queryKey: ['moments-summary'],
+    queryFn: () => apiFetch('/api/moments/summary'),
+    refetchOnWindowFocus: false,
+  })
+  const restock = restockNudgeState(onHandSummary)
 
   const resumeInterviews = useMemo(() => {
     const now = Date.now()
@@ -295,7 +307,7 @@ export default function Home() {
           heroState above). Suppressed when onboarding or an in-progress
           interview already owns the "start/continue a call" action, so the
           CTA doesn't appear twice. */}
-      {heroState === 'call' && <WeeklyCallHero lastOwnCallAt={lastOwnCallAt} />}
+      {heroState === 'call' && <WeeklyCallHero lastOwnCallAt={lastOwnCallAt} restock={restock} />}
 
       {/* Failed-publish alert — a post bundle.social rejected. Rendered above the
           amber attention strip because a dead post is more urgent than a to-do and
