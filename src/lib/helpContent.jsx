@@ -1,6 +1,6 @@
 import {
   FileText, Send, CheckCircle2, Sparkles,
-  BarChart3, Film, Scissors, Filter, LayoutGrid, Target, Calendar,
+  BarChart3, Scissors, Filter, LayoutGrid, Target, Calendar,
 } from 'lucide-react'
 
 // Per-page Help content registry.
@@ -46,43 +46,42 @@ export const HELP_CONTENT = {
     notes: [
       {
         title: 'Where the work actually lives',
-        body: 'Home links out; it does not store. Drafts and finished posts live on Stories, raw video clips are cut in Moment Miner, and the clinic-wide board lives on Overview. Home is just the shortest path to each.',
+        body: 'Home links out; it does not store. Drafts and finished posts live on Stories, raw video clips are cut on Moments, and the clinic-wide board lives on Overview. Home is just the shortest path to each.',
       },
     ],
   },
 
   moments: {
-    title: 'Moment Miner — how it works',
+    title: 'Moments — how it works',
     intro:
-      'Moment Miner is where you turn raw source videos into short, polished clips. Pick a video from your library, trim the best moment, add a caption, and send it forward — either as a post draft ready for Words, or as b-roll saved back to the Library.',
+      'Moments is what your practice has said, ready to use — verbatim excerpts mined from your conversations and videos. Bernard composes your week from these; you steer by browsing what is on hand, reviewing new video moments, and retiring anything you would not say.',
     steps: [
       {
-        icon: Film,
-        title: 'Browse your source videos',
-        body: 'The grid shows every video in your Library. A badge on each card shows how many clips have already been cut from it, so you know what is already worked and what still has potential.',
+        icon: Sparkles,
+        title: 'Browse what is on hand',
+        body: 'The On hand tab lists every usable moment with its score, source story, and how often it has been used. Search, filter by type or staff, and sort — the strongest lead.',
       },
       {
         icon: Scissors,
-        title: 'Cut a clip',
-        body: 'Click "Cut a clip" on any video to open the Clip Editor. Drag the trim handles to isolate the best moment — a technique demonstration, a key insight, a memorable moment.',
+        title: 'Review new video moments',
+        body: 'New from video is the cutting desk: AI-proposed moments from your source videos, ready to review and trim. Save the keepers as clips to your Library, or cut your own.',
       },
       {
         icon: FileText,
-        title: 'Caption your clip',
-        body: 'Add or edit the caption for the clip. The editor pre-populates one from the surrounding transcript when it is available; refine it before sending.',
-      },
-      {
-        icon: Send,
-        title: 'Send it somewhere',
-        body: 'When the clip is ready, send it to a post draft — it lands on the Storyboard in the Words step — or save it to the Library as b-roll for future use. One clip, two destinations.',
+        title: 'Retire what you would not say',
+        body: 'From a row’s ⋯ menu, retire a moment to stop future use — quietly. Pieces already planned from it keep their drafts, and a retired moment can be restored any time.',
       },
       {
         icon: BarChart3,
         title: 'Check Coverage for gaps',
-        body: 'The Coverage tab shows per-staff capture activity and topic gaps — which clinicians have been on camera recently and which subjects are underrepresented in what you have captured.',
+        body: 'Coverage shows per-staff capture activity, topic coverage, and any topics the weekly planner could not find a matching moment for — worth asking about next interview.',
       },
     ],
     notes: [
+      {
+        title: 'The weeks-on-hand number',
+        body: 'The header figure is your usable moments divided by a week’s planned posting slots — how long the current stock lasts at the current pace. A 20-minute conversation restocks roughly a month.',
+      },
       {
         title: 'Consent first',
         body: 'Videos with a pending or revoked patient consent show a warning badge and cannot be clipped until the consent status is resolved. Resolve consent from the staff profile or the Media Library.',

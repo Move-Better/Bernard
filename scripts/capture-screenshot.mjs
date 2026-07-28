@@ -130,7 +130,7 @@ try {
     try {
       localStorage.setItem('pagehelp:session:welcomed', ts)
       localStorage.setItem('mediahub:welcomed:v1', ts)
-      ;['home', 'overview', 'stories', 'usage', 'your-week'].forEach((k) => {
+      ;['home', 'overview', 'stories', 'usage', 'your-week', 'moments'].forEach((k) => {
         localStorage.setItem(`pagehelp:${k}:welcomed:v1`, ts)
       })
     } catch {}

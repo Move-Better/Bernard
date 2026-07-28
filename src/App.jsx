@@ -672,10 +672,13 @@ function AppRoutes() {
             <Route path="/needs-media" element={<Navigate to="/week" replace />} />
             {/* Universal PWA capture surface — works on any device with a browser + camera. */}
             <Route path="/capture" element={guarded(<Capture />)} />
-            {/* Moment Miner (né Slate, renamed 2026-06-21). /slate kept as a
-                back-compat alias for old deep links (matches the Publish pattern). */}
+            {/* Moments — the one home for the moment inventory (2026-07-27 IA
+                unification); the video miner lives inside as the "New from
+                video" tab. /slate kept as a back-compat alias for old deep
+                links (matches the Publish pattern) and lands on that tab,
+                since /slate always meant the video desk. */}
             <Route path="/moments" element={guarded(<MomentMiner />)} />
-            <Route path="/slate" element={guarded(<MomentMiner />)} />
+            <Route path="/slate" element={guarded(<MomentMiner initialTab="video" />)} />
             {/* The Reel editor is the default for a clip; /edit kept as an alias. */}
             <Route path="/moments/clip/:assetId" element={guarded(<VideoEditor />)} />
             <Route path="/moments/clip/:assetId/edit" element={guarded(<VideoEditor />)} />
