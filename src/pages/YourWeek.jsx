@@ -73,8 +73,13 @@ function CardPreview({ item }) {
   const [natural, setNatural] = useState(null)
   const frame = previewFrame(item, natural)
   return (
+    // self-start is load-bearing: the card row is a flex container, so without
+    // it the tile stretches to the copy column's height, aspect-ratio is
+    // ignored (it only applies when height is auto) and object-cover crops the
+    // photo to whatever the text happens to be tall — the arbitrary crop this
+    // whole component exists to avoid. A landscape photo rendered portrait.
     <div
-      className="relative w-[84px] shrink-0 overflow-hidden rounded-md bg-muted"
+      className="relative w-[84px] shrink-0 self-start overflow-hidden rounded-md bg-muted"
       style={{ aspectRatio: frame ? String(frame.aspect) : '1' }}
     >
       <img
@@ -1710,9 +1715,15 @@ export default function YourWeek() {
               // Fixed 240px columns that scroll sideways, not seven columns
               // divided into the viewport. At the old ~153px a card had no room
               // for both a preview and a readable title; the trade is that
-              // Sat/Sun sit off-screen until scrolled. Overflow is on THIS
-              // container so the page body never scrolls sideways.
-              <div className="flex snap-x gap-2 overflow-x-auto pb-2">
+              // Sat/Sun sit off-screen until scrolled.
+              //
+              // w-0 min-w-full is what keeps the scroll on THIS container
+              // instead of the page: Layout's content column is a flex item
+              // with min-width auto, so an ancestor happily grows to our
+              // 1728px of columns and the whole body scrolls sideways instead.
+              // w-0 stops us contributing to that content-width measurement;
+              // min-w-full then paints us back to the parent's real width.
+              <div className="flex w-0 min-w-full snap-x gap-2 overflow-x-auto pb-2">
                 {DAYS.map(([key, label]) => {
                   const isQuiet = quiet.has(key)
                   // Quiet days never show "open slot" invitations, even if a
