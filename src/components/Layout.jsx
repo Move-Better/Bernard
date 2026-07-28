@@ -328,7 +328,19 @@ export default function Layout({ children }) {
       </aside>
 
       {/* ── Right column: header (mobile only) + content ───────────────── */}
-      <div className={`flex-1 ${contentML} transition-[margin-left] duration-200`}>
+      {/* min-w-0 because a flex item defaults to min-width:auto, so any page
+          with content wider than the viewport grew THIS column instead of
+          overflowing inside it — and the whole body scrolled sideways, which
+          is the one thing every screen here is supposed to never do. It also
+          silently defeats overflow-x-auto on a descendant: the scroll container
+          just gets handed more width instead of scrolling. /week hit exactly
+          that and had to work around it locally.
+          Measured before changing it: at 390px six routes scrolled the body
+          (/stories 452px, /seo 413px, /usage 156px, /analytics 249px,
+          /overview 147px, /settings/workspace 1422px) and all six go to 0 with
+          no content left unreachable — the wide tables already sit in their own
+          overflow-x-auto wrappers. At 1440px nothing relied on it at all. */}
+      <div className={`min-w-0 flex-1 ${contentML} transition-[margin-left] duration-200`}>
         {/* Header is mobile-only — desktop nav lives in the sidebar.
             h-14 kept so SettingsLayout's mobile sticky top-14 rail stays correct. */}
         <header className="md:hidden sticky top-0 z-40 h-14 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-sm flex items-center gap-3 px-4 sm:px-6">
