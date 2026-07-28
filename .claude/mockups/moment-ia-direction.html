@@ -1,0 +1,328 @@
+<title>Moments IA — Direction v2 (supersedes held P4)</title>
+<style>
+  :root{
+    --ink:hsl(222 47% 8%); --paper:#fff; --page:hsl(220 20% 98%);
+    --spruce:hsl(186 83% 27%); --spruce-soft:hsl(186 83% 27% / .08);
+    --amber:hsl(32 95% 44%); --emerald:hsl(152 76% 40%); --red:hsl(0 72% 45%);
+    --mut:hsl(215 19% 34%); --mut-2:hsl(215 16% 52%); --line:hsl(214 32% 91%);
+    --chip:hsl(220 14% 96%);
+    --ann:hsl(215 19% 34%); --ann-bg:hsl(220 20% 98%);
+    --sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --page:hsl(222 30% 9%); --ann:hsl(215 16% 72%); --ann-bg:hsl(222 30% 9%);
+           --page-ink:hsl(220 20% 92%); }
+  }
+  :root[data-theme="dark"]{ --page:hsl(222 30% 9%); --ann:hsl(215 16% 72%); --ann-bg:hsl(222 30% 9%); --page-ink:hsl(220 20% 92%); }
+  :root[data-theme="light"]{ --page:hsl(220 20% 98%); --ann:hsl(215 19% 34%); --ann-bg:hsl(220 20% 98%); --page-ink:hsl(222 47% 8%); }
+  html{background:var(--page)}
+  body{font-family:var(--sans);color:var(--page-ink,var(--ink));margin:0;line-height:1.55}
+  .wrap{max-width:1060px;margin:0 auto;padding:40px 24px 96px}
+  h1{font-size:27px;letter-spacing:-.02em;line-height:1.2;margin:6px 0 10px;text-wrap:balance}
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--spruce)}
+  .lede{font-size:14.5px;color:var(--ann);max-width:70ch;margin:0}
+  .decisions{margin:22px 0 8px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .decisions table{width:100%;border-collapse:collapse;font-size:13px;background:var(--paper);color:var(--ink)}
+  .decisions th{background:var(--chip);text-align:left;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);padding:8px 14px}
+  .decisions td{padding:8px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .decisions td:first-child{font-weight:700;white-space:nowrap;width:190px}
+  section{margin-top:56px}
+  .sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+  .sec-num{font-family:var(--mono);font-size:12px;color:var(--spruce);font-weight:700}
+  h2{font-size:19px;letter-spacing:-.01em;margin:0;text-wrap:balance}
+  .today{border-left:3px solid var(--line);padding:2px 0 2px 14px;margin:12px 0 18px;color:var(--ann);font-size:13.5px;max-width:78ch}
+  .today b{color:inherit}
+  .today .t{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:2px;color:var(--mut-2)}
+  .note{font-size:12.5px;color:var(--ann);max-width:78ch;margin:14px 0 0}
+  .note b{font-weight:700}
+
+  /* ---------- mock frame (always light: the product is light-first) ---------- */
+  .mock{background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 2px hsl(222 47% 8% / .05),0 8px 28px hsl(222 47% 8% / .05);overflow:hidden}
+  .mock *{box-sizing:border-box}
+  .mock .bar{display:flex;align-items:center;gap:8px;background:var(--chip);border-bottom:1px solid var(--line);padding:8px 14px;font-family:var(--mono);font-size:11px;color:var(--mut-2)}
+  .mock .bar .dots{display:flex;gap:5px}
+  .mock .bar .dots i{width:9px;height:9px;border-radius:50%;background:hsl(214 20% 82%)}
+  .body{padding:22px 26px 26px}
+  .overflow{overflow-x:auto}
+
+  /* ---------- shared app atoms ---------- */
+  .h1m{font-size:21px;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+  .sub{font-size:13px;color:var(--mut);margin-top:3px}
+  .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;font-size:11px;font-weight:700;padding:4px 10px;border:1px solid var(--line);background:var(--paper);color:var(--mut)}
+  .pill.on{background:var(--spruce);border-color:var(--spruce);color:#fff}
+  .pill.quiet{color:var(--mut)}
+  .pill.amber{background:hsl(32 95% 44% / .1);border-color:hsl(32 95% 44% / .35);color:var(--amber)}
+  .pill.red{background:hsl(0 72% 45% / .08);border-color:hsl(0 72% 45% / .3);color:var(--red)}
+  .score{display:inline-flex;justify-content:center;min-width:26px;border-radius:7px;padding:2px 5px;font-size:11px;font-weight:800;font-variant-numeric:tabular-nums}
+  .score.hi{background:var(--spruce-soft);color:var(--spruce)}
+  .score.mid{background:var(--chip);color:var(--mut)}
+  .tag{font-size:10.5px;font-weight:700;color:var(--mut-2)}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .chg{outline:2px solid var(--amber);outline-offset:3px;border-radius:10px;position:relative}
+  .chg-lab{position:absolute;top:-9px;right:8px;background:var(--amber);color:#fff;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:1px 7px;border-radius:999px}
+  .row{display:flex;align-items:center;gap:10px}
+  .grow{flex:1;min-width:0}
+  .btn{display:inline-flex;align-items:center;gap:6px;border-radius:9px;font-size:12px;font-weight:700;padding:6px 12px;border:1px solid var(--line);background:var(--paper);color:var(--ink)}
+  .btn.pri{background:var(--spruce);border-color:var(--spruce);color:#fff}
+  .tabs{display:flex;gap:22px;border-bottom:1px solid var(--line);margin:16px 0 0;font-size:13.5px;font-weight:700}
+  .tabs .tb{padding:0 2px 9px;color:var(--mut);border-bottom:2px solid transparent}
+  .tabs .tb.on{color:var(--ink);border-color:var(--spruce)}
+  .tabs .ct{font-size:10.5px;font-weight:800;background:var(--chip);border-radius:999px;padding:1px 7px;margin-left:5px;color:var(--mut)}
+  .tabs .ct.act{background:hsl(32 95% 44% / .12);color:var(--amber)}
+
+  .mrow{display:flex;gap:12px;padding:13px 2px;border-top:1px solid var(--line);align-items:flex-start}
+  .mrow:first-of-type{border-top:0}
+  .mrow blockquote{margin:0;font-size:13.5px;line-height:1.5;color:hsl(222 47% 8% / .9)}
+  .mrow .meta{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11px;color:var(--mut-2);margin-top:4px;align-items:center}
+  .mrow .meta a{color:var(--spruce);text-decoration:none;font-weight:600}
+  .clip{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:var(--spruce);background:var(--spruce-soft);border-radius:5px;padding:1px 6px}
+  .kebab{color:var(--mut-2);font-weight:800;letter-spacing:1px}
+
+  .drawer{max-width:430px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--paper)}
+  .drawer .dh{padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+  .drawer .dh .t{font-size:15px;font-weight:800}
+  .runbar{display:flex;height:7px;border-radius:999px;overflow:hidden;background:var(--chip);margin:10px 0 6px}
+  .runbar i{display:block;height:100%}
+  .legend{display:flex;gap:14px;font-size:10.5px;color:var(--mut-2);flex-wrap:wrap}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
+  .dsec{padding:11px 16px;border-top:1px solid var(--line)}
+  .dsec .lab{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mut-2);margin-bottom:7px}
+  .gaps-empty{font-size:12px;color:var(--mut);background:var(--chip);border-radius:9px;padding:9px 11px}
+  .lrow{display:flex;align-items:center;gap:8px;font-size:12px;padding:6px 0;color:var(--mut)}
+
+  .prov{border-left:3px solid var(--spruce);background:var(--spruce-soft);border-radius:0 9px 9px 0;padding:9px 12px;margin-top:10px}
+  .prov .pl{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--spruce);margin-bottom:3px}
+  .prov q{font-size:12.5px;color:hsl(222 47% 8% / .85);quotes:"“" "”"}
+  .prov .pm{font-size:10.5px;color:var(--mut-2);margin-top:4px}
+
+  table.app{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.app th{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--mut-2);text-align:left;padding:7px 10px;background:var(--chip)}
+  table.app td{padding:9px 10px;border-top:1px solid var(--line);vertical-align:middle}
+  .stage{display:inline-block;border-radius:999px;font-size:10.5px;font-weight:700;padding:2px 9px}
+  .stage.yield{background:var(--spruce-soft);color:var(--spruce)}
+  .stage.pub{background:hsl(152 76% 40% / .12);color:var(--emerald)}
+  .stage.cap{background:var(--chip);color:var(--mut)}
+  .strike{color:var(--mut-2);text-decoration:line-through;text-decoration-color:hsl(0 72% 45% / .55)}
+
+  .staterow{display:grid;grid-template-columns:150px 1fr 190px;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:12.5px}
+  .staterow:first-child{border-top:0}
+  .rm{margin:14px 0 0;padding:0;list-style:none;font-size:13px;color:var(--ink)}
+  .mock .rm li,.rm li{display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--line);align-items:baseline}
+  .rm li:first-child{border-top:0}
+  .rm .x{color:var(--red);font-weight:800;font-family:var(--mono);font-size:11px}
+  .rm code{font-family:var(--mono);font-size:11.5px;background:var(--chip);border-radius:4px;padding:1px 5px}
+  .foot{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--ann)}
+  @media (max-width:720px){ .staterow{grid-template-columns:1fr;gap:2px} .decisions td:first-child{width:auto} }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">Bernard · UI flow audit · 2026-07-27</div>
+  <h1>One “Moments” concept, planner-first, pantry-framed</h1>
+  <p class="lede">Direction signed off with Q in this session; supersedes the held P4 (Library-tab) round. Every screen below is drawn from live prod data on the <b>movebetter</b> workspace — real moments, real counts, signal rules applied to all seven workspaces. Mocks are framed <b>TODAY → CHANGE</b>; amber outlines mark exactly what changes.</p>
+
+  <div class="decisions"><table>
+    <tr><th>Decision</th><th>Call (all confirmed by Q, 2026-07-27)</th></tr>
+    <tr><td>One concept</td><td>Text moments and video moments are <b>one concept, one home</b>: <code>/moments</code>. The Miner becomes its video-intake lane; a moment may carry footage (<code>clip_asset_id</code> finally gets a UI reason to exist).</td></tr>
+    <tr><td>Audience</td><td><b>Bernard plans, humans steer.</b> Trust surfaces first (provenance, one runway number, gaps); browse/retire one click deep. No librarian job invented.</td></tr>
+    <tr><td>Metaphor + name</td><td><b>Inventory / pantry</b>, phrased as <b>“on hand.”</b> “Moments” stays the noun; no “bank” jargon in the UI.</td></tr>
+    <tr><td>Provenance</td><td>Source quote + score shown <b>everywhere a piece is reviewed</b> (week card, editor, review inbox). Needs <code>moment_id</code> → client; today it appears nowhere client-side.</td></tr>
+    <tr><td>/moments landing</td><td>Inventory first; “New from video” (Miner feed) and unified “Coverage” as tabs.</td></tr>
+    <tr><td>/week</td><td>Legacy “Backlog · 73” chip becomes <b>“On hand · ~9 wks”</b> chip + drawer. Legacy atoms fold in as a shrinking section.</td></tr>
+    <tr><td>Stories</td><td><b>Full reframe</b>: captured → processed → yielding; Pieces column → Yield; Moments promoted on StoryDetail; 4-step stepper retired.</td></tr>
+    <tr><td>Retire</td><td><b>Quiet retire</b> — stops future draws; already-planned pieces keep their per-piece review life.</td></tr>
+    <tr><td>Restock loop</td><td>Quiet Home nudge for clinicians when runway &lt; 2 weeks; gap topics ride along. Silent otherwise.</td></tr>
+    <tr><td>Not doing</td><td>No Library “Moments” tab (Q's held objection stands — Library stays files). No Overview card, no dashboard page. Coverage stays four signals.</td></tr>
+  </table></div>
+
+  <!-- ================= 1. /moments ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>/moments — the one home: inventory first, intake behind it</h2></div>
+    <div class="today"><span class="t">Today</span> <b>The nav word “Moments” belongs to the video Miner</b> (“Ready to review · 160”), while the 133 text moments driving this very week have no surface at all — only a collapsed panel per story. Two systems share one taxonomy and zero linkage.</div>
+
+    <div class="mock"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>movebetter.withbernard.ai/moments</div>
+      <div class="body">
+        <div class="row" style="align-items:flex-start">
+          <div class="grow">
+            <div class="h1m">❞ Moments</div>
+            <div class="sub">What your practice has said — ready to use. Bernard composes your week from these; you steer.</div>
+          </div>
+          <span class="pill quiet">How it works</span>
+        </div>
+
+        <div class="chg" style="margin-top:16px;padding:12px 14px"><span class="chg-lab">new</span>
+          <div class="row" style="flex-wrap:wrap;gap:8px 22px">
+            <div><span style="font-size:19px;font-weight:800" class="mono">~9 weeks</span> <span class="tag">on hand</span><div class="tag" style="font-weight:400">133 usable ÷ 15 weekly slots</div></div>
+            <div><span style="font-size:19px;font-weight:800" class="mono">Jul 10</span> <span class="tag">newest capture</span><div class="tag" style="font-weight:400">17 days ago — freshness keys on interview date</div></div>
+            <div><span style="font-size:19px;font-weight:800" class="mono">0</span> <span class="tag">gaps</span><div class="tag" style="font-weight:400">every planned slot found a match</div></div>
+            <div class="grow"></div>
+            <span class="btn pri">＋ Capture a conversation</span>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <span class="tb on">On hand <span class="ct">133</span></span>
+          <span class="tb">New from video <span class="ct act">160</span></span>
+          <span class="tb">Coverage</span>
+        </div>
+
+        <div class="row" style="margin:12px 0 4px;gap:8px;flex-wrap:wrap">
+          <span class="pill quiet">🔍 Search moments…</span><span class="pill quiet">All types ▾</span><span class="pill quiet">All staff ▾</span><span class="pill quiet">Strongest first ▾</span>
+        </div>
+
+        <div class="mrow"><span class="score hi">85</span>
+          <div class="grow"><blockquote>“They keep trying to work the static, keep getting massage, keep doing body work… That's because it's not really coming from that shoulder. It's actually coming from somewhere else in the chain.”</blockquote>
+            <div class="meta"><span class="tag">Hook</span><span>· shoulder pain root cause</span><span>· from <a>Hip extension &amp; opposite-shoulder stability</a> · Jul 10</span><span>· Dr. Q</span></div></div>
+          <span class="kebab">⋯</span></div>
+        <div class="mrow"><span class="score hi">88</span>
+          <div class="grow"><blockquote>“Watch them walk, screen the lumbar and thoracic. Mobilize the thoracics and the neck pain usually resolves without ever touching the neck.”</blockquote>
+            <div class="meta"><span class="tag">Insight</span><span>· neck pain assessment</span><span>· from <a>Neck pain</a> · May 15</span><span>· used ×2 · last Jul 28</span></div></div>
+          <span class="kebab">⋯</span></div>
+        <div class="mrow"><span class="score hi">82</span>
+          <div class="grow"><blockquote>“I've been trying to work into power cleans with one of our other doctors, Dr. Tyler, and I had a real hard time getting my left scapula to elevate at the top of the power clean…”</blockquote>
+            <div class="meta"><span class="tag">Story</span><span>· hip drive scapula elevation</span><span>· from <a>Hip extension &amp; opposite-shoulder stability</a> · Jul 10</span><span class="clip">▶ clip attached</span></div></div>
+          <span class="kebab">⋯</span></div>
+        <div class="mrow"><span class="score mid">68</span>
+          <div class="grow"><blockquote>“I think they just don't test. I think they don't look to other regions of the body and try to experiment to see, is there a relationship?”</blockquote>
+            <div class="meta"><span class="tag">Insight</span><span>· clinical assessment blind spots</span><span>· from <a>Hip extension &amp; opposite-shoulder stability</a> · Jul 10</span></div></div>
+          <span class="kebab">⋯</span></div>
+      </div>
+    </div>
+
+    <p class="note"><b>The ⋯ menu</b> holds <b>Retire</b> (quiet: “stops future use — 2 planned pieces keep their drafts”), <b>Open story</b>, and — when footage exists — <b>Open clip</b>. <b>“New from video”</b> is the existing Miner feed, unchanged inside, retitled: proposals graduate into this same inventory when saved, tagged to their moment (Lane A — this is the wiring that un-deadlocks the 0/5 reel lane). <b>Coverage</b> merges the Miner's footage view with planner topic-gaps (<code>bank_gap</code>) in one “what's missing” tab, each gap with an “ask about this next interview” action. The “clip attached” chip on the power-clean row illustrates the linked state — no clips are linked yet in prod; it renders only when <code>clip_asset_id</code> is set.</p>
+  </section>
+
+  <!-- ================= 2. /week ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>/week — the chip tells the truth; the drawer explains the week</h2></div>
+    <div class="today"><span class="t">Today</span> The header chip reads <b>“Backlog · 73”</b> and the drawer titles itself <b>“73 banked”</b> — that's the <i>legacy</i> pre-bank pool (0 of 73 carry a moment), which will drain to zero and vanish. The inventory actually composing the board has no presence, and empty-state copy still says “banked as backlog.”</div>
+
+    <div class="row" style="align-items:flex-start;gap:22px;flex-wrap:wrap">
+      <div style="flex:1;min-width:430px">
+        <div class="mock"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>…/week — header chips</div>
+          <div class="body">
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <span class="pill strike">🗄 Backlog · 73</span>
+              <span style="color:var(--mut-2)">→</span>
+              <span class="chg" style="display:inline-block"><span class="chg-lab">new</span><span class="pill quiet">🧺 On hand · ~9 wks</span></span>
+              <span class="pill">Stage 1 of 3</span><span class="pill">Key</span><span class="pill">Producer view</span>
+            </div>
+            <div class="note" style="margin-top:14px">Chip states, rule applied to all seven live workspaces (quiet ≥ 4 wks · amber &lt; 4 · red &lt; 1 · quiet “not started” when nothing was ever captured):</div>
+            <div style="margin-top:8px">
+              <div class="staterow"><span class="pill quiet">🧺 On hand · ~9 wks</span><span>quiet — healthy stock</span><span class="tag mono">movebetter · 133</span></div>
+              <div class="staterow"><span class="pill quiet">🧺 On hand · ~4 wks</span><span>quiet — at the line</span><span class="tag mono">studio · 29 (newest May 21)</span></div>
+              <div class="staterow"><span class="pill amber">🧺 On hand · ~2 wks</span><span>amber — plan a capture</span><span class="tag mono">animals · 28 · equine · 14</span></div>
+              <div class="staterow"><span class="pill red">🧺 On hand · &lt; 1 wk</span><span>red — this week will run thin</span><span class="tag mono">groovechiro · 4</span></div>
+              <div class="staterow"><span class="pill quiet">🧺 Not started</span><span>quiet — never an alarm before the first capture</span><span class="tag mono">qbook · tnw · 0</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mock" style="margin-top:18px"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>…/week — a card, expanded for review</div>
+          <div class="body">
+            <div class="row"><span class="tag mono">GBP · 7:00 AM</span><span class="stage yield">in review</span></div>
+            <div style="font-size:13.5px;font-weight:600;margin-top:6px">Instead of treating you like a car in for parts, we look at how the whole system moves…</div>
+            <div class="chg" style="margin-top:12px"><span class="chg-lab">new</span>
+              <div class="prov"><div class="pl">From Dr. Q's words · scored 85</div>
+                <q>Instead of looking at the patient as a car that's broken down and the mechanic is changing out the parts or refilling the oil…</q>
+                <div class="pm">Building a healthy relationship with movement · Jun 5 · faithfulness checked against this exact passage</div>
+              </div>
+            </div>
+            <div class="row" style="margin-top:12px;gap:8px"><span class="btn pri">Approve</span><span class="btn">Open to change</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="drawer chg" style="flex:0 0 340px"><span class="chg-lab">new drawer</span>
+        <div class="dh"><div class="t">What's on hand</div>
+          <div class="runbar"><i style="width:81%;background:var(--spruce)"></i><i style="width:13%;background:hsl(215 16% 72%)"></i><i style="width:6%;background:transparent;border:1px dashed var(--line)"></i></div>
+          <div class="legend"><span><i style="background:var(--spruce)"></i>13 from moments</span><span><i style="background:hsl(215 16% 72%)"></i>2 legacy</span><span><i style="border:1px dashed var(--mut-2);background:transparent"></i>1 open slot</span></div>
+          <div class="tag" style="font-weight:400;margin-top:6px">This week's 16 slots — composition, not a hit-rate %</div>
+        </div>
+        <div class="dsec"><div class="lab">Gaps</div>
+          <div class="gaps-empty">No gaps — every planned slot found a matching moment. When the planner misses (e.g. a knee-pain campaign with nothing on hand), the topic appears here with “ask about it next interview.”</div>
+        </div>
+        <div class="dsec"><div class="lab">Strongest on hand</div>
+          <div class="lrow"><span class="score hi">88</span><span class="grow" style="color:var(--ink)">“Watch them walk, screen the lumbar and thoracic…”</span></div>
+          <div class="lrow"><span class="score hi">85</span><span class="grow" style="color:var(--ink)">“…it's not really coming from that shoulder.”</span></div>
+          <div class="lrow"><span class="score hi">82</span><span class="grow" style="color:var(--ink)">“You cannot neglect mental health while training…”</span></div>
+          <div class="lrow" style="color:var(--spruce);font-weight:700;font-size:12px">Browse all 133 →</div>
+        </div>
+        <div class="dsec"><div class="lab">Legacy backlog · 73</div>
+          <div class="tag" style="font-weight:400">The old pre-composed pile. Drains as it's used; nothing new lands here. Section disappears at zero.</div>
+        </div>
+      </div>
+    </div>
+
+    <p class="note"><b>Copy sweep in the same change:</b> pre-draft banner “73 in backlog” → “~9 wks on hand”; empty states “I'll compose this week from your backlog…” → “…from what you've said — your moments on hand”; “…with the rest banked as backlog” → “…the rest goes on hand for future weeks.” The provenance block also renders in the piece editor and review inbox (same component), which is where clinicians approve.</p>
+  </section>
+
+  <!-- ================= 3. Stories ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>Stories — a source archive that shows its yield</h2></div>
+    <div class="today"><span class="t">Today</span> The newest real interview (Jul 10, 7 banked moments, feeding this week) displays as <b>“Draft · 1 piece”</b> — the UI calls the bank's most productive source unfinished. Stage machine, “Pieces” count, the 4-step stepper, and the empty state (“a cluster of publish-ready drafts”) all narrate the retired batch model.</div>
+
+    <div class="mock"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>…/stories — table rows (real data)</div>
+      <div class="body overflow">
+        <table class="app" style="min-width:640px">
+          <tr><th>Date</th><th>Subject</th><th>Author</th><th>Stage</th><th class="chg" style="position:relative"><span class="chg-lab">was “pieces”</span>Yield</th></tr>
+          <tr><td class="mono">07/21/26</td><td style="font-weight:600">Voice memo — 2026-07-21</td><td>Whitney Phillips</td><td><span class="stage cap">Captured</span></td><td class="tag">processing…</td></tr>
+          <tr><td class="mono">07/10/26</td><td style="font-weight:600">Hip extension and opposite-shoulder stability</td><td>Dr. Q</td><td><span class="stage yield">Yielding</span></td><td><span class="mono" style="font-weight:700">7 moments</span> <span class="tag">· blog ready · no uses yet</span></td></tr>
+          <tr><td class="mono">06/05/26</td><td style="font-weight:600">Building a healthy relationship with movement…</td><td>Zach Cullen</td><td><span class="stage yield">Yielding</span></td><td><span class="mono" style="font-weight:700">12 moments</span> <span class="tag">· 1 use · last Jul 28</span></td></tr>
+          <tr><td class="mono">06/18/26</td><td style="font-weight:600">Bicep tendinopathy</td><td>Dr. Sophie</td><td><span class="stage yield">Yielding</span></td><td><span class="mono" style="font-weight:700">13 moments</span> <span class="tag">· 8 pieces published</span></td></tr>
+        </table>
+        <div class="note" style="margin-top:10px">Stage machine simplifies to <b>Captured → Processed → Yielding</b> (a story is never “done” — it yields). Published pieces stay visible inside the Yield cell; per-channel sub-rows unchanged.</div>
+      </div>
+    </div>
+
+    <div class="mock" style="margin-top:18px"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>…/stories/:id — StoryDetail order</div>
+      <div class="body">
+        <ul class="rm" style="font-size:13px">
+          <li><span class="x">DEL</span><span>4-step stepper “Interview → Stories → Media → Publish” — the loop is no longer linear</span></li>
+          <li><span style="color:var(--spruce);font-weight:800;font-family:var(--mono);font-size:11px">1</span><span>Header + “What you covered” recap (unchanged)</span></li>
+          <li><span style="color:var(--spruce);font-weight:800;font-family:var(--mono);font-size:11px">2</span><span><b>Moments — open by default</b>, promoted above the posts list: “7 on hand · this is what your week gets composed from.” Retire lives here too (same quiet semantics).</span></li>
+          <li><span style="color:var(--spruce);font-weight:800;font-family:var(--mono);font-size:11px">3</span><span>Blog + hot pieces (the interview's same-week artifacts), then References, transcript rail</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4. Home nudge ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>Home — the pantry's last mile, applied honestly</h2></div>
+    <div class="today"><span class="t">Today</span> The system knows exactly what it needs (runway, gap topics) and tells the only people who can restock it — clinicians — nothing. movebetter has captured zero interviews since Jul 10.</div>
+    <div class="mock"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>Home — interview CTA card</div>
+      <div class="body">
+        <div class="note" style="margin:0 0 10px"><b>Rule: renders only when runway &lt; 2 weeks.</b> On movebetter today (~9 wks) this card shows <i>nothing new</i> — no nudge, by design. The state below is groovechiro (~0.4 wks), the one workspace where it fires red today; animals and equine sit just above the line at amber-only chip level.</div>
+        <div class="chg"><span class="chg-lab">groovechiro state</span>
+          <div style="border:1px solid var(--line);border-radius:11px;padding:14px 16px">
+            <div style="font-weight:800;font-size:14.5px">Talk for 20 minutes</div>
+            <div class="sub">Bernard turns one conversation into weeks of posts, in your words.</div>
+            <div class="prov" style="border-left-color:var(--amber);background:hsl(32 95% 44% / .07);margin-top:10px">
+              <div class="pl" style="color:var(--amber)">Running low</div>
+              <div style="font-size:12.5px">About <b>3 days</b> of content on hand. A 20-minute conversation restocks roughly a month.</div>
+            </div>
+            <div class="row" style="margin-top:12px;gap:8px"><span class="btn pri">Start a conversation</span><span class="btn">Schedule for later</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note">When gap topics exist they ride along as suggested subjects (“Patients keep asking about knee pain — nothing on hand yet”). No badge, no email, no recurring nag: the line simply exists while true.</p>
+  </section>
+
+  <!-- ================= 5. Removals ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-num">05</span><h2>What this direction removes</h2></div>
+    <ul class="rm" style="background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:6px 18px">
+      <li><span class="x">DEL</span><span>“Moment Miner” as a page identity — the feed survives as the <b>New from video</b> tab; the nav word “Moments” now means one thing</span></li>
+      <li><span class="x">DEL</span><span>“Backlog · 73” chip + “banked” label for legacy atoms — folded into the On-hand drawer as a self-liquidating section</span></li>
+      <li><span class="x">DEL</span><span>Stories stage machine Draft/Published for interview stories + the “Pieces” count column → Captured/Processed/Yielding + Yield</span></li>
+      <li><span class="x">DEL</span><span>StoryDetail 4-step pipeline stepper</span></li>
+      <li><span class="x">DEL</span><span>Batch-era copy: <code>“a cluster of publish-ready drafts”</code> (Stories empty state), <code>“banked as backlog”</code> + <code>“from your backlog”</code> (/week empty states), <code>“73 in backlog”</code> (pre-draft banner)</span></li>
+      <li><span class="x">DEL</span><span>Held P4's Library “Moments” tab — Library remains files only</span></li>
+    </ul>
+    <p class="note"><b>Build order (supersedes the held P4 surface list):</b> ① provenance at review (smallest, highest trust-per-line: <code>moment_id</code> → client + the quote block in week card/editor/inbox) → ② /week chip + drawer with copy sweep → ③ /moments unification (bank landing + tabs) → ④ Stories full reframe → ⑤ Home nudge. Each step mockup-covered above; each ships as its own PR batch through the normal gates. Reel-lane wiring (clip ↔ moment linkage) is build work the video-pipeline thread owns, but its UI home is now defined: the intake tab.</p>
+  </section>
+
+  <div class="foot">Data as of 2026-07-27: 133 banked moments on movebetter (15 interviews, newest Jul 10) · 73 legacy held atoms, 0 with moments · runway = usable ÷ weekly slots (133 ÷ 15 ≈ 8.9 wks) · chip states table uses hold-time demand for the six other workspaces with fresh bank counts. Quotes are verbatim prod excerpts. Supersedes artifact “held P4” (2c5a141c).</div>
+</div>
