@@ -18,6 +18,7 @@ import { classifyAndStoreInterviewRegion } from '../../_lib/topicRegion.js'
 import { extractVoicePhrases } from '../../_lib/voicePhraseExtractor.js'
 import { markBookStale } from '../../_lib/bookStale.js'
 import { indexInterviewTranscriptFull } from '../../_lib/practiceMemoryRag.js'
+import { extractAndBankMoments } from '../../_lib/momentExtract.js'
 import { waitUntil } from '@vercel/functions'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -543,6 +544,24 @@ export default async function handler(req, res) {
                 initialWeight: 0.5,
               }))
             }
+            // Moment bank (P2, .claude/moment-bank-sprint.md) — mine scored
+            // VERBATIM moments from the clinician's RAW turns and bank them,
+            // deduped against the workspace's existing bank. Idempotent per
+            // interview (skips if moments already exist), never throws, and
+            // extractAndBankMoments awaits every nested step itself so this
+            // single waitUntil promise covers extract → score → embed → insert.
+            // Uses raw messages (not cleaned) — the anchor {msg_idx,char_start,
+            // char_end} must point into the canonical stored array.
+            waitUntil(extractAndBankMoments({
+              workspace: ws,
+              interview: {
+                id,
+                staff_id: rows[0].staff_id ?? null,
+                topic,
+                region:   rows[0].region ?? null,
+                messages: interviewForExtract.messages,
+              },
+            }))
           }
         }
       } catch (e) {
