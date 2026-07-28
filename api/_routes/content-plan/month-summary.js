@@ -67,10 +67,30 @@ export default async function handler(req, res) {
   const atomsRes = await sb(
     `content_plan_atoms?workspace_id=eq.${ws.id}` +
       `&scheduled_at=gte.${monthStart.toISOString()}&scheduled_at=lt.${monthEnd.toISOString()}` +
-      `&select=scheduled_at,content_piece_id,status,content_piece:content_items!content_piece_id(status)`,
+      `&select=id,scheduled_at,content_piece_id,status,content_piece:content_items!content_piece_id(status)`,
   )
   if (!atomsRes.ok) return err(res, 'Database error', 500)
   const atoms = await atomsRes.json().catch(() => [])
+
+  // A post published immediately (publish-now, no reserved slot time) loses its
+  // scheduled_at: the content_item PATCH that flips status→published sends
+  // scheduledAt:null, and db/content.js's schedule sync mirrors that onto the
+  // linked atom (nulling scheduled_at while keeping plan_week). The scheduled_at
+  // range query above therefore can't return it, so it vanishes from the
+  // calendar even though it's live. Fetch those atoms separately (piece already
+  // published, with a published_at inside the month) and place them by the
+  // content_item's published_at. Mirrors the /week fix in #2398; read path only,
+  // no data migration — self-healing for already-stranded rows. (feedback
+  // 2026-07-27: a LinkedIn post published Monday didn't show as Live.)
+  const publishedRes = await sb(
+    `content_plan_atoms?workspace_id=eq.${ws.id}&scheduled_at=is.null` +
+      `&content_piece.status=eq.published` +
+      `&content_piece.published_at=gte.${monthStart.toISOString()}` +
+      `&content_piece.published_at=lt.${monthEnd.toISOString()}` +
+      `&select=id,content_piece_id,content_piece:content_items!content_piece_id!inner(status,published_at)`,
+  )
+  if (!publishedRes.ok) return err(res, 'Database error', 500)
+  const publishedNow = await publishedRes.json().catch(() => [])
 
   const days = {}
   for (let d = 1; d <= daysInMonth; d++) {
@@ -79,23 +99,35 @@ export default async function handler(req, res) {
     days[iso] = { live: 0, review: 0, open: slotsPerWeekday[weekday] || 0, quiet: quietDays.includes(weekday) }
   }
 
-  for (const atom of atoms) {
-    if (!atom.scheduled_at) continue
-    // Local (workspace-tz) calendar day the atom actually landed on — a UTC
-    // instant near midnight can fall on a different local date, so this must
-    // go through Intl, not a raw ISO slice.
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
-    }).formatToParts(new Date(atom.scheduled_at))
+  // Local (workspace-tz) calendar day for a UTC instant — a value near midnight
+  // can fall on a different local date, so this must go through Intl, not a raw
+  // ISO slice.
+  const dayFmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+  })
+  const localDay = (iso) => {
+    const parts = dayFmt.formatToParts(new Date(iso))
     const p = (t) => parts.find((x) => x.type === t)?.value
-    const dayKey = `${p('year')}-${p('month')}-${p('day')}`
-    const bucket = days[dayKey]
-    if (!bucket) continue
-    const reviewable = isReviewable(atom.content_piece?.status)
-    if (reviewable) bucket.review += 1
+    return `${p('year')}-${p('month')}-${p('day')}`
+  }
+
+  // Drop an atom into its local-day bucket as live-or-review and consume one open
+  // slot. Deduped by atom id so an atom surfacing in both queries counts once —
+  // they can't overlap today (the range query excludes null scheduled_at) but the
+  // guard keeps that assumption cheap.
+  const seen = new Set()
+  const place = (atomId, instantIso, ciStatus) => {
+    if (!instantIso || seen.has(atomId)) return
+    seen.add(atomId)
+    const bucket = days[localDay(instantIso)]
+    if (!bucket) return
+    if (isReviewable(ciStatus)) bucket.review += 1
     else bucket.live += 1
     bucket.open = Math.max(0, bucket.open - 1)
   }
+
+  for (const atom of atoms) place(atom.id, atom.scheduled_at, atom.content_piece?.status)
+  for (const atom of publishedNow) place(atom.id, atom.content_piece?.published_at, 'published')
 
   return res.status(200).json({ month, days })
 }
