@@ -9,6 +9,7 @@ import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { mondayOf } from '../../_lib/strategist.js'
 import { mergeSlotsIntoCadence } from '../../_lib/cadenceSlots.js'
+import { isInstagramReel } from '../../../src/lib/mediaEntry.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -175,17 +176,34 @@ export default async function handler(req, res) {
     return text ? (text.length > 180 ? `${text.slice(0, 180)}…` : text) : null
   }
 
-  // First renderable media entry → a thumbnail for the Day-view cards. media_urls
-  // is the canonical [{url,type,kind,thumbnailUrl,...}] shape; for a video we only
-  // use its poster (thumbnailUrl), never the raw video URL in an <img>.
+  // First renderable media entry → a thumbnail for the Day-view cards.
   //
-  // Photos prefer thumbnailUrl too: every consumer of this field renders into a
-  // 40x40 or 64x64 tile, so `url` (the full-resolution original — routinely a
-  // 12 MB / 45 MP DSLR JPEG) only costs transfer + decode time and visibly blanks
-  // the tile while it decodes. `url` stays as the fallback for entries that have
-  // no thumbnail yet. Same failure the Library grid hit — see
-  // scripts/backfill-photo-thumbnails.mjs.
+  // A carousel with composed slides publishes the BAKED slide images (photo +
+  // on-screen text), NOT the raw media_urls photos: the row keeps media_urls as
+  // the raw source photos while slides[].rendered_url holds the composed cover
+  // that actually ships (see src/lib/publishPiece.js + renderSlides.js). Reading
+  // media_urls[0] here therefore showed a different, un-composed photo than the
+  // one that went live (feedback 2026-07-28: "Live post not showing the actual
+  // photo used" — the board's photo wasn't even from the same shoot as the
+  // published headline cover). Mirror the publish path: a non-reel piece with
+  // slides shows its first baked slide; a reel (Instagram + video) skips slide
+  // baking and publishes the video, so it keeps using the video poster below.
+  //
+  // media_urls is the canonical [{url,type,kind,thumbnailUrl,...}] shape; for a
+  // video we only use its poster (thumbnailUrl), never the raw video URL in an
+  // <img>. Photos prefer thumbnailUrl too: every consumer of this field renders
+  // into a 40x40 or 64x64 tile, so `url` (the full-resolution original —
+  // routinely a 12 MB / 45 MP DSLR JPEG) only costs transfer + decode time and
+  // visibly blanks the tile while it decodes. `url` stays as the fallback for
+  // entries that have no thumbnail yet. Same failure the Library grid hit — see
+  // scripts/backfill-photo-thumbnails.mjs. (A baked slide has no separate
+  // thumbnail, but rendered_url is a modest ~1080px JPEG, not a raw DSLR file.)
   const thumbOf = (ci) => {
+    if (!isInstagramReel(ci?.media_urls)) {
+      const slides = Array.isArray(ci?.slides) ? ci.slides : []
+      const cover = slides.find((s) => s?.rendered_url)?.rendered_url
+      if (cover) return { url: cover, kind: 'image' }
+    }
     const list = Array.isArray(ci?.media_urls) ? ci.media_urls : []
     for (const m of list) {
       if (!m) continue
