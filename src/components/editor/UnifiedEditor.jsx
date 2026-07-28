@@ -108,6 +108,8 @@ function WordsPanel({ piece, updateItem }) {
         {isBlog && <BlogStyleSwitcher piece={piece} interview={interview} />}
         <textarea
           aria-label={label}
+          spellCheck
+          lang="en"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={handleBlur}
