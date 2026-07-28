@@ -1,6 +1,7 @@
 // GET   /api/db/moments?interview_id=<uuid>  — per-interview bank listing (StoryDetail panel)
-// GET   /api/db/moments                       — workspace-wide bank listing + on-hand summary
-//                                               (powers the /moments "On hand" tab, step ③)
+// GET   /api/db/moments                       — workspace-wide bank listing
+//                                               (powers the /moments "On hand" tab, step ③;
+//                                               header stats come from GET /api/moments/summary)
 // PATCH /api/db/moments?id=<uuid>             — retire/restore one moment (status banked|retired)
 //
 // The bank is the workspace's inventory of scored VERBATIM excerpts
@@ -17,7 +18,6 @@ import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { ALL_KNOWN_ROLES, EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
-import { getCadencePrior, computeCadenceChannels } from '../../_lib/cadenceDefaults.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -25,9 +25,8 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // List cap for the workspace-wide read. The largest live bank is ~133 rows;
-// the summary counts below are computed from this same result set, so if a
-// bank ever outgrows the cap, raise it (or converge on the summary endpoint —
-// see the ponytail note) rather than paginating silently.
+// the On-hand tab count is derived from this result set client-side, so if a
+// bank ever outgrows the cap, raise it rather than paginating silently.
 const BANK_LIMIT = 1000
 
 const MOMENT_FIELDS =
@@ -43,57 +42,6 @@ function sb(path, init = {}) {
       ...init.headers,
     },
   })
-}
-
-// ponytail: duplicates the on-hand summary contract that GET /api/moments/summary
-// (Lane A of the 2026-07-27 sprint) is defined to own. Built from direct queries
-// here because that route hadn't merged when this shipped; once it exists, the
-// /moments header should read it and this block should collapse to the list read.
-// Shape mirrors the Lane A contract: usable / weeklySlotDemand / runwayWeeks /
-// started / newestInterviewAt / gaps.
-async function buildSummary(ws, momentRows) {
-  const usable = momentRows.filter((m) => m.status === 'banked' && m.is_exemplar).length
-
-  // Weekly slot demand — same cadence resolution as the Strategist
-  // (api/_lib/strategistPlan.js): manual policy verbatim, else the Auto
-  // computation. Blogs are excluded by construction (blog/email/youtube are
-  // not atom-cadence channels, so they never appear in the channels map).
-  let weeklySlotDemand = 0
-  try {
-    const policy = ws.cadence_policy || null
-    const isAuto = (policy?.provenance ?? 'bernard') !== 'user'
-    let channels
-    if (isAuto) {
-      const prior = await getCadencePrior(sb)
-      channels = await computeCadenceChannels(ws.id, ws.enabled_outputs, prior, sb)
-    } else {
-      channels = policy?.channels || {}
-    }
-    for (const cfg of Object.values(channels || {})) {
-      if (cfg?.enabled === false) continue
-      weeklySlotDemand += Number(cfg?.target_per_week) || 0
-    }
-  } catch (e) {
-    console.error('[db/moments] cadence resolution failed:', e?.message)
-  }
-
-  const [newestR, gapsR] = await Promise.all([
-    sb(`interviews?workspace_id=eq.${ws.id}&status=eq.completed&select=created_at&order=created_at.desc&limit=1`),
-    sb(`topic_backlog?workspace_id=eq.${ws.id}&source=eq.bank_gap&status=eq.pending&select=id,topic&order=created_at.desc`),
-  ])
-  const newestRows = newestR.ok ? await newestR.json().catch(() => []) : []
-  const gaps = gapsR.ok ? await gapsR.json().catch(() => []) : []
-  const newestInterviewAt = newestRows[0]?.created_at || null
-
-  const runwayWeeks = weeklySlotDemand > 0 ? Math.round((usable / weeklySlotDemand) * 10) / 10 : null
-  return {
-    usable,
-    weeklySlotDemand,
-    runwayWeeks,
-    started: momentRows.length > 0 || !!newestInterviewAt,
-    newestInterviewAt,
-    gaps,
-  }
 }
 
 export default async function handler(req, res) {
@@ -156,7 +104,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ moments })
   }
 
-  // ── GET — workspace-wide bank listing + on-hand summary ───────────────────
+  // ── GET — workspace-wide bank listing ─────────────────────────────────────
   // interview:interviews(topic,created_at) labels the source story; planned is
   // the count of content_plan_atoms anchored to this moment (the retire dialog
   // states how many planned pieces keep their drafts).
@@ -175,7 +123,5 @@ export default async function handler(req, res) {
     planned_count: Array.isArray(m.planned) ? (m.planned[0]?.count ?? 0) : 0,
     planned: undefined,
   }))
-
-  const summary = await buildSummary(ws, moments)
-  return res.status(200).json({ moments, summary })
+  return res.status(200).json({ moments })
 }
