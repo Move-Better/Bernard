@@ -1219,6 +1219,23 @@ scheduling — the user-facing path is `PATCH /api/db/content` (via `useContentW
 dispatch-time writes (`buffer.js`, `dispatchContentItem.js`) generally re-write the same value and
 rarely cross a week boundary, but are the next place to check if a same-week desync ever surfaces.
 
+#### Corollary: a published-NOW post has a null atom `scheduled_at`, so board/calendar reads must include published atoms regardless
+
+The sync above is a double-edged sword. Publishing a piece **immediately** (publish-now, no reserved
+slot time) flips `content_items.status→published` and the client sends `scheduledAt: null` through
+`PATCH /api/db/content` — which faithfully mirrors that onto the linked atom, **nulling the atom's
+`scheduled_at`** (while correctly keeping `plan_week`). Neither the content_item nor the atom then
+carries a schedule timestamp. So the naive board filter `atoms.filter(a => a.scheduled_at)` drops a
+post that is genuinely LIVE this week: its slot renders as an empty "open slot" and the clinician
+thinks it never posted (real feedback 2026-07-27 — "posted to LinkedIn, not showing as Live today";
+fixed in `week-summary.js`, #2398). **Rule: any read that lays atoms out on a board or calendar must
+include an atom whose linked content_item is already `published` even when `scheduled_at` is null, and
+place it by the content_item's `published_at`.** `week-summary.js` does this (self-healing — no data
+backfill; the read change alone re-surfaces already-stranded rows). `month-summary.js` had the same
+drop via its `scheduled_at`-range query (which excludes null rows outright, so it needs a *second*
+`published_at`-based query, not just a filter tweak) — tracked separately. When adding a new
+atom-driven board/calendar surface, treat "published-but-null-scheduled_at" as a first-class case.
+
 ### Generated captions are hard-clamped to the platform char cap at GENERATION, not just publish
 
 The per-(platform,angle) `cap` in `socialLengthTargets.js` is only a *prose instruction* to the LLM
