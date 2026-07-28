@@ -46,7 +46,17 @@ test('interview create flow + integrations page', async ({ page }) => {
   // Picker: click the Interview card. The card is a <button> wrapping a
   // <Card>; its accessible name starts with "Interview" followed by the
   // descriptive text, so a substring match is enough.
+  //
+  // Destination is CONDITIONAL: with realtime_voice_enabled on the workspace
+  // (live on movebetter since 2026-07-28) and a mic permission that isn't
+  // 'denied', CapturePicker routes to /new/live-interview; otherwise to
+  // /new/interview. Headless CI sits at permission 'prompt', so it takes the
+  // live path — accept either, then drive the rest of the create flow through
+  // /new/interview directly (same direct-navigation spirit as the /new goto
+  // above; the form assertions below only exist on the text path).
   await page.getByRole('button', { name: /^interview/i }).first().click()
+  await expect(page).toHaveURL(/\/new\/(live-)?interview/)
+  await page.goto('/new/interview')
   await expect(page).toHaveURL(/\/new\/interview/)
 
   // Staff field is now a "Who's talking?" avatar-pill picker with a free-text
