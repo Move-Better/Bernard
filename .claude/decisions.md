@@ -167,3 +167,16 @@ GBP posts were running ~1400 chars against a 1500 hard cap. Root cause was two-p
 **Also this session (#2390):** `regenerate.js` and `reviseContentItem.js` never got the #2181 caption clamp, so both could write over-cap captions — one live LinkedIn draft sat at 3,015 against a 3,000 ceiling and Approve refused it. Same divergence class as the #2278 sibling-dedup miss in the same file.
 
 **Revisit-by: 2026-09-15** (with the T2 reel check). Kill criteria: (a) GBP engagement/clicks drop materially against the pre-change baseline → the old length was doing work and the short lane is wrong for this clinic; (b) staff routinely hand-lengthen GBP drafts back past ~700 chars (visible in `edit_diff`) → the target is now too tight, raise the `short` baselines rather than moving the lane back; (c) if output still clusters above range after this, the beats are still overselling the target and need cutting again — not a smaller number.
+
+## 2026-07-27 — Interviews become a moment bank; drafting moves to demand-pull
+Q, in a planning session on whether interview→12-drafts is the right flow: *"We need the content to be flexible to the clinic's needs, not the clinic meeting the needs of the content."*
+
+**Chosen: interviews feed a moment bank; the weekly planner composes pieces on demand.** An interview = its blog (same-week, unchanged pipeline) + 10–15 scored verbatim moments banked + 1–3 hot pieces drafted for the current week's open slots. The full batch-generation of atoms per interview ends. Full spec: `.claude/moment-bank-sprint.md`.
+
+**Evidence at decision time.** 90 days on movebetter: 15 interviews → 106 drafts, 38.7% publish rate, 45 stale >14d; 17 of 41 published pieces shipped >4 weeks after their interview (consumption already drips; production batches). Target scale (5 clinicians × 1/month ≈ 60 drafts/month) buries a queue that absorbs ~14/month. Felt problem: 4 back-pain interviews on hand while a knee-pain seminar needs content now.
+
+**Locked constraints:** one-source anchor (a piece anchors to exactly ONE moment, no blending — fabrication risk + fidelity-judge coherence); blogs bypass the bank; reels decouple from interviews (moment × video asset: interview clip or b-roll); stale drafts return-to-bank + delete, never roll-forward; approve-once trust ramp deferred behind its own future challenge gate — per-piece approval stays this sprint.
+
+**Case against, considered:** the interview-time payoff loop ("20 min = a week of content") weakens — Q ruled it moot (an interview still equals content; only WHEN changes). Video coupling — resolved by cutting clips at capture into the library (Lane A) so composition stays bank-driven. Cross-interview redundancy in the bank is the real new risk; dedup/clustering at ingest is a P2 hard requirement, not polish.
+
+**Revisit-by: 2026-09-15.** Kill criteria: (a) publish rate on bank-composed pieces is not clearly above the 38.7% batch baseline within 4 weeks of P3 — the bank moved the problem, not solved it; (b) planner hit-rate stays low (weeks keep falling back to thin plans despite a populated bank) — extraction/dedup quality is wrong, stop and fix before P4; (c) Q spot-checks find composed pieces drifting from their moment's verbatim meaning — tighten the anchor/judge before any P5 talk; (d) stale-draft count regrows after P1 — the cleanup semantics are wrong.
