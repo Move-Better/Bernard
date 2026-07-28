@@ -132,7 +132,8 @@ async function handler(req, res) {
   const wsRes = await sb(
     'workspaces?status=eq.active' +
     (onlySlug ? `&slug=eq.${encodeURIComponent(onlySlug)}` : '') +
-    '&select=id,slug,display_name,name,colors,cadence_policy,producer_config'
+    // No `name` column on workspaces — including it 400s the query (42703).
+    '&select=id,slug,display_name,colors,cadence_policy,producer_config'
   )
   if (!wsRes.ok) {
     console.error('[approval-escalation] workspaces fetch failed:', wsRes.status)

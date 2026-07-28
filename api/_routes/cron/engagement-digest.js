@@ -81,7 +81,12 @@ async function handler(req, res) {
   // ─── Fetch eligible workspaces ──────────────────────────────────────────
   const wsRes = await sb(
     'workspaces?engagement_digest_enabled=eq.true&status=eq.active' +
-    '&select=id,slug,display_name,name,primary_logo_url,colors,clerk_org_id,' +
+    // Neither `name` nor `primary_logo_url` is a column on workspaces —
+    // selecting either 400s the query (42703). `display_name` is the display
+    // column; the logo resolves via api/_lib/workspaceLogo.js (brand_kit_roles),
+    // not from a workspaces column. The email builder only ever read
+    // display_name, so nothing downstream loses a value here.
+    '&select=id,slug,display_name,colors,clerk_org_id,' +
     'engagement_digest_recipients,engagement_digest_last_sent_at,cadence_policy'
   )
   if (!wsRes.ok) {

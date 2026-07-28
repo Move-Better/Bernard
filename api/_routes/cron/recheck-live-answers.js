@@ -40,7 +40,10 @@ export default async function handler(req, res) {
 
   const totals = { workspaces: 0, checked: 0, requeued: 0, respected: 0, failed: 0 }
   try {
-    const wsRes = await sb('workspaces?status=eq.active&select=id,slug,display_name,name')
+    // `name` is NOT a column on workspaces — selecting it 400s the whole query
+    // (PostgREST 42703), which killed every run of this cron. `display_name` is
+    // the real display column.
+    const wsRes = await sb('workspaces?status=eq.active&select=id,slug,display_name')
     if (!wsRes.ok) throw new Error(`workspaces fetch ${wsRes.status}`)
     const workspaces = await wsRes.json()
 
