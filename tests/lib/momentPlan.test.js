@@ -13,7 +13,8 @@ import {
   MAX_PER_INTERVIEW,
   MOMENT_WINDOW_MAX_CHARS,
 } from '../../api/_lib/momentPlan.js'
-import { shapeBankCandidates, composeWeeklyPlan, anglePalette } from '../../api/_lib/strategist.js'
+import { shapeBankCandidates, composeWeeklyPlan, anglePalette, allocateToCadence } from '../../api/_lib/strategist.js'
+import { planToDbOps } from '../../api/_lib/strategistPlan.js'
 
 // ── momentWindow ────────────────────────────────────────────────────────────
 
@@ -194,6 +195,47 @@ describe('composeWeeklyPlan (bank mode)', () => {
     }
     // The 3rd candidate is DROPPED (the bank keeps it), never a held atom.
     expect(plan.held).toEqual([])
+  })
+
+  it('counts already-committed (non-replaceable) atoms toward the weekly target', async () => {
+    // The week already has 2 drafted instagram atoms a replan won't replace —
+    // target 2 is met, so the compose must add ZERO new instagram pieces
+    // (this is the double-planned-week bug caught on movebetter's first live
+    // bank replan: 11 drafted + 15 freshly composed in one week).
+    const plan = await composeWeeklyPlan({
+      workspaceId: 'ws-1',
+      interviews: [],
+      cadence,
+      moments,
+      generateBank,
+      weekMonday: '2026-07-27',
+      existingFilledByChannel: { instagram: 2 },
+    })
+    expect(plan.thisWeek).toHaveLength(0)
+    expect(plan.held).toEqual([])
+  })
+
+  it('partial baseline leaves exactly the remaining gap', () => {
+    const cands = [1, 2, 3].map((i) => ({ platform: 'instagram', brief: `b${i}`, region: null }))
+    const { thisWeek, held } = allocateToCadence(cands, { instagram: { target_per_week: 3, enabled: true } }, [], {}, 0, { instagram: 2 })
+    expect(thisWeek).toHaveLength(1)
+    expect(held).toHaveLength(2)
+  })
+
+  it('planToDbOps bank mode re-holds replaced LEGACY atoms and deletes only moment atoms', () => {
+    const existing = [
+      { id: 'legacy-1', platform: 'instagram', planned_by: 'strategist', status: 'pending', content_piece_id: null, moment_id: null },
+      { id: 'moment-1', platform: 'instagram', planned_by: 'strategist', status: 'pending', content_piece_id: null, moment_id: 'm-1' },
+      { id: 'drafted-1', platform: 'instagram', planned_by: 'strategist', status: 'drafted', content_piece_id: 'cp-1', moment_id: 'm-2' },
+    ]
+    const plan = { thisWeek: [], held: [], promoted: [] }
+    const bank = planToDbOps(plan, existing, { reholdLegacy: true })
+    expect(bank.toDelete).toEqual(['moment-1'])
+    expect(bank.toRehold).toEqual(['legacy-1'])
+    // Legacy mode: unchanged pre-P3 behavior — both pending atoms deleted.
+    const legacy = planToDbOps(plan, existing)
+    expect(legacy.toDelete.sort()).toEqual(['legacy-1', 'moment-1'])
+    expect(legacy.toRehold).toEqual([])
   })
 
   it('legacy mode still banks surplus as held rows (no regression)', async () => {

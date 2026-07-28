@@ -304,9 +304,16 @@ function regionWithinCap(regionCount, total, region) {
  * `recentRegionCounts` = { [platform]: { [region]: count } } rolling window.
  * `promoShare` ∈ [0, 0.4] — 0 disables the promo lane (pre-P3 behavior).
  *
+ * `existingFilledByChannel` = { [platform]: count } of atoms ALREADY committed
+ * to this plan week that a replan will NOT replace (drafted / approved /
+ * human-held — anything outside planToDbOps' untouched set). Without this
+ * baseline, a mid-week replan composes a full target's worth ON TOP of an
+ * already-drafted week and doubles it — observed live on movebetter's first
+ * bank-mode replan (11 drafted + 15 freshly composed in one week).
+ *
  * @returns {{ thisWeek: object[], held: object[], promoted: object[] }}
  */
-export function allocateToCadence(candidates, cadence, backlog = [], recentRegionCounts = {}, promoShare = 0) {
+export function allocateToCadence(candidates, cadence, backlog = [], recentRegionCounts = {}, promoShare = 0, existingFilledByChannel = {}) {
   const thisWeek = []
   const held = []
   const promoted = []
@@ -325,6 +332,9 @@ export function allocateToCadence(candidates, cadence, backlog = [], recentRegio
     // always surge, capped at ~promoShare of the channel's target.
     const promoCap = promoShare > 0 ? Math.max(1, Math.round(target * promoShare)) : 0
     const fresh = freshByCh[platform] || []
+    // Slots this channel has ALREADY committed this week (drafted/approved —
+    // atoms a replan won't replace). They consume the target first.
+    const alreadyFilled = existingFilledByChannel[platform] || 0
     // Seed the running per-region tally for this channel from the rolling window.
     const regionCount = { ...(recentRegionCounts[platform] || {}) }
     let total = Object.values(regionCount).reduce((s, n) => s + n, 0)
@@ -333,7 +343,7 @@ export function allocateToCadence(candidates, cadence, backlog = [], recentRegio
     // with no live campaign, campaign-flagged pieces are just evergreen.
     const isPromoPiece = (x) => x.isPromo && promoCap > 0
 
-    let added = 0
+    let added = alreadyFilled
     let promoAdded = 0
     // 1. Promo lane first (region-cap-exempt, bounded by promoCap).
     for (const c of fresh.filter(isPromoPiece)) {
@@ -624,6 +634,10 @@ export async function composeWeeklyPlan({
   moments = null,
   promoMomentIds = new Set(),
   generateBank = defaultGenerateBank,
+  // Per-channel counts of already-committed (non-replaceable) atoms this week —
+  // see allocateToCadence. Callers doing a replan MUST pass this or a mid-week
+  // replan doubles an already-drafted week.
+  existingFilledByChannel = {},
 }) {
   const palette = anglePalette()
   const channels = Object.entries(cadence).filter(([, c]) => c?.enabled).map(([ch]) => ch)
@@ -669,7 +683,7 @@ export async function composeWeeklyPlan({
   }
   const backlogWithPromo = backlog.map((b) => ({ ...b, isPromo: promoSet.has(b.campaign_id) }))
 
-  const { thisWeek, held, promoted } = allocateToCadence(candidates, cadence, backlogWithPromo, recentRegionCounts, promoShare)
+  const { thisWeek, held, promoted } = allocateToCadence(candidates, cadence, backlogWithPromo, recentRegionCounts, promoShare, existingFilledByChannel)
 
   // Materialize this-week + held candidates into atom rows; assign slots to the
   // this-week set; mark held with held_at=now. T3: place atoms INTO the
