@@ -1722,15 +1722,11 @@ export default function YourWeek() {
               // Fixed 240px columns that scroll sideways, not seven columns
               // divided into the viewport. At the old ~153px a card had no room
               // for both a preview and a readable title; the trade is that
-              // Sat/Sun sit off-screen until scrolled.
-              //
-              // w-0 min-w-full is what keeps the scroll on THIS container
-              // instead of the page: Layout's content column is a flex item
-              // with min-width auto, so an ancestor happily grows to our
-              // 1728px of columns and the whole body scrolls sideways instead.
-              // w-0 stops us contributing to that content-width measurement;
-              // min-w-full then paints us back to the parent's real width.
-              <div className="flex w-0 min-w-full snap-x gap-2 overflow-x-auto pb-2">
+              // Sat/Sun sit off-screen until scrolled. This needed a local
+              // w-0 min-w-full hack until Layout's content column got its
+              // min-w-0 — without that, the column just absorbed our 1728px
+              // and the body scrolled instead of this container.
+              <div className="flex snap-x gap-2 overflow-x-auto pb-2">
                 {DAYS.map(([key, label]) => {
                   const isQuiet = quiet.has(key)
                   // Quiet days never show "open slot" invitations, even if a
