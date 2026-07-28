@@ -109,7 +109,7 @@ export async function generateCaption({ topic, clip = {}, workspace, staffId = n
   // Same anti-slop + anti-fabrication guardrails the atom generator uses, so
   // captions stop reading as AI marketing and stop inventing specifics.
   systemLines.push(
-    'Write like a real person, not AI marketing. No formula openers ("The one thing most people get wrong…", "Here\'s the thing…", "Did you know…"). No X-not-Y antithesis slop ("it\'s not about X, it\'s about Y"). No hollow hype ("game-changer", "unlock", "transform", "the secret to"). Do not bolt the practice name onto the point.',
+    'Write like a real person, not AI marketing. No formula openers ("The one thing most people get wrong…", "Here\'s the thing…", "Did you know…"). No X-not-Y antithesis slop ("it\'s not about X, it\'s about Y"). No hollow hype ("game-changer", "unlock", "transform", "the secret to"). Do not bolt the practice name onto the point. No em-dashes or spaced hyphens used as connectors between clauses (a strong AI tell); use a comma, a colon, or a new sentence instead.',
     'Use ONLY what the clinician actually conveyed. Do NOT invent specifics — no patient histories, timelines, names, numbers, outcomes, dates, or events that are not supported by the material below. If you lack a concrete detail, stay general rather than fabricate one.',
     'Plain text only — no markdown (no *asterisks*, no **bold**); it renders as literal characters in the caption and subtitles.',
   )
