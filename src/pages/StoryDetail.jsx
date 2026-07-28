@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
+import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, ChevronDown, Link as LinkIcon, Loader2, Pencil, Plus, Quote, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import BackLink from '@/components/ui/BackLink'
-import PipelineStepper from '@/components/PipelineStepper'
 import { Button } from '@/components/ui/button'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -12,7 +12,8 @@ import {
 import { useStory, useUpdateInterview, useDeleteInterview, useCampaigns } from '@/lib/queries'
 import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
-import { getStageToken } from '@/lib/stageTokens'
+import { getBankStageToken } from '@/lib/stageTokens'
+import { deriveBankStage } from '@/lib/stories'
 import TranscriptRail from '@/components/story-detail/TranscriptRail'
 import TranscriptDrawer from '@/components/story-detail/TranscriptDrawer'
 import AssetsPane from '@/components/story-detail/AssetsPane'
@@ -198,7 +199,10 @@ export default function StoryDetail() {
   const navigate = useNavigate()
   const { data: story, isLoading, isError } = useStory(storyId)
   const [refsOpen, setRefsOpen] = useState(false)
-  const [momentsOpen, setMomentsOpen] = useState(false)
+  // Moments open by default — the bank is what the week gets composed from,
+  // so it leads the page (Moments IA §03; the old collapsed default hid the
+  // bank's most productive surface behind a click).
+  const [momentsOpen, setMomentsOpen] = useState(true)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [transcriptDrawerOpen, setTranscriptDrawerOpen] = useState(false)
@@ -208,6 +212,25 @@ export default function StoryDetail() {
   const updateInterview = useUpdateInterview()
   const deleteInterview = useDeleteInterview()
   const { data: campaigns = [] } = useCampaigns()
+
+  // Banked-moment aggregates for the header badge + Moments subtitle. Same
+  // queryKey as MomentsPanel below, so opening the (default-open) panel and
+  // this read share ONE request. Until it resolves, fall back to the slim
+  // list-shape aggregates the placeholder story may carry.
+  const { data: momentsData } = useQuery({
+    queryKey: ['moments', storyId],
+    queryFn: () => apiFetch(`/api/db/moments?interview_id=${encodeURIComponent(storyId)}`),
+    enabled: !!storyId,
+    refetchOnWindowFocus: false,
+  })
+  const bankedMoments = (momentsData?.moments || []).filter((m) => m.status === 'banked')
+  const bankedCount = momentsData ? bankedMoments.length : (story?.moments_count ?? 0)
+  const bankedUses = momentsData
+    ? bankedMoments.reduce((n, m) => n + (m.usage_count || 0), 0)
+    : (story?.moment_uses ?? 0)
+  const bankStage = story
+    ? deriveBankStage({ moments_count: bankedCount, moment_uses: bankedUses, pieces: story.pieces })
+    : 'captured'
 
   async function handleDelete() {
     if (!story?.id || !user?.id) return
@@ -251,12 +274,10 @@ export default function StoryDetail() {
     )
   }
 
-  const stage = story.story_stage || 'drafting'
-  const stageMeta = getStageToken(stage)
+  const stageMeta = getBankStageToken(bankStage)
 
   return (
     <div className="space-y-5 py-6">
-      <PipelineStepper current="words" />
       {/* Header */}
       <div className="space-y-2">
         <BackLink to="/stories">Back to Stories</BackLink>
@@ -401,47 +422,31 @@ export default function StoryDetail() {
         </div>
       )}
 
-      {/* Moments — collapsible, read-only. The scored verbatim excerpts mined
-          from this interview into the moment bank (P2). The planner will
-          compose future pieces from the exemplars, so this list is how
-          extraction quality stays visible on the story itself. */}
+      {/* Moments — open by default, promoted above the posts pane (Moments IA
+          §03). The scored verbatim excerpts banked from this interview are
+          what the weekly planner composes from, so they lead the page.
+          Read-only here for now: retire/restore ships with the /moments
+          unification (Lane B's PATCH /api/db/moments). */}
       <div className="rounded-lg border bg-card">
         <button
           type="button"
           onClick={() => setMomentsOpen((o) => !o)}
           className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm font-medium hover:bg-muted/40"
         >
-          <span className="inline-flex items-center gap-2">
-            <Quote className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+          <span className="inline-flex items-center gap-2 min-w-0">
+            <Quote className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
             Moments
+            {bankedCount > 0 && (
+              <span className="text-xs font-normal text-muted-foreground truncate">
+                {bankedCount} on hand — this is what your week gets composed from
+              </span>
+            )}
           </span>
           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${momentsOpen ? 'rotate-180' : ''}`} />
         </button>
         {momentsOpen && (
           <div className="px-4 pb-4 pt-1 border-t">
             <MomentsPanel interviewId={story.id} />
-          </div>
-        )}
-      </div>
-
-      {/* References — collapsible. External articles attached to this
-          interview (either added post-interview, or carried over from the
-          originating topic). */}
-      <div className="rounded-lg border bg-card">
-        <button
-          type="button"
-          onClick={() => setRefsOpen((o) => !o)}
-          className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm font-medium hover:bg-muted/40"
-        >
-          <span className="inline-flex items-center gap-2">
-            <LinkIcon className="h-3.5 w-3.5 text-muted-foreground" />
-            References
-          </span>
-          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${refsOpen ? 'rotate-180' : ''}`} />
-        </button>
-        {refsOpen && (
-          <div className="px-4 pb-4 pt-1 border-t">
-            <ReferencesPanel interviewId={story.id} />
           </div>
         )}
       </div>
@@ -460,6 +465,28 @@ export default function StoryDetail() {
           story={story}
           className="order-first md:order-none"
         />
+      </div>
+
+      {/* References — collapsible, below the pieces (Moments IA §03 order:
+          moments lead, pieces follow, references trail). External articles
+          attached to this interview. */}
+      <div className="rounded-lg border bg-card">
+        <button
+          type="button"
+          onClick={() => setRefsOpen((o) => !o)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm font-medium hover:bg-muted/40"
+        >
+          <span className="inline-flex items-center gap-2">
+            <LinkIcon className="h-3.5 w-3.5 text-muted-foreground" />
+            References
+          </span>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${refsOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {refsOpen && (
+          <div className="px-4 pb-4 pt-1 border-t">
+            <ReferencesPanel interviewId={story.id} />
+          </div>
+        )}
       </div>
 
       {/* Slide-over transcript for Edit mode. Mounted unconditionally so the

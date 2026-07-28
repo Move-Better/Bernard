@@ -5,7 +5,8 @@ import { Mic, SearchX, AlertTriangle, Target, ChevronLeft, ChevronRight, Trophy 
 import { Button } from '@/components/ui/button'
 import { StaffChip } from '@/components/StaffChip'
 import EmptyState from '@/components/EmptyState'
-import { getStageToken } from '@/lib/stageTokens'
+import { getBankStageToken } from '@/lib/stageTokens'
+import { deriveBankStage, yieldSummary } from '@/lib/stories'
 import { queryKeys, fetchStory, useStory } from '@/lib/queries'
 import { formatStoryDate, stripStoryDatePrefix } from '@/lib/storyTitle'
 import { PLATFORM_META } from '@/lib/contentMeta'
@@ -180,7 +181,7 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
       <EmptyState
         icon={<Mic className="h-5 w-5" />}
         title="Your stories start with a conversation"
-        description="Talk for a few minutes about your practice and Bernard turns it into a story — a cluster of publish-ready drafts your team can review and send out."
+        description="Talk for a few minutes about your practice and Bernard banks what you say as moments — in your words, on hand for the weeks ahead. Your posts get composed from them."
         action={<Button asChild size="sm"><Link to="/new/live-interview">Start a conversation</Link></Button>}
         secondaryAction={<Button asChild size="sm" variant="outline"><Link to="/new/import">Import existing content</Link></Button>}
       />
@@ -209,12 +210,13 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
               <th className="text-left font-semibold text-2xs uppercase tracking-wide px-3.5 py-2 w-40">Author</th>
               <th className="text-left font-semibold text-2xs uppercase tracking-wide px-3.5 py-2 w-28">Stage</th>
               <th className="text-left font-semibold text-2xs uppercase tracking-wide px-3.5 py-2 w-44">Platforms</th>
-              <th className="text-right font-semibold text-2xs uppercase tracking-wide px-3.5 py-2 w-20">Pieces</th>
+              <th className="text-left font-semibold text-2xs uppercase tracking-wide px-3.5 py-2 w-52">Yield</th>
             </tr>
           </thead>
           <tbody>
             {rows.map(({ s, ms, ml, showMonth }) => {
-              const { badge, label, rail } = getStageToken(s.story_stage || '')
+              const { badge, label, rail } = getBankStageToken(deriveBankStage(s))
+              const yld = yieldSummary(s)
               const pieces = s.pieces || []
               const platforms = [...new Set(pieces.map((p) => p.platform).filter(Boolean))]
               // Per-platform state so the Platforms column can carry the same
@@ -346,8 +348,26 @@ export default function StoriesTableView({ stories = [], isLoading = false }) {
                         <span className="text-2xs text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td className="px-3.5 py-2.5 align-middle text-right whitespace-nowrap tabular-nums text-muted-foreground">
-                      {s.pieces_count ?? 0}
+                    {/* Yield — what the story has produced for the bank
+                        (mockup §03): moment count in bold mono, then the most
+                        newsworthy detail (uses beat published beat ready). */}
+                    <td className="px-3.5 py-2.5 align-middle whitespace-nowrap text-xs">
+                      {yld.processing ? (
+                        <span className="italic text-muted-foreground">processing…</span>
+                      ) : (
+                        <>
+                          {yld.moments > 0 && (
+                            <span className="font-mono font-bold tabular-nums text-foreground">
+                              {yld.moments} {yld.moments === 1 ? 'moment' : 'moments'}
+                            </span>
+                          )}
+                          {yld.detail && (
+                            <span className="text-muted-foreground">
+                              {yld.moments > 0 ? ' · ' : ''}{yld.detail}
+                            </span>
+                          )}
+                        </>
+                      )}
                     </td>
                   </tr>
                   {isExpanded && <ExpandedChannelRows story={s} />}

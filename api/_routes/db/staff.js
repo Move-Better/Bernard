@@ -100,6 +100,38 @@ export default async function handler(req, res) {
     // All clinicians with interview summaries
     const staffSel = view === 'card' ? CLINICIAN_FIELDS_CARD : CLINICIAN_BASE_FIELDS
     const interviewSel = view === 'card' ? INTERVIEW_FIELDS_CARD : INTERVIEW_FIELDS
+    if (view === 'card') {
+      // Stories list shape also carries per-interview moment-bank aggregates
+      // (count / uses / last-used) for the bank-era Stage + Yield columns.
+      // ONE workspace-wide query over three tiny columns, aggregated here and
+      // attached to each interview — never a per-interview fan-out.
+      const [r, mr] = await Promise.all([
+        sb(`staff?${wsFilter}&select=${staffSel},interviews(${interviewSel})&order=name.asc`),
+        sb(`moments?${wsFilter}&status=eq.banked&select=interview_id,usage_count,last_used_at`),
+      ])
+      if (!r.ok) return dbErr(res, r)
+      if (!mr.ok) return dbErr(res, mr, 'Database error')
+      const staffRows = await r.json()
+      const momentRows = await mr.json().catch(() => [])
+      const agg = new Map()
+      for (const m of momentRows) {
+        if (!m?.interview_id) continue
+        const a = agg.get(m.interview_id) || { count: 0, uses: 0, lastUsed: null }
+        a.count += 1
+        a.uses += m.usage_count || 0
+        if (m.last_used_at && (!a.lastUsed || m.last_used_at > a.lastUsed)) a.lastUsed = m.last_used_at
+        agg.set(m.interview_id, a)
+      }
+      for (const s of staffRows) {
+        for (const iv of s?.interviews || []) {
+          const a = agg.get(iv.id)
+          iv.moment_count = a?.count ?? 0
+          iv.moment_uses = a?.uses ?? 0
+          iv.moment_last_used_at = a?.lastUsed ?? null
+        }
+      }
+      return ok(res, staffRows)
+    }
     const r = await sb(`staff?${wsFilter}&select=${staffSel},interviews(${interviewSel})&order=name.asc`)
     if (!r.ok) return dbErr(res, r)
     return ok(res, await r.json())

@@ -197,3 +197,117 @@ describe('buildStories', () => {
     expect(warnSpy.mock.calls[0][0]).toContain('mismatched workspace_id')
   })
 })
+
+// ── Bank-era display layer (Moments IA, decisions.md 2026-07-27) ─────────────
+//
+// The four calibration cases mirror the REAL movebetter rows the signed-off
+// mockup (§03) was drawn from, verified against prod on 2026-07-28.
+
+import { deriveBankStage, yieldSummary } from '../../src/lib/stories.js'
+
+describe('deriveBankStage', () => {
+  it('captured while nothing is banked yet (in-progress voice memo)', () => {
+    expect(deriveBankStage({ moments_count: 0, moment_uses: 0, pieces: [] })).toBe('captured')
+    expect(deriveBankStage({})).toBe('captured')
+    expect(deriveBankStage(null)).toBe('captured')
+  })
+
+  it('processed when moments are banked but nothing has been drawn or cleared review', () => {
+    expect(deriveBankStage({
+      moments_count: 5, moment_uses: 0,
+      pieces: [{ status: 'draft' }, { status: 'in_review' }],
+    })).toBe('processed')
+  })
+
+  it('yielding on an approved blog with zero uses (hip-extension, Jul 10)', () => {
+    expect(deriveBankStage({
+      moments_count: 7, moment_uses: 0,
+      pieces: [{ platform: 'blog', status: 'approved' }],
+    })).toBe('yielding')
+  })
+
+  it('yielding on ≥1 moment use (Jun 5 story)', () => {
+    expect(deriveBankStage({ moments_count: 12, moment_uses: 1, pieces: [] })).toBe('yielding')
+  })
+
+  it('yielding on published pieces (bicep tendinopathy)', () => {
+    expect(deriveBankStage({
+      moments_count: 13, moment_uses: 0,
+      pieces: [{ status: 'published' }, { status: 'draft' }],
+    })).toBe('yielding')
+  })
+
+  it('legacy story with zero moments but published pieces reads yielding, never captured', () => {
+    expect(deriveBankStage({
+      moments_count: 0, moment_uses: 0,
+      pieces: [{ status: 'published', published_at: '2026-05-01T12:00:00Z' }],
+    })).toBe('yielding')
+  })
+})
+
+describe('yieldSummary', () => {
+  it('processing while the interview is not completed and nothing is banked', () => {
+    expect(yieldSummary({ status: 'in_progress', moments_count: 0, pieces: [] }))
+      .toEqual({ processing: true, moments: 0, detail: '' })
+  })
+
+  it('uses beat published beat blog-ready (Jun 5 shape)', () => {
+    const s = yieldSummary({
+      status: 'completed', moments_count: 12, moment_uses: 1,
+      moment_last_used_at: '2026-07-28T12:00:00Z',
+      pieces: [{ platform: 'blog', status: 'approved' }, { status: 'published' }],
+    })
+    expect(s.processing).toBe(false)
+    expect(s.moments).toBe(12)
+    expect(s.detail).toMatch(/^1 use · last Jul 2[78]$/) // tz-tolerant day boundary
+  })
+
+  it('published count when no uses (bicep shape)', () => {
+    const s = yieldSummary({
+      status: 'completed', moments_count: 13, moment_uses: 0,
+      pieces: [
+        { status: 'published' }, { status: 'published' },
+        { status: 'published' }, { status: 'published' }, { status: 'draft' },
+      ],
+    })
+    expect(s.moments).toBe(13)
+    expect(s.detail).toBe('4 pieces published')
+  })
+
+  it('blog ready with no uses and nothing published (hip-extension shape)', () => {
+    const s = yieldSummary({
+      status: 'completed', moments_count: 7, moment_uses: 0,
+      pieces: [{ platform: 'blog', status: 'approved' }],
+    })
+    expect(s.moments).toBe(7)
+    expect(s.detail).toBe('blog ready · no uses yet')
+  })
+
+  it('bare "no uses yet" when moments exist but nothing else does', () => {
+    expect(yieldSummary({ status: 'completed', moments_count: 3, moment_uses: 0, pieces: [] }).detail)
+      .toBe('no uses yet')
+  })
+
+  it('completed story with zero moments and zero yield says so', () => {
+    expect(yieldSummary({ status: 'completed', moments_count: 0, pieces: [] }).detail)
+      .toBe('no moments yet')
+  })
+})
+
+describe('buildStories moment aggregates', () => {
+  it('carries the server-attached aggregates onto the story and defaults them when absent', () => {
+    const staff = [{
+      id: 'c1', name: 'Dr. A', interviews: [
+        { id: 'iv1', status: 'completed', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', moment_count: 7, moment_uses: 2, moment_last_used_at: '2026-07-20T12:00:00Z' },
+        { id: 'iv2', status: 'completed', created_at: '2026-01-02T00:00:00Z', updated_at: '2026-01-02T00:00:00Z' },
+      ],
+    }]
+    const [a, b] = buildStories(staff, [])
+    expect(a.moments_count).toBe(7)
+    expect(a.moment_uses).toBe(2)
+    expect(a.moment_last_used_at).toBe('2026-07-20T12:00:00Z')
+    expect(b.moments_count).toBe(0)
+    expect(b.moment_uses).toBe(0)
+    expect(b.moment_last_used_at).toBeNull()
+  })
+})
