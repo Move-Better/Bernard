@@ -69,7 +69,6 @@ export default async function handler(req, res) {
       `content_plan_atoms?workspace_id=eq.${ws.id}&plan_week=eq.${weekMonday}&select=${ATOM_SELECT}`,
     )
     const atoms = atomsRes.ok ? await atomsRes.json() : []
-    const scheduled = atoms.filter((a) => a.scheduled_at)
 
     // For drafted atoms, batch-fetch the content_item status so /week can
     // show approve/schedule actions without a per-card round-trip.
@@ -80,7 +79,7 @@ export default async function handler(req, res) {
       if (safeIds.length) {
         const quoted = safeIds.map((did) => `"${did}"`).join(',')
         const ciRes = await sb(
-          `content_items?workspace_id=eq.${ws.id}&id=in.(${quoted})&select=id,status,platform,content,media_urls,slides,photo_template_id,voice_fidelity_score,voice_audit`,
+          `content_items?workspace_id=eq.${ws.id}&id=in.(${quoted})&select=id,status,platform,content,media_urls,slides,photo_template_id,voice_fidelity_score,voice_audit,published_at`,
         )
         if (ciRes.ok) {
           const ciRows = await ciRes.json()
@@ -88,6 +87,24 @@ export default async function handler(req, res) {
         }
       }
     }
+
+    // A slotted atom carries its planned scheduled_at, which is what the board
+    // filters and lays out by. But a post published immediately (publish-now,
+    // no reserved slot time) loses it: the content_item PATCH that flips
+    // status→published sends scheduledAt:null, and db/content.js's schedule
+    // sync mirrors that onto the linked atom (nulling scheduled_at while
+    // keeping plan_week). That post IS live this week, so it must still show on
+    // the board — otherwise its slot renders as an empty "open slot" and the
+    // clinician thinks it never went out (feedback 2026-07-27: "posted to
+    // LinkedIn, not showing as Live in today"). Include any atom whose piece is
+    // already published (and has a published_at to place it by); shape() lays
+    // it out on its published day. Note published atoms are dropped the same way
+    // from month-summary.js's scheduled_at range query — tracked separately.
+    const scheduled = atoms.filter((a) => {
+      if (a.scheduled_at) return true
+      const ci = itemStatusMap[a.content_piece_id]
+      return ci?.status === 'published' && Boolean(ci.published_at)
+    })
     return { scheduled, itemStatusMap }
   }
 
@@ -161,7 +178,11 @@ export default async function handler(req, res) {
     return {
       id: a.id,
       platform: a.platform,
-      scheduled_at: a.scheduled_at,
+      // A published post that lost its slot time (publish-now — see the filter
+      // above) is placed on the board by its published_at, so it lands on the
+      // real day/hour it went live instead of vanishing. The filter guarantees
+      // this is non-null for every included atom (so the sort below is safe).
+      scheduled_at: a.scheduled_at || (ci?.status === 'published' ? ci.published_at : null),
       thumbnailUrl: thumb?.url || null,
       mediaKind: thumb?.kind || null,
       label: a.angle_label,
