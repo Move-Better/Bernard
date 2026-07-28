@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import NeedsYouStrip from '@/components/producer/NeedsYouStrip'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -71,15 +71,13 @@ export function previewFrame(item, natural) {
 // needs no API change and no backfill.
 function CardPreview({ item }) {
   const [natural, setNatural] = useState(null)
-  const imgRef = useRef(null)
-  // A cached image finishes loading before React attaches onLoad, and then the
-  // event never fires — the tile would sit on the square fallback for good, so
-  // returning visitors would see square tiles at random. Reading the node once
-  // on mount covers that; onLoad still covers a genuine cold load.
-  useEffect(() => {
-    const el = imgRef.current
-    if (el?.complete && el.naturalWidth) setNatural({ w: el.naturalWidth, h: el.naturalHeight })
-  }, [])
+  // onLoad alone is enough here, despite the usual worry that a cached image
+  // completes before React attaches the handler. Setting src QUEUES the load
+  // event, so a listener attached in the same synchronous block still catches
+  // it — measured against a warm cache on a real thumbnail: complete was
+  // already true at attach and load fired regardless. That failure mode needs
+  // server-rendered markup that loads before hydration, and this is a
+  // client-rendered SPA.
   const frame = previewFrame(item, natural)
   return (
     // self-start is load-bearing: the card row is a flex container, so without
@@ -92,7 +90,6 @@ function CardPreview({ item }) {
       style={{ aspectRatio: frame ? String(frame.aspect) : '1' }}
     >
       <img
-        ref={imgRef}
         src={item.thumbnailUrl}
         alt=""
         loading="lazy"
