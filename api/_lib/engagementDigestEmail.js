@@ -48,9 +48,12 @@ function pluralize(n, singular, plural) {
 /**
  * @param {{
  *   workspace: {
- *     id: string, slug: string, display_name?: string, name?: string,
- *     primary_logo_url?: string, colors?: { primary?: string }
+ *     id: string, slug: string, display_name?: string,
+ *     colors?: { primary?: string }
  *   },
+ *   // NB: `name` and `primary_logo_url` are NOT columns on workspaces. They
+ *   // were documented here and selected by the cron, which 400'd every run.
+ *   // Use display_name; resolve a logo via api/_lib/workspaceLogo.js.
  *   published:     Array<{ id, topic, platform, published_at, staff_name? }>,
  *   momentStats:    { generated, approved, skipped, failed, complete_awaiting: number },
  *   triage:        { failed, lowConfidence, stale: number },
