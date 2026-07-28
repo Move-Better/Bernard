@@ -5,7 +5,7 @@
 // excerpt must be the EXACT on-disk slice (anchor slices back to it).
 
 import { describe, it, expect } from 'vitest'
-import { clinicianTurns, locateExcerpt, cosineSim } from '../../api/_lib/momentExtract.js'
+import { clinicianTurns, locateExcerpt, cosineSim, sanitizeProposals } from '../../api/_lib/momentExtract.js'
 
 describe('clinicianTurns', () => {
   it('keeps only non-empty user turns, preserving raw message indices', () => {
@@ -64,6 +64,38 @@ describe('locateExcerpt', () => {
     expect(locateExcerpt(content, '')).toBeNull()
     expect(locateExcerpt(content, '   ')).toBeNull()
     expect(locateExcerpt(null, 'x')).toBeNull()
+  })
+})
+
+describe('sanitizeProposals', () => {
+  const good = 'x'.repeat(80)
+
+  it('drops an oversized excerpt without failing the batch (the first-backfill bug)', () => {
+    const out = sanitizeProposals([
+      { turn: 0, excerpt: 'y'.repeat(2000), hook: 'h', why_it_stands_alone: 'w' },
+      { turn: 1, excerpt: good, hook: 'h', why_it_stands_alone: 'w' },
+    ])
+    expect(out).toHaveLength(1)
+    expect(out[0].turn).toBe(1)
+  })
+
+  it('drops too-short excerpts and clamps hook/why/tags instead of erroring', () => {
+    const out = sanitizeProposals([
+      { turn: 0, excerpt: 'short', hook: 'h', why_it_stands_alone: 'w' },
+      { turn: 2, excerpt: good, hook: 'H'.repeat(500), why_it_stands_alone: 'W'.repeat(900), tags: ['a', '', 'b'.repeat(90), 'c', 'd', 'e', 'f', 'g'] },
+    ])
+    expect(out).toHaveLength(1)
+    expect(out[0].hook.length).toBeLessThanOrEqual(120)
+    expect(out[0].why_it_stands_alone.length).toBeLessThanOrEqual(300)
+    expect(out[0].tags).toHaveLength(6)
+    expect(out[0].tags.every((t) => t.length <= 40)).toBe(true)
+  })
+
+  it('caps the batch at 24 proposals and tolerates junk input', () => {
+    const many = Array.from({ length: 40 }, (_, i) => ({ turn: i, excerpt: good, hook: 'h', why_it_stands_alone: 'w' }))
+    expect(sanitizeProposals(many)).toHaveLength(24)
+    expect(sanitizeProposals(null)).toEqual([])
+    expect(sanitizeProposals([{ turn: -3, excerpt: good }])[0].turn).toBe(0)
   })
 })
 

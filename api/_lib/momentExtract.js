@@ -140,16 +140,50 @@ export function cosineSim(a, b) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb))
 }
 
+// Deliberately loose: hard zod caps here fail the ENTIRE interview when the
+// model overruns any one field (hit twice in the first backfill —
+// AI_NoObjectGeneratedError on a seminar-length transcript and on groovechiro).
+// Length/count limits are enforced in code below instead, per proposal, so one
+// oversized excerpt costs one proposal rather than the whole extraction.
 const proposalSchema = z.object({
   moments: z.array(z.object({
-    turn: z.number().int().min(0),
-    excerpt: z.string().min(40).max(700),
-    hook: z.string().min(3).max(120),
-    why_it_stands_alone: z.string().min(3).max(300),
-    topic: z.string().max(80).default(''),
-    tags: z.array(z.string().max(40)).max(6).default([]),
-  })).max(24).default([]),
+    turn: z.number().int().default(0),
+    excerpt: z.string().default(''),
+    hook: z.string().default(''),
+    why_it_stands_alone: z.string().default(''),
+    topic: z.string().default(''),
+    tags: z.array(z.string()).default([]),
+  })).default([]),
 })
+
+// Code-side proposal limits (the schema above stays permissive on purpose).
+const MIN_EXCERPT_CHARS = 40    // shorter isn't a standalone moment
+const MAX_EXCERPT_CHARS = 900   // longer is a passage, not a moment
+const MAX_PROPOSALS = 24
+
+/**
+ * Enforce per-proposal limits in code. Returns the sanitized keeper list;
+ * oversized/undersized excerpts are dropped individually.
+ * Exported for tests.
+ */
+export function sanitizeProposals(raw) {
+  const out = []
+  for (const p of Array.isArray(raw) ? raw : []) {
+    const excerpt = String(p?.excerpt || '').trim()
+    if (excerpt.length < MIN_EXCERPT_CHARS || excerpt.length > MAX_EXCERPT_CHARS) continue
+    out.push({
+      turn: Number.isInteger(p.turn) && p.turn >= 0 ? p.turn : 0,
+      excerpt,
+      hook: String(p?.hook || '').trim().slice(0, 120) || excerpt.slice(0, 80),
+      why_it_stands_alone: String(p?.why_it_stands_alone || '').trim().slice(0, 300),
+      topic: String(p?.topic || '').trim().slice(0, 80) || null,
+      tags: (Array.isArray(p?.tags) ? p.tags : [])
+        .map((t) => String(t || '').trim().slice(0, 40)).filter(Boolean).slice(0, 6),
+    })
+    if (out.length >= MAX_PROPOSALS) break
+  }
+  return out
+}
 
 function buildExtractionSystem(ws) {
   const who = ws?.clinic_context ? String(ws.clinic_context).slice(0, 240) : 'a clinical practice'
@@ -237,9 +271,11 @@ export async function extractAndBankMoments({ workspace, interview }) {
       instructions: buildExtractionSystem(workspace),
       messages: [{ role: 'user', content: buildExtractionUser(turns) }],
       temperature: 0.3,
-      maxOutputTokens: 8000,
+      // Seminar-length transcripts can produce 20+ proposals with long
+      // excerpts; 8k truncated mid-JSON on the first backfill.
+      maxOutputTokens: 16_000,
     })
-    const proposals = object?.moments || []
+    const proposals = sanitizeProposals(object?.moments)
     summary.proposed = proposals.length
     if (!proposals.length) {
       summary.ok = true
