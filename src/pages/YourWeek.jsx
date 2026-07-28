@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { PLATFORM_META } from '@/lib/contentMeta'
+import { instagramFeedFrame } from '@/lib/instagramFrame'
 import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -34,6 +35,70 @@ const FORMAT_META = {
   post: { icon: ImageIcon, label: 'Post' },
   reel: { icon: Film, label: 'Reel' },
   story: { icon: CircleDot, label: 'Story' },
+}
+
+// Board card preview sizing.
+//
+// The tile renders at the aspect the post will PUBLISH at, not the aspect of
+// the source file. A fixed-height tile is worse than no tile: four of a typical
+// week's photos are portrait, so a letterbox shows a random horizontal strip of
+// each one (heads cropped off) — recognisable as nothing.
+//
+// Instagram's feed accepts 1.91:1 through 4:5 and centre-crops anything outside
+// that, which instagramFeedFrame() already models for the post editor; reels and
+// stories are always 9:16 whatever their poster looks like; everywhere else the
+// photo posts at its own shape. `crop` is how much of the frame the platform
+// throws away, so the card can say so when it is material.
+const VERTICAL_AR = 9 / 16
+// Below this, the trim is a sliver off a near-4:5 photo and flagging it on every
+// portrait card would be noise. At or above it, enough of the subject is gone
+// that it is worth knowing before you approve.
+const MATERIAL_CROP_PCT = 10
+
+export function previewFrame(item, natural) {
+  if (item.format === 'reel' || item.format === 'story') return { aspect: VERTICAL_AR, crop: 0 }
+  if (!natural?.w || !natural?.h) return null
+  if (item.platform === 'instagram') {
+    const f = instagramFeedFrame(natural.w, natural.h)
+    return f && { aspect: f.aspect, crop: f.croppedPct }
+  }
+  return { aspect: natural.w / natural.h, crop: 0 }
+}
+
+// The aspect is measured off the thumbnail as it loads rather than read from
+// media_assets.width/height, because that column is null for ~60% of photos
+// while the generated thumbnail preserves the source aspect exactly. So this
+// needs no API change and no backfill.
+function CardPreview({ item }) {
+  const [natural, setNatural] = useState(null)
+  const frame = previewFrame(item, natural)
+  return (
+    <div
+      className="relative w-[84px] shrink-0 overflow-hidden rounded-md bg-muted"
+      style={{ aspectRatio: frame ? String(frame.aspect) : '1' }}
+    >
+      <img
+        src={item.thumbnailUrl}
+        alt=""
+        loading="lazy"
+        className="h-full w-full object-cover"
+        onLoad={(e) => setNatural({ w: e.target.naturalWidth, h: e.target.naturalHeight })}
+      />
+      {item.mediaKind === 'video' && (
+        <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+          <Play className="h-3.5 w-3.5 text-white" fill="currentColor" aria-hidden="true" />
+        </span>
+      )}
+      {frame && frame.crop >= MATERIAL_CROP_PCT && (
+        <span
+          className="absolute inset-x-0 bottom-0 bg-action/90 px-1 py-0.5 text-center text-3xs font-bold text-white"
+          title={`Instagram only accepts down to 4:5 — ${frame.crop}% of this photo gets cropped off when it publishes`}
+        >
+          trims {frame.crop}%
+        </span>
+      )}
+    </div>
+  )
 }
 
 // F2.3 — "Your week": the producer's plan/review hub (Phase 2).
@@ -309,9 +374,8 @@ function PlanCard({ item, tz, onDraft, drafting, draftBusy, readOnly }) {
   const time = item.scheduled_at ? timeLabel(item.scheduled_at, tz) : null
   const needsDraft = !readOnly && state.action === 'draft'
 
-  const body = (
+  const copy = (
     <>
-      <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1.5 ${state.rail}`} />
       <div className="mb-1.5 flex items-center gap-2">
         <span
           className={`inline-flex h-5 w-5 items-center justify-center rounded-md shrink-0 ${meta.bg || 'bg-muted'} ${meta.color || 'text-muted-foreground'}`}
@@ -347,6 +411,23 @@ function PlanCard({ item, tz, onDraft, drafting, draftBusy, readOnly }) {
           <span className="text-3xs text-action">voice — open draft to review</span>
         </div>
       )}
+    </>
+  )
+
+  // The preview sits BESIDE the copy, not above it. Stacked, a portrait tile is
+  // taller than the rest of the card and Monday's column nearly doubles; beside
+  // it, the same photo at the same true aspect costs a fraction of that height.
+  // A card with no media keeps exactly the old compact shape — no grey
+  // placeholder boxes, since only about half of a week's posts carry art.
+  const body = (
+    <>
+      <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1.5 ${state.rail}`} />
+      {item.thumbnailUrl ? (
+        <div className="flex gap-2.5">
+          <CardPreview item={item} />
+          <div className="min-w-0 flex-1">{copy}</div>
+        </div>
+      ) : copy}
     </>
   )
 
@@ -1626,7 +1707,12 @@ export default function YourWeek() {
                   })()}
                 </div>
               ) : (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+              // Fixed 240px columns that scroll sideways, not seven columns
+              // divided into the viewport. At the old ~153px a card had no room
+              // for both a preview and a readable title; the trade is that
+              // Sat/Sun sit off-screen until scrolled. Overflow is on THIS
+              // container so the page body never scrolls sideways.
+              <div className="flex snap-x gap-2 overflow-x-auto pb-2">
                 {DAYS.map(([key, label]) => {
                   const isQuiet = quiet.has(key)
                   // Quiet days never show "open slot" invitations, even if a
@@ -1636,7 +1722,7 @@ export default function YourWeek() {
                   const itemCount = entries.filter((e) => e.kind === 'item').length
                   const isToday = key === todayKey
                   return (
-                    <div key={key} className={`flex min-h-[160px] flex-col rounded-xl border bg-card shadow-sm transition-shadow ${isToday ? 'border-primary/40 ring-1 ring-primary/20' : 'border-border'}`}>
+                    <div key={key} className={`flex min-h-[160px] w-60 shrink-0 snap-start flex-col rounded-xl border bg-card shadow-sm transition-shadow ${isToday ? 'border-primary/40 ring-1 ring-primary/20' : 'border-border'}`}>
                       <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1.5">
                         <span className={`text-2xs font-bold ${isToday ? 'text-primary' : ''}`}>
                           {label}{isToday && ' · Today'}
