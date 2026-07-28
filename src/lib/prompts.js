@@ -706,11 +706,11 @@ GOAL OF THIS NEWSLETTER:
 ${goalLines}
 
 VOICE FIDELITY IS THE ONLY GOAL.
-The interview is rambling and conversational. ORGANIZE it into the sections below — never translate it into a different voice.
+The interview is rambling and conversational. ORGANIZE it into the sections below. Never translate it into a different voice.
 
 Hard rules:
 - Lead with ${staffName}'s actual phrasing. Quote verbatim wherever the meaning fits. Never smooth a real sentence into a generic one.
-- This is a warm, personal email to people who already know ${workspace.display_name} — not a marketing blast and not a clinical article. Write like ${staffName} is writing to their own community.
+- This is a warm, personal email to people who already know ${workspace.display_name}, not a marketing blast and not a clinical article. Write like ${staffName} is writing to their own community.
 - Preserve every strong claim or feeling at full strength. No hedging, no corporate filler.
 - Keep people/patient details concrete but anonymize patients (no last names, no identifying specifics a stranger could use). Real names of events, causes, and public-facing community partners are fine.
 ${isPersonal
@@ -723,7 +723,7 @@ ${voiceNotesBlock(voiceNotes)}${voicePhrasesBlock(voicePhrases)}${ownHistoryBloc
 ${workspace.display_name.toUpperCase()} BRAND VOICE:
 ${workspace.brand_voice}
 
-OUTPUT FORMAT — emit EXACTLY these sections, each marker alone on its own line. Put each section's content on the line(s) AFTER its marker. Use ONLY these \`---\` markers — no markdown headings, no JSON, no commentary before the first marker:
+OUTPUT FORMAT: emit EXACTLY these sections, each marker alone on its own line. Put each section's content on the line(s) AFTER its marker. Use ONLY these \`---\` markers. No markdown headings, no JSON, no commentary before the first marker:
 
 ---SUBJECT LINE---
 A short, human inbox subject line that makes a subscriber want to open it. No clickbait, no emojis (unless ${staffName} truly would). This is an inbox line, not the headline.
@@ -732,21 +732,21 @@ A short, human inbox subject line that makes a subscriber want to open it. No cl
 ---HEADLINE---
 The headline at the top of the email body. Specific to this story. Never include ${staffName}'s name.
 ---PULL QUOTE---
-The single most compelling line from the interview, in ${staffName}'s own words — one sentence, styled as a callout.
+The single most compelling line from the interview, in ${staffName}'s own words. One sentence, styled as a callout.
 ---BODY PARAGRAPH 1---
-The opening hook — pull the reader into the human story right away. 2–4 sentences.
+The opening hook: pull the reader into the human story right away. 2–4 sentences.
 ---BODY PARAGRAPH 2---
-The ${workspace.display_name} perspective — why this matters to the team and what it connects to. 2–4 sentences.
+The ${workspace.display_name} perspective: why this matters to the team and what it connects to. 2–4 sentences.
 ---BODY PARAGRAPH 3---
-The bridge to action — land the story and lead naturally into the ask. 2–4 sentences.
+The bridge to action: land the story and lead naturally into the ask. 2–4 sentences.
 ---CTA TEXT---
 ${ctaLabel ? `Use this exact button label: ${ctaLabel}` : "A short button label, 2–4 words, for the reader's next step."}
 ---CTA URL---
 ${ctaUrl || '#'}
 ---PS---
-A short, warm postscript in ${staffName}'s voice — the kind of line they'd actually add at the end.
+A short, warm postscript in ${staffName}'s voice, the kind of line they'd actually add at the end.
 
-Keep it tight — this is an email, not an essay. Voice fidelity beats length.`
+Keep it tight. This is an email, not an essay. Voice fidelity beats length.`
 }
 
 /**
