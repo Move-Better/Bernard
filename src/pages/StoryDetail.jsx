@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { AlertCircle, ChevronDown, Link as LinkIcon, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { AlertCircle, ChevronDown, Link as LinkIcon, Loader2, Pencil, Plus, Quote, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import BackLink from '@/components/ui/BackLink'
 import PipelineStepper from '@/components/PipelineStepper'
@@ -21,6 +21,7 @@ import LoadingState from '@/components/LoadingState'
 import ErrorState from '@/components/ErrorState'
 import { StaffChip } from '@/components/StaffChip'
 import ReferencesPanel from '@/components/ReferencesPanel'
+import MomentsPanel from '@/components/MomentsPanel'
 import ExcludeFromBookToggle from '@/components/book/ExcludeFromBookToggle'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
@@ -197,6 +198,7 @@ export default function StoryDetail() {
   const navigate = useNavigate()
   const { data: story, isLoading, isError } = useStory(storyId)
   const [refsOpen, setRefsOpen] = useState(false)
+  const [momentsOpen, setMomentsOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [transcriptDrawerOpen, setTranscriptDrawerOpen] = useState(false)
@@ -398,6 +400,29 @@ export default function StoryDetail() {
           </div>
         </div>
       )}
+
+      {/* Moments — collapsible, read-only. The scored verbatim excerpts mined
+          from this interview into the moment bank (P2). The planner will
+          compose future pieces from the exemplars, so this list is how
+          extraction quality stays visible on the story itself. */}
+      <div className="rounded-lg border bg-card">
+        <button
+          type="button"
+          onClick={() => setMomentsOpen((o) => !o)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm font-medium hover:bg-muted/40"
+        >
+          <span className="inline-flex items-center gap-2">
+            <Quote className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+            Moments
+          </span>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${momentsOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {momentsOpen && (
+          <div className="px-4 pb-4 pt-1 border-t">
+            <MomentsPanel interviewId={story.id} />
+          </div>
+        )}
+      </div>
 
       {/* References — collapsible. External articles attached to this
           interview (either added post-interview, or carried over from the
