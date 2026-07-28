@@ -23,6 +23,7 @@ import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { getAtomSystemPrompt } from '../../_lib/atomPrompts.js'
+import { stripAiDashes } from '../../_lib/stripAiDashes.js'
 import { hasPublishedBlogArticle } from '../../_lib/blogLinkStatus.js'
 import { getContextBlock } from '../../_lib/conceptRetrieval.js'
 import { resolveOwnHistoryBlock, buildRagQuery } from '../../_lib/practiceMemory.js'
@@ -308,7 +309,7 @@ export default async function handler(req, res) {
     // then blocks Approve (checkCaptionCap) with no way forward but hand-editing
     // — measured live on 2026-07-27: a 3,015-char LinkedIn draft, machine-written
     // and untouched, sitting over the 3,000 ceiling.
-    newContent = clampToCap(captionRaw.trim(), platformCap(item.platform))
+    newContent = clampToCap(stripAiDashes(captionRaw.trim()), platformCap(item.platform))
 
     if (overlayRaw) {
       const hookMatch    = overlayRaw.match(/^HOOK:\s*(.+)$/m)
@@ -316,9 +317,9 @@ export default async function handler(req, res) {
       const ctaMatch     = overlayRaw.match(/^CTA:\s*(.+)$/m)
       if (hookMatch || subheadMatch || ctaMatch) {
         newOverlayText = {
-          hook:    hookMatch?.[1]?.trim()    ?? '',
-          subhead: subheadMatch?.[1]?.trim() ?? '',
-          cta:     ctaMatch?.[1]?.trim()     ?? '',
+          hook:    stripAiDashes(hookMatch?.[1]?.trim()    ?? ''),
+          subhead: stripAiDashes(subheadMatch?.[1]?.trim() ?? ''),
+          cta:     stripAiDashes(ctaMatch?.[1]?.trim()     ?? ''),
         }
       }
     }

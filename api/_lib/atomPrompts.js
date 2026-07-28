@@ -86,21 +86,21 @@ export function getAtomSystemPrompt(workspace, staffName, condition, platform, a
   const bioLinkForBooking = Boolean(website)
   const articleCtaLine = hasPublishedArticle
     ? 'Close with: "Full article at the link in bio 👆"'
-    : 'Close with a scroll-stopping callback to the hook — no link claim (e.g. "Save this for later" or "Follow for more like this").'
+    : 'Close with a scroll-stopping callback to the hook, no link claim (e.g. "Save this for later" or "Follow for more like this").'
   const quickWinCtaLine = hasPublishedArticle
-    ? 'Close with: "More in the full article — link in bio 👆"'
+    ? 'Close with: "More in the full article. Link in bio 👆"'
     : 'Close with an encouragement to try it, no link claim (e.g. "Give it a try and let us know how it goes").'
   const clinicalInsightCtaLine = hasPublishedArticle
     ? 'Close with: "Full breakdown at the link in bio 👆"'
     : 'Close with a follow-for-more callback, no link claim (e.g. "Follow for more insights like this").'
   const bookingCtaLine = bioLinkForBooking
-    ? 'End with: "Book your assessment — link in bio 👆"'
+    ? 'End with: "Book your assessment. Link in bio 👆"'
     : 'End with a booking invitation that does NOT claim a link (e.g. "DM us to book your assessment").'
   const tiktokMythBusterCloseLine = bioLinkForBooking
-    ? `"If you're dealing with ${condition} in ${workspace.location_keyword ?? 'your area'}, follow for more — link in bio to book at ${workspace.display_name}."`
+    ? `"If you're dealing with ${condition} in ${workspace.location_keyword ?? 'your area'}, follow for more. Link in bio to book at ${workspace.display_name}."`
     : `"If you're dealing with ${condition} in ${workspace.location_keyword ?? 'your area'}, follow for more from ${workspace.display_name}."`
   const tiktokProcessCloseLine = bioLinkForBooking
-    ? '"Book your first assessment — link in bio."'
+    ? '"Book your first assessment. Link in bio."'
     : '"Reach out to book your first assessment."'
   const linkedinUrlLine = website ? `Include URL ${website} at end. No hashtags.` : 'No hashtags. Do not include a URL.'
   const facebookUrlLine = website ? `Include the full URL ${website} on its own line near the end.` : 'Do not include a URL.'
@@ -126,7 +126,7 @@ Aim for 3–5 slides total. The last slide should usually be a "cta" template. D
 Example shape (do NOT copy verbatim — write fresh text per the caption):
 [
   { "template": "cover",     "blocks": [{ "role": "hook", "text": "YOUR PIRIFORMIS MIGHT NOT BE TIGHT", "position": "center" }] },
-  { "template": "explainer", "blocks": [{ "role": "hook", "text": "MRI SAYS HERNIATED", "position": "top" }, { "role": "body", "text": "But the structure isn't the problem — the pattern that stressed it is.", "position": "center" }] },
+  { "template": "explainer", "blocks": [{ "role": "hook", "text": "MRI SAYS HERNIATED", "position": "top" }, { "role": "body", "text": "But the structure isn't the problem. The pattern that stressed it is.", "position": "center" }] },
   { "template": "cta",       "blocks": [{ "role": "hook", "text": "READY TO MOVE PAST THE MRI?", "position": "top" }, { "role": "body", "text": "Book a free movement assessment.", "position": "center" }, { "role": "cta", "text": "Reserve Your Free Seat", "position": "bottom" }] }
 ]`
 
