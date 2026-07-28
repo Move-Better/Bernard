@@ -23,7 +23,7 @@
 //       answer_change_requests: bool,  -- P1  (default true)
 //       auto_repair_captions:   bool,  -- P2A.2 (default true)
 //       pre_draft_week:         bool,  -- P3  (default FALSE — opt-in)
-//       escalation_email:       bool,  -- P4  (default true; NO sender wired yet)
+//       escalation_email:       bool,  -- P4  (default true; sender: cron/approval-escalation)
 //     } }
 //
 // PURE: no env reads, no network, no side effects. Safe to import anywhere.
@@ -35,7 +35,7 @@ export const LANE_DEFAULTS = {
   answer_change_requests: true,   // P1  — revise agent (already live when enabled)
   auto_repair_captions:   true,   // P2A.2 — held-caption repair (already live when enabled)
   pre_draft_week:         false,  // P3  — pre-draft the week: OPT-IN, default OFF
-  escalation_email:       true,   // P4  — surfacing default-on; NO email sender exists yet
+  escalation_email:       true,   // P4  — overdue-approval nudge (cron/approval-escalation)
   author_answers:         false,  // P2  — draft answer-library gaps into clinician queues: OPT-IN, default OFF
   ad_hoc_drafts:          true,   // F20 — human-typed "draft something about X" on /producer.
                                   // Defaults ON (unlike the autonomous lanes): every draft here is

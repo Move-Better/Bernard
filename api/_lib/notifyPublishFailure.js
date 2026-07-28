@@ -15,7 +15,10 @@ import { ownerEmail } from './workspaceOwner.js'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-const PLATFORM_LABELS = {
+// Exported so sibling notifiers (approvalEscalationEmail.js) share ONE label
+// map instead of drifting copies — the failure mode this repo has hit before
+// with Buffer/bundle publish paths and the two fidelity rubrics.
+export const PLATFORM_LABELS = {
   instagram: 'Instagram', instagram_story: 'Instagram Story', facebook: 'Facebook',
   linkedin: 'LinkedIn', gbp: 'Google Business Profile', tiktok: 'TikTok',
   youtube: 'YouTube', twitter: 'X', threads: 'Threads', bluesky: 'Bluesky',
