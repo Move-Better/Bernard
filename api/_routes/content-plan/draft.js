@@ -14,6 +14,7 @@ import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { recordAgentAction } from '../../_lib/agentActions.js'
 import { draftAtom, buildGbpLocationVariants } from '../../_lib/producer/draftAtom.js'
+import { bumpMomentUsage } from '../../_lib/momentPlan.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -189,6 +190,12 @@ export default async function handler(req, res) {
     if (!updatedAtomRes.ok) throw new Error(`atom status update failed: ${updatedAtomRes.status}`)
     const updatedAtomRows = await updatedAtomRes.json()
     if (!updatedAtomRows.length) throw new Error('atom status update matched 0 rows — concurrent modification or workspace filter mismatch')
+
+    // Moment bank (P3) — the atom became a real piece, so its moment goes on
+    // cooldown (usage_count / last_used_at). Best-effort, off the hot path.
+    if (atom.moment_id) {
+      waitUntil(bumpMomentUsage({ workspaceId: ws.id, momentId: atom.moment_id, sb }))
+    }
 
     // Workday ledger (Standing Producer Phase 0) — narrate the draft Bernard
     // just made. Gated on producer_config.enabled inside the helper; no-op when

@@ -25,6 +25,7 @@
 
 import { mondayOf } from '../strategist.js'
 import { draftAtom, buildGbpLocationVariants } from './draftAtom.js'
+import { bumpMomentUsage } from '../momentPlan.js'
 import { recordAgentAction } from '../agentActions.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -170,6 +171,12 @@ async function predraftOneAtom({ ws, atom }) {
     const updatedAtomRows = await updatedAtomRes.json()
     if (!updatedAtomRows.length) throw new Error('atom status update matched 0 rows — concurrent modification')
 
+    // Moment bank (P3) — the atom became a real piece, so its moment goes on
+    // cooldown (usage_count / last_used_at). Best-effort; never throws.
+    if (atom.moment_id) {
+      await bumpMomentUsage({ workspaceId: ws.id, momentId: atom.moment_id, sb })
+    }
+
     // Workday ledger. Same kind ('draft_created') the interactive route records;
     // detail carries predrafted:true so the feed can read as a proactive standup.
     const draftScore = voiceScore ? Math.round(voiceScore.overall * 10) : null
@@ -267,7 +274,7 @@ export async function predraftWeek({ ws, cap = DEFAULT_PREDRAFT_CAP }) {
     `content_plan_atoms?${wsFilter}&plan_week=gte.${thisMonday}&plan_week=lte.${nextMonday}` +
     `&scheduled_at=not.is.null&scheduled_at=gte.${scheduledFloor}` +
     `&status=eq.pending&content_piece_id=is.null&interview_id=not.is.null` +
-    `&select=id,platform,angle,interview_id,scheduled_at&order=scheduled_at.asc&limit=25`
+    `&select=id,platform,angle,interview_id,moment_id,scheduled_at&order=scheduled_at.asc&limit=25`
   )
   if (!slotsRes.ok) {
     console.error('[predraftWeek] slot fetch failed', slotsRes.status)

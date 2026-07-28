@@ -12,6 +12,7 @@ import { getCadencePrior, computeCadenceChannels } from './cadenceDefaults.js'
 import { getActiveCampaigns, campaignWeight, campaignTuningHint } from './activeCampaigns.js'
 import { applyExplorationSlots, computeDayProposal } from './cadenceAdaptive.js'
 import { mergeSlotsIntoCadence, withExplorationSlot } from './cadenceSlots.js'
+import { selectExemplarMoments, checkCampaignBankCoverage } from './momentPlan.js'
 
 // P3 promo lane: how much of the feed campaign-attributed pieces may claim.
 // Ramps with event proximity — a far-off (or evergreen) campaign gets the floor,
@@ -70,6 +71,20 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
   const activeCampaigns = await getActiveCampaigns(wsId)
   const promoCampaignIds = activeCampaigns.map((c) => c.id)
   const promoShare = promoShareFor(activeCampaigns, Date.now())
+
+  // Moment-bank mode (P3, workspace-flagged cutover): the Strategist composes
+  // from banked exemplar moments instead of this-week interview summaries.
+  // Campaign coverage is checked against the bank in the same pass — hits ride
+  // the promo lane, a zero-coverage campaign queues a topic_backlog 'bank_gap'
+  // row so the next interview gets primed.
+  const bankMode = !!workspace.moment_bank_planning_enabled
+  let moments = null
+  let promoMomentIds = new Set()
+  if (bankMode) {
+    moments = await selectExemplarMoments({ workspaceId: wsId, sb })
+    const coverage = await checkCampaignBankCoverage({ workspaceId: wsId, activeCampaigns, sb })
+    promoMomentIds = coverage.promoMomentIds
+  }
 
   // Recent topics already posted — for the LLM to avoid repeating.
   const since = new Date(Date.now() - RECENT_TOPIC_DAYS * 24 * 60 * 60 * 1000).toISOString()
@@ -167,7 +182,7 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
   const enabledChannels = Object.entries(cadence).filter(([, c]) => c?.enabled).map(([ch]) => ch)
   const campaignTuning = campaignTuningHint(activeCampaigns, enabledChannels)
 
-  return { interviews, cadence, quietDays: effectiveQuietDays, exploring, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, campaignTuning, backlog }
+  return { interviews, cadence, quietDays: effectiveQuietDays, exploring, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, campaignTuning, backlog, moments, promoMomentIds }
 }
 
 // T4 learning loop, part 3 — evaluate whether the workspace's quiet days have
@@ -266,9 +281,9 @@ async function persistPlan({ ops, sb = defaultSb, workspaceId }) {
  * completion-trigger fires on every interview completion; the weekly cron is a
  * backstop). Returns the compose stats. `sb`/`generate` injectable for tests.
  */
-export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultSb, generate }) {
+export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultSb, generate, generateBank }) {
   const planWeek = weekMonday || mondayOf(new Date().toISOString())
-  const { interviews, cadence, quietDays, exploring, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, campaignTuning, backlog } = await getWeekInputs({
+  const { interviews, cadence, quietDays, exploring, recentTopics, recentRegionCounts, promoShare, promoCampaignIds, campaignTuning, backlog, moments, promoMomentIds } = await getWeekInputs({
     workspace,
     weekMonday: planWeek,
     sb,
@@ -283,7 +298,14 @@ export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultS
   // out. A week with no new interviews but a non-empty backlog still produces a
   // plan: allocateToCadence promotes backlog atoms up to each channel's
   // target_per_week, so /week stays populated between capture weeks.
-  if (!interviews.length && !backlog.length) return { weekMonday: planWeek, skipped: 'no-inputs', exploring }
+  // Bank mode composes from moments, so the gate is the bank, not the week's
+  // captures — an empty bank with an empty backlog is the only true no-op.
+  const bankMode = Array.isArray(moments)
+  if (bankMode) {
+    if (!moments.length && !backlog.length) return { weekMonday: planWeek, skipped: 'no-inputs', bankMode: true, exploring }
+  } else if (!interviews.length && !backlog.length) {
+    return { weekMonday: planWeek, skipped: 'no-inputs', exploring }
+  }
 
   const plan = await composeWeeklyPlan({
     workspaceId: workspace.id,
@@ -298,7 +320,10 @@ export async function replanWorkspaceWeek({ workspace, weekMonday, sb = defaultS
     campaignTuning,
     backlog,
     weekMonday: planWeek,
+    moments,
+    promoMomentIds,
     ...(generate ? { generate } : {}),
+    ...(generateBank ? { generateBank } : {}),
   })
 
   // Read existing strategist atoms for this week to apply replace-untouched.

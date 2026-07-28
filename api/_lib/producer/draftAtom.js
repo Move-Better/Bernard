@@ -34,6 +34,7 @@ import {
 import { extractProvenanceBlock } from '../../../src/lib/provenance.js'
 import { buildFidelityPrompt, parseFidelity } from '../captionFidelityRubric.js'
 import { clampToCap, platformCap } from '../socialLengthTargets.js'
+import { momentWindow } from '../momentPlan.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -183,6 +184,26 @@ export async function draftAtom({ ws, atom, interview }) {
   const turns = Array.isArray(interview.messages) ? interview.messages : []
   if (!turns.length) throw new Error('Interview transcript missing — cannot generate atom')
 
+  // Moment-anchored path (moment-bank P3). A bank-composed atom carries
+  // moment_id: the piece is built around ONE verbatim moment, generated from —
+  // and fidelity-judged against — the tight conversation window around its
+  // anchor, not the whole 24k transcript. Falls back to the legacy
+  // full-transcript path when the moment row is gone (retired + deleted →
+  // ON DELETE SET NULL race) or its anchor can't be resolved (time-coded).
+  let moment = null
+  let momentWin = null
+  if (atom.moment_id) {
+    const mRes = await sb(`moments?id=eq.${atom.moment_id}&${wsFilter}&select=id,excerpt,anchor,hook,topic`)
+    if (mRes.ok) {
+      const mRows = await mRes.json().catch(() => [])
+      moment = mRows[0] || null
+    }
+    if (moment) {
+      momentWin = momentWindow(turns, moment.anchor)
+      if (!momentWin) moment = null
+    }
+  }
+
   // Fetch clinician name + voice substrate
   let staffName = ''
   let voiceNotes    = ''
@@ -266,20 +287,38 @@ export async function draftAtom({ ws, atom, interview }) {
   if (!systemPrompt) throw new Error(`No prompt defined for ${atom.platform}/${atom.angle}`)
 
   // Replay the interview as the original conversation, then ask for the atom.
+  // Moment mode replays only the anchor's verbatim window and pins the piece to
+  // the moment's excerpt (one-source-anchor). The blog editorial block is
+  // deliberately dropped there — it's whole-interview synthesis, and offering
+  // it re-widens the source the fidelity judge can't see.
   const editorialBlock = blogPost
     ? `\n\nHere is the editorial summary that has already been written on this topic:\n\n` +
       `<editorial-summary>\n${blogPost}\n</editorial-summary>\n\nUse it only for thematic alignment — pull voice, examples, and specifics from our conversation above.`
     : ''
-  const aiMessages = [
-    ...turns.map((m) => ({ role: m.role, content: m.content })),
-    {
-      role: 'user',
-      content:
-        `Now write the ${atom.platform} piece (angle: ${atom.angle}) per the instructions in the system prompt. ` +
-        `Pull voice, examples, and specifics from our conversation above — that is the source of truth.` +
-        editorialBlock,
-    },
-  ]
+  const aiMessages = momentWin
+    ? [
+        ...momentWin.messages.map((m) => ({ role: m.role, content: m.content })),
+        {
+          role: 'user',
+          content:
+            `Now write the ${atom.platform} piece (angle: ${atom.angle}) per the instructions in the system prompt. ` +
+            `This piece is built around ONE exact moment from our conversation — my verbatim words:\n\n` +
+            `"${moment.excerpt}"\n\n` +
+            `That moment is the anchor and the subject: lead with it, unpack it, or build to it. ` +
+            `Draw voice, phrasing, and supporting context ONLY from the conversation excerpt above — ` +
+            `never from anywhere else, and never invent specifics beyond it.`,
+        },
+      ]
+    : [
+        ...turns.map((m) => ({ role: m.role, content: m.content })),
+        {
+          role: 'user',
+          content:
+            `Now write the ${atom.platform} piece (angle: ${atom.angle}) per the instructions in the system prompt. ` +
+            `Pull voice, examples, and specifics from our conversation above — that is the source of truth.` +
+            editorialBlock,
+        },
+      ]
 
   // Call the AI — first attempt
   const { text: rawText1 } = await generateText({
@@ -294,11 +333,16 @@ export async function draftAtom({ ws, atom, interview }) {
   // Voice-judge gate: score the draft against the interview transcript + voice
   // profile. If below threshold, try once more with the red_flag as coaching.
   const HAIKU = 'anthropic/claude-haiku-4-5'
-  const clinicianSaid = turns
-    .filter((t) => t.role === 'user')
-    .map((t) => t.content)
-    .join('\n\n')
-    .slice(0, TRANSCRIPT_MAX)
+  // Moment mode: the judge's faithfulness reference is the SAME tight window
+  // the generation saw — reference narrower than source is a false-positive
+  // machine; wider is a leak past the one-source anchor.
+  const clinicianSaid = (momentWin
+    ? momentWin.clinicianText
+    : turns
+        .filter((t) => t.role === 'user')
+        .map((t) => t.content)
+        .join('\n\n')
+  ).slice(0, TRANSCRIPT_MAX)
   const caption1 = extractProvenanceBlock(rawText1.trim()).content.split('---SLIDES---')[0].trim()
 
   let rawText      = rawText1

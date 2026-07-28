@@ -39,6 +39,19 @@ const candidateSchema = z.object({
 })
 const planSchema = z.object({ pieces: z.array(candidateSchema) })
 
+// Bank mode (moment-bank P3): a candidate anchors to exactly ONE banked moment
+// (locked one-source-anchor decision) instead of a this-week interview. The
+// moment carries its own interview_id, so the atom keeps its interview link.
+const bankCandidateSchema = z.object({
+  moment_id: z.string().describe('The exact moment id this piece is built around, copied verbatim from the MOMENTS list.'),
+  platform: z.string().describe('The channel to publish on (one of the provided channels).'),
+  angle: z.string().describe('The angle key, chosen FROM THE PROVIDED PALETTE for that channel.'),
+  brief: z.string().describe(
+    "A concrete one-line brief (aim for under 90 characters): the specific subject + the clinician's own framing from the moment, NOT a generic angle name.",
+  ),
+})
+const bankPlanSchema = z.object({ pieces: z.array(bankCandidateSchema) })
+
 // Atom-level (social) channels the Strategist fills to cadence. blog / email /
 // landing_page / youtube / ads are single-output or digest-assembled and are
 // governed by the cadence digest layer, NOT the per-piece atom plan.
@@ -375,6 +388,9 @@ function toAtomRow(c, { workspaceId, planWeek, palette }) {
   const pal = (palette[c.platform] || []).find((p) => p.angle === c.angle) || {}
   return {
     interview_id: c.interview_id,
+    // Bank mode: the ONE moment this piece anchors to. Routes draftAtom /
+    // regenerate to the tight verbatim-window generation + fidelity reference.
+    moment_id: c.moment_id ?? null,
     workspace_id: workspaceId,
     platform: c.platform,
     slot: c.slot || 1,
@@ -460,6 +476,56 @@ export function buildStrategistPrompt({ interviews, channels, recentTopics, rece
   return { system, user }
 }
 
+/**
+ * Bank mode (moment-bank P3): compose the week from banked EXEMPLAR moments
+ * instead of this week's interview summaries. Every piece anchors to exactly
+ * ONE moment (one-source-anchor decision) and the angle is chosen against THIS
+ * week's context — recent topics, region mix, campaign signal — not frozen at
+ * capture time. `promoMomentIds` marks moments matched to an active campaign
+ * (checkCampaignBankCoverage) so the model leans on them for the promo lane.
+ */
+export function buildBankStrategistPrompt({ moments, channels, recentTopics, recentRegionCounts = {}, palette, campaignTuning = null, promoMomentIds = new Set() }) {
+  const paletteText = channels
+    .map((ch) => `${ch}: ${(palette[ch] || []).map((p) => `${p.angle} (${p.label})`).join(', ')}`)
+    .join('\n')
+  const momentText = moments
+    .map((m) => {
+      const captured = String(m.created_at || '').slice(0, 10)
+      const meta = [
+        m.topic ? `topic: ${m.topic}` : null,
+        m.region ? `region: ${m.region}` : null,
+        captured ? `captured ${captured}` : null,
+        m.usage_count ? `used ${m.usage_count}x` : 'never used',
+        promoMomentIds.has(m.id) ? 'CAMPAIGN-RELEVANT' : null,
+      ].filter(Boolean).join(', ')
+      const excerpt = String(m.excerpt || '').replace(/\s+/g, ' ').slice(0, 240)
+      return `- [${m.id}] (${meta})\n  ${m.hook || ''}\n  "${excerpt}"`
+    })
+    .join('\n')
+  const regionMix = summarizeRegionMix(recentRegionCounts)
+  const system =
+    `You are the content strategist for a clinical practice. You compose this week's social ` +
+    `pieces from a BANK of moments — verbatim things the practice's clinicians have said in ` +
+    `recorded interviews. For each piece pick ONE moment (by its id, copied verbatim), the ` +
+    `channel, and an angle FROM THE PROVIDED PALETTE for that channel. A piece is built around ` +
+    `its single moment — never blend two moments. EVERY piece must have a concrete one-line ` +
+    `brief: the specific subject + the clinician's own framing from the moment, never a generic ` +
+    `angle name. NEVER begin a brief with the channel or angle name — open with the subject. ` +
+    `Never use the same moment for two pieces. Spread pieces across DIFFERENT source interviews ` +
+    `and clinicians — a week drawn from one conversation reads as reruns. Do NOT repeat any ` +
+    `subject in RECENT TOPICS. Favor body regions UNDER-represented in the RECENT REGION MIX. ` +
+    `Prefer moments marked CAMPAIGN-RELEVANT for a portion of the week when present. ` +
+    `Aim for roughly the per-channel weekly targets, but quality over quantity — do not force ` +
+    `weak moments into slots.`
+  const user =
+    `BANKED MOMENTS (pick from these; cite moment ids verbatim):\n${momentText}\n\n` +
+    `CHANNELS + ANGLE PALETTE:\n${paletteText}\n\n` +
+    `RECENT TOPICS (already posted — avoid repeating):\n${recentTopics.length ? recentTopics.map((t) => `- ${t}`).join('\n') : '- (none)'}\n\n` +
+    `RECENT REGION MIX (already in the feed — favor the under-represented):\n${regionMix.length ? regionMix.map((r) => `- ${r.region}: ${r.pct}%`).join('\n') : '- (none yet)'}` +
+    campaignTuningBlock(campaignTuning)
+  return { system, user }
+}
+
 // Real model call (lazy-imports the AI SDK so a harness importing this module
 // doesn't need a gateway key). Returns validated candidate objects — the schema
 // forces a non-empty brief on every piece, so the model can't drop it.
@@ -478,6 +544,58 @@ async function defaultGenerate({ system, user }) {
     console.error('[strategist] defaultGenerate: model call/validation failed:', e?.message)
     return []
   }
+}
+
+// Bank-mode twin of defaultGenerate — same call, bank schema (moment_id keyed).
+async function defaultGenerateBank({ system, user }) {
+  const { generateObject } = await import('ai')
+  try {
+    const { object } = await generateObject({
+      model: 'anthropic/claude-sonnet-4-6',
+      schema: bankPlanSchema,
+      instructions: system,
+      messages: [{ role: 'user', content: user }],
+      maxOutputTokens: 2000,
+    })
+    return Array.isArray(object?.pieces) ? object.pieces : []
+  } catch (e) {
+    console.error('[strategist] defaultGenerateBank: model call/validation failed:', e?.message)
+    return []
+  }
+}
+
+/**
+ * PURE: validate + shape the model's bank-mode picks against the offered
+ * moments. Drops candidates whose moment_id isn't in the offered set (repairing
+ * whitespace corruption first), whose channel isn't enabled, or whose angle
+ * isn't in the palette — and enforces one piece per moment (one-source-anchor:
+ * the same moment must not appear twice in a plan). Attaches interview_id /
+ * region / isPromo from the moment row. Exported for tests.
+ */
+export function shapeBankCandidates(raw, { moments, channels, palette, promoMomentIds = new Set() }) {
+  const byId = new Map((moments || []).map((m) => [m.id, m]))
+  const used = new Set()
+  const out = []
+  for (const c of Array.isArray(raw) ? raw : []) {
+    if (!c || typeof c.moment_id !== 'string') continue
+    const momentId = c.moment_id.replace(/\s+/g, '')
+    const m = byId.get(momentId)
+    if (!m) continue
+    if (used.has(momentId)) continue
+    if (!channels.includes(c.platform)) continue
+    if (!(palette[c.platform] || []).some((p) => p.angle === c.angle)) continue
+    used.add(momentId)
+    out.push({
+      moment_id: momentId,
+      interview_id: m.interview_id,
+      platform: c.platform,
+      angle: c.angle,
+      brief: c.brief,
+      region: m.region || null,
+      isPromo: promoMomentIds.has(momentId),
+    })
+  }
+  return out
 }
 
 /**
@@ -501,13 +619,24 @@ export async function composeWeeklyPlan({
   timezone = 'America/Los_Angeles',
   weekMonday,
   generate = defaultGenerate,
+  // Bank mode (moment-bank P3): a non-null `moments` array switches candidate
+  // composition from this-week interview summaries to banked exemplar moments.
+  moments = null,
+  promoMomentIds = new Set(),
+  generateBank = defaultGenerateBank,
 }) {
   const palette = anglePalette()
   const channels = Object.entries(cadence).filter(([, c]) => c?.enabled).map(([ch]) => ch)
   const planWeek = weekMonday || mondayOf(new Date().toISOString())
+  const bankMode = Array.isArray(moments)
 
   let candidates = []
-  if (interviews.length && channels.length) {
+  if (bankMode) {
+    if (moments.length && channels.length) {
+      const prompt = buildBankStrategistPrompt({ moments, channels, recentTopics, recentRegionCounts, palette, campaignTuning, promoMomentIds })
+      candidates = shapeBankCandidates(await generateBank(prompt), { moments, channels, palette, promoMomentIds })
+    }
+  } else if (interviews.length && channels.length) {
     const prompt = buildStrategistPrompt({ interviews, channels, recentTopics, recentRegionCounts, palette, campaignTuning })
     // The LLM echoes interview_id back and can corrupt it (e.g. inject a space),
     // which 400s the uuid insert. Normalize whitespace, then require an EXACT
@@ -526,15 +655,18 @@ export async function composeWeeklyPlan({
   // Attach each candidate's body region + promo flag (from its interview) so the
   // allocator can region-cap evergreen pieces and route campaign-attributed ones
   // through the promo lane. Backlog atoms already carry `.region`/`.campaign_id`
-  // (attached in getWeekInputs via the interview join).
+  // (attached in getWeekInputs via the interview join). Bank candidates already
+  // carry region/isPromo from their moment (shapeBankCandidates) — don't clobber.
   const promoSet = new Set(promoCampaignIds)
-  const regionByIv = new Map(interviews.map((i) => [i.id, i.region || null]))
-  const campaignByIv = new Map(interviews.map((i) => [i.id, i.campaign_id || null]))
-  candidates = candidates.map((c) => ({
-    ...c,
-    region: regionByIv.get(c.interview_id) || null,
-    isPromo: promoSet.has(campaignByIv.get(c.interview_id)),
-  }))
+  if (!bankMode) {
+    const regionByIv = new Map(interviews.map((i) => [i.id, i.region || null]))
+    const campaignByIv = new Map(interviews.map((i) => [i.id, i.campaign_id || null]))
+    candidates = candidates.map((c) => ({
+      ...c,
+      region: regionByIv.get(c.interview_id) || null,
+      isPromo: promoSet.has(campaignByIv.get(c.interview_id)),
+    }))
+  }
   const backlogWithPromo = backlog.map((b) => ({ ...b, isPromo: promoSet.has(b.campaign_id) }))
 
   const { thisWeek, held, promoted } = allocateToCadence(candidates, cadence, backlogWithPromo, recentRegionCounts, promoShare)
@@ -547,7 +679,10 @@ export async function composeWeeklyPlan({
   const now = new Date().toISOString()
   const slotsByPlatform = slotsByPlatformFromCadence(cadence)
   const thisWeekRows = assignSlots(thisWeek.map((c) => toAtomRow(c, { workspaceId, planWeek, palette })), planWeek, quietDays, timezone, slotsByPlatform)
-  const heldRows = held.map((c) => ({ ...toAtomRow(c, { workspaceId, planWeek, palette }), held_at: now }))
+  // Bank mode: surplus candidates are DROPPED, not banked as held atoms — the
+  // moments table IS the backlog, and materializing surplus is exactly the
+  // pre-generated pile this design retires. Legacy mode keeps held rows.
+  const heldRows = bankMode ? [] : held.map((c) => ({ ...toAtomRow(c, { workspaceId, planWeek, palette }), held_at: now }))
   // Promoted backlog atoms already exist — they just flip held→this-week.
   const promotedUpdates = assignSlots(
     promoted.map((b) => ({ ...b, held_at: null, plan_week: planWeek })),
@@ -568,6 +703,7 @@ export async function composeWeeklyPlan({
       scheduled: thisWeekRows.length,
       held: heldRows.length,
       promotedFromBacklog: promotedUpdates.length,
+      ...(bankMode ? { bankMode: true, momentsOffered: moments.length } : {}),
     },
   }
 }

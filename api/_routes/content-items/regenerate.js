@@ -29,6 +29,7 @@ import { resolveOwnHistoryBlock, buildRagQuery } from '../../_lib/practiceMemory
 import { loadCurrentTentpole, getTentpolePromptContext } from '../../_lib/tentpoleCampaignContext.js'
 import { resolveSiblingCaptionsBlock } from '../../_lib/producer/draftAtom.js'
 import { clampToCap, platformCap } from '../../_lib/socialLengthTargets.js'
+import { momentWindow } from '../../_lib/momentPlan.js'
 import { extractProvenanceBlock } from '../../../src/lib/provenance.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -181,14 +182,36 @@ export default async function handler(req, res) {
     let newContent
     let newOverlayText = item.overlay_text ?? null
 
-    const blogPost = interview.outputs?.blogPost
-    if (!blogPost) {
-      return err(res, 'Blog post not generated yet — regenerate the blog first', 422)
-    }
-
     const atomTurns = Array.isArray(interview.messages) ? interview.messages : []
     if (!atomTurns.length) {
       return err(res, 'Interview transcript missing — cannot regenerate atom', 422)
+    }
+
+    // Moment-anchored path (moment-bank P3): a bank-composed atom regenerates
+    // from the SAME tight verbatim window draftAtom generated from — not the
+    // full transcript — so regenerate can't silently widen the source past the
+    // one-source anchor (this route is the documented drift site: it hand-rolls
+    // the draft prompt instead of importing draftAtom). Falls back to the
+    // legacy path when the moment row is gone or its anchor can't be resolved.
+    let moment = null
+    let momentWin = null
+    if (atom.moment_id) {
+      const mRes = await sb(`moments?id=eq.${atom.moment_id}&${wsFilter}&select=id,excerpt,anchor`)
+      if (mRes.ok) {
+        const mRows = await mRes.json().catch(() => [])
+        moment = mRows[0] || null
+      }
+      if (moment) {
+        momentWin = momentWindow(atomTurns, moment.anchor)
+        if (!momentWin) moment = null
+      }
+    }
+
+    const blogPost = interview.outputs?.blogPost
+    // Moment mode doesn't use the editorial summary (whole-interview synthesis
+    // would re-widen the source), so only the legacy path requires it.
+    if (!blogPost && !momentWin) {
+      return err(res, 'Blog post not generated yet — regenerate the blog first', 422)
     }
 
     const conceptBlock = await getContextBlock({ workspaceId: ws.id, topic: interview.topic })
@@ -238,19 +261,34 @@ export default async function handler(req, res) {
 
     // Transcript = primary source; blog = editorial context. Mirrors the
     // shape used in /api/content-plan/draft.js so first-draft and regen
-    // produce comparable output.
-    const aiMessages = [
-      ...atomTurns.map((m) => ({ role: m.role, content: m.content })),
-      {
-        role: 'user',
-        content:
-          `Here is the editorial summary that has already been written and approved on this topic:\n\n` +
-          `<editorial-summary>\n${blogPost}\n</editorial-summary>\n\n` +
-          `Now write the ${atom.platform} piece (angle: ${atom.angle}) per the instructions in the system prompt. ` +
-          `Pull voice, examples, and specifics from our conversation above — that is the source of truth. ` +
-          `Use the editorial summary only for thematic alignment, not as the source of wording.`,
-      },
-    ]
+    // produce comparable output. Moment mode mirrors draftAtom's window
+    // replay + anchor instruction instead.
+    const aiMessages = momentWin
+      ? [
+          ...momentWin.messages.map((m) => ({ role: m.role, content: m.content })),
+          {
+            role: 'user',
+            content:
+              `Now write the ${atom.platform} piece (angle: ${atom.angle}) per the instructions in the system prompt. ` +
+              `This piece is built around ONE exact moment from our conversation — my verbatim words:\n\n` +
+              `"${moment.excerpt}"\n\n` +
+              `That moment is the anchor and the subject: lead with it, unpack it, or build to it. ` +
+              `Draw voice, phrasing, and supporting context ONLY from the conversation excerpt above — ` +
+              `never from anywhere else, and never invent specifics beyond it.`,
+          },
+        ]
+      : [
+          ...atomTurns.map((m) => ({ role: m.role, content: m.content })),
+          {
+            role: 'user',
+            content:
+              `Here is the editorial summary that has already been written and approved on this topic:\n\n` +
+              `<editorial-summary>\n${blogPost}\n</editorial-summary>\n\n` +
+              `Now write the ${atom.platform} piece (angle: ${atom.angle}) per the instructions in the system prompt. ` +
+              `Pull voice, examples, and specifics from our conversation above — that is the source of truth. ` +
+              `Use the editorial summary only for thematic alignment, not as the source of wording.`,
+          },
+        ]
 
     const { text } = await generateText({
       model: 'anthropic/claude-sonnet-4-6',

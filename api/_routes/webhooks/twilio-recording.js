@@ -31,6 +31,7 @@ import { markBookStale } from '../../_lib/bookStale.js'
 import { indexInterviewTranscriptFull } from '../../_lib/practiceMemoryRag.js'
 import { replanWorkspaceWeek } from '../../_lib/strategistPlan.js'
 import { mondayOf } from '../../_lib/strategist.js'
+import { extractAndBankMoments } from '../../_lib/momentExtract.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -239,8 +240,18 @@ async function runCascade({ iv, recordingUrl, authToken, interview, wsId }) {
     ['concepts', () => extractConcepts({ workspaceId: wsId, sourceKind: 'interview_turn', sourceId: iv, text: interviewText, staffId: staff.id, weightDelta: 1.0 })],
     ['region', () => classifyAndStoreInterviewRegion({ interviewId: iv, workspaceId: wsId, topic: interview.topic })],
     ['book', () => markBookStale({ workspaceId: wsId })],
-    ['strategist', () => replanWorkspaceWeek({ workspace: { id: wsId, cadence_policy: workspace.cadence_policy ?? null, enabled_outputs: workspace.enabled_outputs ?? null }, weekMonday: mondayOf(new Date().toISOString()) })],
+    ['strategist', () => replanWorkspaceWeek({ workspace: { id: wsId, cadence_policy: workspace.cadence_policy ?? null, enabled_outputs: workspace.enabled_outputs ?? null, moment_bank_planning_enabled: workspace.moment_bank_planning_enabled ?? false }, weekMonday: mondayOf(new Date().toISOString()) })],
   ]
+  // Moment bank (P2/P3) — bank this call's verbatim moments BEFORE the
+  // strategist step runs (steps execute sequentially below), so a bank-mode
+  // replan can draw the fresh moments. Gated on dualChannel exactly like
+  // summary/rag/style: the mixed-transcript fallback's single 'user' blob
+  // contains BOTH speakers, and a "verbatim clinician moment" mined from it
+  // could quote Bernard's own interview questions as the clinician's words.
+  if (dualChannel) {
+    steps.splice(steps.findIndex(([n]) => n === 'strategist'), 0,
+      ['moments', () => extractAndBankMoments({ workspace, interview: { id: iv, staff_id: staff.id, topic: interview.topic, region: null, messages: turns } })])
+  }
   // summary/rag both filter messages by role==='user' internally
   // (interviewSummarizer.js, practiceMemoryRag.js's buildTranscriptBody) — on
   // the mixed-transcript fallback that single 'user'-tagged blob contains
