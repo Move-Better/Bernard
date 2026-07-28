@@ -587,6 +587,11 @@ ${isFirstMessage ? 'Introduce yourself briefly, then ask your first question.' :
 // storyTypeSlot, and tone params are accepted but intentionally ignored so
 // callers and tests don't have to change in this PR; a follow-up PR will
 // drop them from the signature.
+// Shared across every long-form / blog prose writer below (the two blog writers
+// and the two series-part writers). A single source of truth so the guard can't
+// drift between the copies. Written without an em-dash itself.
+const NO_EM_DASH_RULE = 'No em-dashes or spaced hyphens as connectors between clauses. They are a strong AI tell. Use a comma, a colon, or a new sentence instead.'
+
 export function getBlogPostSystemPrompt(workspace, staffName, condition, tone = 'smart', voiceMode = 'practice', prototypeId = null, voiceNotes = '', voicePhrases = [], audienceSlot = null, storyTypeSlot = null, lengthPreset = null, ownHistoryBlock = '') {
   if (isGeneralMode(workspace)) {
     return getGeneralBlogPostSystemPrompt(workspace, staffName, condition, tone, voiceMode, voiceNotes, voicePhrases, audienceSlot, storyTypeSlot, lengthPreset, ownHistoryBlock)
@@ -624,6 +629,7 @@ Hard rules:
 ${isPersonal
   ? `- First-person throughout: "I," "my," "me." End with a signature: "— ${staffName}, ${workspace.display_name}".`
   : `- Use "we" / "our team" when ${staffName} spoke for the clinic in the interview. Don't fabricate clinic positioning; only use we-language for things ${staffName} actually said the team does.`}
+- ${NO_EM_DASH_RULE}
 
 ${getFramingRule(workspace, { voiceMode, staffName, assetType: 'blog' })}
 ${voiceNotesBlock(voiceNotes)}${voicePhrasesBlock(voicePhrases)}${ownHistoryBlock}
@@ -1068,6 +1074,7 @@ Hard rules:
 - Preserve every strong claim or opinion in its original strength. Do not soften, balance, or add hedging. If ${expertName} took a strong stance, the post takes that same strong stance.
 - Section headers (if you use any) must be content-specific — what the section is actually about — not generic ("Introduction" / "Conclusion").
 ${isPersonal ? `- First-person throughout. Preserve "I" / "my" / "me." End with a signature line: "— ${expertName}, ${workspace.display_name}".` : `- Match ${workspace.display_name}'s brand voice. Use "we" / "our" only where ${expertName} spoke collectively in the interview; otherwise stay in their voice.`}
+- ${NO_EM_DASH_RULE}
 
 ${getFramingRuleGeneral(workspace, { voiceMode, expertName })}
 ${voiceNotesBlock(voiceNotes)}${voicePhrasesBlock(voicePhrases)}${ownHistoryBlock}
@@ -1262,6 +1269,8 @@ ${isPersonal ? '' : `
 `}
 ${resolveBlogLengthLine(lengthPreset, 'TARGET LENGTH: 700–950 words. Write like a human who genuinely cares about helping people move better — not like a content marketing checklist.')}
 
+VOICE: ${NO_EM_DASH_RULE}
+
 CRITICAL — stay in your lane: this is Part ${partNum} of the series. Do NOT try to cover everything the interview touched on. Pull the material that belongs to *this thread* (per the brief and anchor moments) and let the sibling parts handle theirs.
 ${getToneModifier(tone, workspace)}${PROVENANCE_INSTRUCTION}`
 }
@@ -1311,6 +1320,7 @@ WRITING RULES:
 - Structure follows the brief — content-specific section headings, no generic templates.
 - Preserve the expert's actual phrases and rhythm wherever possible.
 - No corporate filler, no listicle sub-headers, no "in conclusion" wrap-ups.
+- ${NO_EM_DASH_RULE}
 ${isPersonal ? `- First-person throughout. End with a signature line: "— ${expertName}, ${workspace.display_name}".` : '- Match the brand voice.'}
 ${siblingSummaries.length ? `- Late in the piece, weave in a natural reference to one or more sibling parts (link to them) — only where it genuinely fits the narrative.` : ''}
 

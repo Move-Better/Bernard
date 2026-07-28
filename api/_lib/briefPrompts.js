@@ -47,7 +47,7 @@ export function getBriefChannelPrompt(brief, platform, workspace) {
     : ''
   const ctx = briefBlock(brief)
 
-  const VOICE_RULE = `Write in the voice of ${wsName} — warm, direct, human, community-focused. No corporate-speak, no excessive emojis. Keep it genuine.`
+  const VOICE_RULE = `Write in the voice of ${wsName} — warm, direct, human, community-focused. No corporate-speak, no excessive emojis. Keep it genuine. No em-dashes or spaced hyphens as connectors between clauses (a strong AI tell); use a comma, a colon, or a new sentence instead.`
 
   switch (platform) {
 
