@@ -4,6 +4,35 @@
 (with kill criteria) is in `.claude/decisions.md` under the same date. Read both before building.
 Phases are sequential PRs/sessions except P1, which is independent and ships first.
 
+## STATUS — 2026-07-28: P1–P4 SHIPPED AND LIVE; only P5 remains (deferred)
+
+Everything below except P5 is built, merged, and live in prod. This doc is now the historical
+spec; current truth lives in `.claude/decisions.md` (2026-07-27 entries) and the memory index.
+
+- **P1** ✅ #2402 — `api/_routes/cron/sweep-past-weeks.js` (Mondays 04:00, before weekly-plan).
+  Backfill resolved the stranded pile: 0 open drafts in closed weeks across all workspaces.
+- **P2** ✅ #2401 + #2405 — migration 191, extraction at completion, backfill of all 23 completed
+  interviews (208 moments, avg score 75.3, bar=60 provisional). Extraction zod schema must stay
+  permissive; limits live in `sanitizeProposals` (#2405).
+- **P3** ✅ #2408 + #2409 + #2410 — migration 192, `momentPlan.js` composes atoms on demand
+  (`momentWindow()` feeds generation AND the fidelity judge), bank mode flag-gated then enabled on
+  **all 7 workspaces** after Q approved the 2026-08-03 movebetter week (15 slots, 12 distinct
+  interviews). Coverage floor calibrated to 0.40 (#2409); #2410 fixed allocateToCadence
+  double-planning (applies to legacy mode too).
+- **P4** ⚠️ **SUPERSEDED as written, then shipped in its replacement form.** A fresh-session UI
+  flow audit with Q (decision #2418, 2026-07-27) replaced the Library-tab + Bank-card plan with
+  **one "Moments" concept at `/moments`** ("on hand" phrasing, one runway number, Miner feed as
+  intake tab, NO Library tab, NO Overview card). Its build order ①–⑤ ALL SHIPPED 2026-07-28:
+  ① provenance-at-review #2421 · ② /week chip+drawer #2425 · ③ /moments unification #2422 ·
+  ④ Stories reframe #2420 · ⑤ Home restock nudge #2426; retire/restore wiring #2427.
+  `/api/moments/summary` is the runway source of truth.
+- **P5** — still deferred; unchanged below. Needs its own challenge gate with Q before any build.
+
+Live pulse at status time: 208 moments on hand, 13 used, 43 moment-composed atoms, 0 retired,
+0 `bank_gap` rows (no campaign miss yet). Kill criteria + revisit 2026-09-15 in decisions.md,
+plus #2418's own: on-hand browse unused by 9-15 → demote browse depth; a fired restock nudge
+producing no capture within 2 weeks → rethink the loop.
+
 ## Problem (evidence, not vibes)
 
 - Interview completion batch-generates atoms/drafts (avg 7.1, max 12 per interview). Last 90 days
@@ -126,7 +155,7 @@ return the atom to backlog. Never touch published/scheduled-future rows. Idempot
   topic with zero bank coverage produces a topic_backlog row; per-piece fidelity gate still runs
   and scores against the moment's window; no change to blog behavior.
 
-### P4 — Surfaces: Library "Moments" tab + Bank card (MOCKUP-FIRST — both need Q sign-off)
+### P4 — Surfaces [SUPERSEDED by decision #2418 — do NOT build this section; kept for the record]
 - Library tab: moments as a third asset kind (search by topic, score, usage, freshness, retire
   action). This later becomes the approval surface for P5.
 - Bank card on /week (or Overview): runway per channel (weeks of inventory at current cadence),
@@ -156,11 +185,9 @@ forever.
   against real data with Q eyeballing before enabling for all workspaces (workspace-flag the
   cutover if needed).
 
-## Open questions for build sessions (small, don't block the start)
+## Open questions — ALL RESOLVED during the build (answers for the record)
 
-- P1: archive vs hard-delete for stranded drafts (check status CHECK constraint; archive preferred
-  for provenance).
-- P2: extraction bar (score threshold) — pick empirically from the first backfill distribution.
-- P3: does the 1–3 hot-piece draft reuse the moment path (preferred — one code path) or the legacy
-  batch path temporarily?
-- P4: Bank card on /week vs Overview — decide in the mockup round.
+- P1: archive (existing unconstrained `content_items.status` value; no migration needed).
+- P2: bar=60, provisional, from the backfill distribution (peaks 70–89; ~16% below).
+- P3: one code path — completion chains extract→replan, no grid fallback in bank mode.
+- P4: neither — the #2418 audit replaced both options with the /moments home + /week chip.
