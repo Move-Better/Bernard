@@ -81,6 +81,27 @@ const SELECT_CARD = 'id,interview_id,brief_id,workspace_id,platform,status,sched
 // metrics + display fields — drops content body, media_urls, notes, etc.
 const SELECT_PERFORMERS = 'id,interview_id,topic,platform,status,buffer_metrics,buffer_metrics_fetched_at,updated_at'
 
+// Moments IA ① — the detail read (and the PATCH echo that overwrites the
+// client's detail cache) embed the piece's banked moment via its plan atom, so
+// the publish editors can render MomentProvenance. Flattened to `moment` so
+// consumers never see the join scaffolding; null for legacy/atom-less pieces.
+const MOMENT_EMBED =
+  'plan_atoms:content_plan_atoms!content_piece_id(moment:moments!moment_id(excerpt,score,interview:interviews!interview_id(topic,created_at)))'
+function attachMoment(row) {
+  if (!row) return row
+  const m = (Array.isArray(row.plan_atoms) ? row.plan_atoms : []).find((pa) => pa?.moment)?.moment
+  row.moment = m
+    ? {
+        excerpt: m.excerpt,
+        score: m.score ?? null,
+        interviewTopic: m.interview?.topic || null,
+        interviewDate: m.interview?.created_at || null,
+      }
+    : null
+  delete row.plan_atoms
+  return row
+}
+
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, 'http://localhost')
   const id = searchParams.get('id')
@@ -103,10 +124,10 @@ export default async function handler(req, res) {
   // ── GET ──────────────────────────────────────────────────────────────────
   if (req.method === 'GET') {
     if (id) {
-      const r = await sb(`content_items?id=eq.${id}&${wsFilter}&select=${SELECT}`)
+      const r = await sb(`content_items?id=eq.${id}&${wsFilter}&select=${SELECT},${MOMENT_EMBED}`)
       if (!r.ok) return dbErr(res, r)
       const data = await r.json()
-      return ok(res, data[0] ?? null)
+      return ok(res, attachMoment(data[0] ?? null))
     }
 
     // List with optional filters
@@ -318,13 +339,17 @@ export default async function handler(req, res) {
       Object.entries(allowed).filter(([_k, v]) => v !== undefined)
     )
 
-    const r = await sb(`content_items?id=eq.${id}&${wsFilter}`, {
+    // select=* + the moment embed: the PATCH echo lands straight in the
+    // client's detail cache (useUpdateContentItem's setQueryData), so it must
+    // carry the same `moment` field as the GET-by-id read or provenance would
+    // vanish from the editor after every save.
+    const r = await sb(`content_items?id=eq.${id}&${wsFilter}&select=*,${MOMENT_EMBED}`, {
       method: 'PATCH',
       body: JSON.stringify(body),
     })
     if (!r.ok) return dbErr(res, r, 'Update failed')
     const data = await r.json()
-    const updated = data[0]
+    const updated = attachMoment(data[0])
 
     // Keep the linked plan atom's schedule in sync. The /week board is driven
     // entirely by content_plan_atoms.plan_week + scheduled_at (week-summary.js

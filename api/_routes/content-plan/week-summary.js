@@ -21,6 +21,19 @@ function sb(path) {
 }
 const err = (res, msg, status = 400) => res.status(status).json({ error: msg })
 
+// Moments IA ① — the shared provenance shape every review surface renders
+// (MomentProvenance.jsx). Sourced from the atom's banked moment; null when the
+// atom predates the bank (legacy pieces render nothing).
+const shapeMoment = (m) =>
+  m
+    ? {
+        excerpt: m.excerpt,
+        score: m.score ?? null,
+        interviewTopic: m.interview?.topic || null,
+        interviewDate: m.interview?.created_at || null,
+      }
+    : null
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') return err(res, 'Method not allowed', 405)
 
@@ -53,7 +66,7 @@ export default async function handler(req, res) {
 
   // This week's planned atoms (Strategist output for plan_week). Full detail so
   // the /week calendar can render cards + drill in to the per-piece review.
-  const ATOM_SELECT = 'id,platform,slot,scheduled_at,held_at,angle,angle_label,brief,format,status,content_piece_id,interview_id,interview:interviews!interview_id(topic)'
+  const ATOM_SELECT = 'id,platform,slot,scheduled_at,held_at,angle,angle_label,brief,format,status,content_piece_id,interview_id,interview:interviews!interview_id(topic),moment:moments!moment_id(excerpt,score,interview:interviews!interview_id(topic,created_at))'
 
   // Three independent Supabase round-trips (atoms+drafted-items chain, the
   // backlog query, and the reviewer's own staff+review-queue chain) used to
@@ -68,6 +81,9 @@ export default async function handler(req, res) {
     const atomsRes = await sb(
       `content_plan_atoms?workspace_id=eq.${ws.id}&plan_week=eq.${weekMonday}&select=${ATOM_SELECT}`,
     )
+    // A failed select here blanks the whole board — log the PostgREST body so
+    // an embed/relationship error is one `vercel logs` away, never silent.
+    if (!atomsRes.ok) console.error('[week-summary] atoms query failed:', atomsRes.status, (await atomsRes.text().catch(() => '')).slice(0, 300))
     const atoms = atomsRes.ok ? await atomsRes.json() : []
 
     // For drafted atoms, batch-fetch the content_item status so /week can
@@ -116,7 +132,9 @@ export default async function handler(req, res) {
   }
 
   // Clinician "yours to review" (2d): blog content_items in in_review for this user's
-  // staff row, only when blog_review_enabled is true on that row.
+  // staff row, only when blog_review_enabled is true on that row. Each row carries
+  // the piece's moment (via its plan atom) so the review slice can show the
+  // "From your words" provenance block (Moments IA ①).
   async function fetchYourReview() {
     if (!clerkUserId) return []
     const staffRes = await sb(
@@ -127,9 +145,15 @@ export default async function handler(req, res) {
     const sf = staffRows[0]
     if (!sf?.blog_review_enabled) return []
     const reviewRes = await sb(
-      `content_items?workspace_id=eq.${ws.id}&staff_id=eq.${sf.id}&platform=eq.blog&status=eq.in_review&select=id,topic,created_at&order=created_at.desc&limit=10`,
+      `content_items?workspace_id=eq.${ws.id}&staff_id=eq.${sf.id}&platform=eq.blog&status=eq.in_review&select=id,topic,created_at,plan_atoms:content_plan_atoms!content_piece_id(moment:moments!moment_id(excerpt,score,interview:interviews!interview_id(topic,created_at)))&order=created_at.desc&limit=10`,
     )
-    return reviewRes.ok ? await reviewRes.json() : []
+    if (!reviewRes.ok) return []
+    const rows = await reviewRes.json()
+    if (!Array.isArray(rows)) return []
+    return rows.map(({ plan_atoms, ...r }) => ({
+      ...r,
+      moment: shapeMoment((Array.isArray(plan_atoms) ? plan_atoms : []).find((pa) => pa?.moment)?.moment),
+    }))
   }
 
   const [{ scheduled, itemStatusMap }, heldAtoms, yourReview] = await Promise.all([
@@ -192,6 +216,9 @@ export default async function handler(req, res) {
       // repeat the fallback.
       format: a.format || 'post',
       interviewTopic: a.interview?.topic || null,
+      // Provenance for the review surfaces (Moments IA ①): the banked moment
+      // this piece was composed from, when the atom carries one.
+      moment: shapeMoment(a.moment),
       status: a.status,
       contentPieceId: a.content_piece_id,
       contentItemStatus: ci?.status || null,

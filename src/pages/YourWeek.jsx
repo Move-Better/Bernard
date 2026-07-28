@@ -20,6 +20,7 @@ import { BUFFER_DISPATCH_PLATFORMS } from '@/lib/publish'
 import { publishPieceToBuffer } from '@/lib/publishPiece'
 import { adHocSlotOptions, computeEmptySlots, localSlotParts } from '@/lib/postingSlots'
 import { toast } from '@/lib/toast'
+import MomentProvenance from '@/components/MomentProvenance'
 import PageHelp from '@/components/PageHelp'
 import PageSkeleton from '@/components/PageSkeleton'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
@@ -846,6 +847,11 @@ function DayPlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approv
           &ldquo;{item.excerpt}&rdquo;
         </p>
       )}
+      {/* Provenance (Moments IA ①) — the banked moment this piece was composed
+          from, shown in the same review state as the draft excerpt. */}
+      {item.moment && (state.reviewable || state.action === 'schedule') && (
+        <MomentProvenance moment={item.moment} className="mt-2" />
+      )}
       {item.voiceGate === 'held' && (
         <div className="mt-2 flex items-center gap-1">
           <AlertTriangle className="h-3 w-3 shrink-0 text-action" aria-hidden="true" />
@@ -1277,11 +1283,16 @@ export default function YourWeek() {
           <Link
             key={item.id}
             to={`/publish/${item.id}`}
-            className="flex items-center gap-2 rounded-lg border bg-card px-2.5 py-2 hover:border-primary/50"
+            className="block rounded-lg border bg-card px-2.5 py-2 hover:border-primary/50"
           >
-            <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="flex-1 truncate text-2xs font-medium">{item.topic || 'Blog draft'}</span>
-            <ChevronRight className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+            <span className="flex items-center gap-2">
+              <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="flex-1 truncate text-2xs font-medium">{item.topic || 'Blog draft'}</span>
+              <ChevronRight className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+            </span>
+            {/* Provenance (Moments IA ①) — "from your words" builds trust right
+                where the clinician decides whether to open the review. */}
+            {item.moment && <MomentProvenance moment={item.moment} compact className="mt-1.5" />}
           </Link>
         ))}
       </div>
