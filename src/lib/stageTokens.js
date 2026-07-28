@@ -20,6 +20,23 @@ export function getStageToken(stage) {
   return STAGE_TOKENS[stage] ?? { label: stage, badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/40', rail: 'border-l-border' }
 }
 
+// Bank-era display stages (Moments IA, decisions.md 2026-07-27). These label
+// what a story IS in the moment-bank model — captured → processed → yielding —
+// and are display-only: `story_stage` + STAGE_TOKENS above stay the machine
+// the quick-filter pills and per-piece badges key on. Yielding wears the
+// spruce (--primary) tint per mockup §03; captured stays the inert neutral
+// chip; processed sits between — banked but nothing drawn yet.
+export const BANK_STAGE_TOKENS = {
+  captured:  { label: 'Captured',  badge: 'bg-muted text-muted-foreground',        dot: 'bg-muted-foreground/50', rail: 'border-l-border' },
+  processed: { label: 'Processed', badge: 'bg-muted-foreground/15 text-foreground/80', dot: 'bg-muted-foreground',    rail: 'border-l-muted-foreground/40' },
+  yielding:  { label: 'Yielding',  badge: 'bg-primary/10 text-primary',            dot: 'bg-primary',             rail: 'border-l-primary' },
+}
+
+/** @param {string} stage @returns {{ label: string, badge: string, dot: string, rail: string }} */
+export function getBankStageToken(stage) {
+  return BANK_STAGE_TOKENS[stage] ?? BANK_STAGE_TOKENS.captured
+}
+
 // Dot colours keyed by content_item.status — single source so AssetsPane
 // tab indicators and any future list views stay in sync. Values deliberately
 // differ from STAGE_TOKENS.dot for 'draft' (slate = inert) and 'archived'

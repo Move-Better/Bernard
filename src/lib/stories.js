@@ -48,6 +48,86 @@ export function deriveStoryStage(interview, pieces) {
 }
 
 /**
+ * Derive the bank-era DISPLAY stage of a story (Moments IA, decisions.md
+ * 2026-07-27). Display-layer only — `story_stage` (deriveStoryStage above)
+ * stays the machine the quick-filter pills and Overview lenses key on.
+ *
+ *   captured  — nothing banked from this story yet (incl. still-processing)
+ *   processed — moments banked, but nothing has come of them yet
+ *   yielding  — the story has produced something: a moment was drawn into a
+ *               planned piece (≥1 use), or a piece made it past review
+ *               (approved / scheduled / published). A story is never "done" —
+ *               it yields.
+ *
+ * @param {{ moments_count?: number, moment_uses?: number, pieces?: Array }} story
+ * @returns {'captured'|'processed'|'yielding'}
+ */
+export function deriveBankStage(story) {
+  const pieces = Array.isArray(story?.pieces) ? story.pieces : []
+  const uses = story?.moment_uses ?? 0
+  const yielded =
+    uses > 0 ||
+    pieces.some(
+      (p) =>
+        p?.status === 'published' ||
+        p?.status === 'approved' ||
+        p?.status === 'scheduled' ||
+        !!p?.published_at,
+    )
+  if (yielded) return 'yielding'
+  if ((story?.moments_count ?? 0) > 0) return 'processed'
+  return 'captured'
+}
+
+function fmtShortDay(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+/**
+ * The Yield cell for the Stories table (mockup §03 shapes, verified against
+ * the real rows the mockup drew: uses beat published beat blog-ready):
+ *
+ *   "7 moments · blog ready · no uses yet"
+ *   "12 moments · 1 use · last Jul 28"
+ *   "13 moments · 4 pieces published"
+ *
+ * @param {{ status?: string, moments_count?: number, moment_uses?: number,
+ *           moment_last_used_at?: string|null, pieces?: Array }} story
+ * @returns {{ processing: boolean, moments: number, detail: string }}
+ */
+export function yieldSummary(story) {
+  const pieces = Array.isArray(story?.pieces) ? story.pieces : []
+  const moments = story?.moments_count ?? 0
+  if (story?.status !== 'completed' && moments === 0) {
+    return { processing: true, moments: 0, detail: '' }
+  }
+  const uses = story?.moment_uses ?? 0
+  const published = pieces.filter((p) => p?.status === 'published' || !!p?.published_at).length
+  const blogReady = pieces.some((p) => p?.platform === 'blog' && p?.status === 'approved')
+  const ready = pieces.filter((p) => p?.status === 'approved' || p?.status === 'scheduled').length
+
+  let detail
+  if (uses > 0) {
+    const last = fmtShortDay(story?.moment_last_used_at)
+    detail = `${uses} ${uses === 1 ? 'use' : 'uses'}${last ? ` · last ${last}` : ''}`
+  } else if (published > 0) {
+    detail = `${published} ${published === 1 ? 'piece' : 'pieces'} published`
+  } else if (blogReady) {
+    detail = 'blog ready · no uses yet'
+  } else if (ready > 0) {
+    detail = `${ready} ready · no uses yet`
+  } else if (moments > 0) {
+    detail = 'no uses yet'
+  } else {
+    detail = 'no moments yet'
+  }
+  return { processing: false, moments, detail }
+}
+
+/**
  * Summarize a content_items row down to the fields the Stories views
  * actually care about. Keeps the on-the-wire object lean and prevents
  * accidental coupling to fields that change shape (e.g. `content` JSON,
@@ -185,6 +265,13 @@ export function buildStories(staff, contentItems) {
         pieces,
         pieces_count: pieces.length,
         pieces_by_status: piecesByStatus,
+        // Per-interview moment-bank aggregates — attached server-side by
+        // /api/db/staff?view=card in one workspace-wide query (no N+1).
+        // Absent on older cached payloads → 0/null, which degrades to the
+        // pre-bank display (captured/processed never over-claims yield).
+        moments_count: interview.moment_count ?? 0,
+        moment_uses: interview.moment_uses ?? 0,
+        moment_last_used_at: interview.moment_last_used_at ?? null,
         story_stage: deriveStoryStage(interview, pieces),
         next_scheduled_at: nextScheduledAt,
         last_activity_at: lastActivityAt || interview.updated_at || interview.created_at,
