@@ -891,6 +891,12 @@ awk -F= '/^CLERK_SECRET_KEY=/{print substr($0,index($0,"=")+1)}' "/Users/qbook/C
 ```
 Confirm with `gh secret list --repo Move-Better/Bernard` — the updated timestamp should be today. (Hit 2026-06-06 after the secret was set 2026-05-12 and aged out.)
 
+**Read WHICH STEP failed before reading anything else — a red E2E smoke often never reached a test.** The two causes above are both real-but-app-adjacent, which primes you to look at app code or fixtures. Two of the three E2E failures on the night of 2026-07-27/28 were neither: the job died in **`Install dependencies`** or **`Seed fixture data`**, before Playwright started. Both are transient third-party infra, and both are cleared by a plain re-run:
+- `npm error ... ffmpeg-static ... Failed to download ffmpeg b6.1.1 ... statusCode: 500` — `ffmpeg-static`'s postinstall pulls a binary from a GitHub release; a 500 there kills `npm ci`. The smoke doesn't use ffmpeg at all, it's just a transitive install cost. There is NO skip flag (`install.js` reads only `CI`/`HTTP_PROXY`/`HTTPS_PROXY`), so don't hunt for one — re-run. Verified transient 2026-07-28: `gh run rerun <id> --failed` went green with zero code changes.
+- `Error: connect ETIMEDOUT <ip>:5432` in `Seed fixture data` — a direct Postgres connection from the runner timing out. Same treatment.
+
+**Diagnostic first move:** `gh run view <id> --log-failed | head -30` and look at the STEP NAME in the left column. `Install dependencies` / `Seed fixture data` ⇒ infra, re-run once. `Run Playwright smoke` ⇒ a real assertion; only then read the spec and the app. This distinction also tells you whether a red run implicates the PR it's attached to: a docs-only PR showing red is a tell that either the failure is infra, or it belongs to the commit merged just before it (a superseded/cancelled run for the prior PR is the giveaway — that exact sequence happened with #2429 → #2428).
+
 ### Merge hygiene
 - [ ] Branch rebased on current `origin/main` (`git fetch && git rebase origin/main`) immediately before opening the PR
 - [ ] `gh pr merge <num> --auto --squash` set on open so CI gates the merge
