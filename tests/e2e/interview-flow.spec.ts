@@ -45,9 +45,20 @@ test('interview create flow + integrations page', async ({ page }) => {
 
   // Picker: click the Interview card. The card is a <button> wrapping a
   // <Card>; its accessible name starts with "Interview" followed by the
-  // descriptive text, so a substring match is enough.
+  // descriptive text, so a substring match is enough. Where it lands depends
+  // on the workspace: with realtime_voice_enabled (flipped on movebetter
+  // 2026-07-28) a mic-capable browser routes to /new/live-interview, otherwise
+  // /new/interview — both are correct products of the same button, so accept
+  // either rather than pinning the spec to the flag's current value.
   await page.getByRole('button', { name: /^interview/i }).first().click()
-  await expect(page).toHaveURL(/\/new\/interview/)
+  await expect(page).toHaveURL(/\/new\/(live-)?interview/)
+
+  // The rest of this spec exercises the TEXT interview create flow (the
+  // PR #244 surface). The live-interview screen is a different, voice-first
+  // surface that is deliberately out of scope here (see header comment), so
+  // route directly to the text path — reachable regardless of the flag.
+  await page.goto('/new/interview')
+  await expect(page).toHaveURL(/\/new\/interview$/)
 
   // Staff field is now a "Who's talking?" avatar-pill picker with a free-text
   // "Other name…" input for names not already on staff (our fixture name).
