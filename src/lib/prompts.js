@@ -716,6 +716,7 @@ Hard rules:
 ${isPersonal
   ? `- First-person throughout: "I", "my", "me".`
   : `- Use "we" / "our team" for ${workspace.display_name}; only claim things ${staffName} actually said the team does.`}
+- ${NO_EM_DASH_RULE}
 
 ${getFramingRule(workspace, { voiceMode, staffName, assetType: 'email' })}
 ${voiceNotesBlock(voiceNotes)}${voicePhrasesBlock(voicePhrases)}${ownHistoryBlock}
