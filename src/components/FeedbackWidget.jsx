@@ -4,6 +4,23 @@ import { MessageSquare, X, Camera, Paperclip, Send, CheckCircle, Loader2 } from 
 import { useWorkspaceState } from '@/lib/WorkspaceContext'
 import { apiFetch } from '@/lib/api'
 
+// A full-resolution screen/tab capture (getDisplayMedia + PNG) routinely
+// exceeds Vercel's ~4.5MB function body limit, so the submission 413s and
+// the user just sees "Something went wrong" — the message they typed is
+// lost along with the screenshot. Downscale + re-encode as JPEG before it
+// ever reaches state, so every screenshot path stays well under the limit.
+const MAX_SCREENSHOT_DIM = 1600
+const SCREENSHOT_JPEG_QUALITY = 0.82
+
+function encodeScreenshot(source, width, height) {
+  const scale = Math.min(1, MAX_SCREENSHOT_DIM / Math.max(width, height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.round(width * scale))
+  canvas.height = Math.max(1, Math.round(height * scale))
+  canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height)
+  return canvas.toDataURL('image/jpeg', SCREENSHOT_JPEG_QUALITY)
+}
+
 // anchor='floating' (default) keeps the legacy fixed bottom-right FAB.
 // anchor='sidebar' renders an inline trigger meant to sit in the sidebar's
 // bottom rail, with the panel opening upward next to it instead of floating
@@ -34,11 +51,7 @@ export function FeedbackWidget({ anchor = 'floating', collapsed = false }) {
       track.stop()
       stream.getTracks().forEach(t => t.stop())
 
-      const canvas = document.createElement('canvas')
-      canvas.width  = frame.width
-      canvas.height = frame.height
-      canvas.getContext('2d').drawImage(frame, 0, 0)
-      setScreenshot(canvas.toDataURL('image/png'))
+      setScreenshot(encodeScreenshot(frame, frame.width, frame.height))
       setStatus('idle')
     } catch (e) {
       // User cancelled picker or browser lacks ImageCapture — fall back to file
@@ -51,9 +64,9 @@ export function FeedbackWidget({ anchor = 'floating', collapsed = false }) {
   const handleFile = useCallback((e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => setScreenshot(ev.target.result)
-    reader.readAsDataURL(file)
+    createImageBitmap(file)
+      .then((bitmap) => setScreenshot(encodeScreenshot(bitmap, bitmap.width, bitmap.height)))
+      .catch((err) => console.warn('[FeedbackWidget] file decode failed:', err?.message))
     e.target.value = ''
   }, [])
 
