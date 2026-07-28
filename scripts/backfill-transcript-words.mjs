@@ -79,11 +79,10 @@
  */
 
 import pg from 'pg'
-import { spawn } from 'node:child_process'
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { unlink as unlinkP, stat as statP } from 'node:fs/promises'
-import ffmpegPath from 'ffmpeg-static'
 import { transcribeToSegmentsAndWords } from '../api/_lib/whisper.js'
+import { runFfmpegWithRetry } from './lib/ffmpegRun.mjs'
 
 // ---------------------------------------------------------------------------
 // Args
@@ -156,23 +155,9 @@ const pool = new Pool({
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
-function runFfmpeg(ffArgs) {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(ffmpegPath, ffArgs, { stdio: ['ignore', 'ignore', 'pipe'] })
-    const chunks = []
-    proc.stderr.on('data', (c) => {
-      chunks.push(c)
-      const total = chunks.reduce((acc, x) => acc + x.length, 0)
-      if (total > 256 * 1024) chunks.shift()
-    })
-    proc.on('close', (code) => {
-      if (code === 0) return resolve()
-      const tail = Buffer.concat(chunks).toString('utf8').trim().split('\n').slice(-6).join('\n')
-      reject(new Error(`ffmpeg exited ${code}:\n${tail}`))
-    })
-    proc.on('error', (err) => reject(new Error(`ffmpeg spawn failed: ${err.message}`)))
-  })
-}
+// runFfmpeg / runFfmpegWithRetry / ffmpegErrorTail live in scripts/lib/ffmpegRun.mjs
+// so they can be unit-tested — this file connects to Postgres and exits on
+// missing env at module load, so nothing in it is importable from a test.
 
 const text = (words) => words.map((w) => w.word).join(' ')
 const zeroDur = (words) => words.filter((w) => w.end === w.start).length
@@ -288,12 +273,12 @@ async function runBackfill() {
     const audioPath = `/tmp/bf-words-${row.id}.mp3`
     const oldWords = Array.isArray(row.transcript_words) ? row.transcript_words : []
     try {
-      await runFfmpeg([
+      await runFfmpegWithRetry([
         '-t', String(MAX_DETECT_SECONDS),
         '-i', row.blob_url,
         '-vn', '-acodec', 'libmp3lame', '-ar', '16000', '-ac', '1', '-b:a', '32k',
         '-y', audioPath,
-      ])
+      ], row.filename)
       const { size } = await statP(audioPath)
       if (size > 20 * 1024 * 1024) {
         // The chunked path in segmentDetect.js has known latent offset bugs and
