@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Scissors, Loader2, BarChart3, Film, ShieldAlert,
+  Scissors, Loader2, BarChart3, Film, ShieldAlert, Plus,
   ShieldCheck, PlayCircle, Search, Sparkles, Gem, Check, Video,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,9 @@ import { listMedia } from '@/lib/mediaLib'
 import { findClips, listMoments, updateSegment, renderSegments } from '@/lib/clipsLib'
 import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
-import CoveragePanel from '@/components/moments/CoveragePanel'
+import OnHandTab from '@/components/moments/OnHandTab'
+import CoverageTab from '@/components/moments/CoverageTab'
+import PageHelp from '@/components/PageHelp'
 import PageSkeleton from '@/components/PageSkeleton'
 import ErrorState from '@/components/ErrorState'
 
@@ -374,8 +376,8 @@ function VideoCard({ asset, staffName, onEdit, onFind }) {
   )
 }
 
-export default function MomentMiner() {
-  useDocumentTitle('Moment Miner')
+export default function MomentMiner({ initialTab = 'onhand' }) {
+  useDocumentTitle('Moments')
   const ws = useWorkspace()
   const navigate = useNavigate()
 
@@ -385,7 +387,39 @@ export default function MomentMiner() {
     [staff]
   )
 
-  const [view, setView] = useState('needs_cutting')  // 'needs_cutting' | 'clips_to_review' | 'in_progress' | 'coverage'
+  // Top-level page tabs: the on-hand inventory (default), the video intake
+  // lane (the entire pre-2026-07-27 Moment Miner, unchanged inside), and the
+  // unified Coverage view. /slate deep links land on the video tab so the old
+  // miner bookmark still opens the miner; ?tab= lets video-flow toasts
+  // ("track it in Moments") deep-link the intake tab too.
+  const [searchParams] = useSearchParams()
+  const [topTab, setTopTab] = useState(() => {
+    const t = searchParams.get('tab')
+    return ['onhand', 'video', 'coverage'].includes(t) ? t : initialTab
+  }) // 'onhand' | 'video' | 'coverage'
+
+  // The workspace's moment inventory + on-hand summary (runway, newest
+  // capture, planner gaps) — one fetch shared by the header stats, the tab
+  // count, and the On-hand list.
+  const {
+    data: bankData,
+    isLoading: bankLoading,
+    error: bankError,
+    refetch: refetchBank,
+  } = useQuery({
+    queryKey: ['moment-bank'],
+    queryFn: () => apiFetch('/api/db/moments'),
+    enabled: !!ws,
+    refetchOnWindowFocus: false,
+  })
+  const bankMoments = useMemo(() => bankData?.moments || [], [bankData])
+  const bankSummary = bankData?.summary || null
+  const onHandCount = useMemo(
+    () => bankMoments.filter((m) => m.status === 'banked').length,
+    [bankMoments],
+  )
+
+  const [view, setView] = useState('needs_cutting')  // 'needs_cutting' | 'clips_to_review' | 'in_progress'
   const [searchQ, setSearchQ] = useState('')
 
   // Track when the current poll window started, so the refetch loops below can
@@ -586,18 +620,122 @@ export default function MomentMiner() {
     }
   }
 
-  if (isLoading) return <PageSkeleton variant="grid" />
+  // On-hand header stat strings. Runway is ONE number (usable ÷ weekly
+  // slots); "Not started" stays quiet — never an alarm before the first
+  // capture. Freshness keys on the interview date, never moments.created_at.
+  const s = bankSummary
+  const runwayValue = !s ? null
+    : !s.started ? 'Not started'
+    : s.runwayWeeks == null ? String(s.usable)
+    : s.runwayWeeks < 1 ? '< 1 week'
+    : `~${Math.round(s.runwayWeeks)} weeks`
+  const runwaySub = !s ? ''
+    : !s.started ? 'capture your first conversation'
+    : s.runwayWeeks == null ? 'usable moments'
+    : `${s.usable} usable ÷ ${s.weeklySlotDemand} weekly slots`
+  const newestDays = s?.newestInterviewAt
+    ? Math.floor((Date.now() - new Date(s.newestInterviewAt).getTime()) / 86_400_000)
+    : null
+  const newestSub = newestDays == null ? ''
+    : newestDays === 0 ? 'today'
+    : newestDays === 1 ? 'yesterday'
+    : `${newestDays} days ago`
+  const gapsCount = s?.gaps?.length ?? 0
+
+  const topTabClasses = (on) =>
+    `pb-2 -mb-px border-b-2 text-sm font-semibold transition-colors flex items-center gap-1.5 ${
+      on ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
+    }`
 
   return (
     <div className="flex flex-col gap-4">
       {/* Page heading */}
-      <div className="flex items-end gap-2 mt-1">
-        <h1 className="text-2xl font-bold tracking-tight">Moment Miner</h1>
-        <span className="text-muted-foreground text-sm mb-0.5">
-          · mine your sessions for the best moments — saved as clips to your Library
-        </span>
+      <div className="mt-1 flex items-start gap-3">
+        <div className="grow">
+          <h1 className="text-2xl font-bold tracking-tight">Moments</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            What your practice has said — ready to use. Bernard composes your week from these; you steer.
+          </p>
+        </div>
+        <PageHelp pageKey="moments" variant="default" />
       </div>
 
+      {/* On-hand stats strip */}
+      {s && (
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl border border-border bg-card px-4 py-3">
+          <div>
+            <span className="text-lg font-extrabold tabular-nums">{runwayValue}</span>{' '}
+            {s.started && s.runwayWeeks != null && (
+              <span className="text-2xs font-bold text-muted-foreground uppercase tracking-wide">on hand</span>
+            )}
+            <p className="text-2xs text-muted-foreground">{runwaySub}</p>
+          </div>
+          <div>
+            <span className="text-lg font-extrabold tabular-nums">
+              {s.newestInterviewAt
+                ? new Date(s.newestInterviewAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                : '—'}
+            </span>{' '}
+            <span className="text-2xs font-bold text-muted-foreground uppercase tracking-wide">newest capture</span>
+            <p className="text-2xs text-muted-foreground">{newestSub || 'no conversations yet'}</p>
+          </div>
+          <div>
+            <span className="text-lg font-extrabold tabular-nums">{gapsCount}</span>{' '}
+            <span className="text-2xs font-bold text-muted-foreground uppercase tracking-wide">
+              gap{gapsCount === 1 ? '' : 's'}
+            </span>
+            <p className="text-2xs text-muted-foreground">
+              {gapsCount === 0 ? 'every planned slot found a match' : 'worth asking about next interview'}
+            </p>
+          </div>
+          <div className="grow" />
+          <Button size="sm" onClick={() => navigate('/new')}>
+            <Plus className="h-4 w-4" />Capture a conversation
+          </Button>
+        </div>
+      )}
+
+      {/* Top-level tabs: inventory first, intake behind it */}
+      <div role="tablist" aria-label="Moments view" className="flex items-center gap-6 border-b border-border overflow-x-auto">
+        <button type="button" role="tab" aria-selected={topTab === 'onhand'} onClick={() => setTopTab('onhand')} className={topTabClasses(topTab === 'onhand')}>
+          On hand
+          {!bankLoading && (
+            <span className="inline-flex items-center justify-center rounded-full px-1.5 text-3xs font-bold bg-muted text-muted-foreground">
+              {onHandCount}
+            </span>
+          )}
+        </button>
+        <button type="button" role="tab" aria-selected={topTab === 'video'} onClick={() => setTopTab('video')} className={topTabClasses(topTab === 'video')}>
+          New from video
+          {!momentsLoading && allMoments.length > 0 && (
+            <span
+              className={`inline-flex items-center justify-center rounded-full px-1.5 text-3xs font-bold ${
+                topTab === 'video' ? 'bg-muted text-muted-foreground' : 'bg-action/10 text-action'
+              }`}
+            >
+              {allMoments.length}
+            </span>
+          )}
+        </button>
+        <button type="button" role="tab" aria-selected={topTab === 'coverage'} onClick={() => setTopTab('coverage')} className={topTabClasses(topTab === 'coverage')}>
+          <BarChart3 className="h-3.5 w-3.5" />Coverage
+        </button>
+      </div>
+
+      {topTab === 'onhand' ? (
+        <OnHandTab
+          moments={bankMoments}
+          isLoading={bankLoading}
+          error={bankError}
+          refetch={refetchBank}
+          staffMap={staffMap}
+        />
+      ) : topTab === 'coverage' ? (
+        <CoverageTab gaps={s?.gaps} />
+      ) : isLoading ? (
+        <PageSkeleton variant="grid" />
+      ) : (
+      <>
       {/* Tabs + search row — review-first: the decisions tab leads, with an
           act-now amber count badge (while unselected) so the eye lands where
           the AI finished its homework. Selected fill is always primary.
@@ -661,56 +799,24 @@ export default function MomentMiner() {
               <span className="opacity-70">{inProgressVideos.length}</span>
             )}
           </button>
-          {/* Divider — the three tabs above filter your footage by pipeline
-              stage; Coverage is a different lens (a report), so it's set apart. */}
-          <span aria-hidden="true" className="mx-1 h-5 w-px shrink-0 bg-border" />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={view === 'coverage'}
-                onClick={() => setView('coverage')}
-                className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1 ${
-                  view === 'coverage'
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-card border-border text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <BarChart3 className="h-3.5 w-3.5" />Coverage &amp; gaps
-              </button>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-[240px] text-center leading-snug">
-              See which staff and topics your footage covers — and where the gaps are, so you know what to capture next.
-            </TooltipContent>
-          </Tooltip>
         </div>
 
         {/* Search — right side on desktop, full-width below tabs on mobile */}
-        {view !== 'coverage' && (
-          <div className="relative sm:ml-auto">
-            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <input
-              type="search"
-              aria-label="Search videos"
-              placeholder="Search videos…"
-              value={searchQ}
-              onChange={(e) => setSearchQ(e.target.value)}
-              className="pl-8 pr-3 py-1.5 rounded-lg border border-border bg-card text-sm w-full sm:w-48 outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-        )}
+        <div className="relative sm:ml-auto">
+          <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <input
+            type="search"
+            aria-label="Search videos"
+            placeholder="Search videos…"
+            value={searchQ}
+            onChange={(e) => setSearchQ(e.target.value)}
+            className="pl-8 pr-3 py-1.5 rounded-lg border border-border bg-card text-sm w-full sm:w-48 outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
       </div>
 
       {/* Content area */}
-      {view === 'coverage' ? (
-        <CoveragePanel />
-      ) : isLoading ? (
-        <div role="status" className="flex justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
-          <span className="sr-only">Loading moments…</span>
-        </div>
-      ) : error ? (
+      {error ? (
         <ErrorState message="Failed to load videos" onRetry={() => refetch()} size="sm" />
       ) : view === 'clips_to_review' ? (
         <MomentFeed
@@ -761,6 +867,8 @@ export default function MomentMiner() {
             />
           ))}
         </div>
+      )}
+      </>
       )}
     </div>
   )

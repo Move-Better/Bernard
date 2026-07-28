@@ -18,8 +18,8 @@ export default function WholeVideoAction({ asset, canEdit }) {
     setRendering(true)
     try {
       await renderWholeVideo(assetId)
-      toast('Rendering full-length video — track it in Moment Miner.', {
-        action: { label: 'Open Moment Miner', onClick: () => { window.location.href = '/moments' } },
+      toast('Rendering full-length video — track it on Moments.', {
+        action: { label: 'Open Moments', onClick: () => { window.location.href = '/moments?tab=video' } },
       })
     } catch (e) {
       toast.error(e?.message || 'Could not start the full-length render.')
