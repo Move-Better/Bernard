@@ -36,8 +36,13 @@ export const BANK_PROMPT_LIMIT = 40
 // cross-interview variety is an acceptance criterion of the bank design.
 export const MAX_PER_INTERVIEW = 6
 // Cosine floor for "the bank covers this campaign topic". Topical relatedness,
-// not near-duplicate territory (dedup uses 0.85) — tune from real gap reports.
-export const BANK_COVERAGE_MIN_SIM = Number(process.env.BANK_COVERAGE_MIN_SIM || 0.30)
+// not near-duplicate territory (dedup uses 0.85). Calibrated empirically on the
+// real movebetter bank (2026-07-27): covered campaign topics (knee/low-back/
+// neck) scored best-hit 0.49-0.55 while verifiably uncovered ones (TMJ,
+// pediatric colic, nutrition) topped out at 0.33 — 0.40 sits mid-gap. At the
+// original 0.30 the TMJ probe "matched" 3 moments and bank_gap could never
+// fire.
+export const BANK_COVERAGE_MIN_SIM = Number(process.env.BANK_COVERAGE_MIN_SIM || 0.40)
 
 /**
  * PURE: rank + diversify candidate moments for the Strategist prompt.
