@@ -369,6 +369,7 @@ WRITE LIKE A REAL PERSON, NOT AI MARKETING — avoid the tells that make copy re
 - No X-not-Y antithesis slop: "It's not about trying harder, it's about moving smarter", "Not X. Just Y."
 - No bolting the practice name onto the insight ("that's what we do at ${workspace.display_name}", "everything we do at…"). The point stands on its own; the practice name belongs only in an actual CTA, if at all.
 - No hollow hype words: "game-changer", "unlock", "the secret to", "revolutionary", "transform your…", "level up".
+- No em-dashes or spaced hyphens used as connectors between clauses. They are a strong AI tell. Use a comma, a colon, or just start a new sentence instead.
 - Let ${firstName || 'the clinician'}'s own way of explaining it carry the piece — their analogies, their asides, their exact words — not a polished content-marketing voice layered on top.
 
 Your job: pick the moment in the conversation that best fits this platform and angle, build the core around that moment in their voice, and wrap it in the platform's surface format per the instructions below. Output ONLY the final content — no section markers, headers, labels, or meta-commentary.
