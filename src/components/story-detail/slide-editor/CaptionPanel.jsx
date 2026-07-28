@@ -61,6 +61,8 @@ export default function CaptionPanel({ piece, onUseAsHook, updateItem }) {
         <textarea
           ref={taRef}
           aria-label="Caption"
+          spellCheck
+          lang="en"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={handleBlur}
