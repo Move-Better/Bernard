@@ -458,6 +458,9 @@ export default async function handler(req, res) {
 
       // Concept extraction from clinician's transcript turns.
       // Uses cleaned_messages if available (cleanup-transcript pass), else raw messages.
+      // momentExtractionPromise escapes the block so the bank-mode Strategist
+      // replan below can sequence itself after extraction (P3).
+      let momentExtractionPromise = null
       try {
         const extractRes = await sb(
           `interviews?id=eq.${id}&${wsFilter}&select=cleaned_messages,messages`
@@ -552,7 +555,11 @@ export default async function handler(req, res) {
             // single waitUntil promise covers extract → score → embed → insert.
             // Uses raw messages (not cleaned) — the anchor {msg_idx,char_start,
             // char_end} must point into the canonical stored array.
-            waitUntil(extractAndBankMoments({
+            // The promise is also captured (outer `let`) so the bank-mode
+            // Strategist replan below can AWAIT extraction before composing —
+            // otherwise the replan and the extraction race and the plan can't
+            // draw this interview's fresh moments (P3).
+            momentExtractionPromise = extractAndBankMoments({
               workspace: ws,
               interview: {
                 id,
@@ -561,7 +568,8 @@ export default async function handler(req, res) {
                 region:   rows[0].region ?? null,
                 messages: interviewForExtract.messages,
               },
-            }))
+            })
+            waitUntil(momentExtractionPromise)
           }
         }
       } catch (e) {
@@ -580,17 +588,39 @@ export default async function handler(req, res) {
       // retirement + legacy-atom cleanup is a fast-follow once the Strategist is
       // proven stable in prod.)
       waitUntil((async () => {
+        let bankMode = false
         try {
           // Read the workspace's cadence policy + enabled_outputs so the trigger
           // honors the same cadence the weekly cron uses (workspaceContext may
-          // not select them). enabled_outputs drives the Auto cadence compute.
-          const polRes = await sb(`workspaces?id=eq.${ws.id}&select=cadence_policy,enabled_outputs`)
+          // not select them). enabled_outputs drives the Auto cadence compute;
+          // moment_bank_planning_enabled routes to bank-mode composition (P3).
+          const polRes = await sb(`workspaces?id=eq.${ws.id}&select=cadence_policy,enabled_outputs,moment_bank_planning_enabled`)
           const polRow = polRes.ok ? (await polRes.json())[0] : null
+          bankMode = !!polRow?.moment_bank_planning_enabled
+          // Bank mode composes FROM the moment bank, so wait for this
+          // interview's extraction to land first — otherwise the replan races
+          // it and the plan can't draw the freshest (hottest) moments.
+          // extractAndBankMoments never throws, so this await can't fail the
+          // replan; it just sequences it.
+          if (bankMode && momentExtractionPromise) await momentExtractionPromise
           await replanWorkspaceWeek({
-            workspace: { id: ws.id, cadence_policy: polRow?.cadence_policy ?? null, enabled_outputs: polRow?.enabled_outputs ?? null },
+            workspace: {
+              id: ws.id,
+              cadence_policy: polRow?.cadence_policy ?? null,
+              enabled_outputs: polRow?.enabled_outputs ?? null,
+              moment_bank_planning_enabled: bankMode,
+            },
             weekMonday: mondayOf(new Date().toISOString()),
           })
         } catch (e) {
+          // Bank mode has NO grid fallback: buildPlanRows is the per-interview
+          // batch grid this design retires (locked decision 4 — completion
+          // tops up the week from the bank, it never manufactures a grid).
+          // The weekly cron backstop replans from the bank on Monday.
+          if (bankMode) {
+            console.error(`[db/interviews] bank-mode re-plan failed for interview=${id} ws=${ws.slug}: ${e?.message}`)
+            return
+          }
           console.error(`[db/interviews] Strategist re-plan failed for interview=${id} ws=${ws.slug}: ${e?.message}; falling back to grid`)
           try {
             const planExistsRes = await sb(

@@ -67,23 +67,36 @@ function sb(path, init = {}) {
 // Case (a): undrafted planned atoms in a closed week → straight back to
 // backlog. A single filtered PATCH — no id enumeration needed, so there's no
 // URL-length concern no matter how large the backlog is.
+//
+// Moment-composed atoms (moment_id set, moment-bank P3) are DELETED instead of
+// re-banked: the moments table IS the bank — the moment stays drawable (its
+// draft-time cooldown never started, since no piece was made), and re-banking
+// the atom would double the inventory with a brief frozen in a dead week's
+// context. Legacy atoms (moment_id null) keep the P1 return-to-backlog
+// semantics so the pre-cutover pile drains via promotion.
 async function returnUndraftedToBacklog(wsId, currentMonday, now) {
-  const filter =
+  const base =
     `content_plan_atoms?workspace_id=eq.${wsId}` +
     `&plan_week=lt.${currentMonday}` +
     `&held_at=is.null` +
     `&content_piece_id=is.null` +
     `&status=in.(pending,drafting)`
-  const r = await sb(filter, {
+  const r = await sb(`${base}&moment_id=is.null`, {
     method: 'PATCH',
     body: JSON.stringify({ held_at: now, plan_week: null, scheduled_at: null, status: 'pending', updated_at: now }),
   })
   if (!r.ok) {
     console.error(`[sweep-past-weeks] ${wsId} undrafted-backlog PATCH failed:`, r.status, await r.text().catch(() => ''))
-    return { patched: 0, error: true }
+    return { patched: 0, deletedMomentAtoms: 0, error: true }
   }
   const rows = await r.json().catch(() => [])
-  return { patched: rows.length, error: false }
+  const del = await sb(`${base}&moment_id=not.is.null`, { method: 'DELETE' })
+  if (!del.ok) {
+    console.error(`[sweep-past-weeks] ${wsId} undrafted moment-atom DELETE failed:`, del.status, await del.text().catch(() => ''))
+    return { patched: rows.length, deletedMomentAtoms: 0, error: true }
+  }
+  const deleted = await del.json().catch(() => [])
+  return { patched: rows.length, deletedMomentAtoms: deleted.length, error: false }
 }
 
 // Case (b): drafted-but-unpublished pieces in a closed week → archive the
@@ -96,7 +109,7 @@ async function archiveStaleDrafts(wsId, currentMonday, now) {
       `&plan_week=lt.${currentMonday}` +
       `&held_at=is.null` +
       `&content_piece_id=not.is.null` +
-      `&select=id,content_piece_id` +
+      `&select=id,content_piece_id,moment_id` +
       `&limit=${MAX_DRAFTED_PER_WORKSPACE}`,
   )
   if (!candRes.ok) {
@@ -134,9 +147,13 @@ async function archiveStaleDrafts(wsId, currentMonday, now) {
   const archivedIds = archivedItems.map((it) => it.id)
   const quotedArchivedIds = archivedIds.map((id) => `"${id}"`).join(',')
 
-  // Detach + re-bank only the atoms whose item we just confirmed archived.
+  // Detach + re-bank only the LEGACY atoms (moment_id null) whose item we just
+  // confirmed archived. Moment-composed atoms are DELETED instead (see
+  // returnUndraftedToBacklog's rationale): the moment itself stays in the bank
+  // and comes off cooldown naturally, so the slot's inventory is never lost —
+  // only the stale week-frozen brief is.
   const rebankRes = await sb(
-    `content_plan_atoms?workspace_id=eq.${wsId}&content_piece_id=in.(${quotedArchivedIds})&held_at=is.null`,
+    `content_plan_atoms?workspace_id=eq.${wsId}&content_piece_id=in.(${quotedArchivedIds})&held_at=is.null&moment_id=is.null`,
     {
       method: 'PATCH',
       body: JSON.stringify({
@@ -146,10 +163,19 @@ async function archiveStaleDrafts(wsId, currentMonday, now) {
   )
   if (!rebankRes.ok) {
     console.error(`[sweep-past-weeks] ${wsId} rebank PATCH failed:`, rebankRes.status, await rebankRes.text().catch(() => ''))
-    return { archived: archivedItems.length, rebanked: 0, capped, error: true }
+    return { archived: archivedItems.length, rebanked: 0, deletedMomentAtoms: 0, capped, error: true }
   }
   const rebanked = await rebankRes.json().catch(() => [])
-  return { archived: archivedItems.length, rebanked: rebanked.length, capped, error: false }
+  const delRes = await sb(
+    `content_plan_atoms?workspace_id=eq.${wsId}&content_piece_id=in.(${quotedArchivedIds})&held_at=is.null&moment_id=not.is.null`,
+    { method: 'DELETE' },
+  )
+  if (!delRes.ok) {
+    console.error(`[sweep-past-weeks] ${wsId} drafted moment-atom DELETE failed:`, delRes.status, await delRes.text().catch(() => ''))
+    return { archived: archivedItems.length, rebanked: rebanked.length, deletedMomentAtoms: 0, capped, error: true }
+  }
+  const deletedMoment = await delRes.json().catch(() => [])
+  return { archived: archivedItems.length, rebanked: rebanked.length, deletedMomentAtoms: deletedMoment.length, capped, error: false }
 }
 
 async function sweepWorkspace(ws, now) {
@@ -164,6 +190,7 @@ async function sweepWorkspace(ws, now) {
     returnedToBacklog: undrafted.patched,
     archivedDrafts: stale.archived,
     rebanked: stale.rebanked,
+    deletedMomentAtoms: (undrafted.deletedMomentAtoms || 0) + (stale.deletedMomentAtoms || 0) || undefined,
     cappedThisRun: stale.capped || undefined,
     error: undrafted.error || stale.error || undefined,
   }

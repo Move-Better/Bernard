@@ -25,7 +25,7 @@ async function handler(req, res) {
   // computes per-channel cadence from enabled_outputs × the cold-start prior;
   // falls back to RECOMMENDED_CADENCE only when there are no enabled outputs).
   const wsRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug,cadence_policy,enabled_outputs,producer_config`,
+    `${SUPABASE_URL}/rest/v1/workspaces?status=eq.active&select=id,slug,cadence_policy,enabled_outputs,producer_config,moment_bank_planning_enabled`,
     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
   )
   if (!wsRes.ok) return res.status(500).json({ error: 'workspace fetch failed' })

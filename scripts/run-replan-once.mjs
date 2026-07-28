@@ -11,7 +11,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 if (!SUPABASE_URL || !SUPABASE_KEY) { console.error('Missing SUPABASE env'); process.exit(1) }
 
 const wsRes = await fetch(
-  `${SUPABASE_URL}/rest/v1/workspaces?id=eq.${WS_ID}&select=id,slug,cadence_policy`,
+  `${SUPABASE_URL}/rest/v1/workspaces?id=eq.${WS_ID}&select=id,slug,cadence_policy,enabled_outputs,moment_bank_planning_enabled`,
   { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
 )
 const [ws] = await wsRes.json()
