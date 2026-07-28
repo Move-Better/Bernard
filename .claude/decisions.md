@@ -187,3 +187,27 @@ Philip (movebetter) asked for spell + grammar underlining in the caption boxes. 
 - **harper.js WASM grammar spiked (2.4.0, 18 real movebetter captions) and declined.** ~8 MB gzipped (~2× our largest chunk); noisy on social copy — every hashtag flags as misspelled, domain terms (deadlift/kettlebell/shockwave) flag as compound-split "typos", British dialect default. After full config (American dialect + hashtag/URL suppression + Readability off + a clinic-vocab dictionary) it collapsed to ~1 genuine catch across 18 already-clean AI-authored captions — and that catch was a *spelling* error native spellcheck already covers.
 - **Case against wins:** ~zero marginal grammar value over shipped native spellcheck on our clean pipeline output, for 8 MB + a dictionary-maintenance burden. Grammarly has no embeddable SDK; LanguageTool self-host is heavy + off-Vercel. Spike harness was /tmp scratch (not committed).
 - **Revisit-by: 2026-10-01**, or sooner if staff report grammar errors native spellcheck misses — then reconsider harper (fully configured, lazy-loaded) or a lighter targeted checker.
+
+## 2026-07-27 — UI flow audit: one "Moments" concept, planner-first, pantry-framed (supersedes held P4)
+
+Q held the P4 mockups ("putting moments in a media library is confusing") and asked for a whole-system UI flow audit in a fresh session. Audit grounded in live prod (movebetter) + code; direction decided fork-by-fork with Q, all forks confirmed 2026-07-27.
+
+**Grounding findings (prod, 2026-07-27):** the nav word "Moments" already belongs to the video Moment Miner (`video_segments`, same type taxonomy as the bank, zero code linkage — `clip_asset_id` referenced nowhere in api/ or src/); /week's "Backlog · 73 banked" is entirely legacy atoms (0 of 73 carry a `moment_id`) while the real 133-moment inventory has no surface beyond a collapsed StoryDetail panel; `moment_id` appears nowhere in the client, so per-piece approval — the locked trust mechanism — never shows the verbatim anchor; Stories still narrates the batch era (stage "Draft" on the bank's most productive interview, "cluster of publish-ready drafts" empty state, 4-step stepper); IG Reel 0/5 on the live board is the visible symptom of the unwired moment×video lane.
+
+**Chosen:**
+1. **One concept, one home** — `/moments` becomes the bank's home: inventory landing ("On hand · 133" with runway + gaps header, list-not-grid), Miner feed becomes the "New from video" intake tab (proposals graduate into the same inventory, tagged to their moment — the Lane A wiring), one unified "Coverage" tab (planner topic-gaps + footage coverage).
+2. **Bernard plans, humans steer** — trust surfaces first; browse/retire one click deep; **quiet retire** (stops future draws; already-planned pieces keep their per-piece review life, count shown).
+3. **Inventory/pantry language, phrased "on hand"** — "moments" stays the noun, no "bank" jargon in UI. Runway is ONE number (usable ÷ weekly slots). Chip states: quiet ≥4 wks / amber <4 / red <1 / quiet "Not started" when never captured.
+4. **Provenance everywhere reviewed** — "From your words" verbatim block + score on week cards, piece editor, review inbox (needs `moment_id` → client).
+5. **/week** — Backlog chip → "On hand · ~N wks" chip + drawer (slot-composition bar not a hit-rate %, gap chips, strongest-on-hand list, self-liquidating "Legacy backlog" section); sweep batch-era copy ("banked as backlog", "from your backlog", banner "N in backlog").
+6. **Stories full reframe** — stage machine → captured → processed → yielding; "Pieces" column → Yield ("7 moments · 1 use · last Jul 28"); StoryDetail promotes Moments above posts, open by default; 4-step stepper retired; empty state rewritten.
+7. **Home restock nudge** — clinician-facing, renders only while runway <2 wks; gap topics ride along as suggested subjects. No badge/email/nag.
+8. **Not doing:** Library "Moments" tab (Q's held objection stands — Library stays files), Overview card, any dedicated dashboard.
+
+Mockups on real prod data with signal rules applied to all 7 workspaces: artifact `82095745-e1ec-4fae-b78d-4a6025294538` (movebetter ~9 wks quiet, animals/equine amber, groovechiro red, qbook/tnw not-started; gaps honestly empty — 0 `bank_gap` rows exist today). Salvage from the held round honored: one-runway-number, slot-composition view, freshness keyed on interview date, quiet not-started, moments-as-list.
+
+**Build order (replaces the held P4 surface list):** ① provenance-at-review (smallest, highest trust-per-line) → ② /week chip + drawer + copy sweep → ③ /moments unification → ④ Stories reframe → ⑤ Home nudge. Each its own PR batch through normal gates; mockup-first satisfied by the artifact. Reel-lane wiring (clip↔moment linkage) stays with the video-pipeline thread; its UI home is now defined as the intake tab.
+
+**Case against, considered:** unifying with the Miner risks muddying "review queue" vs "inventory" jobs — resolved by tabs, not a blended list; an always-visible /week strip and an Overview card were rejected (attention spend; a third home for one number); a distinct name for the text bank ("Sayings") was rejected as dual vocabulary forever fighting the reels=moment×video decision.
+
+**Revisit-by: 2026-09-15** (rides the bank decision's date). Additional kill criteria: (e) if On-hand browse sees ~zero use by then, demote /moments browse depth — the audience call was wrong; (f) if a fired Home nudge produces no capture within 2 weeks on a low workspace, rethink the restock loop (silent priming may be the honest answer).
