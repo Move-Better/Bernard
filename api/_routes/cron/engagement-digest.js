@@ -15,7 +15,8 @@
 //   2. Collect last 7 days of: published content_items, story_packages stats,
 //      and current triage queue.
 //   3. Resolve recipients — explicit engagement_digest_recipients list if
-//      non-empty, otherwise all clinicians with permission_tier='producer'.
+//      non-empty, otherwise all staff with permission_tier in (owner,
+//      producer) — the same set approval-escalation.js mails.
 //   4. Pull Clerk user emails for each recipient.
 //   5. Send via Resend.
 //   6. Stamp engagement_digest_last_sent_at on success.
@@ -250,10 +251,17 @@ async function handler(req, res) {
         ? ws.engagement_digest_recipients.filter(Boolean)
         : []
 
-      // Empty list = derive from producer-tier clinicians.
+      // Empty list = derive from owner- and producer-tier staff.
+      //
+      // Must match resolveRecipients() in approval-escalation.js. These two
+      // crons mail the same people about the same queue, and they had drifted:
+      // this one was producer-only while escalation was owner+producer, so an
+      // owner got the daily nudge but never the weekly summary. Aligned on the
+      // wider set — an owner who wants out has the footer link, which is the
+      // right way to opt out of an email you can already see.
       if (recipientUserIds.length === 0) {
         const pRes = await sb(
-          `staff?workspace_id=eq.${ws.id}&permission_tier=eq.producer` +
+          `staff?workspace_id=eq.${ws.id}&permission_tier=in.(owner,producer)` +
           `&user_id=not.is.null&select=user_id`
         )
         if (pRes.ok) {

@@ -51,7 +51,7 @@ function DigestCard({ enabled, onToggle }) {
           />
         </div>
         <CardDescription className="text-xs mt-1">
-          A Monday-morning summary of published content, queue depth, and engagement. Sent via Bernard to all producer-role users in this workspace. Off by default.
+          A Friday summary of published content, queue depth, and engagement. Sent to everyone with owner or producer access in this workspace.
         </CardDescription>
       </CardHeader>
     </Card>
