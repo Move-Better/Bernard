@@ -10,6 +10,7 @@ import { enforceLimit } from '../../_lib/ratelimit.js'
 import { mondayOf } from '../../_lib/strategist.js'
 import { mergeSlotsIntoCadence } from '../../_lib/cadenceSlots.js'
 import { isInstagramReel } from '../../../src/lib/mediaEntry.js'
+import { isTextOnlyPlatform } from '../../../src/lib/platformMediaKind.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -227,6 +228,13 @@ export default async function handler(req, res) {
       scheduled_at: a.scheduled_at || (ci?.status === 'published' ? ci.published_at : null),
       thumbnailUrl: thumb?.url || null,
       mediaKind: thumb?.kind || null,
+      // A real, actionable media gap: a drafted post on a platform that takes an
+      // image/video, with nothing attached. Auto-attach fills most of these at
+      // compose time; this flags the honest no-match remainder so the producer
+      // knows to pick a photo rather than shipping bare text. Text-only
+      // platforms (blog/landing/email) never flag — their hero is a different
+      // concept. Only real drafts (not empty future slots) qualify.
+      needsMedia: ci?.status === 'draft' && !thumb && !isTextOnlyPlatform(a.platform),
       // The thumbnail's asset id + reuse counter, so the board can show a
       // "used ×N" badge on the card without drawing it into the rendered
       // preview itself. mediaUsage is filled in below via a single batched
