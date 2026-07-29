@@ -89,6 +89,40 @@ The 4 `voice-clone/{opt-out,revoke,create,resume}` routes had this gap (PR #1806
 flagged it as a P0 because opt-out/revoke call ElevenLabs `deleteVoice()` (irreversible). The
 class recurs by copy-paste — apply this gate to any new staff-row-scoped destructive route.
 
+### `staff.permission_tier` is NEVER 'owner' — resolve ownership from Clerk via `workspaceOwners.js`
+
+Ownership is a **Clerk** fact, not a database one. `auth.js` derives it from the session token
+(`payload.org_role === 'org:admin'`), and `workspace/me.js` short-circuits Clerk org admins straight
+to the owner capability template. `staff.permission_tier` is **deliberately left NULL** when a row
+is provisioned (`staff/ensure-self.js` says so explicitly), specifically so that provisioning a row
+can never change someone's authorization.
+
+The consequence: **nothing in the product ever writes `'owner'` to `permission_tier`.** It is read,
+never written — the only value ever written is `'clinician'` (`access-matrix.js`'s reconciliation
+path). Any code that asks "who owns this workspace?" by querying `permission_tier = 'owner'` finds
+nobody, on every workspace that has never had a row hand-set (6 of 7 live workspaces as of 2026-07-29,
+each with a real Clerk org admin).
+
+Use **`api/_lib/workspaceOwners.js`**: `listWorkspaceOwnerUserIds(workspace, sb, clerk, logTag)`
+returns Clerk org admins UNIONed with any explicit `permission_tier='owner'` rows (so a hand-set row
+still counts). `isWorkspaceOwner(userId, workspace, sb, clerk, logTag)` tests one user. Cheaper
+alternative when the question is "is the CALLER an owner?": `requireRole()` already returns
+`isOrgAdmin` on the auth object with no extra network call — only reach for the helper to enumerate
+owners or to test a user other than the caller.
+
+Found four broken call sites in one sweep (PR #2448, #2449): both notifier crons' recipient
+resolution (silently mailed nobody's-an-owner), two `db/interviews.js` authz checks that **failed
+closed** (a genuine owner got 403 editing/deleting a colleague's interview), `staff/capabilities.js`
+which **failed open** ("owner capabilities cannot be modified" never fired), and the Access Matrix
+API which under-resolved the owner's own effective capabilities and rendered them as an unlocked
+clinician row in the settings UI. None of these threw or logged — a query for a tier that's never
+written just returns an empty set, which looks identical to "this workspace has no owner."
+
+**Rule: any new code that needs to know "is this user a workspace owner" or "who are this
+workspace's owners" must go through `workspaceOwners.js` (or `auth.isOrgAdmin` for the caller), never
+`permission_tier === 'owner'` directly.** `tests/lib/notifierRecipientParity.test.js` and
+`tests/lib/accessMatrixOwnerDisplay.test.js` guard the crons and the Access Matrix respectively.
+
 ### Capability keys are PERSISTED — renaming one is a data migration, not a code edit
 
 The capability-id strings in `ALL_CAPABILITIES` (`api/_lib/capabilities.js` + its `src/lib/`
