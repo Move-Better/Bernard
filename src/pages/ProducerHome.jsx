@@ -103,7 +103,12 @@ function HealthCell({ ch }) {
   )
 }
 
-export default function ProducerHome() {
+// `embedded`: true when rendered as a section inside CombinedHome (an
+// owner who is ALSO a clinician — see .claude/decisions.md 2026-07-29
+// "combined owner home"). Suppresses the standalone page greeting in favor
+// of a section label, since CombinedHome owns the single page-level
+// greeting.
+export default function ProducerHome({ embedded = false }) {
   useDocumentTitle('Home')
   const { user } = useUser()
   const ws = useWorkspace()
@@ -125,9 +130,13 @@ export default function ProducerHome() {
   }
 
   return (
-    <div className="flex flex-col gap-6 py-6">
+    <div className={embedded ? 'flex flex-col gap-6' : 'flex flex-col gap-6 py-6'}>
       <div>
-        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground">{greeting}</h1>
+        {embedded ? (
+          <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Your queue</h2>
+        ) : (
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground">{greeting}</h1>
+        )}
         {!isLoading && (
           <p className="mt-0.5 text-sm text-muted-foreground">
             {queue.length > 0
@@ -139,7 +148,7 @@ export default function ProducerHome() {
       </div>
 
       <section>
-        <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Your queue</h2>
+        {!embedded && <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Your queue</h2>}
         {isLoading ? <QueueSkeleton /> : (
           queue.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">

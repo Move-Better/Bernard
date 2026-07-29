@@ -188,13 +188,23 @@ async function staffNames(wsId, ids) {
   return new Map(rows.map((r) => [r.id, r.name || 'A clinician']))
 }
 
-async function clinicianCheckpoints(wsId) {
+// excludeStaffId: the CALLER's own staff row, when they have one. An
+// owner who is also a practicing clinician (Q, 2026-07-29 — "I am literally
+// both a clinician and a producer") sees their own answers/words/blog/memory
+// checkpoints in the clinician section of their combined home, not duplicated
+// here as a self-referential "waiting on your clinicians: Dr. Q" line — see
+// .claude/decisions.md same date, "once, in the clinician section."
+async function clinicianCheckpoints(wsId, excludeStaffId = null) {
   const [wordsCounts, answerCounts, blogCounts, superCounts] = await Promise.all([
     byStaff(wsId, 'interviews', 'status=eq.completed&summary_text=not.is.null&words_approved_at=is.null'),
     byStaff(wsId, 'answers', 'status=in.(needs_review,changes_requested)'),
     byStaff(wsId, 'content_items', 'status=eq.in_review&platform=eq.blog'),
     byStaff(wsId, 'practice_memory_supersessions', 'status=eq.pending'),
   ])
+
+  if (excludeStaffId) {
+    for (const m of [wordsCounts, answerCounts, blogCounts, superCounts]) m.delete(excludeStaffId)
+  }
 
   const allStaffIds = new Set([
     ...wordsCounts.keys(), ...answerCounts.keys(), ...blogCounts.keys(), ...superCounts.keys(),
@@ -233,6 +243,14 @@ export default async function handler(req, res) {
 
   if (!(await enforceLimit(req, res, 'producer-checkpoints', ws.id))) return
 
+  const clerkUserId = auth.userId || auth.user?.id || null
+  let callerStaffId = null
+  if (clerkUserId) {
+    const selfRes = await sb(`staff?workspace_id=eq.${ws.id}&user_id=eq.${encodeURIComponent(clerkUserId)}&select=id&limit=1`)
+    const selfRows = selfRes.ok ? await selfRes.json().catch(() => []) : []
+    callerStaffId = selfRows[0]?.id || null
+  }
+
   let posts, packages, clips, failures, escalated, consent, clinician, health
   try {
     [posts, packages, clips, failures, escalated, consent, clinician, health] = await Promise.all([
@@ -242,7 +260,7 @@ export default async function handler(req, res) {
       publishFailures7d(ws.id),
       escalatedCaptions(ws.id),
       consentPending(ws.id),
-      clinicianCheckpoints(ws.id),
+      clinicianCheckpoints(ws.id, callerStaffId),
       channelHealth(ws.id, ws),
     ])
   } catch (e) {
