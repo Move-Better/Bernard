@@ -6,7 +6,7 @@ import { useUser } from '@clerk/react'
 import {
   CalendarRange, Sparkles, Archive, Mail, Moon, ChevronRight, ChevronLeft, Shield, Plus, ShoppingBasket,
   Check, Loader2, Clock, Eye, Send, BookOpen, AlertTriangle, Pencil,
-  History, CalendarPlus, Bot, Image as ImageIcon, Play, Film, CircleDot, FlaskConical, BellOff, Bell,
+  History, CalendarPlus, Bot, Image as ImageIcon, ImagePlus, Play, Film, CircleDot, FlaskConical, BellOff, Bell,
   Palette,
 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
@@ -816,10 +816,16 @@ function DayPlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approv
       )}
       <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1.5 ${state.rail}`} />
       {/* Media thumbnail — the drafted post's first image (a video shows its
-          poster + play badge); a muted placeholder when there's no media yet. */}
-      <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+          poster + play badge). No media yet: an amber "needs a photo" cue when
+          it's a real gap the producer should fill (needsMedia), else a muted
+          placeholder (text-only platforms, empty future slots). */}
+      <div className={`relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg ${
+        item.needsMedia && !item.thumbnailUrl ? 'bg-action/10 ring-1 ring-inset ring-action/40' : 'bg-muted'
+      }`}>
         {item.thumbnailUrl ? (
           <img src={item.thumbnailUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+        ) : item.needsMedia ? (
+          <ImagePlus className="h-5 w-5 text-action" aria-label="Needs a photo or video" />
         ) : (
           <ImageIcon className="h-5 w-5 text-muted-foreground/40" aria-hidden="true" />
         )}
