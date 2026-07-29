@@ -40,6 +40,8 @@ import {
   updateContentItem,
   deleteContentItem,
   suggestMediaForDraft,
+  previewCopyToPlatforms,
+  copyToPlatforms,
 } from './publish'
 import { listMedia } from './mediaLib'
 import {
@@ -73,6 +75,7 @@ export const queryKeys = {
     keystone: (ivId) => ['contentItems', 'keystone', ivId],
     splitSuggestion: (id) => ['contentItems', 'splitSuggestion', id],
     mediaSuggestions: (id) => ['contentItems', 'mediaSuggestions', id],
+    copyPreview: (id) => ['contentItems', 'copyPreview', id],
     verbatimQuotes:   (id) => ['contentItems', 'verbatimQuotes', id],
   },
   contentPlan: {
@@ -447,6 +450,31 @@ export function useMediaSuggestions(pieceId, { enabled = true, kind, k, ...optio
     staleTime: 5 * 60_000,        // suggestions are stable within a session
     refetchOnWindowFocus: false,
     ...options,
+  })
+}
+
+// Per-platform fill/create/already-live state for the "Copy to other
+// platforms" modal — fetched fresh each time the modal opens (siblings can
+// change between opens) rather than cached across sessions.
+export function useCopyToPlatformsPreview(pieceId, { enabled = true } = {}) {
+  return useQuery({
+    queryKey: queryKeys.contentItems.copyPreview(pieceId),
+    queryFn: () => previewCopyToPlatforms(pieceId).then((r) => r.results ?? []),
+    enabled: !!pieceId && enabled,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export function useCopyToPlatforms() {
+  const qc = useQueryClient()
+  return useAppMutation({
+    errorMessage: "Couldn't copy to other platforms",
+    mutationFn: ({ sourceId, targets }) => copyToPlatforms(sourceId, targets),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.contentItems.all })
+      qc.invalidateQueries({ queryKey: queryKeys.contentPlan.all })
+    },
   })
 }
 
