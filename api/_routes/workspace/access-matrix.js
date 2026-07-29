@@ -13,6 +13,14 @@ import { requireRole, requireCapability } from '../../_lib/auth.js'
 import { resolveCapabilities, CAP_MEMBERS_INVITE } from '../../_lib/capabilities.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { fetchClerkMembers } from '../../_lib/clerkOrg.js'
+import { listWorkspaceOwnerUserIds } from '../../_lib/workspaceOwners.js'
+import { createClerkClient } from '@clerk/backend'
+
+let _clerk = null
+function clerk() {
+  if (!_clerk) _clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY })
+  return _clerk
+}
 
 export const config = { runtime: 'nodejs' }
 
@@ -57,26 +65,39 @@ async function handler(req, res) {
     }
     const staffRows = await sres.json()
 
-    const staff = staffRows.map((s) => ({
-      id: s.id,
-      name: s.name,
-      legal_name: s.legal_name || null,
-      permission_tier: s.permission_tier || 'clinician',
-      staff_type: s.staff_type || 'clinician',
-      capability_overrides: s.capability_overrides || {},
-      user_id: s.user_id || null,
-      has_voice_clone: !!s.eleven_voice_id,
-      pending: false,
-      // tier-only set (no overrides) — lets the client diff each cell
-      tier_capabilities: resolveCapabilities(s.permission_tier || 'clinician', workspace),
-      // effective set (tier + overrides)
-      resolved_capabilities: resolveCapabilities(
-        s.permission_tier || 'clinician',
-        workspace,
-        s.capability_overrides
-      ),
-      is_self: !!s.user_id && s.user_id === auth.userId,
-    }))
+    // Ownership is a CLERK fact, not staff.permission_tier — see
+    // api/_lib/workspaceOwners.js. permission_tier is left NULL on create and
+    // nothing in the product ever writes 'owner' to it, so on every workspace
+    // but one, this page showed the real owner as a plain clinician row: not
+    // owner-locked in the UI, and under-resolved capabilities from
+    // resolveCapabilities(). Effective tier below is the display AND
+    // authorization source for this response — Clerk wins when it disagrees
+    // with the stored tier.
+    const sb = (path, init = {}) => fetch(`${SUPA}/rest/v1/${path}`, {
+      ...init,
+      headers: { apikey: SROLE, Authorization: `Bearer ${SROLE}`, ...init.headers },
+    })
+    const ownerUserIds = await listWorkspaceOwnerUserIds(workspace, sb, clerk, '[workspace/access-matrix]')
+
+    const staff = staffRows.map((s) => {
+      const effectiveTier = (s.user_id && ownerUserIds.has(s.user_id)) ? 'owner' : (s.permission_tier || 'clinician')
+      return {
+        id: s.id,
+        name: s.name,
+        legal_name: s.legal_name || null,
+        permission_tier: effectiveTier,
+        staff_type: s.staff_type || 'clinician',
+        capability_overrides: s.capability_overrides || {},
+        user_id: s.user_id || null,
+        has_voice_clone: !!s.eleven_voice_id,
+        pending: false,
+        // tier-only set (no overrides) — lets the client diff each cell
+        tier_capabilities: resolveCapabilities(effectiveTier, workspace),
+        // effective set (tier + overrides)
+        resolved_capabilities: resolveCapabilities(effectiveTier, workspace, s.capability_overrides),
+        is_self: !!s.user_id && s.user_id === auth.userId,
+      }
+    })
 
     // Pending Clerk invitations — non-fatal: [] degrades gracefully.
     let pending = []
