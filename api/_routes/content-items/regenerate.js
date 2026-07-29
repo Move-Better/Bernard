@@ -28,7 +28,7 @@ import { hasPublishedBlogArticle } from '../../_lib/blogLinkStatus.js'
 import { getContextBlock } from '../../_lib/conceptRetrieval.js'
 import { resolveOwnHistoryBlock, buildRagQuery } from '../../_lib/practiceMemory.js'
 import { loadCurrentTentpole, getTentpolePromptContext } from '../../_lib/tentpoleCampaignContext.js'
-import { resolveSiblingCaptionsBlock } from '../../_lib/producer/draftAtom.js'
+import { resolveSiblingCaptionsBlock, resolveModelExemplarsBlock } from '../../_lib/producer/draftAtom.js'
 import { clampToCap, platformCap } from '../../_lib/socialLengthTargets.js'
 import { momentWindow } from '../../_lib/momentPlan.js'
 import { extractProvenanceBlock } from '../../../src/lib/provenance.js'
@@ -238,6 +238,13 @@ export default async function handler(req, res) {
       interviewId:           interview.id,
       excludeContentPieceId: item.id,
     })
+    // Human-marked "came together well" posts for this platform (Phase 6) —
+    // same source draftAtom.js's first-draft path reads, so a regenerate gets
+    // the identical craft signal a fresh draft would.
+    const modelExemplarsBlock = await resolveModelExemplarsBlock({
+      workspaceId: ws.id,
+      platform:    atom.platform,
+    })
     const systemPrompt = getAtomSystemPrompt(
       ws,
       staffName,
@@ -255,6 +262,7 @@ export default async function handler(req, res) {
       ownHistoryBlock,
       hasPublishedArticle,
       siblingBlock,
+      modelExemplarsBlock,
     )
     if (!systemPrompt) {
       return err(res, 'no_prompt_defined', 422)

@@ -28,6 +28,7 @@ import { toast } from '@/lib/toast'
 import { useContentWorkflow } from '@/lib/useContentWorkflow'
 import PostStatusRow from './PostStatusRow'
 import StoryCommentsFeed from './StoryCommentsFeed'
+import ModelPostRating from './ModelPostRating'
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
@@ -714,6 +715,12 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
           )}
         </div>
       )}
+
+      {/* The "came together well" craft signal — a human call on composition,
+          not the audience-driven Winner flag below. Available any time
+          (draft through published), not gated on canReview: any staffer who
+          worked the post — not just an approver — can flag a good one. */}
+      {isPublish && <ModelPostRating piece={piece} />}
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">

@@ -21,7 +21,7 @@
 // best-effort concept/RAG retrieval reads. Never writes tenant data.
 
 import { generateText } from 'ai'
-import { getAtomSystemPrompt } from '../atomPrompts.js'
+import { getAtomSystemPrompt, buildModelExemplarsBlock } from '../atomPrompts.js'
 import { stripAiDashes } from '../stripAiDashes.js'
 import { hasPublishedBlogArticle } from '../blogLinkStatus.js'
 import { getContextBlock } from '../conceptRetrieval.js'
@@ -141,6 +141,43 @@ Do NOT build this piece around any of the moments above. Do not reuse their cent
 If the conversation genuinely contains only ONE usable story, you may still touch it — but enter from a different angle, lead with a different line, and do not repeat the same quote verbatim. Never invent new material to avoid an overlap: staying faithful to what was actually said outranks novelty.`
   } catch (e) {
     console.error(`[draftAtom] resolveSiblingCaptionsBlock threw: ${e?.message}`)
+    return ''
+  }
+}
+
+const MODEL_EXEMPLARS_MAX = 3
+
+/**
+ * Build the MODEL POSTS block: the workspace's most recent posts on this
+ * platform that a human marked "came together well" (is_model_post — see
+ * src/lib/modelRating.js). Distinct source from `performed_well` (audience
+ * response); this is a craft signal available immediately, not gated on
+ * engagement data ever arriving.
+ *
+ * Best-effort — returns '' on any failure. Never throws: a missing exemplar
+ * block degrades output quality, but a throw here would fail the whole draft.
+ *
+ * @param {object} a
+ * @param {string} a.workspaceId
+ * @param {string} a.platform
+ * @returns {Promise<string>}
+ */
+export async function resolveModelExemplarsBlock({ workspaceId, platform }) {
+  try {
+    if (!workspaceId || !platform) return ''
+    const res = await sb(
+      `content_items?workspace_id=eq.${workspaceId}&platform=eq.${encodeURIComponent(platform)}` +
+      `&is_model_post=eq.true&content=not.is.null` +
+      `&select=content,model_reasons,model_note&order=model_marked_at.desc&limit=${MODEL_EXEMPLARS_MAX}`,
+    )
+    if (!res.ok) {
+      console.error(`[draftAtom] model exemplar fetch failed: ${res.status}`)
+      return ''
+    }
+    const rows = await res.json()
+    return buildModelExemplarsBlock(rows)
+  } catch (e) {
+    console.error(`[draftAtom] resolveModelExemplarsBlock threw: ${e?.message}`)
     return ''
   }
 }
@@ -266,6 +303,14 @@ export async function draftAtom({ ws, atom, interview }) {
     excludeContentPieceId: atom.content_piece_id || null,
   })
 
+  // Human-marked "came together well" posts for this platform (Phase 6) — a
+  // craft signal distinct from ownHistoryBlock (this clinician's own prior
+  // thinking) and siblingBlock (dedup within this interview).
+  const modelExemplarsBlock = await resolveModelExemplarsBlock({
+    workspaceId: ws.id,
+    platform:    atom.platform,
+  })
+
   // Build the focused atom prompt
   const systemPrompt = getAtomSystemPrompt(
     ws,
@@ -284,6 +329,7 @@ export async function draftAtom({ ws, atom, interview }) {
     ownHistoryBlock,
     hasPublishedArticle,
     siblingBlock,
+    modelExemplarsBlock,
   )
   if (!systemPrompt) throw new Error(`No prompt defined for ${atom.platform}/${atom.angle}`)
 
@@ -501,6 +547,7 @@ export async function draftAtom({ ws, atom, interview }) {
       gbpSubjectLocation,
       ownHistoryBlock,
       siblingBlock,
+      modelExemplarsBlock,
     },
   }
 }
@@ -528,6 +575,7 @@ export async function buildGbpLocationVariants({ ws, atom, interview, staffName,
   const {
     voiceNotes, voicePhrases, conceptBlock, audienceLabel, storyTypeLabel,
     activeCampaign, campaignContext, gbpSubjectLocation, ownHistoryBlock, siblingBlock,
+    modelExemplarsBlock,
   } = gbpContext || {}
 
   const locsRes = await sb(
@@ -571,6 +619,7 @@ export async function buildGbpLocationVariants({ ws, atom, interview, staffName,
           // explicitly so adding siblingBlock after it can't change that behavior.
           false,
           siblingBlock,
+          modelExemplarsBlock,
         )
         if (!locPrompt) return null
         const { text: locText } = await generateText({

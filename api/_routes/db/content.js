@@ -15,6 +15,7 @@ import { indexContentItem } from '../../_lib/practiceMemoryRag.js'
 import { mondayOf } from '../../_lib/strategist.js'
 import { computeEditDiff } from '../../_lib/editDiffMining.js'
 import { waitUntil } from '@vercel/functions'
+import { MODEL_REASON_KEYS, MODEL_NOTE_MAX } from '../../../src/lib/modelRating.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -68,7 +69,7 @@ async function dbErr(res, r, msg = 'Database error', status = 500) {
   return res.status(status).json({ error: msg })
 }
 
-const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,content,overlay_text,slides,text_card,status,publish_error,scheduled_at,published_at,media_urls,platform_post_id,buffer_update_id,resolved_url,target_locations,location_id,location_overrides,notes,reviewed_by,approved_by,approved_at,reject_reason,reject_note,rejected_at,rejected_by,edit_diff,performed_well,archived_at,hashtag_suggestions,buffer_metrics,buffer_metrics_fetched_at,provenance,voice_fidelity_score,voice_audit,length_preset,series_id,series_part,series_total,photo_treatment,photo_composite_url,photo_template_id,aspect_ratio,seo_title,meta_description,created_at,updated_at'
+const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,content,overlay_text,slides,text_card,status,publish_error,scheduled_at,published_at,media_urls,platform_post_id,buffer_update_id,resolved_url,target_locations,location_id,location_overrides,notes,reviewed_by,approved_by,approved_at,reject_reason,reject_note,rejected_at,rejected_by,edit_diff,performed_well,is_model_post,model_reasons,model_note,model_marked_at,archived_at,hashtag_suggestions,buffer_metrics,buffer_metrics_fetched_at,provenance,voice_fidelity_score,voice_audit,length_preset,series_id,series_part,series_total,photo_treatment,photo_composite_url,photo_template_id,aspect_ratio,seo_title,meta_description,created_at,updated_at'
 
 // Slim shape for the Stories list (Cards / Pipeline / Calendar / Themes views).
 // Drops heavy columns (`content`, `media_urls`, `buffer_metrics`, `notes`, etc.)
@@ -280,6 +281,16 @@ export default async function handler(req, res) {
         return err(res, 'Invalid targetLocations', 400)
       }
     }
+    if (patch.modelReasons !== undefined && patch.modelReasons !== null) {
+      if (!Array.isArray(patch.modelReasons) || !patch.modelReasons.every((r) => MODEL_REASON_KEYS.has(r))) {
+        return err(res, 'Invalid modelReasons', 400)
+      }
+    }
+    if (patch.modelNote !== undefined && patch.modelNote !== null) {
+      if (typeof patch.modelNote !== 'string' || patch.modelNote.length > MODEL_NOTE_MAX) {
+        return err(res, 'Invalid modelNote', 400)
+      }
+    }
     if (patch.locationId) {
       const locChk = await sb(`workspace_locations?id=eq.${patch.locationId}&workspace_id=eq.${ws.id}&select=id&limit=1`)
       if (!locChk.ok || !(await locChk.json()).length) return err(res, 'Location not found in workspace', 404)
@@ -334,6 +345,23 @@ export default async function handler(req, res) {
     if (patch.status === 'rejected') {
       allowed.rejected_by = auth.userId
       allowed.rejected_at = new Date().toISOString()
+    }
+    // The "came together well" craft signal (pre-publish, see modelRating.js).
+    // Marking stamps model_marked_at server-side and stores the reasons/note
+    // given at that moment; unmarking ("Undo") clears all three together so a
+    // later re-mark starts from a clean slate rather than resurrecting stale
+    // chips. isModelPost is the only field the client toggles — reasons/note
+    // are only meaningful attached to a mark, never set independently.
+    if (patch.isModelPost === true) {
+      allowed.is_model_post = true
+      allowed.model_marked_at = new Date().toISOString()
+      allowed.model_reasons = patch.modelReasons || []
+      allowed.model_note = patch.modelNote || null
+    } else if (patch.isModelPost === false) {
+      allowed.is_model_post = false
+      allowed.model_marked_at = null
+      allowed.model_reasons = null
+      allowed.model_note = null
     }
     const body = Object.fromEntries(
       Object.entries(allowed).filter(([_k, v]) => v !== undefined)
