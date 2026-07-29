@@ -30,6 +30,7 @@ import { withSentry } from '../../_lib/sentry.js'
 import { createClerkClient } from '@clerk/backend'
 import { verifyCronSecret } from '../../_lib/auth.js'
 import { laneEnabled } from '../../_lib/producer/config.js'
+import { listWorkspaceOwnerUserIds } from '../../_lib/workspaceOwners.js'
 import { recordAgentAction } from '../../_lib/agentActions.js'
 import { buildEscalation } from '../../_lib/approvalEscalationEmail.js'
 import {
@@ -70,26 +71,56 @@ function sb(path, init = {}) {
 // population the /producer control surface is gated to. Deliberately NOT every
 // clinician: a nudge that reaches people who cannot act on it is the exact
 // escalation fatigue the sprint plan warned about.
-async function resolveRecipients(wsId) {
+// Owners + producers for a workspace.
+//
+// Owners come from CLERK, not from staff.permission_tier — nothing in the
+// product ever writes 'owner' to that column, so the previous
+// `permission_tier=in.(owner,producer)` query found zero owners on 6 of 7 live
+// workspaces, every one of which has a real Clerk org admin. See
+// api/_lib/workspaceOwners.js. Producers are a genuine staff tier and are
+// still read from the table.
+//
+// Must match the recipient block in engagement-digest.js — these two crons
+// mail the same people about the same queue.
+async function resolveRecipients(ws) {
+  const userIds = await listWorkspaceOwnerUserIds(ws, sb, clerk, '[approval-escalation]')
+
   const r = await sb(
-    `staff?workspace_id=eq.${wsId}&permission_tier=in.(owner,producer)` +
-    `&user_id=not.is.null&select=user_id,name`
+    `staff?workspace_id=eq.${ws.id}&permission_tier=eq.producer` +
+    `&user_id=not.is.null&select=user_id`
   )
-  if (!r.ok) {
-    console.error('[approval-escalation] staff fetch failed:', r.status)
-    return []
+  if (r.ok) {
+    for (const s of (await r.json().catch(() => [])) || []) {
+      if (s.user_id) userIds.add(s.user_id)
+    }
+  } else {
+    console.error('[approval-escalation] producer staff fetch failed:', r.status)
   }
-  const rows = (await r.json().catch(() => [])) || []
+
+  // Display names live on the staff row regardless of tier — a Clerk-derived
+  // owner usually has one (as a 'clinician'), so look names up by user_id
+  // rather than assuming the tier query already returned them.
+  const names = new Map()
+  if (userIds.size > 0) {
+    const nRes = await sb(
+      `staff?workspace_id=eq.${ws.id}&user_id=in.(${[...userIds].join(',')})&select=user_id,name`
+    )
+    if (nRes.ok) {
+      for (const s of (await nRes.json().catch(() => [])) || []) {
+        if (s.user_id && s.name && !names.has(s.user_id)) names.set(s.user_id, s.name)
+      }
+    }
+  }
 
   const out = []
-  for (const s of rows) {
+  for (const uid of userIds) {
     try {
-      const user = await clerk().users.getUser(s.user_id)
+      const user = await clerk().users.getUser(uid)
       const email = user.emailAddresses?.find((a) => a.id === user.primaryEmailAddressId)?.emailAddress
         || user.emailAddresses?.[0]?.emailAddress
-      if (email) out.push({ email, name: s.name || null })
+      if (email) out.push({ email, name: names.get(uid) || user.firstName || null })
     } catch (e) {
-      console.warn(`[approval-escalation] clerk lookup failed for ${s.user_id}:`, e?.message)
+      console.warn(`[approval-escalation] clerk lookup failed for ${uid}:`, e?.message)
     }
   }
   // Same person can hold two staff rows; never email them twice.
@@ -133,7 +164,9 @@ async function handler(req, res) {
     'workspaces?status=eq.active' +
     (onlySlug ? `&slug=eq.${encodeURIComponent(onlySlug)}` : '') +
     // No `name` column on workspaces — including it 400s the query (42703).
-    '&select=id,slug,display_name,colors,cadence_policy,producer_config'
+    // clerk_org_id is REQUIRED: resolveRecipients resolves owners from Clerk,
+    // and without it that lookup silently finds nobody.
+    '&select=id,slug,display_name,colors,cadence_policy,producer_config,clerk_org_id'
   )
   if (!wsRes.ok) {
     console.error('[approval-escalation] workspaces fetch failed:', wsRes.status)
@@ -168,7 +201,7 @@ async function handler(req, res) {
       const shown = overdue.slice(0, MAX_ITEMS_PER_EMAIL)
       const recipients = testTo
         ? [{ email: testTo, name: null }]
-        : await resolveRecipients(ws.id)
+        : await resolveRecipients(ws)
       if (recipients.length === 0) {
         results.push({ workspace: ws.slug, skipped: 'no_recipients', overdue: overdue.length })
         continue

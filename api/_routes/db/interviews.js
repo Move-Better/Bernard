@@ -252,9 +252,18 @@ export default async function handler(req, res) {
     if (!rows.length) return err(res, 'Not found', 404)
     if (rows[0].owner_id !== userId) {
       // Workspace owners can edit any story in their workspace (mirrors DELETE path).
-      const tierChk = await sb(`staff?user_id=eq.${encodeURIComponent(userId)}&${wsFilter}&select=permission_tier&limit=1`)
-      const tierRows = tierChk.ok ? await tierChk.json() : []
-      if (tierRows[0]?.permission_tier !== 'owner') return err(res, 'Forbidden', 403)
+      //
+      // Ownership is a CLERK fact (auth.isOrgAdmin), not a staff.permission_tier
+      // value — nothing in the product writes 'owner' to that column, so the
+      // tier-only check denied genuine owners on every workspace except the one
+      // where a row had been set by hand. The tier check is kept as a UNION so
+      // that hand-set row still works. isOrgAdmin comes from requireRole's own
+      // return value (line ~106), not from req.clerk, so it is not spoofable.
+      if (!auth.isOrgAdmin) {
+        const tierChk = await sb(`staff?user_id=eq.${encodeURIComponent(userId)}&${wsFilter}&select=permission_tier&limit=1`)
+        const tierRows = tierChk.ok ? await tierChk.json() : []
+        if (tierRows[0]?.permission_tier !== 'owner') return err(res, 'Forbidden', 403)
+      }
     }
 
     const body = req.body || {}
@@ -673,9 +682,12 @@ export default async function handler(req, res) {
     if (!rows.length) return err(res, 'Not found', 404)
     if (rows[0].owner_id !== userId) {
       // Workspace owners can delete any story in their workspace.
-      const tierChk = await sb(`staff?user_id=eq.${encodeURIComponent(userId)}&${wsFilter}&select=permission_tier&limit=1`)
-      const tierRows = tierChk.ok ? await tierChk.json() : []
-      if (tierRows[0]?.permission_tier !== 'owner') return err(res, 'Forbidden', 403)
+      // Clerk org admin OR an explicit owner-tier row — see the PATCH path above.
+      if (!auth.isOrgAdmin) {
+        const tierChk = await sb(`staff?user_id=eq.${encodeURIComponent(userId)}&${wsFilter}&select=permission_tier&limit=1`)
+        const tierRows = tierChk.ok ? await tierChk.json() : []
+        if (tierRows[0]?.permission_tier !== 'owner') return err(res, 'Forbidden', 403)
+      }
     }
 
     // Block deletion if any content items from this interview have been

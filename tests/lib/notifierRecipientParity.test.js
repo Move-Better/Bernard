@@ -2,24 +2,25 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-// GUARD — the two producer-facing notifier crons must mail the SAME set of
-// people.
+// GUARD — the two producer-facing notifier crons must mail the SAME people,
+// and must resolve OWNERS FROM CLERK rather than from staff.permission_tier.
 //
-// engagement-digest (weekly summary) and approval-escalation (daily nudge)
-// both tell the same humans about the same approval queue. They resolved
-// recipients independently and drifted: escalation used
-// `permission_tier=in.(owner,producer)` while the digest used
-// `permission_tier=eq.producer`. Net effect on the live workspace — an owner
-// got nagged every day about posts they were never sent a weekly summary of.
+// Two bugs, found a day apart, both in this pair of files:
 //
-// This is the same shape as the Buffer/bundle.social divergence in CLAUDE.md:
-// two paths that "obviously" do the same thing, each re-implementing the rule,
-// with no test tying them together. Neither file's own source looks wrong in
-// isolation, which is exactly why this has to be a cross-file assertion.
+//   1. They resolved recipients independently and drifted — escalation used
+//      in.(owner,producer), the digest used eq.producer. An owner was nagged
+//      daily about posts they were never sent a weekly summary of.
 //
-// The tier set is deliberately compared as a normalized SET, not as a literal
-// string, so reordering (`producer,owner`) or whitespace doesn't red-flag a
-// change that is genuinely equivalent.
+//   2. The fix for (1) still read the wrong source. Ownership in Bernard is a
+//      CLERK fact (org_role === 'org:admin'); staff.permission_tier is left
+//      NULL on create by design (staff/ensure-self.js) and NOTHING in the
+//      product ever writes 'owner' to it. So in.(owner,producer) found zero
+//      owners on 6 of 7 live workspaces, each of which has a real Clerk admin.
+//      Only movebetter worked, because one row was set by hand.
+//
+// Both crons now go through listWorkspaceOwnerUserIds(). This guard pins that,
+// because the failure is invisible from either file alone: the query looks
+// perfectly reasonable, returns 200, and simply omits people.
 
 // fileURLToPath, not URL.pathname — the repo lives under "Claude Projects" and
 // .pathname percent-encodes the space, which readFileSync ENOENTs on.
@@ -27,37 +28,47 @@ const read = (rel) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)),
 
 const DIGEST = read('../../api/_routes/cron/engagement-digest.js')
 const ESCALATION = read('../../api/_routes/cron/approval-escalation.js')
+const CRONS = [['engagement-digest', DIGEST], ['approval-escalation', ESCALATION]]
 
-// Pull the tier set out of a `permission_tier=in.(a,b)` PostgREST filter.
-function tierSet(src, label) {
-  const m = /permission_tier=in\.\(([^)]+)\)/.exec(src)
-  expect(m, `${label}: no permission_tier=in.(...) filter found`).not.toBeNull()
-  return new Set(m[1].split(',').map((s) => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean))
-}
+// Strip `//` line comments before asserting that a bad pattern is ABSENT.
+// Both files legitimately DESCRIBE the old broken query in prose, and a naive
+// negative match reddens on that description — punishing the comment that
+// explains the bug. This is the mirror of the documented "a grep guard is
+// satisfied by a mention" trap: here a mention would falsely FAIL it.
+const codeOnly = (src) => src.replace(/^\s*\/\/.*$/gm, '')
 
 describe('producer notifier crons resolve the same recipients', () => {
-  it('both derive recipients from the same permission tiers', () => {
-    const digest = tierSet(DIGEST, 'engagement-digest')
-    const escalation = tierSet(ESCALATION, 'approval-escalation')
-
-    // Non-vacuity: a regex that matched an empty group would make the
-    // comparison below trivially true.
-    expect(digest.size, 'digest tier set is empty').toBeGreaterThan(0)
-    expect(escalation.size, 'escalation tier set is empty').toBeGreaterThan(0)
-
-    expect([...digest].sort()).toEqual([...escalation].sort())
+  it.each(CRONS)('%s resolves owners via listWorkspaceOwnerUserIds', (_name, src) => {
+    // `(` matters: a bare mention in a comment must not satisfy this.
+    expect(src).toMatch(/listWorkspaceOwnerUserIds\(/)
+    expect(src).toMatch(/from '\.\.\/\.\.\/_lib\/workspaceOwners\.js'/)
   })
 
-  it('that shared set is owner + producer', () => {
-    // Pins the actual intent, not just parity — parity alone is satisfied by
-    // both files being changed to something wrong in the same commit.
-    expect([...tierSet(DIGEST, 'engagement-digest')].sort()).toEqual(['owner', 'producer'])
+  it.each(CRONS)('%s does not treat permission_tier as the owner source', (_name, src) => {
+    // The shape that was wrong: in.(owner,producer) — right idea, wrong source
+    // of truth. Asserted against code only, so the comments explaining the bug
+    // don't trip it.
+    expect(codeOnly(src)).not.toMatch(/permission_tier=in\.\([^)]*owner/)
   })
 
-  it('neither cron narrows recipients with an eq.producer filter', () => {
-    // The pre-fix digest shape. `eq.` on this column is how the drift
-    // happened; an `in.(...)` set is the only form that should appear.
-    expect(DIGEST).not.toMatch(/permission_tier=eq\./)
-    expect(ESCALATION).not.toMatch(/permission_tier=eq\./)
+  it.each(CRONS)('%s still reads producer tier from staff', (_name, src) => {
+    // Non-vacuity for the assertion above: producers ARE a real staff tier, so
+    // removing the tier query entirely would silently drop them while leaving
+    // the "no owner source" assertion trivially satisfied.
+    expect(src).toMatch(/permission_tier=eq\.producer/)
+  })
+
+  it('both pass a workspace object carrying clerk_org_id', () => {
+    // The helper reads workspace.clerk_org_id. If a cron selects the workspace
+    // without that column, the Clerk lookup silently finds nobody and the whole
+    // fix becomes a no-op that still returns 200 — exactly the failure this
+    // guard exists to prevent. (approval-escalation shipped without it and had
+    // to have the column added in the same change.)
+    for (const [name, src] of CRONS) {
+      const selects = [...src.matchAll(/select=([A-Za-z0-9_,]+)/g)].map((m) => m[1])
+      const wsSelect = selects.find((s) => s.includes('slug') && s.includes('display_name'))
+      expect(wsSelect, `${name}: no workspaces select found`).toBeTruthy()
+      expect(wsSelect.split(','), `${name}: workspaces select omits clerk_org_id`).toContain('clerk_org_id')
+    }
   })
 })
