@@ -1,0 +1,156 @@
+#!/usr/bin/env node
+// Generate the weekly "Bernard's note for this week" coaching card (P4 of
+// ProducerHome — .claude/decisions.md 2026-07-29). One per workspace per
+// week: reads what shipped (product_updates, last 7 days) + this workspace's
+// live checkpoint/health state, and asks the model to write ONE short
+// paragraph of guidance — not a changelog, not a status dump. Same engine
+// for every tenant; runs as a scheduled Claude task (Monday mornings), same
+// pattern as scripts/generate-product-updates.mjs.
+//
+// Usage: node scripts/generate-coaching-note.mjs [--workspace=<slug>] [--dry-run]
+
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..')
+const DRY_RUN = process.argv.includes('--dry-run')
+const ONLY_SLUG = process.argv.find((a) => a.startsWith('--workspace='))?.split('=')[1] || null
+
+const envText = await readFile(join(ROOT, '.env.local'), 'utf8').catch(() => '')
+for (const line of envText.split(/\r?\n/)) {
+  const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/)
+  if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1')
+}
+
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+const GATEWAY_KEY = process.env.AI_GATEWAY_API_KEY
+
+function sb(path, init = {}) {
+  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      ...init.headers,
+    },
+  })
+}
+
+function mondayOf(d = new Date()) {
+  const day = (d.getUTCDay() + 6) % 7
+  const monday = new Date(d)
+  monday.setUTCDate(d.getUTCDate() - day)
+  return monday.toISOString().slice(0, 10)
+}
+
+async function workspaces() {
+  const filter = ONLY_SLUG ? `&slug=eq.${encodeURIComponent(ONLY_SLUG)}` : ''
+  const r = await sb(`workspaces?select=id,slug,app_name,cadence_policy${filter}`)
+  if (!r.ok) throw new Error(`workspaces fetch failed: ${r.status}`)
+  return r.json()
+}
+
+async function countRows(path) {
+  const r = await sb(`${path}${path.includes('?') ? '&' : '?'}select=id`, {
+    headers: { Prefer: 'count=exact', Range: '0-0' },
+  })
+  if (!r.ok) return 0
+  const cr = r.headers.get('content-range') || ''
+  return Number(cr.split('/')[1]) || 0
+}
+
+async function stateFor(ws) {
+  const [posts, stalePosts, clips, packages, failures] = await Promise.all([
+    countRows(`content_items?workspace_id=eq.${ws.id}&status=in.(draft,in_review)&platform=neq.blog`),
+    (async () => {
+      const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+      return countRows(`content_items?workspace_id=eq.${ws.id}&status=in.(draft,in_review)&platform=neq.blog&created_at=lt.${since}`)
+    })(),
+    countRows(`video_segments?workspace_id=eq.${ws.id}&status=eq.proposed`),
+    countRows(`story_packages?workspace_id=eq.${ws.id}&status=eq.complete`),
+    (async () => {
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      return countRows(`agent_actions?workspace_id=eq.${ws.id}&kind=eq.publish_failed&created_at=gte.${since}`)
+    })(),
+  ])
+
+  const lastPubR = await sb(
+    `content_items?workspace_id=eq.${ws.id}&status=eq.published&published_at=not.is.null` +
+    `&select=platform,published_at&order=published_at.desc&limit=500`,
+  )
+  const lastPub = lastPubR.ok ? await lastPubR.json() : []
+  const seen = new Set()
+  const idle = []
+  for (const row of lastPub) {
+    if (seen.has(row.platform)) continue
+    seen.add(row.platform)
+    const days = Math.floor((Date.now() - Date.parse(row.published_at)) / 86_400_000)
+    if (days >= 7) idle.push(`${row.platform} (${days}d)`)
+  }
+
+  return { posts, stalePosts, clips, packages, failures, idleChannels: idle }
+}
+
+async function recentUpdates() {
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const r = await sb(`product_updates?created_at=gte.${since}&select=summary,roles&order=created_at.desc&limit=15`)
+  if (!r.ok) return []
+  const rows = await r.json()
+  return rows.filter((u) => !u.roles?.length || u.roles.includes('producer'))
+}
+
+async function draftNote(ws, state, updates) {
+  const prompt = `You are Bernard, an AI content-production platform for a chiropractic clinic ("${ws.app_name || ws.slug}"). Write a short weekly coaching note (2-4 sentences, plain language, no headers, no bullet emoji) for the PRODUCER — the person who approves posts, reviews video clips, and monitors publishing. The note should:
+- Mention the most relevant product change from the last week, if any, and what it means for their workflow.
+- Point out anything in their current queue worth flagging (a stale backlog, an idle channel) — coach them on what to do, don't just restate numbers.
+- Skip anything with a zero/clear count. Don't pad with filler if there's little to say.
+
+This week's shipped changes:
+${updates.length ? updates.map((u) => `- ${u.summary}`).join('\n') : '(nothing new this week)'}
+
+Current state: ${state.posts} posts awaiting approval (${state.stalePosts} over two weeks old), ${state.clips} clips awaiting review, ${state.packages} video package(s) finished awaiting approval, ${state.failures} publish failure(s) this week, idle channels: ${state.idleChannels.join(', ') || 'none'}.
+
+Write only the note text, no preamble.`
+
+  const r = await fetch('https://ai-gateway.vercel.sh/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${GATEWAY_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'anthropic/claude-sonnet-4-6',
+      messages: [{ role: 'user', content: prompt }],
+    }),
+    signal: AbortSignal.timeout(30_000),
+  })
+  if (!r.ok) { console.error(`draft failed for ${ws.slug}:`, r.status); return null }
+  const data = await r.json()
+  return data.choices?.[0]?.message?.content?.trim() || null
+}
+
+async function main() {
+  if (!SUPABASE_URL || !SUPABASE_KEY) { console.error('Missing SUPABASE_URL/SUPABASE_SERVICE_KEY'); process.exit(1) }
+  if (!GATEWAY_KEY) { console.error('Missing AI_GATEWAY_API_KEY'); process.exit(1) }
+
+  const week = mondayOf()
+  const updates = await recentUpdates()
+  const wss = await workspaces()
+  console.log(`Generating coaching notes for ${wss.length} workspace(s), week of ${week}`)
+
+  for (const ws of wss) {
+    const state = await stateFor(ws)
+    const note = await draftNote(ws, state, updates)
+    if (!note) continue
+    console.log(`\n=== ${ws.slug} ===\n${note}`)
+    if (DRY_RUN) continue
+    const r = await sb('workspace_coaching_notes?on_conflict=workspace_id,week_monday', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ workspace_id: ws.id, week_monday: week, note }),
+    })
+    if (!r.ok) console.error(`upsert failed for ${ws.slug}:`, r.status, (await r.text()).slice(0, 300))
+  }
+}
+
+main().catch((e) => { console.error(e); process.exit(1) })

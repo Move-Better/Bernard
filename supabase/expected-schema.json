@@ -622,6 +622,15 @@
     "status",
     "workspace_id"
   ],
+  "product_updates": [
+    "created_at",
+    "id",
+    "page_hint",
+    "roles",
+    "source_pr",
+    "source_sha",
+    "summary"
+  ],
   "seo_citation_probes": [
     "answer_excerpt",
     "cited",
@@ -846,6 +855,13 @@
     "source_counts",
     "stale_at",
     "updated_at",
+    "workspace_id"
+  ],
+  "workspace_coaching_notes": [
+    "created_at",
+    "id",
+    "note",
+    "week_monday",
     "workspace_id"
   ],
   "workspace_concepts": [
