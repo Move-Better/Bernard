@@ -33,6 +33,7 @@ import { createClerkClient } from '@clerk/backend'
 import { buildDigest } from '../../_lib/engagementDigestEmail.js'
 import { verifyCronSecret } from '../../_lib/auth.js'
 import { computeTrustMetrics } from '../../_lib/trustMetrics.js'
+import { listWorkspaceOwnerUserIds } from '../../_lib/workspaceOwners.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -251,23 +252,27 @@ async function handler(req, res) {
         ? ws.engagement_digest_recipients.filter(Boolean)
         : []
 
-      // Empty list = derive from owner- and producer-tier staff.
+      // Empty list = owners + producers.
       //
-      // Must match resolveRecipients() in approval-escalation.js. These two
-      // crons mail the same people about the same queue, and they had drifted:
-      // this one was producer-only while escalation was owner+producer, so an
-      // owner got the daily nudge but never the weekly summary. Aligned on the
-      // wider set — an owner who wants out has the footer link, which is the
-      // right way to opt out of an email you can already see.
+      // Owners come from Clerk, NOT from permission_tier — nothing in the
+      // product ever writes 'owner' to that column, so querying it found zero
+      // owners on 6 of 7 live workspaces that each have a real Clerk org admin.
+      // See api/_lib/workspaceOwners.js. Producers are a genuine staff tier and
+      // are still read from the table.
+      //
+      // Must match resolveRecipients() in approval-escalation.js — these two
+      // crons mail the same people about the same queue.
       if (recipientUserIds.length === 0) {
+        const owners = await listWorkspaceOwnerUserIds(ws, sb, clerk, '[engagement-digest]')
         const pRes = await sb(
-          `staff?workspace_id=eq.${ws.id}&permission_tier=in.(owner,producer)` +
+          `staff?workspace_id=eq.${ws.id}&permission_tier=eq.producer` +
           `&user_id=not.is.null&select=user_id`
         )
         if (pRes.ok) {
           const rows = await pRes.json()
-          recipientUserIds = rows.map((r) => r.user_id).filter(Boolean)
+          for (const r of rows) if (r.user_id) owners.add(r.user_id)
         }
+        recipientUserIds = [...owners]
       }
 
       if (recipientUserIds.length === 0) {

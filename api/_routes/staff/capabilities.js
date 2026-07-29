@@ -19,8 +19,16 @@ import {
   CAP_MEMBERS_INVITE,
 } from '../../_lib/capabilities.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
+import { isWorkspaceOwner } from '../../_lib/workspaceOwners.js'
+import { createClerkClient } from '@clerk/backend'
 
 export const config = { runtime: 'nodejs' }
+
+let _clerk = null
+function clerk() {
+  if (!_clerk) _clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY })
+  return _clerk
+}
 
 async function handler(req, res) {
   if (req.method !== 'PATCH') {
@@ -73,8 +81,21 @@ async function handler(req, res) {
     const [target] = await tres.json()
     if (!target) return res.status(404).json({ error: 'Staff member not found' })
 
-    // Owner-tier staff are always all-caps — no overrides allowed.
-    if (target.permission_tier === 'owner') {
+    // Owners are always all-caps — no overrides allowed.
+    //
+    // This previously checked permission_tier alone, which nothing in the
+    // product ever sets to 'owner' — so the guard never fired and a real owner
+    // (a Clerk org admin) could have their capabilities overridden by another
+    // admin. That is the fail-OPEN direction, unlike the interviews.js checks.
+    // isWorkspaceOwner covers Clerk org admins UNION explicit owner-tier rows.
+    const sbFetch = (path, init = {}) => fetch(`${SUPA}/rest/v1/${path}`, {
+      ...init,
+      headers: { apikey: SROLE, Authorization: `Bearer ${SROLE}`, ...init.headers },
+    })
+    if (
+      target.permission_tier === 'owner' ||
+      (await isWorkspaceOwner(target.user_id, workspace, sbFetch, clerk, '[staff/capabilities]'))
+    ) {
       return res.status(400).json({ error: 'Owner capabilities cannot be modified' })
     }
     // No self-escalation.
