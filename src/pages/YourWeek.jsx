@@ -446,6 +446,21 @@ function PlanCard({ item, tz, onDraft, drafting, draftBusy, readOnly }) {
           <CardPreview item={item} />
           <div className="min-w-0 flex-1">{copy}</div>
         </div>
+      ) : item.needsMedia ? (
+        // A real, actionable media gap (drafted post, media-taking platform,
+        // nothing attached). Auto-attach fills most; this amber tile marks the
+        // honest no-match remainder so the producer knows to add a photo,
+        // instead of the old "no media just stays compact" shape that read as
+        // finished. Sized to CardPreview so it sits where the art will go.
+        <div className="flex gap-2.5">
+          <div
+            className="flex aspect-square w-[84px] shrink-0 self-start items-center justify-center rounded-md bg-action/10 ring-1 ring-inset ring-action/40"
+            title="Needs a photo or video — open to add one"
+          >
+            <ImagePlus className="h-6 w-6 text-action" aria-label="Needs a photo or video" />
+          </div>
+          <div className="min-w-0 flex-1">{copy}</div>
+        </div>
       ) : copy}
     </>
   )
