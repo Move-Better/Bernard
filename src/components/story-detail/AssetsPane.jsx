@@ -29,6 +29,8 @@ import { useContentWorkflow } from '@/lib/useContentWorkflow'
 import PostStatusRow from './PostStatusRow'
 import StoryCommentsFeed from './StoryCommentsFeed'
 import ModelPostRating from './ModelPostRating'
+import CopyToPlatformsModal from './CopyToPlatformsModal'
+import { isVideoEntry } from '@/lib/mediaEntry'
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
@@ -503,6 +505,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
 
   const [changeRequestOpen, setChangeRequestOpen] = useState(false)
   const [changeRequestBody, setChangeRequestBody] = useState('')
+  const [copyModalOpen, setCopyModalOpen] = useState(false)
 
   // Approve / send-for-review / publish / schedule / queue / beehiiv / cancel
   // all run through the shared workflow hook — the SAME orchestration the editor
@@ -714,6 +717,26 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
             </div>
           )}
         </div>
+      )}
+
+      {/* "Copy this post to other platforms" (feedback 21331b1d) — v1 scope
+          mirrors the server: a single photo, no carousel/video. Gated on
+          canReview since it creates real draft rows, same bar as Approve. */}
+      {isPublish && canReview && Array.isArray(piece.media_urls) && piece.media_urls.length === 1
+        && (!Array.isArray(piece.slides) || piece.slides.length <= 1)
+        && !isVideoEntry(piece.media_urls[0]) && (
+        <>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setCopyModalOpen(true)}
+            className="w-full border-action/40 text-action hover:bg-action/10"
+          >
+            <Copy className="h-3.5 w-3.5 mr-1.5" />
+            Copy to other platforms
+          </Button>
+          <CopyToPlatformsModal piece={piece} open={copyModalOpen} onOpenChange={setCopyModalOpen} />
+        </>
       )}
 
       {/* The "came together well" craft signal — a human call on composition,

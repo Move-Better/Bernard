@@ -61,6 +61,25 @@ export function suggestMediaForDraft(id, opts = {}) {
   })
 }
 
+// "Copy this post to other platforms" (feedback 21331b1d) — preview per-target
+// fill/create/already-live state (no writes), or run the real copy. See
+// api/content-items/copy-to-platforms.js for the full contract.
+export function previewCopyToPlatforms(sourceId) {
+  return apiFetch('/api/content-items/copy-to-platforms', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sourceId, dryRun: true }),
+  })
+}
+
+export function copyToPlatforms(sourceId, targets) {
+  return apiFetch('/api/content-items/copy-to-platforms', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sourceId, targets }),
+  })
+}
+
 export function suggestHashtags(contentItemId) {
   return apiFetch('/api/content/suggest-hashtags', {
     method: 'POST',
