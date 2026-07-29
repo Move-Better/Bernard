@@ -22,6 +22,7 @@ import { workspace as STATIC_WORKSPACE } from '@/lib/workspace'
 import { BERNARD_LOGO_URL, BERNARD_LOGO_LIGHT_URL } from '@/lib/brand'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
+import { usePermissionTier } from '@/lib/usePermissionTier'
 import { usePlatformAdmin } from '@/lib/usePlatformAdmin'
 import { usePermission } from '@/lib/usePermission'
 import {
@@ -41,8 +42,12 @@ const APP_BYLINE = 'Voice-faithful clinical content'
 const NAV_SECTIONS = [
   {
     items: [
-      { to: '/',         label: 'Home',     match: (p) => p === '/',                  icon: LayoutDashboard,
-        requiresCapability: CAP_INTERVIEW_START },
+      // No capability gate — Home now forks by permission_tier (HomeRouter in
+      // App.jsx) so it's meaningful for every role, including producers, who
+      // previously had no Home nav link at all because CAP_INTERVIEW_START
+      // (clinician-only by default) hid it (found while adding ProducerHome,
+      // 2026-07-29 — see .claude/decisions.md).
+      { to: '/',         label: 'Home',     match: (p) => p === '/',                  icon: LayoutDashboard },
       // Analytics — grouped flyout for the tenant-facing measurement surfaces
       // (Overview, Insights, SEO). Collapses 3 top-level icons into 1; each
       // item keeps its own gating and still routes to its existing page.
@@ -76,7 +81,7 @@ const NAV_SECTIONS = [
       { to: '/producer',   label: 'Bernard',    hint: 'Workday',         match: (p) => p.startsWith('/producer'), icon: Bot,
         showWhen: (ws) => ws?.producer_config?.enabled },
       { to: '/stories',    label: 'Stories',    hint: 'Stories',         match: (p) => p.startsWith('/stories'),  icon: Newspaper,
-        requiresCapability: CAP_INTERVIEW_START },
+        requiresCapability: CAP_INTERVIEW_START, hideForProducer: true },
       // Moment Miner — the cutting desk (video → clips). Sits between Stories and
       // Publish so the Produce section reads as the pipeline: words → cut →
       // assemble/ship. Still gated on the workspace's video pipeline opt-in.
@@ -102,11 +107,11 @@ const NAV_SECTIONS = [
         label: 'Tools', icon: Wrench,
         flyoutItems: [
           { to: '/book',      label: 'Book',      match: (p) => p.startsWith('/book'),      icon: BookOpen,
-            requiresCapability: CAP_INTERVIEW_START },
+            requiresCapability: CAP_INTERVIEW_START, hideForProducer: true },
           { to: '/write',     label: 'Write',     match: (p) => p.startsWith('/write'),     icon: PenLine,
-            hideWhenBookMode: 'group', requiresCapability: CAP_INTERVIEW_START },
+            hideWhenBookMode: 'group', requiresCapability: CAP_INTERVIEW_START, hideForProducer: true },
           { to: '/pre-visit', label: 'Pre-Visit', match: (p) => p.startsWith('/pre-visit'), icon: Mic2,
-            requiresCapability: CAP_INTERVIEW_START },
+            requiresCapability: CAP_INTERVIEW_START, hideForProducer: true },
           // Usage — per-workspace adoption dashboard (internal metrics, not
           // clinic performance — grouped with Admin, not Analytics).
           // Admin/owner-gated (per-staff data).
@@ -131,6 +136,7 @@ export default function Layout({ children }) {
   const { role, isEditor } = useUserRole()
   const { isPlatformAdmin } = usePlatformAdmin()
   const { has: hasCapability } = usePermission()
+  const { isProducer } = usePermissionTier()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const ws = useWorkspace()
@@ -157,6 +163,10 @@ export default function Layout({ children }) {
     if (it.requiresPlatformAdmin && !isPlatformAdmin) return false
     if (it.hideWhenBookMode && ws?.book_mode === it.hideWhenBookMode) return false
     if (it.showWhen && !it.showWhen(ws)) return false
+    // ProducerHome (2026-07-29): a producer is not a clinician and shouldn't
+    // see clinical CAPTURE surfaces in nav — their own checkpoints route
+    // through Home/Your week/Moments instead. Owners keep full nav.
+    if (it.hideForProducer && isProducer) return false
     return true
   }
   // Resolve each section's items: a flyout group's own children are filtered

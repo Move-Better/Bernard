@@ -1,0 +1,257 @@
+<title>ProducerHome — mockup</title>
+<style>
+  /* page chrome (around the mock) themes; the app frame itself is fixed to
+     Bernard's real light look — that IS the design being signed off. */
+  :root{ --pg-bg:#eef0f2; --pg-fg:#0b111e; --pg-muted:#5b6472; --pg-line:#d9dde1; --pg-chip:#e2e6e9; }
+  @media (prefers-color-scheme: dark){ :root{ --pg-bg:#101416; --pg-fg:#e8ecee; --pg-muted:#96a1a8; --pg-line:#2a3236; --pg-chip:#1e2529; } }
+  :root[data-theme="dark"]{ --pg-bg:#101416; --pg-fg:#e8ecee; --pg-muted:#96a1a8; --pg-line:#2a3236; --pg-chip:#1e2529; }
+  :root[data-theme="light"]{ --pg-bg:#eef0f2; --pg-fg:#0b111e; --pg-muted:#5b6472; --pg-line:#d9dde1; --pg-chip:#e2e6e9; }
+
+  body{ margin:0; padding:0 18px 70px; background:var(--pg-bg); color:var(--pg-fg);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap{ max-width:1320px; margin:0 auto; }
+  .dochead{ padding:28px 2px 14px; }
+  .dochead .eyebrow{ text-transform:uppercase; letter-spacing:.08em; font-size:11px; font-weight:700; color:var(--pg-muted); }
+  .dochead h1{ font-size:20px; margin:4px 0 2px; text-wrap:balance; }
+  .dochead p{ color:var(--pg-muted); margin:2px 0; max-width:88ch; }
+  .v2{ display:inline-block; background:var(--pg-chip); border-radius:4px; padding:1px 7px; font-size:11px; font-weight:700; }
+
+  /* ════ app frame — Bernard's real tokens ════ */
+  .frame{ background:#fff; border:1px solid var(--pg-line); border-radius:12px; overflow:hidden;
+    box-shadow:0 8px 30px rgba(11,17,30,.10); margin:14px 0 26px; }
+  .appgrid{ display:grid; grid-template-columns:224px minmax(0,1fr); min-height:780px; }
+  @media (max-width:960px){ .appgrid{ grid-template-columns:1fr; } .sb{ display:none; } }
+
+  /* sidebar — charcoal anchor */
+  .sb{ background:#16191e; color:#7c8490; padding:14px 10px 16px; display:flex; flex-direction:column; font-size:13px; }
+  .sb .logo{ display:flex; align-items:center; gap:8px; padding:4px 10px 14px; color:#fff; font-weight:700; font-size:14px; letter-spacing:.01em;}
+  .sb .logo .dot{ width:22px; height:22px; border-radius:6px; background:#0c7580; display:inline-block; flex:none;}
+  .sb .sect{ text-transform:uppercase; letter-spacing:.09em; font-size:10px; font-weight:700; color:#565e69; padding:14px 12px 4px; }
+  .nav{ position:relative; display:flex; align-items:center; gap:9px; padding:7px 12px; border-radius:8px; color:#7c8490; text-decoration:none; margin:1px 0;}
+  .nav:hover{ background:#23272e99; color:#fff; }
+  .nav.active{ background:#23272e; color:#fff; }
+  .nav.active::before{ content:""; position:absolute; left:0; top:6px; bottom:6px; width:3px; border-radius:0 3px 3px 0; background:#17a6b4; }
+  .nav svg{ width:15px; height:15px; flex:none; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;}
+  .nav .hint{ margin-left:auto; font-size:10.5px; color:#565e69; }
+  .sb .spacer{ flex:1; }
+  .sb .ws{ margin:0 6px; border:1px solid #262a31; background:#23272e99; border-radius:99px; padding:4px 12px; font-size:11.5px; color:#9aa2ac; }
+
+  /* main canvas */
+  .main{ padding:30px 34px 40px; color:#0b111e; min-width:0; }
+  .main h2.greet{ font-size:22px; margin:0; letter-spacing:-.01em; }
+  .main .sub{ color:#47546b; margin:3px 0 0; font-size:14px; }
+  .sechead{ display:flex; align-items:baseline; gap:8px; margin:26px 0 8px; }
+  .sechead h3{ font-size:12px; text-transform:uppercase; letter-spacing:.07em; color:#47546b; margin:0; font-weight:700;}
+  .sechead .more{ margin-left:auto; font-size:12px; color:#0c7580; text-decoration:none; font-weight:600;}
+
+  .qcard{ display:flex; gap:14px; align-items:center; border:1px solid #e2e8f0; border-radius:10px;
+    padding:14px 16px; margin-top:8px; background:#fff; }
+  .qcard:hover{ border-color:rgba(12,117,128,.3); }
+  .qcard .rank{ font:700 12.5px/24px ui-monospace,Menlo,monospace; width:24px; height:24px; text-align:center;
+    border-radius:50%; background:#f1f5f9; color:#47546b; flex:none; align-self:flex-start; margin-top:2px;}
+  .qcard.act{ border-color:#f5d9ae; background:#fffaf2; }
+  .qcard.act .rank{ background:#d97706; color:#fff; }
+  .qcard h4{ margin:0; font-size:14.5px; }
+  .qcard .why{ font-size:13px; color:#47546b; margin:2px 0 0; max-width:66ch;}
+  .qcard .gate{ font-size:11.5px; font-weight:600; color:#0c7580; margin-top:5px; }
+  .qcard.act .gate{ color:#b45309; }
+  .qcard .cta{ margin-left:auto; flex:none; }
+  .btn{ display:inline-block; font-size:12.5px; font-weight:600; padding:7px 13px; border-radius:8px;
+    background:#0c7580; color:#fff; text-decoration:none; white-space:nowrap;}
+  .btn.ghost{ background:#fff; color:#0c7580; border:1px solid #b8d9dc; }
+  .btn.tiny{ padding:4px 10px; font-size:11.5px; }
+  .n{ font-variant-numeric:tabular-nums; font-weight:700; }
+
+  .waiting{ border:1px dashed #e2e8f0; border-radius:10px; padding:11px 16px; margin-top:8px;
+    display:flex; align-items:center; gap:10px; color:#47546b; font-size:13px; background:#fafbfc;}
+  .waiting .who{ font-weight:600; color:#0b111e; }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:8px;}
+  @media (max-width:1100px){ .grid2{ grid-template-columns:1fr; } }
+  .card{ border:1px solid #e2e8f0; border-radius:10px; background:#fff; padding:16px 18px; }
+
+  .ledger{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:7px; }
+  .lcell{ border:1px solid #e2e8f0; border-radius:8px; padding:7px 10px; font-size:12px; display:flex; justify-content:space-between; gap:6px;}
+  .lcell .n{ font-weight:700; }
+  .lcell.zero{ color:#8a94a4; } .lcell.zero .n{ font-weight:400; }
+  .lcell.hot{ border-color:#f5d9ae; background:#fffaf2; }
+  .lgroup{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:#8a94a4; font-weight:700; margin:12px 0 6px;}
+  .lgroup:first-child{ margin-top:0; }
+
+  .health{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:7px; margin-top:8px;}
+  .hcell{ border:1px solid #e2e8f0; border-radius:8px; padding:9px 11px; font-size:12px; background:#fff;}
+  .hcell .k{ color:#47546b; }
+  .hcell .v{ font-weight:700; font-variant-numeric:tabular-nums; margin-top:1px; display:flex; align-items:center; gap:6px;}
+  .pill{ display:inline-block; font-size:10px; font-weight:700; padding:1px 7px; border-radius:99px; }
+  .pill.ok{ background:#e7f4ec; color:#1a7f4b; }
+  .pill.warn{ background:#fef3e2; color:#b45309; }
+  .pill.crit{ background:#fdecea; color:#b3261e; }
+
+  .coach{ border-left:3px solid #0c7580; }
+  .coach .eyebrow{ font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:#0c7580; font-weight:700;}
+  .coach p{ margin:8px 0 0; font-size:13.5px; max-width:66ch;}
+  .coach ul{ margin:6px 0 0; padding-left:18px; font-size:13.5px;}
+  .coach li{ margin:4px 0; }
+  .coach .meta{ color:#8a94a4; font-size:11.5px; margin-top:10px;}
+
+  .feed .fitem{ border-top:1px solid #eef2f5; padding:9px 0; font-size:13px;}
+  .feed .fitem:first-child{ border-top:none; padding-top:2px;}
+  .feed .fdate{ color:#8a94a4; font-size:11px; }
+  .tag{ font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+    background:#e6f1f2; color:#0c7580; border-radius:3px; padding:1px 6px; margin-left:6px;}
+
+  /* annotations below the frame */
+  .notes{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-top:6px;}
+  .note{ font-size:13px; color:var(--pg-muted); border-left:2px solid #0c7580; padding:2px 0 2px 12px; }
+  .note b{ color:var(--pg-fg); }
+  .note code{ font:12px ui-monospace,Menlo,monospace; background:var(--pg-chip); padding:1px 4px; border-radius:3px;}
+</style>
+
+<div class="wrap">
+  <div class="dochead">
+    <div class="eyebrow">True mockup · v2 · live movebetter data (2026-07-29)</div>
+    <h1>ProducerHome — what a producer sees at <code>/</code></h1>
+    <p><span class="v2">Changed from v1</span>&nbsp; Clinical checkpoints (answers review, words approvals, memory updates) are no longer the producer's work —
+       they move to a muted "waiting on your clinicians" line and a clinician-owned ledger group. The producer's own queue is purely operational.
+       The sidebar is the producer's filtered nav: no Stories / Book / Write / Pre-Visit (those are clinical capture surfaces).</p>
+  </div>
+
+  <!-- ════════════ APP FRAME ════════════ -->
+  <div class="frame"><div class="appgrid">
+
+    <aside class="sb">
+      <div class="logo"><span class="dot"></span> Bernard</div>
+      <a class="nav active" href="#">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Home</a>
+      <a class="nav" href="#">
+        <svg viewBox="0 0 24 24"><path d="M3 20h18"/><path d="M6 20V10"/><path d="M12 20V4"/><path d="M18 20v-7"/></svg>
+        Analytics</a>
+      <div class="sect">Produce</div>
+      <a class="nav" href="#">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18"/><path d="M8 2v4M16 2v4"/></svg>
+        Your week <span class="hint">Plan · approve</span></a>
+      <a class="nav" href="#">
+        <svg viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="10" rx="2"/><path d="M12 8V5"/><circle cx="12" cy="4" r="1"/><path d="M9 13h.01M15 13h.01"/></svg>
+        Bernard <span class="hint">Workday</span></a>
+      <a class="nav" href="#">
+        <svg viewBox="0 0 24 24"><path d="M14 3l7 7-4 4-7-7z"/><path d="M10 7L3 21l14-7"/></svg>
+        Moments</a>
+      <a class="nav" href="#">
+        <svg viewBox="0 0 24 24"><path d="M3 11l18-7-7 18-2.5-7.5z"/></svg>
+        Ads <span class="hint">Paid creative</span></a>
+      <div class="sect">Library</div>
+      <a class="nav" href="#">
+        <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        Library</a>
+      <div class="spacer"></div>
+      <div class="ws">movebetter ▾</div>
+    </aside>
+
+    <main class="main">
+      <h2 class="greet">Good morning, Kenzie</h2>
+      <p class="sub">You're the gate for <b>3 things</b> today — here they are, in order. Your clinicians are sitting on 1 more.</p>
+
+      <div class="sechead"><h3>Your queue</h3></div>
+
+      <div class="qcard act">
+        <div class="rank">1</div>
+        <div>
+          <h4>Approve this week's posts — <span class="n">33</span> waiting, <span class="n">9</span> for over two weeks</h4>
+          <p class="why">Instagram, Facebook and GBP posts sit here until you say go. Approving schedules them automatically — there is no second step.</p>
+          <div class="gate">You are the checkpoint — nothing publishes until you approve it.</div>
+        </div>
+        <div class="cta"><a class="btn" href="#">Review on Your week →</a></div>
+      </div>
+
+      <div class="qcard">
+        <div class="rank">2</div>
+        <div>
+          <h4>Approve <span class="n">1</span> finished video package</h4>
+          <p class="why">A cut, captioned video is ready. Approving turns it into posts for each platform.</p>
+          <div class="gate">You are the checkpoint — the video can't become posts until you approve the package.</div>
+        </div>
+        <div class="cta"><a class="btn ghost" href="#">Open Moments →</a></div>
+      </div>
+
+      <div class="qcard">
+        <div class="rank">3</div>
+        <div>
+          <h4>Clip review backlog — <span class="n">160</span> proposed cuts</h4>
+          <p class="why">Keep-or-discard decisions that stock the reel library. Nothing is blocked, but the pile only grows — 15 minutes clears about 40.</p>
+          <div class="gate">You are the checkpoint — unkept clips never reach the library.</div>
+        </div>
+        <div class="cta"><a class="btn ghost" href="#">Review clips →</a></div>
+      </div>
+
+      <div class="waiting">
+        <span>Waiting on your clinicians:</span>
+        <span><span class="who">Dr. Quasney</span> has <span class="n">6</span> drafted answers to review</span>
+        <a class="btn ghost tiny" href="#" style="margin-left:auto">Send a reminder</a>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <div class="sechead"><h3>All checkpoints</h3></div>
+          <div class="card">
+            <div class="lgroup">Yours</div>
+            <div class="ledger">
+              <div class="lcell hot"><span>Post approvals</span><span class="n">33</span></div>
+              <div class="lcell hot"><span>Clip review</span><span class="n">160</span></div>
+              <div class="lcell hot"><span>Video packages</span><span class="n">1</span></div>
+              <div class="lcell zero"><span>Publish failures</span><span class="n">0</span></div>
+              <div class="lcell zero"><span>Escalated captions</span><span class="n">0</span></div>
+              <div class="lcell zero"><span>Media consent</span><span class="n">0</span></div>
+              <div class="lcell zero"><span>Footage gaps</span><span class="n">0</span></div>
+            </div>
+            <div class="lgroup">Your clinicians'</div>
+            <div class="ledger">
+              <div class="lcell hot"><span>Answer reviews</span><span class="n">6</span></div>
+              <div class="lcell zero"><span>Words approvals</span><span class="n">0</span></div>
+              <div class="lcell zero"><span>Memory updates</span><span class="n">0</span></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="sechead"><h3>Pipeline &amp; channel health</h3></div>
+          <div class="health">
+            <div class="hcell"><div class="k">Blog</div><div class="v">43d idle <span class="pill crit">stalled</span></div></div>
+            <div class="hcell"><div class="k">Google Business</div><div class="v">15d idle <span class="pill warn">lagging</span></div></div>
+            <div class="hcell"><div class="k">Instagram</div><div class="v">1d <span class="pill ok">on pace</span></div></div>
+            <div class="hcell"><div class="k">Facebook</div><div class="v">1d <span class="pill ok">on pace</span></div></div>
+            <div class="hcell"><div class="k">LinkedIn</div><div class="v">0d <span class="pill ok">on pace</span></div></div>
+            <div class="hcell"><div class="k">Publish failures</div><div class="v">0 this week <span class="pill ok">clear</span></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2" style="margin-top:18px">
+        <div class="card coach">
+          <div class="eyebrow">Bernard's note for this week</div>
+          <p><b>The big change since last week:</b> Bernard now banks "moments" from every interview and composes the week from that bank.
+             You'll see richer drafts appear without a new interview — your job is unchanged: approve on Your week.</p>
+          <ul>
+            <li>9 posts have waited over two weeks. Old drafts go stale — approve or reject them rather than letting them sit.</li>
+            <li>The blog has been quiet 43 days and Google Business is at 15 — both have weekly targets in your cadence.</li>
+            <li>New this week: photos won't repeat on the same platform within a week, so approving similar posts is safe now.</li>
+          </ul>
+          <div class="meta">Written by Bernard every Monday from what shipped + this workspace's live state.</div>
+        </div>
+        <div class="card feed">
+          <div class="sechead" style="margin:0 0 6px"><h3>What's new in Bernard</h3><a class="more" href="#">All updates →</a></div>
+          <div class="fitem"><div class="fdate">Jul 28</div>Moments now bank automatically from interviews — the week is composed from what's on hand.<span class="tag">producer</span></div>
+          <div class="fitem"><div class="fdate">Jul 28</div>Drafts without media now auto-attach an on-topic photo from the library.<span class="tag">producer</span></div>
+          <div class="fitem"><div class="fdate">Jul 28</div>Photo reuse is now blocked within a week on the same platform.<span class="tag">producer</span></div>
+        </div>
+      </div>
+    </main>
+  </div></div>
+
+  <!-- ════════════ ANNOTATIONS ════════════ -->
+  <div class="notes">
+    <div class="note"><b>Role routing (the v2 change).</b> The producer's queue holds only operational checkpoints. Clinical-judgment gates — answers, words approvals ("is this true to me?"), memory updates — route to the clinician who owns them; the producer sees them only as the "waiting on your clinicians" line + ledger group. <b>Open question:</b> keep the "Send a reminder" nudge, or should producers not even see clinician backlogs?</div>
+    <div class="note"><b>Ranking rule</b> (deterministic): broken → blocking/aging → flow → library-feeding. That's why 9-stale-approvals is #1 in amber and the 160-clip pile ranks last despite the biggest number — nothing is blocked behind it. Zero-count checkpoints never enter the queue; they live in the ledger so quiet ≠ invisible.</div>
+    <div class="note"><b>Nav.</b> Producer-filtered: no Stories / Book / Write / Pre-Visit (clinical capture). Data: new <code>/api/producer/checkpoints</code> covering all 17 checkpoints (today's needs-you covers 5); every card deep-links to the existing acting surface — no new editors.</div>
+    <div class="note"><b>Phases.</b> Queue + ledger + waiting-line = P1 · health = P2 · what's-new feed (generated nightly from merged PRs, role-tagged) = P3 · Bernard's Monday note (LLM: shipped changes + live state) = P4. All numbers shown are movebetter's real values today; the coach note is a hand-written sample in the intended voice.</div>
+  </div>
+</div>

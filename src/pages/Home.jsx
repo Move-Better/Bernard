@@ -205,6 +205,21 @@ export default function Home() {
   })
   const yourAnswerReview = answerReviewData?.answers || []
 
+  // Words approval + practice-memory supersessions — the two clinical
+  // checkpoints that had NO aggregate surface anywhere before ProducerHome
+  // (2026-07-29 checkpoint audit; see .claude/decisions.md same date). Words
+  // approval is the hardest gate in the pipeline: it blocks ALL publishing
+  // for a story, and was previously only discoverable by opening the story
+  // page directly.
+  const { data: myClinicalData } = useQuery({
+    queryKey: ['my-clinical-checkpoints'],
+    queryFn: () => apiFetch('/api/producer/my-clinical-checkpoints'),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+  const wordsApprovalsPending = myClinicalData?.wordsApprovals || 0
+  const supersessionsPending = myClinicalData?.supersessions || 0
+
   // Each part links to where its detail actually lives, so the strip is a real
   // jump-list rather than a count that dead-ends on a page that doesn't show it.
   // Blog-review and answer-review nudges fold in here too — they're structurally
@@ -218,9 +233,11 @@ export default function Home() {
     if (readyToDistribute.length > 0) parts.push({ label: `${readyToDistribute.length} to publish`, to: '/publish' })
     if (yourReview.length > 0) parts.push({ label: `${yourReview.length} blog to review`, to: '/week' })
     if (yourAnswerReview.length > 0) parts.push({ label: `${yourAnswerReview.length} answers to review`, to: '/answers-review' })
+    if (wordsApprovalsPending > 0) parts.push({ label: `${wordsApprovalsPending} to approve your words`, to: '/stories', urgent: true })
+    if (supersessionsPending > 0) parts.push({ label: `${supersessionsPending} thinking update${supersessionsPending === 1 ? '' : 's'} to confirm`, to: '/settings/practice-brain' })
     if (overdueCount > 0) parts.push({ label: `${overdueCount} overdue`, to: '/new', urgent: true })
     return parts
-  }, [readyForContent, reviewCount, readyToDistribute, yourReview.length, yourAnswerReview.length, overdueCount])
+  }, [readyForContent, reviewCount, readyToDistribute, yourReview.length, yourAnswerReview.length, wordsApprovalsPending, supersessionsPending, overdueCount])
 
   const attentionTotal =
     readyForContent.length +
@@ -228,6 +245,8 @@ export default function Home() {
     readyToDistribute.length +
     yourReview.length +
     yourAnswerReview.length +
+    wordsApprovalsPending +
+    supersessionsPending +
     overdueCount
 
   // Failed posts — a publish bundle.social rejected. A distribution concern, so

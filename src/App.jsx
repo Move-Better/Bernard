@@ -16,8 +16,10 @@ import {
 } from '@clerk/react'
 import Layout from '@/components/Layout'
 import { getPendingAnnouncement } from '@/lib/announcements'
+import { usePermissionTier } from '@/lib/usePermissionTier'
 import { BERNARD_PRIMARY_HSL } from '@/lib/brand'
 const Home = lazy(() => import('@/pages/Home'))
+const ProducerHome = lazy(() => import('@/pages/ProducerHome'))
 const Welcome = lazy(() => import('@/pages/Welcome'))
 const CapturePicker = lazy(() => import('@/pages/CapturePicker'))
 const NewInterview = lazy(() => import('@/pages/NewInterview'))
@@ -536,6 +538,16 @@ function guarded(node) {
   return <RouteErrorBoundary>{node}</RouteErrorBoundary>
 }
 
+// / forks by permission_tier (2026-07-29, ProducerHome — see
+// .claude/decisions.md same date). Producers AND owners (owners do the same
+// operational work — Q, 2026-07-29) land on the checkpoint-queue home;
+// everyone else (clinicians, viewers, and workspaces with no tier set at all)
+// keeps the existing capture-oriented Home unchanged.
+function HomeRouter() {
+  const { isOwner, isProducer } = usePermissionTier()
+  return (isOwner || isProducer) ? <ProducerHome /> : <Home />
+}
+
 // Legacy redirect: /output/:staffId/:interviewId → /stories/:interviewId
 function LegacyOutputRedirect() {
   const { interviewId } = useParams()
@@ -598,7 +610,7 @@ function AppRoutes() {
             content, with no blank flash between pages. */}
         <Suspense fallback={<PageSkeleton />}>
           <Routes>
-            <Route path="/" element={guarded(<Home />)} />
+            <Route path="/" element={guarded(<HomeRouter />)} />
             <Route path="/new" element={guarded(<CapturePicker />)} />
             <Route path="/new/interview" element={guarded(<NewInterview />)} />
             <Route path="/new/newsletter" element={guarded(<NewNewsletter />)} />
