@@ -2,8 +2,14 @@
 //
 // Phase 4 PR 5 — Weekly producer digest cron.
 //
-// Vercel cron hits this every Monday morning (vercel.json: 0 8 * * 1 UTC).
-// For each workspace with engagement_digest_enabled=true:
+// Vercel cron hits this weekly (vercel.json: 0 13 * * 5 UTC — Friday).
+//
+// For EVERY active workspace, regardless of the digest toggle:
+//   0. Compute T4 trust metrics and store them on cadence_policy. This is a
+//      learning-loop measurement, not part of sending mail, so it runs whether
+//      or not this workspace wants the email.
+//
+// Then, only for workspaces with engagement_digest_enabled=true:
 //   1. Skip if engagement_digest_last_sent_at is within the last 6 days
 //      (defense against schedule drift double-firing).
 //   2. Collect last 7 days of: published content_items, story_packages stats,
@@ -79,14 +85,21 @@ async function handler(req, res) {
   }
 
   // ─── Fetch eligible workspaces ──────────────────────────────────────────
+  // NOTE: deliberately NOT filtered on engagement_digest_enabled. Trust
+  // metrics (below) must be computed for every active workspace — they are a
+  // learning-loop measurement, not a property of wanting an email. Filtering
+  // here is what made computeTrustMetrics dead code for two months: it sat
+  // inside this loop while every workspace had the digest switched off, so it
+  // ran for exactly zero of them. The digest itself is gated per-workspace
+  // inside the loop instead.
   const wsRes = await sb(
-    'workspaces?engagement_digest_enabled=eq.true&status=eq.active' +
+    'workspaces?status=eq.active' +
     // Neither `name` nor `primary_logo_url` is a column on workspaces —
     // selecting either 400s the query (42703). `display_name` is the display
     // column; the logo resolves via api/_lib/workspaceLogo.js (brand_kit_roles),
     // not from a workspaces column. The email builder only ever read
     // display_name, so nothing downstream loses a value here.
-    '&select=id,slug,display_name,colors,clerk_org_id,' +
+    '&select=id,slug,display_name,colors,clerk_org_id,engagement_digest_enabled,' +
     'engagement_digest_recipients,engagement_digest_last_sent_at,cadence_policy'
   )
   if (!wsRes.ok) {
@@ -120,6 +133,15 @@ async function handler(req, res) {
         }
       } catch (e) {
         console.error(`[engagement-digest] trust-metrics failed for ${ws.slug}:`, e?.message)
+      }
+
+      // ── Digest gate ──────────────────────────────────────────────────────
+      // Everything above this line runs for every active workspace; only the
+      // email itself is opt-in. Keep new measurement/instrumentation ABOVE
+      // this gate unless it is genuinely about sending mail.
+      if (!ws.engagement_digest_enabled) {
+        results.push({ workspace: ws.slug, skipped: 'digest_disabled', trust_metrics: 'computed' })
+        continue
       }
 
       // Skip if we sent recently (covers schedule drift / cron rerun).
