@@ -47,6 +47,14 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 // against real drafts before trusting it (see scripts/verify-auto-attach.mjs).
 const MIN_SCORE = Number(process.env.AUTO_ATTACH_MIN_SCORE) || 0.45
 
+// A default post is not a place for a long raw source video. The clinic's
+// library is video-heavy (median clip ~28s, fine) but carries some 1–3 minute
+// unedited interview clips; auto-attaching one of those as a GBP/Facebook post
+// is worse than a shorter clip or photo the reviewer would actually keep. Short
+// clips still attach freely; only the long raw ones are skipped, and only for
+// AUTO-attach — the manual suggest panel is unchanged. Env-tunable.
+const MAX_AUTO_VIDEO_SECS = Number(process.env.AUTO_ATTACH_MAX_VIDEO_SECS) || 60
+
 // Shared service-key fetch helper. Every caller below passes an explicit
 // workspace_id=eq.${ws.id} filter — never an unscoped tenant query.
 function sb(path, init = {}) {
@@ -104,28 +112,34 @@ export async function autoAttachMedia({ ws, draft, dryRun = false } = {}) {
     const query = buildDraftMatchQuery(draft)
     if (!query) return { attached: false, reason: 'empty_query' }
 
-    const clips = await searchClips({ query, workspaceId: ws.id, k: 3, kind, minScore: MIN_SCORE })
-    const top = clips?.[0]
-    // searchClips already filters by minScore in the RPC, but it RANKS by a
-    // freshness-discounted effectiveScore. Gate the ATTACH on RAW similarity so
-    // a fresh-but-weak asset the discount floated to the top can't slip in.
-    if (!top || (top.similarity ?? 0) < MIN_SCORE) {
-      return { attached: false, reason: 'no_confident_match' }
-    }
+    const clips = await searchClips({ query, workspaceId: ws.id, k: 5, kind, minScore: MIN_SCORE })
+    // Take the first candidate that clears the RAW-similarity bar AND isn't a
+    // long raw video. Two reasons this scans top-k rather than taking [0]:
+    //   1. searchClips RANKS by a freshness-discounted effectiveScore, so gate
+    //      the attach on raw `similarity` — a fresh-but-weak asset the discount
+    //      floated up must not slip past the bar.
+    //   2. a long raw source video at the top must not BLOCK a good shorter clip
+    //      or photo sitting just behind it.
+    const pick = (clips || []).find(
+      (c) =>
+        (c.similarity ?? 0) >= MIN_SCORE &&
+        !(c.kind === 'video' && (c.durationS ?? 0) > MAX_AUTO_VIDEO_SECS),
+    )
+    if (!pick) return { attached: false, reason: 'no_confident_match' }
 
     const entry = clipToMediaEntry({
-      kind: top.kind,
-      blobUrl: top.blobUrl,
-      thumbnailUrl: top.thumbnailUrl,
-      assetId: top.assetId,
-      filename: top.filename,
-      ...(top.durationS != null ? { durationS: top.durationS } : {}),
+      kind: pick.kind,
+      blobUrl: pick.blobUrl,
+      thumbnailUrl: pick.thumbnailUrl,
+      assetId: pick.assetId,
+      filename: pick.filename,
+      ...(pick.durationS != null ? { durationS: pick.durationS } : {}),
     })
     if (!entry.url) return { attached: false, reason: 'bad_entry' }
 
     // Dry run: we have a confident match but must not mutate. Report the pick.
     if (dryRun) {
-      return { attached: false, reason: 'dry', score: top.similarity, assetId: top.assetId, kind: top.kind }
+      return { attached: false, reason: 'dry', score: pick.similarity, assetId: pick.assetId, kind: pick.kind }
     }
 
     // Re-read immediately before writing so we can't clobber a human (or the
@@ -148,7 +162,7 @@ export async function autoAttachMedia({ ws, draft, dryRun = false } = {}) {
       console.error('[autoAttachMedia] patch failed', patchRes.status)
       return { attached: false, reason: 'patch_failed' }
     }
-    return { attached: true, reason: 'semantic', score: top.similarity, assetId: top.assetId }
+    return { attached: true, reason: 'semantic', score: pick.similarity, assetId: pick.assetId }
   } catch (e) {
     console.error('[autoAttachMedia] error:', e?.message)
     return { attached: false, reason: 'error' }
