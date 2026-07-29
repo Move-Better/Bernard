@@ -34,7 +34,7 @@
 
 import { searchClips } from './clipSearch.js'
 import { buildDraftMatchQuery } from './draftMatchQuery.js'
-import { mediaKindForDraft } from './platformMedia.js'
+import { mediaKindForDraft, isTextOnlyPlatform } from './platformMedia.js'
 import { clipToMediaEntry } from '../../src/lib/mediaEntry.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -89,10 +89,17 @@ export async function autoAttachMedia({ ws, draft, dryRun = false } = {}) {
       return { attached: false, reason: 'carousel_handled_elsewhere' }
     }
 
-    // Does this platform even take an attached media entry? (blog hero and
-    // pure-text posts resolve to null → nothing to do here.)
+    // Skip only genuinely text-dominant platforms (blog/landing/email) — their
+    // hero image is a different concept from a social media_urls entry, and blog
+    // drafts don't stall on a missing picture anyway.
+    if (isTextOnlyPlatform(draft.platform)) return { attached: false, reason: 'text_only_platform' }
+
+    // The kind to search for. CRUCIAL: mediaKindForDraft returns null for the
+    // dual-kind social platforms (instagram/facebook/linkedin/gbp) — that means
+    // "either photo or video", NOT "no media". searchClips treats a null kind as
+    // no kind filter (returns both), exactly like the manual suggest-media panel.
+    // Skipping on null here would no-op on precisely the platforms that stall.
     const kind = mediaKindForDraft(draft)
-    if (!kind) return { attached: false, reason: 'no_media_kind' }
 
     const query = buildDraftMatchQuery(draft)
     if (!query) return { attached: false, reason: 'empty_query' }

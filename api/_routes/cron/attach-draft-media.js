@@ -21,7 +21,7 @@ export const config = { runtime: 'nodejs', maxDuration: 120 }
 
 import { verifyCronSecret } from '../../_lib/auth.js'
 import { autoAttachMedia } from '../../_lib/autoAttachMedia.js'
-import { mediaKindForDraft } from '../../_lib/platformMedia.js'
+import { isTextOnlyPlatform } from '../../_lib/platformMedia.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -77,7 +77,11 @@ export default async function handler(req, res) {
     const media = Array.isArray(r.media_urls) ? r.media_urls : []
     if (media.length > 0) return false
     if (Array.isArray(r.slides) && r.slides.length > 1) return false // carousel path handled elsewhere
-    return !!mediaKindForDraft(r) // platform must actually take an attached entry
+    // Skip only text-dominant platforms. NOT `!!mediaKindForDraft` — that
+    // returns null for dual-kind social platforms (IG/FB/LinkedIn/GBP), which
+    // would wrongly exclude exactly the drafts that stall. autoAttachMedia does
+    // the real per-draft gating.
+    return !isTextOnlyPlatform(r.platform)
   })
 
   const batch = eligible.slice(0, MAX_PER_RUN)
