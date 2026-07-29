@@ -18,9 +18,11 @@ import Layout from '@/components/Layout'
 import { getPendingAnnouncement } from '@/lib/announcements'
 import { usePermissionTier } from '@/lib/usePermissionTier'
 import { useUserRole } from '@/lib/useUserRole'
+import { useSelfStaffId } from '@/lib/useSelfStaffId'
 import { BERNARD_PRIMARY_HSL } from '@/lib/brand'
 const Home = lazy(() => import('@/pages/Home'))
 const ProducerHome = lazy(() => import('@/pages/ProducerHome'))
+const CombinedHome = lazy(() => import('@/pages/CombinedHome'))
 const Welcome = lazy(() => import('@/pages/Welcome'))
 const CapturePicker = lazy(() => import('@/pages/CapturePicker'))
 const NewInterview = lazy(() => import('@/pages/NewInterview'))
@@ -553,11 +555,19 @@ function guarded(node) {
 // resolveCapabilities(tier)`). Checking ONLY tier==='owner' missed this —
 // found live on prod immediately after first deploy: Q's own account has
 // tier===null and still landed on the old clinician Home.
+//
+// A third case (2026-07-29, Q): an owner who is ALSO a practicing clinician
+// — common for single-doc clinics — gets BOTH screens stacked (CombinedHome),
+// keyed on whether they have their own linked staff/clinician profile
+// (useSelfStaffId). An owner with no staff row (purely administrative) still
+// gets ProducerHome alone.
 function HomeRouter() {
   const { isOwner, isProducer, tier } = usePermissionTier()
   const { role } = useUserRole()
+  const selfStaffId = useSelfStaffId()
   const isOwnerEquivalent = isOwner || (!tier && role === 'admin')
-  return (isOwnerEquivalent || isProducer) ? <ProducerHome /> : <Home />
+  if (isOwnerEquivalent) return selfStaffId ? <CombinedHome /> : <ProducerHome />
+  return isProducer ? <ProducerHome /> : <Home />
 }
 
 // Legacy redirect: /output/:staffId/:interviewId → /stories/:interviewId

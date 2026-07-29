@@ -62,11 +62,15 @@ function GreetingRibbon({ greeting, callFirst }) {
 // a compact strip, a stats row, a card) rather than undershooting it — a
 // short skeleton followed by a much taller real page reads as layout shift
 // (2026-07-04 audit finding #14).
-function HomeSkeleton({ greeting, callFirst }) {
+function HomeSkeleton({ greeting, callFirst, embedded }) {
   return (
     <div className="flex flex-col gap-6" role="status" aria-busy="true">
       <span className="sr-only">Loading your home…</span>
-      <GreetingRibbon greeting={greeting} callFirst={callFirst} />
+      {embedded ? (
+        <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Your practice</h2>
+      ) : (
+        <GreetingRibbon greeting={greeting} callFirst={callFirst} />
+      )}
       <Skeleton className="h-32 rounded-xl" />
       <Skeleton className="h-12 rounded-xl" />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -77,7 +81,11 @@ function HomeSkeleton({ greeting, callFirst }) {
   )
 }
 
-export default function Home() {
+// `embedded`: true when rendered as a section inside CombinedHome (an
+// owner who is ALSO a clinician — see .claude/decisions.md 2026-07-29
+// "combined owner home"). Suppresses the page-level greeting ribbon in
+// favor of a section label, since CombinedHome owns the single greeting.
+export default function Home({ embedded = false }) {
   useDocumentTitle('Home')
   const { user } = useUser()
   const { canReview, isEditor, isOrgAdmin } = useUserRole()
@@ -304,7 +312,7 @@ export default function Home() {
   // urgent and no hero, the fuller view is fine (there's nothing to lead over).
   const secondaryCompact = heroState !== 'none' || attentionTotal > 0
 
-  if (isLoading) return <HomeSkeleton greeting={greeting} callFirst={callFirst} />
+  if (isLoading) return <HomeSkeleton greeting={greeting} callFirst={callFirst} embedded={embedded} />
 
   if (storiesError) {
     return (
@@ -319,8 +327,14 @@ export default function Home() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Greeting ribbon — personality + single interview CTA */}
-      <GreetingRibbon greeting={greeting} callFirst={callFirst} />
+      {/* Greeting ribbon — personality + single interview CTA. Suppressed when
+          embedded inside CombinedHome, which owns the single page-level
+          greeting; a section label stands in its place instead. */}
+      {embedded ? (
+        <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Your practice</h2>
+      ) : (
+        <GreetingRibbon greeting={greeting} callFirst={callFirst} />
+      )}
 
       {/* Call-first hero — only when it's the winning primary surface (see
           heroState above). Suppressed when onboarding or an in-progress
