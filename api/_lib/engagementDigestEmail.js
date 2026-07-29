@@ -73,6 +73,10 @@ export function buildDigest({ workspace, published, momentStats, triage, queued,
   const subject = `${wsName} — last week's content + this week's queue`
   const baseUrl = `https://${workspace.slug}.withbernard.ai`
   const momentsUrl = `${baseUrl}/moments`
+  // Where this email is switched on/off. Named explicitly in the footer —
+  // "ask your admin to look in settings" is not a location, and someone who
+  // wants out of an email should never have to hunt for the off switch.
+  const digestSettingsUrl = `${baseUrl}/settings/workspace/auto-publish`
 
   const publishedCount = published.length
   const queuedCount    = queued.length
@@ -125,8 +129,10 @@ export function buildDigest({ workspace, published, momentStats, triage, queued,
 
         <!-- Footer -->
         <tr><td style="padding:14px 24px 18px;border-top:1px solid #e7e5e0;font-size:11px;color:#71717a;line-height:1.5;">
-          You're receiving this because your workspace admin enabled the weekly producer digest.
-          To turn it off, ask the admin to disable it in workspace settings.
+          You're receiving this weekly because the producer digest is switched on for ${escapeHtml(wsName)}.
+          Change how often it arrives, or turn it off, under
+          <a href="${escapeHtml(digestSettingsUrl)}" style="color:#71717a;font-weight:600;">Settings → Workspace → Auto-publish</a>
+          (${escapeHtml(digestSettingsUrl)}). Anyone with owner or producer access can change it.
         </td></tr>
 
       </table>
@@ -148,6 +154,11 @@ export function buildDigest({ workspace, published, momentStats, triage, queued,
     ...(dayProposal ? [`Cadence proposal: ${DAY_FULL_LABEL[dayProposal.day] || dayProposal.day} — ${dayProposal.avgScore} vs ${dayProposal.baselineAvgScore} baseline`] : []),
     ``,
     `Open Moment Miner: ${momentsUrl}`,
+    ``,
+    `--`,
+    `You're receiving this weekly because the producer digest is switched on for ${wsName}.`,
+    `Change or turn off: ${digestSettingsUrl} (Settings > Workspace > Auto-publish).`,
+    `Anyone with owner or producer access can change it.`,
   ].join('\n')
 
   return { subject, html, text }
