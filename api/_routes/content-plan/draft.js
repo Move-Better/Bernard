@@ -15,6 +15,7 @@ import { enforceLimit } from '../../_lib/ratelimit.js'
 import { recordAgentAction } from '../../_lib/agentActions.js'
 import { draftAtom, buildGbpLocationVariants } from '../../_lib/producer/draftAtom.js'
 import { bumpMomentUsage } from '../../_lib/momentPlan.js'
+import { autoAttachMedia } from '../../_lib/autoAttachMedia.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -196,6 +197,29 @@ export default async function handler(req, res) {
     if (atom.moment_id) {
       waitUntil(bumpMomentUsage({ workspaceId: ws.id, momentId: atom.moment_id, sb }))
     }
+
+    // Auto-attach on-topic media. Story/moment drafts are born media-less, and a
+    // bare-text post is the one a reviewer won't ship — so the low-priority
+    // channels stalled while LinkedIn went out (~73% of drafts had no image).
+    // Off the hot path: the draft returns immediately; the picture fills in
+    // seconds later and the detail-drawer refresh contract surfaces it. A cron
+    // sweep (attach-draft-media) is the universal backstop for every other
+    // creation path and for retries as the library grows.
+    waitUntil(
+      autoAttachMedia({
+        ws,
+        draft: {
+          id: contentPiece.id,
+          topic: interview.topic,
+          content: caption,
+          platform: atom.platform,
+          media_urls: [],
+          slides,
+        },
+      }).then((r) => {
+        if (r.attached) console.info(`[draft] auto-attached media to ${contentPiece.id} (score ${r.score?.toFixed(2)})`)
+      }),
+    )
 
     // Workday ledger (Standing Producer Phase 0) — narrate the draft Bernard
     // just made. Gated on producer_config.enabled inside the helper; no-op when
