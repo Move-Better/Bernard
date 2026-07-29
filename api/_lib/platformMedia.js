@@ -16,4 +16,4 @@
 // Prefer mediaKindForDraft(piece) — mediaKindForPlatform(platform) alone cannot
 // identify a Reel.
 
-export { mediaKindForDraft, mediaKindForPlatform } from '../../src/lib/platformMediaKind.js'
+export { mediaKindForDraft, mediaKindForPlatform, isTextOnlyPlatform } from '../../src/lib/platformMediaKind.js'
