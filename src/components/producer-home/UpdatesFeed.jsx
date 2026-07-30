@@ -2,6 +2,7 @@
 // hand-maintained release-notes.json for role-targeted announcements; see
 // scripts/generate-product-updates.mjs for how entries are written.
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { apiFetch } from '@/lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -24,7 +25,10 @@ export default function UpdatesFeed() {
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <div className="text-2xs font-bold uppercase tracking-wide text-muted-foreground mb-2">What&rsquo;s new in Bernard</div>
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">What&rsquo;s new in Bernard</div>
+        <Link to="/updates" className="text-2xs font-semibold text-primary hover:underline">See all →</Link>
+      </div>
       {isLoading ? (
         <div className="flex flex-col gap-2">
           {[0, 1, 2].map((i) => <Skeleton key={i} className="h-4 w-full" />)}

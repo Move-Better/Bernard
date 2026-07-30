@@ -23,6 +23,7 @@ import { BERNARD_PRIMARY_HSL } from '@/lib/brand'
 const Home = lazy(() => import('@/pages/Home'))
 const ProducerHome = lazy(() => import('@/pages/ProducerHome'))
 const CombinedHome = lazy(() => import('@/pages/CombinedHome'))
+const WhatsNew = lazy(() => import('@/pages/WhatsNew'))
 const Welcome = lazy(() => import('@/pages/Welcome'))
 const CapturePicker = lazy(() => import('@/pages/CapturePicker'))
 const NewInterview = lazy(() => import('@/pages/NewInterview'))
@@ -633,6 +634,7 @@ function AppRoutes() {
         <Suspense fallback={<PageSkeleton />}>
           <Routes>
             <Route path="/" element={guarded(<HomeRouter />)} />
+            <Route path="/updates" element={guarded(<WhatsNew />)} />
             <Route path="/new" element={guarded(<CapturePicker />)} />
             <Route path="/new/interview" element={guarded(<NewInterview />)} />
             <Route path="/new/newsletter" element={guarded(<NewNewsletter />)} />
