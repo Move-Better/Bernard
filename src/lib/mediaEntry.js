@@ -87,11 +87,36 @@ export function slidePhotos(mediaUrls) {
 }
 
 // Resolve the media entry a slide is bound to. One resolver so a preview, the
-// editor canvas and the publish bake can never disagree about which photo
-// `photo_idx` names.
-export function slidePhotoEntry(slide, mediaUrls) {
+// editor canvas and the publish bake can never disagree about which item a
+// slide names.
+//
+// Two numberings, in precedence order:
+//   media_idx — index into RAW media_urls. Written by every current writer;
+//               the only one that can address a VIDEO slide, because videos
+//               are absent from the filtered list entirely.
+//   photo_idx — index into the photo-only filtered list (slidePhotos). The
+//               legacy field, still the fallback for rows written before
+//               media_idx existed.
+//
+// Safe to read either way for legacy rows: verified against prod 2026-07-29
+// that all 86 slide-bearing pieces have zero video/url-less entries, so their
+// filtered list and raw array are identical and the two indexes agree.
+export function slideMediaEntry(slide, mediaUrls) {
+  const raw = Array.isArray(mediaUrls) ? mediaUrls : []
+  if (typeof slide?.media_idx === 'number') return raw[slide.media_idx] || null
   if (typeof slide?.photo_idx !== 'number') return null
-  return slidePhotos(mediaUrls)[slide.photo_idx] || null
+  return slidePhotos(raw)[slide.photo_idx] || null
+}
+
+// Photo-only resolver — returns null for a slide bound to a VIDEO.
+//
+// Kept distinct from slideMediaEntry because the photo-drawing surfaces (the
+// canvas bake, the ad export, the slide compositor) can only draw a still, and
+// silently handing them a video entry publishes a broken image. A caller that
+// can render both should use slideMediaEntry + isVideoEntry instead.
+export function slidePhotoEntry(slide, mediaUrls) {
+  const entry = slideMediaEntry(slide, mediaUrls)
+  return entry && !isVideoEntry(entry) ? entry : null
 }
 
 // True when a media_urls entry is a video. Checks both `kind` and `type`
