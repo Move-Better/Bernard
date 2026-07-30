@@ -329,6 +329,14 @@ function cardState(item) {
   if (cis === 'approved') {
     return { label: 'approved', cls: 'bg-primary text-primary-foreground', action: 'schedule', rail: 'bg-primary' }
   }
+  // Rejected/archived is a decided "no". week-summary.js already filters these
+  // atoms off the board, so this is a safety net: if one ever reaches a card
+  // (an in-flight refetch, a future caller of cardState), render it muted and
+  // NON-reviewable rather than letting it fall through to amber "in review"
+  // with a live approve button (feedback 79eb7eb1).
+  if (cis === 'rejected' || cis === 'archived') {
+    return { label: cis === 'archived' ? 'archived' : 'rejected', cls: 'bg-muted text-muted-foreground line-through', action: 'open', rail: 'bg-muted-foreground/25' }
+  }
   // drafted / in_review / draft — the one state where an inline human "yes"
   // is the meaningful action (reviewable: true gates the D4 approve affordance).
   // Amber pill+rail so "needs your yes" reads as attention, not inert muted.

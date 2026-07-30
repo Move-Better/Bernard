@@ -1394,6 +1394,13 @@ export function useUpdateContentItemStatus() {
       qc.invalidateQueries({ queryKey: queryKeys.contentItems.all })
       qc.invalidateQueries({ queryKey: queryKeys.stories.all })
       qc.invalidateQueries({ queryKey: queryKeys.contentPlan.all })
+      // The /week board queries the literal ['week-summary']/['moments-summary']
+      // keys (see YourWeek.jsx), which are outside the queryKeys.* helpers above.
+      // Without these, a status change made anywhere but /week's own inline
+      // actions — e.g. rejecting from the editor — never refetches the board, so
+      // the card keeps its stale state until a hard reload (feedback 79eb7eb1).
+      qc.invalidateQueries({ queryKey: ['week-summary'] })
+      qc.invalidateQueries({ queryKey: ['moments-summary'] })
     },
   })
 }
