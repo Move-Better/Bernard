@@ -826,7 +826,14 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
     ? cfg.aspects[0]
     : frameFor(piece?.platform).ratio
   const meta = PLATFORM_META[piece.platform] || { label: piece.platform || '—', icon: undefined }
-  const isReel = piece.platform === 'instagram' && archetype === 'vvideo'
+  // Reel-ness follows the EXPLICIT format when the piece has one; the archetype
+  // derivation (any video ⇒ vvideo) is the legacy fallback. Without this the
+  // "This posts as a Reel" banner below would keep claiming Reel on a piece the
+  // producer has explicitly set to Carousel — the chrome contradicting the
+  // control right above it.
+  const isReel = piece.format
+    ? piece.format === 'reel'
+    : (piece.platform === 'instagram' && archetype === 'vvideo')
   const count = Number.isFinite(photoCount) ? photoCount : null
   const noMedia = mediaTierFor(piece) === MEDIA_TIER.NONE
 
@@ -897,6 +904,9 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
               // The deck's own aspect, so the preview frame is the shape the
               // publish bake uses — and a slide's zoom/pan lands where it looked.
               aspectRatio={piece.aspect_ratio || '4:5'}
+              // Explicit publish format — without it, a carousel holding a clip
+              // previews as a Reel (the legacy any-video short-circuit).
+              format={piece.format || null}
             />
           </div>
         </div>
