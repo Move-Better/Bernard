@@ -149,6 +149,12 @@ export const CHANNEL_DESTINATIONS = {
   youtube_short:        { platform: 'youtube',   format: 'short' },
   blog_hero_video:      { platform: 'blog',      format: 'hero' },
   facebook_video:       { platform: 'facebook',  format: 'post' },
+  // A video destined for an Instagram CAROUSEL slot rather than the Reels tab.
+  // IG carousels enforce one aspect across every item and reject below 0.8, so
+  // a 9:16 clip joins a 4:5 deck as a real 4:5 re-bake, not a letterbox. Named
+  // for the destination so it isn't confused with facebook_video, which shares
+  // the frame but not the platform. Mirror of the api/_lib/postFrames.js entry.
+  instagram_carousel_video: { platform: 'instagram', format: 'post' },
   youtube:              { platform: 'youtube',   format: 'longform' },
   linkedin_native:      { platform: 'linkedin',  format: 'longform' },
   website_embed:        { platform: 'blog',      format: 'hero' },

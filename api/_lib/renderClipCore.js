@@ -204,6 +204,32 @@ export async function resolveClipRender({ ws, body = {} }) {
  * @param {Object} p.params the resolved params from resolveClipRender
  * @returns {Promise<{ renders: Object[], errors: Object[], elapsedMs: number }>}
  */
+/**
+ * Caption position is per-CHANNEL, not per-call.
+ *
+ * Each video channel carries its own `spec.captionPos`, but renderVideoChannel
+ * resolves `overlayPosition ?? spec.captionPos` — so a single string forces ONE
+ * position onto every channel in a multi-aspect render, defeating the per-aspect
+ * default. That matters now that one call can bake 9:16 AND 4:5 from the same
+ * recipe: a 4:5 carousel re-bake needs its own placement (measured 2026-07-29 —
+ * captions at the wrong edge in 4:5 either land on the subject's face or stack
+ * on top of the brand band).
+ *
+ * Accepts either shape:
+ *   - string  → applied to every channel (legacy single-channel behavior, byte-identical)
+ *   - object  → keyed by channel; an unlisted channel returns undefined, which
+ *               makes renderVideoChannel fall back to that channel's own
+ *               spec.captionPos — the sane per-aspect default.
+ *
+ * @param {string|Object|undefined} overlayPosition
+ * @param {string} channel
+ * @returns {string|undefined}
+ */
+export function resolveChannelOverlayPosition(overlayPosition, channel) {
+  if (overlayPosition && typeof overlayPosition === 'object') return overlayPosition[channel]
+  return overlayPosition
+}
+
 export async function runClipRender({ ws, asset, params }) {
   const {
     captionText, staffName, channels, isPhoto,
@@ -221,6 +247,8 @@ export async function runClipRender({ ws, asset, params }) {
       const safeFilename = (asset.filename || 'render')
         .replace(/[^\w.-]/g, '_')
         .replace(/\.\w+$/, '')
+
+      const chOverlayPosition = resolveChannelOverlayPosition(overlayPosition, channel)
 
       if (isPhoto) {
         const { buffer, width, height } = await renderPhotoChannel({
@@ -251,7 +279,7 @@ export async function runClipRender({ ws, asset, params }) {
           ...(startSec !== undefined ? { startSec } : {}),
           ...(durationSec !== undefined ? { durationSec } : {}),
           ...(subtitles !== undefined ? { subtitles } : {}),
-          ...(overlayPosition !== undefined ? { overlayPosition } : {}),
+          ...(chOverlayPosition !== undefined ? { overlayPosition: chOverlayPosition } : {}),
           ...(overlaySize !== undefined ? { overlaySize } : {}),
           ...(captionAccent !== undefined ? { captionAccent } : {}),
           ...(captionAnim !== undefined ? { captionAnim } : {}),
