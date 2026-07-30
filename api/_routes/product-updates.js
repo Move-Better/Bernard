@@ -17,7 +17,8 @@ import { enforceLimit } from '../_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
-const LIMIT = 20
+const DEFAULT_LIMIT = 20
+const MAX_LIMIT = 50
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'method_not_allowed' })
@@ -28,11 +29,19 @@ export default async function handler(req, res) {
   if (!(await enforceLimit(req, res, 'generic'))) return
 
   const role = String(req.query?.role || '').trim()
+  const limit = Math.min(MAX_LIMIT, Math.max(1, Number(req.query?.limit) || DEFAULT_LIMIT))
+  const offset = Math.max(0, Number(req.query?.offset) || 0)
 
+  // Filtering by role happens client-of-postgrest side (roles=[] means
+  // "everyone", so it can't be expressed as a single PostgREST predicate) —
+  // fetch a role-agnostic page and filter after. This means a role-scoped
+  // page can come back shorter than `limit` even when more rows exist; the
+  // client's "load more" just keeps asking for the next offset until a
+  // genuinely short page appears, same as any other role-agnostic feed.
   try {
     const r = await fetch(
       `${SUPABASE_URL}/rest/v1/product_updates?select=id,created_at,summary,roles,page_hint` +
-      `&order=created_at.desc&limit=${LIMIT}`,
+      `&order=created_at.desc&limit=${limit}&offset=${offset}`,
       {
         headers: {
           apikey: SUPABASE_KEY,
@@ -50,7 +59,7 @@ export default async function handler(req, res) {
     const filtered = role
       ? rows.filter((row) => !row.roles?.length || row.roles.includes(role))
       : rows
-    return res.status(200).json({ updates: filtered })
+    return res.status(200).json({ updates: filtered, pageSize: rows.length })
   } catch (e) {
     console.error('[product-updates] error:', e?.message)
     return res.status(500).json({ error: 'db_error' })
