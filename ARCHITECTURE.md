@@ -1581,3 +1581,37 @@ isn't.) Not yet a build item — flagging so a future revert-aware pass (e.g.
 check `GET /repos/.../pulls/{source_pr}` for `merged:false` before trusting
 an old entry, or have the revert generator suppress the original) doesn't
 have to rediscover the gap from scratch.
+
+## Moment bank — review is a MARKER, not a gate
+
+The `/moments` "On hand" tab is an approval queue (migration `198_moments_review.sql`,
+2026-07-30): up to three banked-and-unreviewed moments as cards, each with an
+explicit Approve / Retire / Skip. Two contracts are easy to get backwards.
+
+- **Approving does not gate anything.** `match_moments` (migration 191) still
+  filters on `status = 'banked'` alone, so the planner draws from every banked
+  moment whether or not a human has looked at it. `reviewed_at` exists so the
+  queue is FINITE and each verdict carries an audit stamp — it is not an
+  authorization to publish. A future change that makes the planner require
+  `reviewed_at IS NOT NULL` is a real product decision (it starves composition
+  until the backlog is worked through), not a tightening-up; do not slip it in.
+  The load-bearing action in the queue is **Retire**, which is what actually
+  removes material from rotation.
+- **The columns are deliberately un-backfilled.** Every pre-existing moment has
+  `reviewed_at IS NULL`, because none of them had been reviewed. A backfill would
+  empty the queue on day one and turn the feature into a no-op — the same shape as
+  the "a backfill makes the data look complete while the live hook is dead" trap
+  documented for `practice_memory_chunks`. If the queue ever looks suspiciously
+  empty, check for a backfill before concluding the work is done.
+
+`reviewed_by` stores the **Clerk user id**, matching `content_items.approved_by`
+and `interviews.words_approved_by`; the client resolves it to a name through
+`staff.user_id` (`staffByUserId` in `MomentMiner.jsx`). Both verdicts stamp it —
+Approve leaves `status = 'banked'`, Retire flips it — so "who decided this, and
+when" reads the same either way. Restore deliberately leaves the stamp intact: a
+restored moment has been reviewed and must not reappear in the queue.
+
+Queue Retire fires immediately with an Undo toast and **no** confirm dialog; the
+browse-list Retire keeps its `ConfirmDialog`. That asymmetry is intentional — a
+modal per rejection is what stops a 100+ item queue from ever being finished,
+while a one-off retire from a list has no rhythm for a dialog to break.
