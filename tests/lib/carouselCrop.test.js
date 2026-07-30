@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
-  proposeCarouselReframe, needsCarouselRebake, clampReframeY,
+  proposeCarouselReframe, needsCarouselRebake, mayNeedCarouselRebake, clampReframeY,
   CAROUSEL_REFRAME_Y, CENTER_REFRAME_Y,
 } from '../../src/lib/carouselCrop.js'
-import { carouselPublishEntry } from '../../src/lib/mediaEntry.js'
+import { carouselPublishEntry, pickerItemToMediaEntry } from '../../src/lib/mediaEntry.js'
 import { buildPublishMediaUrls } from '../../src/lib/renderSlides.js'
 
 describe('needsCarouselRebake — who actually needs the crop step', () => {
@@ -120,5 +120,47 @@ describe('publish list uses the fitted variant end-to-end', () => {
     )
     expect(out[0]).toEqual({ url: 'https://x/s0.jpg', type: 'photo' })
     expect(out[1].url).toBe('https://x/variant-45.mp4')
+  })
+})
+
+describe('mayNeedCarouselRebake — fails OPEN so the control is never wrongly hidden', () => {
+  // The bug this exists for: CarouselFitPanel first gated on the strict
+  // predicate, but media entries only carry width/height when they came through
+  // the Library picker — clipSearch (the suggestion path) doesn't select those
+  // columns. So dimensions are usually UNKNOWN, the strict check returned false,
+  // and the whole crop step rendered nothing. Shipped, green, invisible.
+  it('offers the step when dimensions are unknown', () => {
+    expect(mayNeedCarouselRebake({})).toBe(true)
+    expect(mayNeedCarouselRebake(null)).toBe(true)
+    expect(mayNeedCarouselRebake({ width: 1080 })).toBe(true)
+  })
+
+  it('still skips a natively-eligible 16:9 master when dimensions ARE known', () => {
+    expect(mayNeedCarouselRebake({ width: 1920, height: 1080 })).toBe(false)
+  })
+
+  it('offers the step for a known 9:16 vertical', () => {
+    expect(mayNeedCarouselRebake({ width: 1080, height: 1920 })).toBe(true)
+  })
+
+  it('is deliberately MORE permissive than the strict predicate', () => {
+    // A redundant render is recoverable; a hidden control that would have
+    // prevented a rejected publish is not.
+    expect(needsCarouselRebake({})).toBe(false)
+    expect(mayNeedCarouselRebake({})).toBe(true)
+  })
+})
+
+describe('pickerItemToMediaEntry carries dimensions when the source knows them', () => {
+  it('includes width/height from a media_assets row', () => {
+    const e = pickerItemToMediaEntry({ id: 'a', kind: 'video', blob_url: 'https://x/v.mp4', width: 1080, height: 1920 })
+    expect(e.width).toBe(1080)
+    expect(e.height).toBe(1920)
+    expect(mayNeedCarouselRebake(e)).toBe(true)
+  })
+
+  it('omits them rather than emitting nulls when absent', () => {
+    const e = pickerItemToMediaEntry({ id: 'a', kind: 'photo', blob_url: 'https://x/p.jpg' })
+    expect('width' in e).toBe(false)
   })
 })

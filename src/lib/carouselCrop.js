@@ -45,6 +45,29 @@ export function needsCarouselRebake({ width, height } = {}) {
 }
 
 /**
+ * Should the crop step be OFFERED for this entry?
+ *
+ * Distinct from needsCarouselRebake, which is a strict predicate and answers
+ * "false" when the dimensions are unknown. Unknown is common: media_urls
+ * entries only carry width/height when they came through the Library picker —
+ * clipSearch (the suggestion path) doesn't select those columns at all.
+ *
+ * This fails OPEN because the two mistakes are not symmetric. Offering the step
+ * on a clip that didn't need it costs a redundant render the producer can
+ * ignore. HIDING it on a clip that did need it means publishing a 9:16 master
+ * into a carousel, which Instagram rejects outright — and the producer gets no
+ * hint why, because the control that would have fixed it never appeared.
+ *
+ * @param {{width?:number,height?:number}|null} entry
+ */
+export function mayNeedCarouselRebake(entry) {
+  const w = Number(entry?.width)
+  const h = Number(entry?.height)
+  const known = Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0
+  return known ? needsCarouselRebake({ width: w, height: h }) : true
+}
+
+/**
  * The reframe to propose for a clip entering a 4:5 slot.
  *
  * @param {Object}  p
