@@ -570,6 +570,8 @@
     "moment_type",
     "region",
     "review_by",
+    "reviewed_at",
+    "reviewed_by",
     "score",
     "staff_id",
     "status",
