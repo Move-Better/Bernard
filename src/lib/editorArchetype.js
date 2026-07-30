@@ -124,7 +124,11 @@ export const ARCHETYPES = Object.freeze({
 
 // content_items.platform → base archetype (before the photo/video refinement
 // that splits instagram into carousel/reel and instagram_story into frame/video).
-const PLATFORM_ARCHETYPE = Object.freeze({
+// Exported so auto-attach's photo-default set can be pinned against the `visual`
+// entries here — see tests/lib/autoAttachKind.test.js. A new single-photo-default
+// platform added here without being added to PHOTO_DEFAULT_AUTOATTACH would
+// reintroduce the silent text→video editor flip; that test fails if they drift.
+export const PLATFORM_ARCHETYPE = Object.freeze({
   instagram: 'carousel',          // refined to vvideo when a video is attached
   instagram_story: 'story',       // refined to storyvid when a video is attached
   instagram_reel: 'vvideo',
