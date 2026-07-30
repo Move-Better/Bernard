@@ -418,10 +418,15 @@ async function handler(req, res) {
     capabilities: {},
     enabled_outputs,
     publish_intent,
-    // Route social publishing to the provider the tenant picked. 'bundle' =
-    // bundle.social; anything else keeps the Buffer default (the column also
-    // defaults to 'buffer', so this is a no-op until the UI offers bundle).
-    publish_provider: publish_intent.social === 'bundle' ? 'bundle' : 'buffer',
+    // bundle.social is the only provider a new tenant gets (migration 197).
+    // Previously this fell back to 'buffer' for anything the UI didn't set to
+    // bundle — which was every tenant, since the UI never offered the choice.
+    // The result was a workspace that could not publish at all: no Buffer
+    // credentials and no bundle_team_id, needing a manual flip nobody knew to
+    // make. It is also the only provider that can express the 2026-07-30 format
+    // work (mixed carousels, explicit Reel/Story), so a Buffer tenant would get
+    // a silently degraded product.
+    publish_provider: 'bundle',
     video_pipeline_enabled: true,
     cadence_policy: {
       version: 1,
