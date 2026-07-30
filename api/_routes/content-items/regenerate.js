@@ -31,7 +31,7 @@ import { loadCurrentTentpole, getTentpolePromptContext } from '../../_lib/tentpo
 import { resolveSiblingCaptionsBlock, resolveModelExemplarsBlock } from '../../_lib/producer/draftAtom.js'
 import { clampToCap, platformCap } from '../../_lib/socialLengthTargets.js'
 import { momentWindow } from '../../_lib/momentPlan.js'
-import { extractProvenanceBlock } from '../../../src/lib/provenance.js'
+import { parseCaptionAndSlides } from '../../_lib/producer/slidesBlock.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -181,7 +181,7 @@ export default async function handler(req, res) {
 
   try {
     let newContent
-    let newOverlayText = item.overlay_text ?? null
+    const newOverlayText = item.overlay_text ?? null
 
     const atomTurns = Array.isArray(interview.messages) ? interview.messages : []
     if (!atomTurns.length) {
@@ -307,30 +307,20 @@ export default async function handler(req, res) {
     })
     if (!text?.trim()) throw new Error('AI returned empty content')
 
-    // Mirror draft.js: split optional ---OVERLAY--- block for Instagram,
-    // and strip the <PROVENANCE> trailer (per-paragraph source metadata
-    // that the prompt asks the model to append — must not reach the editor).
-    const [captionRaw, overlayRaw] = extractProvenanceBlock(text.trim()).content.split('---OVERLAY---')
+    // Split the optional Instagram ---SLIDES--- carousel plan from the caption
+    // and strip the <PROVENANCE> trailer, using the SAME parser as the
+    // first-draft path (slidesBlock.js) so the two can't drift. Before this,
+    // regenerate split on a stale ---OVERLAY--- marker the prompt no longer
+    // emits, so the raw ---SLIDES--- separator + JSON array landed in the
+    // caption box for every Instagram piece (P0, 2026-07-29).
+    const { caption: captionRaw, slides: newSlides } = parseCaptionAndSlides(text)
     // Same hard guardrail draftAtom.js applies: the length prompt asks the model
     // to stay under the platform ceiling, but that is a soft instruction it can
     // overshoot. Without this, a regenerate could write an over-cap caption that
     // then blocks Approve (checkCaptionCap) with no way forward but hand-editing
     // — measured live on 2026-07-27: a 3,015-char LinkedIn draft, machine-written
     // and untouched, sitting over the 3,000 ceiling.
-    newContent = clampToCap(stripAiDashes(captionRaw.trim()), platformCap(item.platform))
-
-    if (overlayRaw) {
-      const hookMatch    = overlayRaw.match(/^HOOK:\s*(.+)$/m)
-      const subheadMatch = overlayRaw.match(/^SUBHEAD:\s*(.+)$/m)
-      const ctaMatch     = overlayRaw.match(/^CTA:\s*(.+)$/m)
-      if (hookMatch || subheadMatch || ctaMatch) {
-        newOverlayText = {
-          hook:    stripAiDashes(hookMatch?.[1]?.trim()    ?? ''),
-          subhead: stripAiDashes(subheadMatch?.[1]?.trim() ?? ''),
-          cta:     stripAiDashes(ctaMatch?.[1]?.trim()     ?? ''),
-        }
-      }
-    }
+    newContent = clampToCap(stripAiDashes(captionRaw), platformCap(item.platform))
 
     // ── Update content_item in place ──────────────────────────────────────
     // Reset to draft + clear approval audit so regenerated content needs
@@ -345,6 +335,10 @@ export default async function handler(req, res) {
       reviewed_by:         null,
       updated_at:          new Date().toISOString(),
     }
+    // Refresh the carousel deck when the regenerated output carries a valid
+    // ---SLIDES--- plan (Instagram). Only overwrite on a successful parse —
+    // never wipe an existing deck for a non-Instagram platform or a parse miss.
+    if (newSlides) patch.slides = newSlides
     const upd = await sb(`content_items?id=eq.${id}&${wsFilter}`, {
       method: 'PATCH',
       body:   JSON.stringify(patch),

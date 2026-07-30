@@ -33,6 +33,7 @@ import {
   buildTentpoleGbpLocationBlock,
 } from '../tentpoleCampaignContext.js'
 import { extractProvenanceBlock } from '../../../src/lib/provenance.js'
+import { parseCaptionAndSlides } from './slidesBlock.js'
 import { buildFidelityPrompt, parseFidelity } from '../captionFidelityRubric.js'
 import { clampToCap, platformCap } from '../socialLengthTargets.js'
 import { momentWindow } from '../momentPlan.js'
@@ -459,40 +460,10 @@ export async function draftAtom({ ws, atom, interview }) {
   }
 
   // Split slides block from caption on the final rawText. Instagram prompts append
-  // a ---SLIDES--- JSON section; other platforms don't. Also strip the
-  // <PROVENANCE> trailer — it's metadata, not body copy.
-  const [captionRaw, slidesRaw] = extractProvenanceBlock(rawText.trim()).content.split('---SLIDES---')
-  const caption = captionRaw.trim()
-
-  let slides = null
-  if (slidesRaw) {
-    try {
-      const jsonStr = slidesRaw.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
-      const parsed = JSON.parse(jsonStr)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        slides = parsed
-          .filter((s) => s && typeof s === 'object')
-          .map((s) => ({
-            photo_idx: null,
-            template: typeof s.template === 'string' ? s.template : 'custom',
-            blocks: Array.isArray(s.blocks)
-              ? s.blocks
-                  .filter((b) => b && typeof b === 'object' && typeof b.text === 'string' && b.text.trim() !== '')
-                  .map((b) => ({
-                    role: typeof b.role === 'string' ? b.role : 'body',
-                    text: stripAiDashes(b.text.trim()),
-                    position: b.position ?? 'center',
-                  }))
-              : [],
-          }))
-          .filter((s, idx) => idx === 0 || s.blocks.length > 0 || s.template === 'demonstration')
-        if (slides.length === 0) slides = null
-      }
-    } catch (e) {
-      console.warn('[draftAtom] Failed to parse ---SLIDES--- JSON:', e.message)
-      slides = null
-    }
-  }
+  // a ---SLIDES--- JSON section; other platforms don't. Also strips the
+  // <PROVENANCE> trailer. Shared with the regenerate path via parseCaptionAndSlides
+  // so the two can't drift (see slidesBlock.js).
+  const { caption, slides } = parseCaptionAndSlides(rawText)
 
   // Compute the gate tier + the voice_audit payload (behavior-identical to draft.js).
   //   'passed' — at/above GATE (or unscored).
