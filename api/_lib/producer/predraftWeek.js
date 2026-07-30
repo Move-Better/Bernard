@@ -23,6 +23,7 @@
 // agent-tick per enabled workspace with the `pre_draft_week` lane on; caps the
 // number drafted per invocation so a big week drains over several ticks.
 
+import { contentFormatForAtom } from '../atomPlan.js'
 import { mondayOf } from '../strategist.js'
 import { draftAtom, buildGbpLocationVariants } from './draftAtom.js'
 import { bumpMomentUsage } from '../momentPlan.js'
@@ -136,6 +137,10 @@ async function predraftOneAtom({ ws, atom }) {
       // waitUntil; here we set it inline since we're already off the hot path).
       ...(voiceScore ? { voice_fidelity_score: Math.round(voiceScore.overall * 10) } : {}),
       voice_audit:    predraftedAudit,
+      // Same planned-format inheritance as the interactive draft path. The
+      // slot SELECT above had to grow `format` for this — it was omitted, so
+      // this path could not have inherited the plan even once.
+      ...(contentFormatForAtom(atom) ? { format: contentFormatForAtom(atom), format_source: 'bernard' } : {}),
     }
     const itemRes = await sb('content_items', { method: 'POST', body: JSON.stringify(itemPayload) })
     if (!itemRes.ok) {
@@ -274,7 +279,7 @@ export async function predraftWeek({ ws, cap = DEFAULT_PREDRAFT_CAP }) {
     `content_plan_atoms?${wsFilter}&plan_week=gte.${thisMonday}&plan_week=lte.${nextMonday}` +
     `&scheduled_at=not.is.null&scheduled_at=gte.${scheduledFloor}` +
     `&status=eq.pending&content_piece_id=is.null&interview_id=not.is.null` +
-    `&select=id,platform,angle,interview_id,moment_id,scheduled_at&order=scheduled_at.asc&limit=25`
+    `&select=id,platform,angle,interview_id,moment_id,scheduled_at,format&order=scheduled_at.asc&limit=25`
   )
   if (!slotsRes.ok) {
     console.error('[predraftWeek] slot fetch failed', slotsRes.status)

@@ -7,6 +7,7 @@ export const config = { runtime: 'nodejs', maxDuration: 120 }
 // The generation + voice-judge core AND the GBP per-location fan-out both moved
 // into api/_lib/producer/draftAtom.js (P3 extraction) so the pre-draft cron path
 // shares one implementation. This route keeps its req/res/auth/DB-write concerns.
+import { contentFormatForAtom } from '../../_lib/atomPlan.js'
 import { waitUntil } from '@vercel/functions'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
@@ -130,6 +131,12 @@ export default async function handler(req, res) {
       status:         'draft',
       media_urls:     [],
       location_id:    interview.location_id ?? null,
+      // Inherit the PLANNED format, stamped as Bernard's choice. Without this
+      // the planner decides a slot is a reel and the draft immediately forgets,
+      // falling back to deriving format from attached media. format_source is
+      // the raw signal for the confidence loop: a human changing this in the
+      // editor re-stamps it 'human', and that delta is the override rate.
+      ...(contentFormatForAtom(atom) ? { format: contentFormatForAtom(atom), format_source: 'bernard' } : {}),
     }
     const itemRes = await sb('content_items', {
       method: 'POST',
