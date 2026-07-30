@@ -5,6 +5,7 @@ import {
 } from '../../src/lib/carouselCrop.js'
 import { carouselPublishEntry, pickerItemToMediaEntry } from '../../src/lib/mediaEntry.js'
 import { buildPublishMediaUrls } from '../../src/lib/renderSlides.js'
+import { resolveArchetype } from '../../src/lib/editorArchetype.js'
 
 describe('needsCarouselRebake — who actually needs the crop step', () => {
   it('a 9:16 vertical needs it (0.5625 is below Instagram\'s 0.8 floor)', () => {
@@ -162,5 +163,38 @@ describe('pickerItemToMediaEntry carries dimensions when the source knows them',
   it('omits them rather than emitting nulls when absent', () => {
     const e = pickerItemToMediaEntry({ id: 'a', kind: 'photo', blob_url: 'https://x/p.jpg' })
     expect('width' in e).toBe(false)
+  })
+})
+
+describe('resolveArchetype — explicit format outranks the media refinement', () => {
+  // The bug this exists for: adding a video to a carousel flipped the archetype
+  // to 'vvideo', which routes the piece to the Reel editor — making SlideEditor
+  // and the whole mixed-carousel UI (including the fit step) unreachable. Found
+  // by opening a real piece in prod and seeing the tab title read "Reel Editor",
+  // not by any gate.
+  const VID = { url: 'https://x/v.mp4', type: 'video', kind: 'video' }
+  const PIC = { url: 'https://x/p.jpg', type: 'image', kind: 'image' }
+
+  it('a carousel holding a video stays a CAROUSEL, not a reel', () => {
+    expect(resolveArchetype({ platform: 'instagram', format: 'carousel', media_urls: [PIC, VID] }))
+      .toBe('carousel')
+  })
+
+  it('an all-video carousel is still a carousel', () => {
+    expect(resolveArchetype({ platform: 'instagram', format: 'carousel', media_urls: [VID, VID] }))
+      .toBe('carousel')
+  })
+
+  it('an explicit reel routes to the video editor', () => {
+    expect(resolveArchetype({ platform: 'instagram', format: 'reel', media_urls: [VID] }))
+      .toBe('vvideo')
+  })
+
+  it('LEGACY rows are untouched — no format still derives from media', () => {
+    // Byte-for-byte the old behaviour, which every existing row depends on.
+    expect(resolveArchetype({ platform: 'instagram', media_urls: [VID] })).toBe('vvideo')
+    expect(resolveArchetype({ platform: 'instagram', media_urls: [PIC] })).toBe('carousel')
+    expect(resolveArchetype({ platform: 'facebook', media_urls: [VID] })).toBe('lvideo')
+    expect(resolveArchetype({ platform: 'instagram_story', media_urls: [VID] })).toBe('storyvid')
   })
 })
