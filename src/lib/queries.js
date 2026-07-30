@@ -489,15 +489,61 @@ export function useVerbatimQuotes(pieceId, { enabled = true, ...options } = {}) 
   })
 }
 
+// Merge a content_items PATCH echo into the cached detail row, writing ONLY the
+// columns the patch actually touched (plus the server-authoritative updated_at /
+// moment embed) instead of replacing the whole row.
+//
+// Why not just `setQueryData(detail, echo)`: the SlideEditor fires INDEPENDENT
+// content_items PATCHes for a caption edit ({content}) and a photo swap
+// ({mediaUrls}) / zoom ({slides,...}) with no ordering guarantee (each is its own
+// mutation). Every PATCH echoes the FULL row (select=*). If the photo-swap echo
+// is read server-side before the caption edit commits, its `content` is the
+// pre-edit value — and blindly writing that whole echo into the cache reverts the
+// caption. CaptionPanel's re-seed effect then sees content regress and clobbers
+// the textarea back to the stale (longer, em-dashed) generated caption; a later
+// blur can even persist it. The DB never loses the edit (the two PATCHes write
+// DIFFERENT columns), so this is purely a cache artifact — merging only the
+// touched columns keeps each PATCH from stomping a sibling column it never wrote.
+// Feedback d6b2b24d (Philip Abraham, movebetter): "the caption changed without
+// clicking regenerate ... I believe it occurred when I changed the photo".
+//
+// The patch is camelCase (as sent by updateContentItem); the row is snake_case.
+// A generic camelCase→snake_case matches every direct column write in
+// api/_routes/db/content.js's `allowed` map (e.g. aspectRatio→aspect_ratio,
+// mediaUrls→media_urls; already-snake keys like slides/photo_template_id pass
+// through). Server-set SIDE-EFFECT columns (approved_by, model_marked_at, …) are
+// left to the `contentItems.all` invalidation refetch below, which marks the
+// active detail query stale and reconciles them.
+const camelToSnakeCol = (s) => s.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase())
+
+export function mergePatchedContentRow(prev, echo, patch) {
+  if (!echo) return prev
+  if (!prev) return echo
+  const next = { ...prev }
+  for (const key of Object.keys(patch || {})) {
+    const col = camelToSnakeCol(key)
+    if (col in echo) next[col] = echo[col]
+  }
+  if ('updated_at' in echo) next.updated_at = echo.updated_at
+  if ('moment' in echo) next.moment = echo.moment
+  return next
+}
+
 export function useUpdateContentItem() {
   const qc = useQueryClient()
   return useAppMutation({
     errorMessage: "Couldn't update content",
     mutationFn: ({ id, patch }) => updateContentItem(id, patch),
     onSuccess: (data, { id, patch }) => {
-      // Write the fresh row straight into the detail cache so subscribers
-      // get the new value immediately (no extra network round-trip).
-      if (data) qc.setQueryData(queryKeys.contentItems.detail(id), data)
+      // Merge only the columns this patch wrote into the detail cache so a
+      // concurrent PATCH's stale echo can't revert a sibling edit (see
+      // mergePatchedContentRow). Subscribers still get the new value immediately
+      // with no extra round-trip.
+      if (data) {
+        qc.setQueryData(queryKeys.contentItems.detail(id), (prev) =>
+          mergePatchedContentRow(prev, data, patch),
+        )
+      }
       qc.invalidateQueries({ queryKey: queryKeys.contentItems.all })
       qc.invalidateQueries({ queryKey: queryKeys.stories.all })
       qc.invalidateQueries({ queryKey: queryKeys.contentPlan.all })
