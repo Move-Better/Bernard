@@ -41,6 +41,17 @@ jobs:
       # below VOICE_FIDELITY_GATE_BASELINE. Skips (exit 2) when the fixture is
       # absent, so first-run PRs aren't blocked. Tunable via env.
       - run: npm run verify-caption-fidelity
+      # Golden-set caption REGRESSION gate. Re-scores a FROZEN corpus (real
+      # captions + their source transcripts, committed) with the CURRENT prompt
+      # and judge, and compares against a committed baseline. Because the inputs
+      # never move, a drop is unambiguously a prompt/judge regression rather
+      # than "this month's captions were about different topics" — which is what
+      # the older gate above could not distinguish, and why its 30-day expiry
+      # was a maintenance cliff rather than a freshness feature.
+      # Skips cleanly without AI_GATEWAY_API_KEY so fork PRs aren't blocked.
+      - run: npm run verify-caption-regression
+        env:
+          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
       # Schema-drift guard: fail the PR if any column the code expects (per the
       # committed supabase/expected-schema.json snapshot) is MISSING from prod —
       # i.e. a migration was written but not applied (Bernard has no migration
