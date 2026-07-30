@@ -170,11 +170,27 @@ export function resolveArchetype(piece) {
   const platform = piece?.platform || ''
   const media = asArray(piece?.media_urls)
   const hasVideo = media.some(isVideoEntry)
-  let key = PLATFORM_ARCHETYPE[platform] || 'visual'
+  const key = PLATFORM_ARCHETYPE[platform] || 'visual'
 
-  if (platform === 'instagram' && hasVideo) key = 'vvideo'
-  else if (platform === 'instagram_story' && hasVideo) key = 'storyvid'
-  else if (key === 'visual' && hasVideo) key = 'lvideo'
+  // An EXPLICIT content_items.format outranks the media-derived refinements
+  // below — they exist only because SlideEditor used to be photo-only, so any
+  // video HAD to route to a video editor or it would silently vanish.
+  //
+  // That is no longer true: SlideEditor holds a video slide (locked card + the
+  // 4:5 fit step). Without this branch a carousel with a clip in it still
+  // resolves to 'vvideo' and routes to the Reel editor, which makes the whole
+  // mixed-carousel UI — including the fit step — unreachable. Found exactly
+  // that way: a real piece opened in "Reel Editor" instead of the slide editor.
+  const fmt = typeof piece?.format === 'string' ? piece.format : null
+  if (fmt === 'carousel') return key           // platform default; no video refinement
+  if (fmt === 'reel')     return platform === 'instagram' ? 'vvideo' : 'lvideo'
+  if (fmt === 'story')    return hasVideo ? 'storyvid' : 'story'
+  // 'post' (and null) fall through: a lone video on a single-visual channel is
+  // still a landscape video, which IS the correct editor for it.
+
+  if (platform === 'instagram' && hasVideo) return 'vvideo'
+  if (platform === 'instagram_story' && hasVideo) return 'storyvid'
+  if (key === 'visual' && hasVideo) return 'lvideo'
 
   return key
 }
