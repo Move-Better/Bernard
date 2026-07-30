@@ -270,6 +270,8 @@
     "dispatch_state",
     "dispatching_at",
     "edit_diff",
+    "format",
+    "format_source",
     "gbp_post_name",
     "hashtag_suggestions",
     "held_at",

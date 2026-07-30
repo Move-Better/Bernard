@@ -74,7 +74,7 @@ export default async function handler(req, res) {
 
   const itemRes = await sb(
     `content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}` +
-    `&select=id,platform,content,media_urls,scheduled_at,location_overrides,target_locations,status,interview_id`,
+    `&select=id,platform,content,media_urls,scheduled_at,location_overrides,target_locations,status,interview_id,format`,
   )
   if (!itemRes.ok) return dbErr(res, itemRes)
   const itemRows = await itemRes.json()
@@ -132,7 +132,7 @@ export default async function handler(req, res) {
 
   let result
   if ((ws.publish_provider || 'buffer') === 'bundle') {
-    result = await runBundlePublish(ws, { platform, content, mediaUrls, scheduledAt, locationIds, locationContents })
+    result = await runBundlePublish(ws, { platform, content, mediaUrls, scheduledAt, locationIds, locationContents, format: item.format || null })
   } else {
     const cred = await getCredential(ws.id, 'buffer')
     if (!cred?.secret) {

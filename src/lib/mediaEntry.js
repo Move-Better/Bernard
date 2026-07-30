@@ -102,13 +102,16 @@ export function isVideoEntry(entry) {
   return entry?.kind === 'video' || entry?.type === 'video'
 }
 
-// True when an Instagram piece should publish as a Reel rather than a photo
-// carousel: it has at least one video attached. Instagram (and Buffer) treat a
-// post as EITHER an all-photo carousel OR a single-video Reel — they can't be
-// mixed through our publisher — so the presence of any video makes it a Reel.
-// (Mixed photo+video carousels are parked in .claude/ideas.md, blocked on
-// Buffer.) Shared so the preview, the composer gate, and any reel-specific UI
-// make the same call from the same media_urls array.
+// LEGACY derivation: an Instagram piece with any video attached publishes as a
+// Reel. This is the fallback for pieces with NO explicit content_items.format —
+// which is every row written before the format column existed, so it must keep
+// behaving exactly as it always has. It is NOT a platform law anymore: mixed
+// photo+video carousels are real through bundle.social (carouselItems, verified
+// live 2026-07-29), reachable by setting format='carousel' explicitly. Callers
+// deciding reel-ness for DISPATCH should check `piece.format === 'reel'` first
+// and only fall back here when format is null (see dispatchContentItem.js,
+// bundlePublisher.js). Shared so the preview, the composer gate, and any
+// reel-specific UI make the same legacy call from the same media_urls array.
 export function isInstagramReel(mediaUrls) {
   return Array.isArray(mediaUrls) && mediaUrls.some(isVideoEntry)
 }
@@ -131,6 +134,24 @@ export function postFormat(piece) {
   const media = Array.isArray(piece?.media_urls) ? piece.media_urls : []
   const slideCount = Array.isArray(piece?.slides) ? piece.slides.length : 0
   const platformLabel = PLATFORM_LABEL[platform] || (platform ? platform[0].toUpperCase() + platform.slice(1) : '')
+
+  // An explicit content_items.format wins over every derivation below — that's
+  // the whole point of the column (a video inside a carousel must not relabel
+  // the piece a Reel). Null format = legacy derived behavior, unchanged.
+  const explicit = typeof piece?.format === 'string' ? piece.format : null
+  if (explicit === 'reel') {
+    return { kind: 'reel', label: `${platformLabel} Reel`, count: 1, unit: 'video' }
+  }
+  if (explicit === 'story') {
+    return { kind: 'story', label: `${platformLabel} Story`, count: media.length || 1, unit: 'media' }
+  }
+  if (explicit === 'carousel') {
+    const n = slideCount || media.length
+    return { kind: 'carousel', label: `${platformLabel} Carousel`, count: n, unit: 'slides' }
+  }
+  if (explicit === 'post') {
+    return { kind: 'post', label: `${platformLabel} Post`, count: media.length, unit: 'media' }
+  }
 
   if (platform === 'instagram' && isInstagramReel(media)) {
     return { kind: 'reel', label: `${platformLabel} Reel`, count: 1, unit: 'video' }

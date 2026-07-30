@@ -59,7 +59,7 @@ export default async function handler(req, res) {
   // Verify piece belongs to this workspace and load the fields the dispatcher needs.
   const ciRes = await sb(
     `content_items?id=eq.${piece_id}&${wsFilter}` +
-    `&select=id,status,platform,content,media_urls,slides,scheduled_at,dispatch_state`
+    `&select=id,status,platform,content,media_urls,slides,scheduled_at,dispatch_state,format`
   )
   if (!ciRes.ok) return err(res, 'Database error', 500)
   const ciRows = await ciRes.json()

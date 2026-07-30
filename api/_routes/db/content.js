@@ -326,6 +326,12 @@ export default async function handler(req, res) {
       buffer_metrics_fetched_at: patch.bufferMetricsFetchedAt,
       updated_at:             new Date().toISOString(),
       aspect_ratio:           patch.aspectRatio,
+      // Explicit publish format. format_source is server-stamped, never
+      // client-supplied: this route is the human editor's path, so any format
+      // set here is a HUMAN choice — that provenance is the raw signal for the
+      // format-confidence loop (server-side drafters stamp 'bernard' directly).
+      format:                 patch.format,
+      format_source:          patch.format !== undefined ? (patch.format === null ? null : 'human') : undefined,
       seo_title:              patch.seoTitle,
       meta_description:       patch.metaDescription,
       reject_reason:          patch.status === 'rejected' ? patch.rejectReason : undefined,

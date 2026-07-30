@@ -23,6 +23,7 @@ import { resolveBundleGbpTargets } from '../../_lib/social/gbpTargets.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
 import { clampToCap, platformCap } from '../../_lib/socialLengthTargets.js'
+import { FORMAT_IDS } from '../../../src/lib/platformFormats.js'
 
 const BUFFER_GQL = 'https://api.buffer.com/graphql'
 // GBP's hard character ceiling, resolved from the single source of truth.
@@ -251,7 +252,7 @@ export async function runBufferPublish({ workspaceId, token, platform, content, 
 
 // Bundle.social equivalent of runBufferPublish — extracted from
 // handleBundlePublish below for the same reason (shared with the retry route).
-export async function runBundlePublish(workspace, { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents }) {
+export async function runBundlePublish(workspace, { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents, format = null }) {
   let publisher
   try {
     publisher = new BundlePublisher(workspace)
@@ -297,7 +298,7 @@ export async function runBundlePublish(workspace, { platform, content, mediaUrls
   }
 
   try {
-    const result = await publisher.publish({ platform, content, mediaUrls, scheduledAt })
+    const result = await publisher.publish({ platform, content, mediaUrls, scheduledAt, format })
     return {
       status: 200,
       body: {
@@ -483,8 +484,14 @@ async function handleBundlePublish(req, res, workspace) {
   }
 
   const body = (typeof req.body === 'object' && req.body) ? req.body : {}
-  const { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents, contentItemId } = body
+  const { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents, contentItemId, format } = body
   if (!platform || !content) return res.status(400).json({ error: 'Missing platform or content' })
+  // Explicit format is optional; when present it must be from the shared
+  // vocabulary (src/lib/platformFormats.js). Media-vs-format fit is validated
+  // deeper, in BundlePublisher.publish, where the media entries are in hand.
+  if (format != null && !FORMAT_IDS.includes(format)) {
+    return res.status(400).json({ error: 'invalid_format' })
+  }
 
   // Words-approval gate (Phase 3, story-monitor redesign) — see the mirror
   // check in the Buffer handler above for the full rationale.
@@ -520,7 +527,7 @@ async function handleBundlePublish(req, res, workspace) {
 
   let result
   try {
-    result = await runBundlePublish(workspace, { platform, content, mediaUrls, scheduledAt, locationIds, locationContents })
+    result = await runBundlePublish(workspace, { platform, content, mediaUrls, scheduledAt, locationIds, locationContents, format: format || null })
   } catch (e) {
     // runBundlePublish catches internally today; this is belt-and-suspenders so
     // an unexpected throw can never strand the claim (released below).
