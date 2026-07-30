@@ -397,6 +397,13 @@ export default function MomentMiner({ initialTab = 'onhand' }) {
     () => Object.fromEntries(staff.map((c) => [c.id, c.name])),
     [staff]
   )
+  // Clerk user id → staff name. Audit stamps (moments.reviewed_by) store the
+  // Clerk id, so the On-hand review marker resolves it to a person the same way
+  // AssetsPane resolves content_items.approved_by.
+  const staffByUserId = useMemo(
+    () => Object.fromEntries(staff.filter((c) => c.user_id).map((c) => [c.user_id, c.name])),
+    [staff]
+  )
 
   // Top-level page tabs: the on-hand inventory (default), the video intake
   // lane (the entire pre-2026-07-27 Moment Miner, unchanged inside), and the
@@ -749,6 +756,7 @@ export default function MomentMiner({ initialTab = 'onhand' }) {
           error={bankError}
           refetch={refetchBank}
           staffMap={staffMap}
+          staffByUserId={staffByUserId}
         />
       ) : topTab === 'coverage' ? (
         <CoverageTab gaps={s?.gaps} />

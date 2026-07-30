@@ -3,12 +3,21 @@
 //                                               (powers the /moments "On hand" tab, step ③;
 //                                               header stats come from GET /api/moments/summary)
 // PATCH /api/db/moments?id=<uuid>             — retire/restore one moment (status banked|retired)
+//                                               and/or stamp the review marker (reviewed true|false)
 //
 // The bank is the workspace's inventory of scored VERBATIM excerpts
 // (migration 191). Embedding is never selected (1536 floats per row is pure
 // payload weight for a list view). Retire is QUIET by design: it only stops
 // future draws — content_plan_atoms.moment_id is ON DELETE SET NULL and this
 // handler never touches atoms, so already-planned pieces keep their drafts.
+//
+// Review (migration 193) is a MARKER, not a gate — an approved moment is drawn
+// by the planner exactly like an unreviewed one. It exists so the On-hand
+// approval queue ("banked AND reviewed_at IS NULL") is finite and each verdict
+// carries an audit stamp. Both verdicts stamp it: Approve sends
+// {reviewed:true}, Retire sends {status:'retired', reviewed:true}. reviewed_at
+// and reviewed_by are SERVER-set only, never accepted from the client (same
+// rule as content_items.approved_by).
 //
 // Auth: any workspace role reads; retire/restore needs an editor role.
 
@@ -30,7 +39,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const BANK_LIMIT = 1000
 
 const MOMENT_FIELDS =
-  'id,excerpt,hook,moment_type,topic,region,tags,score,cluster_id,is_exemplar,status,usage_count,last_used_at,clip_asset_id,staff_id,interview_id,created_at'
+  'id,excerpt,hook,moment_type,topic,region,tags,score,cluster_id,is_exemplar,status,usage_count,last_used_at,clip_asset_id,staff_id,interview_id,reviewed_at,reviewed_by,created_at'
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -55,18 +64,38 @@ export default async function handler(req, res) {
 
   const url = new URL(req.url, 'http://localhost')
 
-  // ── PATCH — retire / restore ──────────────────────────────────────────────
+  // ── PATCH — retire / restore / review ─────────────────────────────────────
   if (req.method === 'PATCH') {
     const id = url.searchParams.get('id') || ''
     if (!UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
+
     const status = req.body?.status
-    if (status !== 'banked' && status !== 'retired') {
+    const reviewed = req.body?.reviewed
+    const hasStatus = status !== undefined
+    const hasReviewed = reviewed !== undefined
+
+    if (hasStatus && status !== 'banked' && status !== 'retired') {
       return res.status(400).json({ error: 'invalid_status' })
     }
+    if (hasReviewed && typeof reviewed !== 'boolean') {
+      return res.status(400).json({ error: 'invalid_reviewed' })
+    }
+    // An empty PATCH would silently succeed and look like it worked.
+    if (!hasStatus && !hasReviewed) return res.status(400).json({ error: 'nothing_to_update' })
+
+    const patch = { updated_at: new Date().toISOString() }
+    if (hasStatus) patch.status = status
+    if (hasReviewed) {
+      // Audit fields are server-set only — never accept a timestamp or an
+      // identity from the client (same rule as content_items.approved_by).
+      patch.reviewed_at = reviewed ? new Date().toISOString() : null
+      patch.reviewed_by = reviewed ? auth.userId : null
+    }
+
     const r = await sb(`moments?id=eq.${id}&workspace_id=eq.${ws.id}`, {
       method: 'PATCH',
       headers: { Prefer: 'return=representation' },
-      body: JSON.stringify({ status, updated_at: new Date().toISOString() }),
+      body: JSON.stringify(patch),
     })
     if (!r.ok) {
       console.error('[db/moments] patch failed:', r.status, (await r.text().catch(() => '')).slice(0, 300))
