@@ -119,8 +119,14 @@ export default async function handler(req, res) {
     // it out on its published day. Note published atoms are dropped the same way
     // from month-summary.js's scheduled_at range query — tracked separately.
     const scheduled = atoms.filter((a) => {
-      if (a.scheduled_at) return true
       const ci = itemStatusMap[a.content_piece_id]
+      // A rejected/archived piece is a decided "no" — drop its card from the
+      // board entirely (feedback 79eb7eb1: a rejected LinkedIn post lingered on
+      // /week as amber "in review"). Reject keeps the atom's scheduled_at, so
+      // without this it would pass the `a.scheduled_at` check below and render.
+      // The slot simply falls off that day; the week just has one fewer post.
+      if (ci?.status === 'rejected' || ci?.status === 'archived') return false
+      if (a.scheduled_at) return true
       return ci?.status === 'published' && Boolean(ci.published_at)
     })
     return { scheduled, itemStatusMap }
