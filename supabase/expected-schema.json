@@ -281,6 +281,7 @@
     "length_preset",
     "location_id",
     "location_overrides",
+    "media_source",
     "media_urls",
     "meta_description",
     "model_marked_at",

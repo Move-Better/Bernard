@@ -155,7 +155,10 @@ export async function autoAttachMedia({ ws, draft, dryRun = false } = {}) {
 
     const patchRes = await sb(`content_items?id=eq.${encodeURIComponent(draft.id)}&workspace_id=eq.${ws.id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ media_urls: [entry], updated_at: new Date().toISOString() }),
+      // media_source records that BERNARD chose this, giving the override rate
+      // its denominator — a rate needs the times Bernard was right, not just
+      // the times a human changed it (migration 196).
+      body: JSON.stringify({ media_urls: [entry], media_source: 'bernard', updated_at: new Date().toISOString() }),
       headers: { Prefer: 'return=minimal' },
     })
     if (!patchRes.ok) {

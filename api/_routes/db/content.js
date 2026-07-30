@@ -9,6 +9,7 @@ import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
+import { classifyMediaChange } from '../../_lib/mediaOverride.js'
 import { extractConcepts } from '../../_lib/conceptExtractor.js'
 import { extractVoicePhrases } from '../../_lib/voicePhraseExtractor.js'
 import { indexContentItem } from '../../_lib/practiceMemoryRag.js'
@@ -75,7 +76,7 @@ async function dbErr(res, r, msg = 'Database error', status = 500) {
 // selected state, the badge, and publishPiece's `piece.format`) got undefined,
 // so the choice was invisible AND never reached the publish payload. Nothing
 // errored; the feature was simply inert. Add both halves together.
-const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,content,overlay_text,slides,text_card,status,publish_error,scheduled_at,published_at,media_urls,platform_post_id,buffer_update_id,resolved_url,target_locations,location_id,location_overrides,notes,reviewed_by,approved_by,approved_at,reject_reason,reject_note,rejected_at,rejected_by,edit_diff,performed_well,is_model_post,model_reasons,model_note,model_marked_at,archived_at,hashtag_suggestions,buffer_metrics,buffer_metrics_fetched_at,provenance,voice_fidelity_score,voice_audit,length_preset,series_id,series_part,series_total,photo_treatment,photo_composite_url,photo_template_id,aspect_ratio,seo_title,meta_description,format,format_source,created_at,updated_at'
+const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,content,overlay_text,slides,text_card,status,publish_error,scheduled_at,published_at,media_urls,platform_post_id,buffer_update_id,resolved_url,target_locations,location_id,location_overrides,notes,reviewed_by,approved_by,approved_at,reject_reason,reject_note,rejected_at,rejected_by,edit_diff,performed_well,is_model_post,model_reasons,model_note,model_marked_at,archived_at,hashtag_suggestions,buffer_metrics,buffer_metrics_fetched_at,provenance,voice_fidelity_score,voice_audit,length_preset,series_id,series_part,series_total,photo_treatment,photo_composite_url,photo_template_id,aspect_ratio,seo_title,meta_description,format,format_source,media_source,created_at,updated_at'
 
 // Slim shape for the Stories list (Cards / Pipeline / Calendar / Themes views).
 // Drops heavy columns (`content`, `media_urls`, `buffer_metrics`, `notes`, etc.)
@@ -297,6 +298,32 @@ export default async function handler(req, res) {
         return err(res, 'Invalid modelNote', 400)
       }
     }
+    // ── Media override capture (learning loop, migration 196) ────────────
+    // A photo swap is the third override dimension, and the only one with no
+    // signal at all before this: media_urls is overwritten in place and
+    // edit_diff is text-only.
+    //
+    // Classified from the CHANGE, never from a caller claim. The editor's own
+    // auto-attach-on-open and a human's deliberate swap arrive through this
+    // same PATCH from the same client, so a client-supplied provenance flag
+    // would be wrong in both directions (and trivially able to suppress real
+    // overrides). What IS unambiguous server-side:
+    //   empty  → non-empty  = a first attach. Nobody's choice was overridden.
+    //   non-empty → different = a REPLACEMENT. That is the override signal,
+    //                            and it is exactly what the panel reports
+    //                            ("you swapped the photo on 21 of 48").
+    // Identical arrays (a no-op re-save, e.g. an autosave round-trip) must not
+    // count — that would inflate the rate every time an editor is opened.
+    let mediaOverride
+    if (Array.isArray(patch.mediaUrls)) {
+      const curRes = await sb(`content_items?id=eq.${id}&workspace_id=eq.${ws.id}&select=media_urls&limit=1`)
+      if (curRes.ok) {
+        const curRow = (await curRes.json().catch(() => []))[0]
+        const before = Array.isArray(curRow?.media_urls) ? curRow.media_urls : []
+            mediaOverride = classifyMediaChange(before, patch.mediaUrls)
+      }
+    }
+
     if (patch.locationId) {
       const locChk = await sb(`workspace_locations?id=eq.${patch.locationId}&workspace_id=eq.${ws.id}&select=id&limit=1`)
       if (!locChk.ok || !(await locChk.json()).length) return err(res, 'Location not found in workspace', 404)
@@ -337,6 +364,8 @@ export default async function handler(req, res) {
       // set here is a HUMAN choice — that provenance is the raw signal for the
       // format-confidence loop (server-side drafters stamp 'bernard' directly).
       format:                 patch.format,
+      // Server-stamped from the classification above; never read from the body.
+      media_source:           mediaOverride,
       format_source:          patch.format !== undefined ? (patch.format === null ? null : 'human') : undefined,
       seo_title:              patch.seoTitle,
       meta_description:       patch.metaDescription,
