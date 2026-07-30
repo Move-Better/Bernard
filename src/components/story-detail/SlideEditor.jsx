@@ -11,6 +11,7 @@ import { apiFetch } from '@/lib/api'
 import { normalizeGrade, isNeutralGrade } from '@/lib/gradeParams'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import { photoSourceUrl, clipToMediaEntry, mediaEntryKey, slidePhotos } from '@/lib/mediaEntry'
+import { formatChoicesFor } from '@/lib/platformFormats'
 import { brandStyleForRender } from '@/lib/brandSwatches'
 import { deriveStory } from '@/lib/storyFields'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
@@ -271,6 +272,23 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     setSlides(next)
     setActiveSlideIdx(next.length - 1)
     setSelection({ type: 'photo' })
+  }
+
+  // The piece's PUBLISH format (content_items.format). A content_item field like
+  // media_urls, so it goes through useUpdateContentItem — NOT the slides
+  // autosave, whose draftState carries only {slides, themeId, aspect}.
+  //
+  // format_source is stamped 'human' SERVER-side (api/_routes/db/content.js) and
+  // is deliberately not sent from here: a client-supplied provenance flag would
+  // be worthless as the learning signal it exists to be.
+  const formatChoices = useMemo(() => formatChoicesFor(piece), [piece])
+  async function onPickFormat(next) {
+    if (!piece?.id || next === piece.format) return
+    try {
+      await updateItem.mutateAsync({ id: piece.id, patch: { format: next } })
+    } catch {
+      toast('Could not change the format', { variant: 'destructive' })
+    }
   }
 
   // Attach a NEW photo to the piece (media_urls belongs to the content_item, not
@@ -585,6 +603,11 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
         note={photoCount != null && photoCount !== slides.length
           ? `${slides.length} slides from ${photoCount} photo${photoCount === 1 ? '' : 's'}`
           : null}
+        format={formatChoices.length > 1 ? {
+          value: piece?.format || null,
+          options: formatChoices,
+          onChange: onPickFormat,
+        } : null}
       >
         <Tooltip>
           <TooltipTrigger asChild>

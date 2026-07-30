@@ -342,16 +342,24 @@ function ReelPreview({ video }) {
 }
 
 // ── Instagram ────────────────────────────────────────────────────────────────
-function InstagramPreview({ content, mediaUrls = [], slides = null, photoTemplateId = null, aspectRatio = '4:5' }) {
+function InstagramPreview({ content, mediaUrls = [], slides = null, photoTemplateId = null, aspectRatio = '4:5', format = null }) {
   const [showFull, setShowFull] = React.useState(false)
   const lines = (content || '').split('\n')
   const preview = lines.slice(0, 4).join('\n')
   const hasMore = lines.length > 4
 
-  // A video attached → this is a Reel (9:16 single video), not a photo carousel.
-  // Instagram/Buffer can't mix photo + video in one post (mixed carousel parked,
-  // blocked on Buffer — see .claude/ideas.md). The first video wins as the Reel.
-  const reelVideo = mediaUrls.find(isVideoEntry) || null
+  // Reel-vs-carousel now follows the piece's EXPLICIT format when it has one.
+  //
+  // The old rule — any video anywhere makes this a Reel — was a real platform
+  // limit under Buffer, but bundle.social publishes mixed photo+video carousels
+  // (verified live 2026-07-29), so it is now only the legacy fallback for rows
+  // with no format set. Keeping the short-circuit unconditional would mean
+  // choosing "Carousel" on a piece with a clip in it silently previewed as a
+  // Reel — the preview lying about the published artifact, which is the exact
+  // failure this codebase has been bitten by before.
+  const reelVideo = (format && format !== 'reel')
+    ? null
+    : (mediaUrls.find(isVideoEntry) || null)
 
   // When slides exist, render the carousel as one canvas per slide (photo +
   // baked text blocks). When slides are absent (legacy/fresh draft), fall back
@@ -1269,7 +1277,7 @@ function EmailPreview({ content, mediaUrls = [] }) {
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function PostPreview({ platform, content, mediaUrls = [], slides = null, overlayText = null, textCard = null, locationOverrides = null, photoTemplateId = null, aspectRatio = '4:5' }) {
+export default function PostPreview({ platform, content, mediaUrls = [], slides = null, overlayText = null, textCard = null, locationOverrides = null, photoTemplateId = null, aspectRatio = '4:5', format = null }) {
   // A Story is valid with media + no caption (the overlay/sticker live in
   // dedicated fields), so it must not trip the "no content" guard below.
   const isStory = platform === 'instagram_story'
@@ -1282,7 +1290,7 @@ export default function PostPreview({ platform, content, mediaUrls = [], slides 
   }
 
   switch (platform) {
-    case 'instagram':   return <InstagramPreview content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} />
+    case 'instagram':   return <InstagramPreview content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} format={format} />
     case 'instagram_story': return <InstagramStoryPreview content={content} mediaUrls={mediaUrls} overlayText={overlayText} textCard={textCard} />
     case 'facebook':    return <FacebookPreview  content={content} mediaUrls={mediaUrls} />
     case 'linkedin':    return <LinkedInPreview  content={content} />

@@ -68,6 +68,49 @@ export function formatMediaRule(platform, format) {
   return REGISTRY[platform]?.[format] || null
 }
 
+// Human labels for the picker. Kept next to the registry so a new format can't
+// ship with a machine key leaking into the UI.
+const FORMAT_LABELS = {
+  post: 'Post', carousel: 'Carousel', reel: 'Reel', story: 'Story',
+}
+
+// Why a format is unavailable, in the producer's words. Keys mirror
+// validateFormatMedia's reasons exactly.
+const REASON_COPY = {
+  too_few_items:      (r) => `Needs at least ${r.min} items`,
+  too_many_items:     (r) => `Takes at most ${r.max} items`,
+  video_not_allowed:  () => 'Photos only — a video posts as a Reel',
+  image_not_allowed:  () => 'Video only — remove the photos',
+  mixed_not_allowed:  () => 'This channel can’t mix photos and video in one post',
+  format_not_supported: () => 'Not available on this channel',
+}
+
+/**
+ * The format choices to render for a piece, each with whether the CURRENT media
+ * can satisfy it and why not.
+ *
+ * Disabled rather than hidden on purpose: the full set teaches what the channel
+ * actually offers, and the tooltip says what to change. Hiding "Reel" from a
+ * photo carousel would leave a producer with no way to learn it exists.
+ *
+ * @param {{platform?: string, media_urls?: unknown}|null} piece
+ * @returns {Array<{id:string,label:string,disabled:boolean,title:string|null}>}
+ */
+export function formatChoicesFor(piece) {
+  const platform = piece?.platform || ''
+  const media = Array.isArray(piece?.media_urls) ? piece.media_urls : []
+  return formatOptions(platform).map((id) => {
+    const check = validateFormatMedia(platform, id, media)
+    const rule = formatMediaRule(platform, id) || {}
+    return {
+      id,
+      label: FORMAT_LABELS[id] || id,
+      disabled: !check.ok,
+      title: check.ok ? null : (REASON_COPY[check.reason]?.(rule) || null),
+    }
+  })
+}
+
 // Validate a media_urls array against an explicit format choice. Returns
 // { ok: true } or { ok: false, reason } with a stable machine key — callers
 // turn reasons into UI copy (picker disable hints) or publishError keys.
@@ -79,10 +122,15 @@ export function validateFormatMedia(platform, format, mediaUrls) {
   const videos = entries.filter(isVideoEntry).length
   const images = entries.length - videos
 
-  if (entries.length < rule.min) return { ok: false, reason: 'too_few_items' }
-  if (entries.length > rule.max) return { ok: false, reason: 'too_many_items' }
+  // KIND before COUNT, deliberately. Both can fail at once, and only one reason
+  // reaches the producer as a tooltip — so the more fundamental one has to win.
+  // Two photos against Reel fails both (2 > max 1, and photos aren't video);
+  // reporting "takes at most 1 item" implies deleting a photo would fix it, and
+  // it would not. Reporting "video only" names the actual problem.
   if (videos > 0 && !rule.kinds.includes('video')) return { ok: false, reason: 'video_not_allowed' }
   if (images > 0 && !rule.kinds.includes('image')) return { ok: false, reason: 'image_not_allowed' }
   if (!rule.mixed && videos > 0 && images > 0) return { ok: false, reason: 'mixed_not_allowed' }
+  if (entries.length < rule.min) return { ok: false, reason: 'too_few_items' }
+  if (entries.length > rule.max) return { ok: false, reason: 'too_many_items' }
   return { ok: true }
 }
