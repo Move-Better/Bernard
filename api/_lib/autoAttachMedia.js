@@ -34,7 +34,7 @@
 
 import { searchClips } from './clipSearch.js'
 import { buildDraftMatchQuery } from './draftMatchQuery.js'
-import { mediaKindForDraft, isTextOnlyPlatform } from './platformMedia.js'
+import { autoAttachKindForDraft, isTextOnlyPlatform } from './platformMedia.js'
 import { clipToMediaEntry } from '../../src/lib/mediaEntry.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -102,12 +102,18 @@ export async function autoAttachMedia({ ws, draft, dryRun = false } = {}) {
     // drafts don't stall on a missing picture anyway.
     if (isTextOnlyPlatform(draft.platform)) return { attached: false, reason: 'text_only_platform' }
 
-    // The kind to search for. CRUCIAL: mediaKindForDraft returns null for the
-    // dual-kind social platforms (instagram/facebook/linkedin/gbp) — that means
-    // "either photo or video", NOT "no media". searchClips treats a null kind as
-    // no kind filter (returns both), exactly like the manual suggest-media panel.
-    // Skipping on null here would no-op on precisely the platforms that stall.
-    const kind = mediaKindForDraft(draft)
+    // The kind to AUTO-attach. autoAttachKindForDraft — NOT mediaKindForDraft —
+    // because auto-attach's default must differ from what the manual picker
+    // offers: for the single-photo-default social platforms (linkedin/facebook/
+    // gbp/x/…) it returns 'photo', so auto-attach can't silently drop a video on
+    // a text/photo draft and flip it into a video post that reroutes to the
+    // reel/timeline editor (the reported bug). Those platforms DO support video —
+    // the user just adds it deliberately via the picker (which still shows both,
+    // driven by mediaKindForDraft). Instagram stays null here (a Reel is an
+    // expected IG format), and null still means "either", which searchClips reads
+    // as no kind filter. Video-only (tiktok/youtube) and photo-only (blog/email)
+    // constraints pass straight through.
+    const kind = autoAttachKindForDraft(draft)
 
     const query = buildDraftMatchQuery(draft)
     if (!query) return { attached: false, reason: 'empty_query' }

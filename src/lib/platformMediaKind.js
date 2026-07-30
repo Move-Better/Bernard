@@ -93,6 +93,50 @@ export function mediaKindForDraft(piece) {
   return media.some(isVideoEntry) ? 'video' : null
 }
 
+// Platforms whose DEFAULT post is a single still/text post — the `visual`
+// archetype in editorArchetype.js (facebook, linkedin, x, gbp, …). Every one of
+// these ALSO supports native video; this set is NOT a capability claim — a video
+// publishes fine to LinkedIn / Facebook / X / GBP. It exists only so AUTO-attach
+// picks a PHOTO by default and never silently turns a text/photo draft into a
+// video post, which would reroute it to the timeline/reel editor the user never
+// asked for (the reported bug: a media-less LinkedIn draft got a 25s video
+// auto-attached and opened in the reel editor). Video stays one manual click
+// away in the picker, which always offers both kinds (mediaKindForDraft, used by
+// the manual suggest panel, is deliberately left unchanged).
+//
+// Instagram is intentionally absent: a Reel is a first-class expected IG format,
+// so IG auto-attach stays dual. Kept in lockstep with editorArchetype's `visual`
+// set by tests/lib/autoAttachKind.test.js (a media-less draft on each of these
+// must resolve to the `visual` archetype, and no other live platform may).
+const PHOTO_DEFAULT_AUTOATTACH = new Set([
+  'facebook', 'linkedin', 'twitter', 'threads', 'bluesky', 'mastodon',
+  'pinterest', 'reddit', 'gbp', 'discord', 'slack',
+])
+
+/**
+ * The media kind AUTO-attach should DEFAULT to for a media-less draft.
+ *
+ * Identical to mediaKindForDraft EXCEPT for the photo-default social platforms
+ * above: those genuinely take either kind (so the manual picker shows both), but
+ * auto-attach defaults to a photo rather than silently converting the draft into
+ * a video post. Everything else defers to mediaKindForDraft — the hard video-only
+ * (tiktok/youtube) and photo-only (blog/email) constraints, and the dual
+ * Instagram case, all pass straight through.
+ *
+ * Deliberately SEPARATE from mediaKindForDraft: only auto-attach calls this. The
+ * manual suggest panel and the DraftContextPanel hint must keep offering both
+ * kinds on LinkedIn/Facebook/GBP so the user can still choose a video on purpose.
+ *
+ * @param {{platform?: string, media_urls?: unknown}|null|undefined} piece
+ * @returns {'video'|'photo'|null}
+ */
+export function autoAttachKindForDraft(piece) {
+  const kind = mediaKindForDraft(piece)
+  if (kind) return kind
+  const p = String(piece?.platform || '').toLowerCase()
+  return PHOTO_DEFAULT_AUTOATTACH.has(p) ? 'photo' : null
+}
+
 // Human label for what a platform accepts — drives the hint next to the
 // platform badge so the producer understands why the candidate set is filtered.
 export function mediaKindLabel(kind) {
