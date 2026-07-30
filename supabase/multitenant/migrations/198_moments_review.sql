@@ -1,4 +1,7 @@
--- 193_moments_review.sql
+-- 198_moments_review.sql
+-- (Applied to prod 2026-07-30 while mis-numbered 193 — three migrations already
+-- shared that prefix and 194-197 were taken. Renamed to the next free number;
+-- prefixes are informational, so the applied DDL is unaffected.)
 -- Moment review queue — the /moments "On hand" tab becomes a card-based
 -- approval pass instead of a 133-row list nobody curates.
 --

@@ -621,6 +621,8 @@ GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO service_role;
 
 If two migrations land on the same day, give them sequential numeric prefixes (008, 009, 010 …) rather than sharing a prefix. Shared prefixes are confusing for humans even though the apply script doesn't care.
 
+**Take the number from `ls supabase/multitenant/migrations | tail -1`, never by incrementing the migration you happen to have open.** The natural move when adding a migration to a feature is to read that feature's existing migration and add one — and in a repo with parallel sessions that number was claimed days ago. (2026-07-30: a moments review migration was written as `193_` because the moment-bank work sat at `192_`; **three** files already shared the `193_` prefix and `194_`–`197_` were all taken, so it shipped implying it predated four migrations that actually came before it. Renamed to `198_` in a follow-up; prefixes are informational so nothing broke, but the ordering was a lie.) Re-check the tail immediately before committing, not just when you start writing — a sibling session can claim the number while you work.
+
 **Apply before shipping code that depends on them.** Because there's no migration tracker, it's easy to merge a PR that references a new column while the schema lags behind on prod — the handler will 500 with a generic "Database error" on first hit. Rule: before merging a PR that adds a `select=` field, ALTER TABLE, or new column reference, confirm the relevant migration is applied to prod. Quick check via Supabase Studio SQL Editor (https://supabase.com/dashboard/project/wrqfrjhevkbbheymzezy/sql/new):
 
 ```sql
