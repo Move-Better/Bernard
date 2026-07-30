@@ -28,10 +28,9 @@ import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
-import { getCredential } from '../../_lib/getCredential.js'
 import { recordAgentAction } from '../../_lib/agentActions.js'
 import { notifyPublishFailure } from '../../_lib/notifyPublishFailure.js'
-import { runBufferPublish, runBundlePublish } from '../publish/buffer.js'
+import { runBundlePublish } from '../publish/buffer.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
 import { resolveGbpLocationIds } from '../../../src/lib/gbpLocations.js'
@@ -130,20 +129,11 @@ export default async function handler(req, res) {
       )
     : undefined
 
-  let result
-  if ((ws.publish_provider || 'buffer') === 'bundle') {
-    result = await runBundlePublish(ws, { platform, content, mediaUrls, scheduledAt, locationIds, locationContents, format: item.format || null })
-  } else {
-    const cred = await getCredential(ws.id, 'buffer')
-    if (!cred?.secret) {
-      await releaseDispatch(contentItemId, ws.id)  // release the claim we took above
-      return err(res, 'not_configured', 503)
-    }
-    result = await runBufferPublish({
-      workspaceId: ws.id, token: cred.secret, platform, content, mediaUrls, scheduledAt,
-      useQueue: false, locationIds, locationContents,
-    })
-  }
+  // bundle-only since 2026-07-30 (migration 197 + the publish-path retirement).
+  const result = await runBundlePublish(ws, {
+    platform, content, mediaUrls, scheduledAt, locationIds, locationContents,
+    format: item.format || null,
+  })
 
   if (result.status !== 200 || !result.body?.success) {
     const reason = typeof result.body?.error === 'string' ? result.body.error : 'Retry failed'

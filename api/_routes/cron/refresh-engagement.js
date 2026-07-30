@@ -22,7 +22,6 @@ export const config = { runtime: 'nodejs' }
 
 import { decryptSecret } from '../../_lib/credentialCrypto.js'
 import { fetchGA4Metrics, urlToPagePath } from '../../_lib/ga4.js'
-import { fetchPostStats } from '../../_lib/bufferPostStats.js'
 import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
 import { refreshGbpToken } from '../../_lib/gbpAuth.js'
 import { listLocalPosts, fetchPostViewInsights } from '../../_lib/gbpClient.js'
@@ -98,137 +97,6 @@ async function getCredSecret(workspaceId, service) {
   const ct = rows?.[0]?.secret_ciphertext
   if (!ct) return null
   try { return decryptSecret(ct) } catch { return null }
-}
-
-async function getBufferToken(workspaceId) {
-  // Inline cred read (the getCredential helper is fine, but this cron is
-  // service-side and skipping the helper avoids any future ambient-env
-  // fallback that would mask a missing per-workspace token).
-  const url = `${SUPABASE_URL}/rest/v1/workspace_credentials?workspace_id=eq.${workspaceId}&service=eq.buffer&status=eq.active&select=secret_ciphertext&order=created_at.desc&limit=1`
-  const r = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } })
-  if (!r.ok) return null
-  const rows = await r.json().catch(() => null)
-  const ct = rows?.[0]?.secret_ciphertext
-  if (!ct) return null
-  try { return decryptSecret(ct) } catch { return null }
-}
-
-async function fetchBufferStats(token, updateId, platform) {
-  const result = await fetchPostStats(token, updateId)
-  if (!result.ok || !result.post) return null
-  const p = result.post
-  return {
-    statistics:   p.statistics ?? {},
-    status:       p.status     ?? null,
-    sent_at:      p.sentAt     ?? null,
-    service:      platform     ?? null,
-    service_link: null,
-  }
-}
-
-async function processWorkspace(ws, summary) {
-  if (ws.publish_provider === 'bundle') return  // bundle workspaces handled by processWorkspaceBundle
-  const token = await getBufferToken(ws.id)
-  if (!token) {
-    summary.workspaces.push({ id: ws.id, slug: ws.slug, skipped: 'no-buffer-token' })
-    return
-  }
-
-  // Pull recent published items with a buffer_update_id.
-  const sinceIso = new Date(Date.now() - SCAN_WINDOW_D * 24 * 60 * 60 * 1000).toISOString()
-  const itemsRes = await sb(
-    `content_items?workspace_id=eq.${ws.id}` +
-    `&status=eq.published` +
-    `&buffer_update_id=not.is.null` +
-    `&published_at=gte.${encodeURIComponent(sinceIso)}` +
-    `&select=id,platform,buffer_update_id,performed_well,published_at`
-  )
-  if (!itemsRes.ok) {
-    summary.workspaces.push({ id: ws.id, slug: ws.slug, error: `items fetch ${itemsRes.status}` })
-    return
-  }
-  const items = await itemsRes.json()
-  if (!Array.isArray(items) || items.length === 0) {
-    summary.workspaces.push({ id: ws.id, slug: ws.slug, items: 0 })
-    return
-  }
-
-  // Refresh snapshots where we don't already have a fresh one.
-  const freshCutoff = new Date(Date.now() - SNAPSHOT_MAX_AGE_H * 60 * 60 * 1000).toISOString()
-  let refreshed = 0
-  for (const item of items) {
-    const latestRes = await sb(
-      `engagement_snapshots?content_item_id=eq.${item.id}&workspace_id=eq.${ws.id}&order=fetched_at.desc&limit=1&select=fetched_at,stats`
-    )
-    const latestRows = latestRes.ok ? await latestRes.json().catch(() => []) : []
-    const latest = latestRows?.[0]
-    if (latest && latest.fetched_at > freshCutoff) {
-      item._stats = latest.stats
-      continue
-    }
-    const stats = await fetchBufferStats(token, item.buffer_update_id, item.platform)
-    if (!stats) continue
-    // Buffer's API does not expose per-post engagement yet (analytics are
-    // dashboard-only; "API for Post Analytics" is In Progress on Buffer's
-    // roadmap — confirmed 2026-06-04 via schema introspection + docs, see
-    // api/_lib/bufferPostStats.js). So `stats.statistics` is always empty
-    // today. Skip writing the snapshot rather than accumulating hollow rows
-    // that score 0 and read as fake zeros downstream. When Buffer ships the
-    // metrics field (wired in bufferPostStats.js), these inserts resume
-    // automatically.
-    if (!stats.statistics || Object.keys(stats.statistics).length === 0) continue
-    const ins = await sb('engagement_snapshots', {
-      method: 'POST',
-      body: JSON.stringify({
-        workspace_id:    ws.id,
-        content_item_id: item.id,
-        source:          'buffer',
-        stats,
-      }),
-    })
-    if (ins.ok) {
-      refreshed++
-      item._stats = stats
-    }
-  }
-
-  // Group by platform; auto-flag items above the workspace+platform median.
-  const byPlatform = {}
-  for (const item of items) {
-    if (!item._stats) continue
-    if (!byPlatform[item.platform]) byPlatform[item.platform] = []
-    byPlatform[item.platform].push(item)
-  }
-
-  const flagged = []
-  for (const [platform, pool] of Object.entries(byPlatform)) {
-    if (pool.length < MIN_SAMPLES) continue
-    const scores = pool.map(i => scoreOf(i._stats))
-    const med = median(scores)
-    if (med <= 0) continue
-    const bar = med * SCORE_MULT
-    for (let i = 0; i < pool.length; i++) {
-      const item = pool[i]
-      const score = scores[i]
-      if (item.performed_well) continue
-      if (score <= bar) continue
-      const r = await sb(`content_items?id=eq.${item.id}&workspace_id=eq.${ws.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ performed_well: true }),
-      })
-      if (r.ok) flagged.push({ id: item.id, platform, score, median: med })
-    }
-  }
-
-  summary.workspaces.push({
-    id: ws.id,
-    slug: ws.slug,
-    source: 'buffer',
-    items: items.length,
-    refreshed,
-    flagged: flagged.length,
-    flagged_detail: flagged,
-  })
 }
 
 // bundle.social walker — same shape as processWorkspace (Buffer), different source.
@@ -767,12 +635,6 @@ async function handler(req, res) {
 
   const summary = { startedAt: new Date().toISOString(), workspaces: [] }
   for (const ws of workspaces) {
-    try {
-      await processWorkspace(ws, summary)
-    } catch (e) {
-      console.error('[cron/refresh-engagement] buffer workspace threw:', e?.message)
-      summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'buffer', error: 'workspace_error' })
-    }
     try {
       await processWorkspaceBundle(ws, summary)
     } catch (e) {
