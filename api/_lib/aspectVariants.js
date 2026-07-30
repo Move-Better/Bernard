@@ -106,6 +106,26 @@ export async function saveAspectVariant({ sourceAsset, channel, render, reframe 
   const workspaceId = scope?.id
   const existing = await findAspectVariant({ sourceAssetId: sourceAsset.id, channel, workspaceId })
 
+  // asset_purpose is NOT NULL on media_assets, and callers do NOT reliably
+  // carry it: resolveClipRender selects only
+  // id,kind,blob_url,filename,staff_id,archived_at,consent_status,transcript_words,
+  // so `sourceAsset.asset_purpose` is undefined on the render path and a
+  // `|| null` turns that into an explicit null → 23502 on every insert.
+  //
+  // Read the master's real values instead of defaulting to a guess: the variant
+  // should inherit its parent's purpose and speaker role, and inventing 'broll'
+  // for an interview clip would mislabel it everywhere purpose is filtered on.
+  let inherited = { asset_purpose: sourceAsset.asset_purpose, speaker_role: sourceAsset.speaker_role }
+  if (inherited.asset_purpose === undefined) {
+    const mRes = await sb(
+      `media_assets?id=eq.${encodeURIComponent(sourceAsset.id)}` +
+      `&workspace_id=eq.${encodeURIComponent(workspaceId)}` +
+      `&select=asset_purpose,speaker_role&limit=1`,
+    )
+    const mRow = mRes.ok ? (await mRes.json().catch(() => []))[0] : null
+    if (mRow) inherited = { asset_purpose: mRow.asset_purpose, speaker_role: mRow.speaker_role }
+  }
+
   const blobPathname = (() => {
     try { return new URL(render.blobUrl).pathname } catch { return null }
   })()
@@ -138,8 +158,8 @@ export async function saveAspectVariant({ sourceAsset, channel, render, reframe 
       mime_type:     'video/mp4',
       parent_id:     sourceAsset.id,
       variant_label: label,
-      asset_purpose: sourceAsset.asset_purpose || null,
-      speaker_role:  sourceAsset.speaker_role  || null,
+      asset_purpose: inherited.asset_purpose || 'broll',
+      speaker_role:  inherited.speaker_role  || null,
       staff_id:      sourceAsset.staff_id || null,
       // Renders are already-processed mp4s — Mux has nothing to do.
       transcode_status: 'skipped',
