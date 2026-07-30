@@ -79,3 +79,26 @@ describe('aspectVariants — invariants enforced by reading the source', () => {
     expect(SRC).toMatch(/method:\s*'PATCH'/)
   })
 })
+
+describe('asset_purpose is NOT NULL — the variant must inherit it', () => {
+  // The bug: resolveClipRender selects only 8 columns, so sourceAsset.asset_purpose
+  // is undefined on the render path. `|| null` turned that into an explicit null
+  // and every insert died with 23502. The render succeeded first, so the failure
+  // looked like a storage problem rather than a missing field.
+  //
+  // Worth recording HOW this hid: a hand-written SQL probe of the "same" insert
+  // succeeded, because it supplied asset_purpose by hand — the probe wasn't
+  // faithful to what the code actually sends, so it exonerated the real culprit.
+  it('reads the master row when the caller did not carry asset_purpose', () => {
+    expect(SRC).toContain('select=asset_purpose,speaker_role')
+  })
+
+  it('never writes an explicit null into the NOT NULL column', () => {
+    expect(SRC).not.toContain('asset_purpose: sourceAsset.asset_purpose || null')
+    expect(SRC).toMatch(/asset_purpose:\s*inherited\.asset_purpose\s*\|\|\s*'broll'/)
+  })
+
+  it('inherits rather than hardcoding — a guess would mislabel an interview clip', () => {
+    expect(SRC).toContain('inherited.asset_purpose')
+  })
+})
