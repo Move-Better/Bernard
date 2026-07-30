@@ -1564,3 +1564,20 @@ used for staff rows and voice clone**: every `/api/answers` row action requires
 named clinician as medical-adjacent advice. `tests/lib/answersOwnership.test.js`
 fails if `isAdmin` returns or an ownership check is widened with `&&`. A future
 consistency pass "fixing" the inconsistency is the most likely regression.
+
+## ProducerHome checkpoint feed — known gap: no revert detection
+
+`product_updates` (migration 193; written by `api/_lib/producer/productUpdatesGenerator.js`,
+read by `/api/product-updates` + `/updates`) generates one entry per merged PR,
+keyed on `source_pr`. **It has no mechanism to notice a PR was later reverted.**
+A revert PR is itself just another merge — if its title doesn't match
+`SKIP_PREFIX_RE` (`chore/test/docs/ci/refactor`), the generator will happily
+write a SECOND, separate entry describing the revert, but the ORIGINAL entry
+for the reverted PR stays in the feed unchanged, still claiming the fix is
+live. (Confirmed live 2026-07-30: PR #2459 shipped an auto-attach fix and got
+a feed entry; PR #2462 reverted it minutes later — both entries now coexist,
+and a producer reading only the first would believe a fix is in place that
+isn't.) Not yet a build item — flagging so a future revert-aware pass (e.g.
+check `GET /repos/.../pulls/{source_pr}` for `merged:false` before trusting
+an old entry, or have the revert generator suppress the original) doesn't
+have to rediscover the gap from scratch.
