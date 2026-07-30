@@ -119,6 +119,30 @@ export function slidePhotoEntry(slide, mediaUrls) {
   return entry && !isVideoEntry(entry) ? entry : null
 }
 
+// The entry to actually PUBLISH for a video sitting in a 4:5 carousel slot.
+//
+// A 9:16 clip is below Instagram's 0.8 carousel floor and would be rejected, so
+// the editor bakes a 4:5 variant (api/_routes/editorial/fit-carousel-clip.js)
+// and records it on the entry as `carouselVariant`. Publishing must send THAT,
+// not the master — sending the master means either a rejected post or, with
+// bundle's autoFit, a pillarboxed clip nobody chose.
+//
+// Returns the entry unchanged when there is no variant: a 16:9 master (1.78)
+// sits inside the 0.8–1.91 window and is natively eligible, so most landscape
+// clips legitimately need nothing.
+export function carouselPublishEntry(entry) {
+  const v = entry?.carouselVariant
+  if (!v?.url) return entry
+  return {
+    ...entry,
+    url: v.url,
+    ...(v.thumbnailUrl ? { thumbnailUrl: v.thumbnailUrl } : {}),
+    // Keep the MASTER's id: the variant is a rendering of this asset, and
+    // dedup/reuse/usage-counting should all still resolve to the one clip.
+    sourceUrl: entry.url,
+  }
+}
+
 // True when a media_urls entry is a video. Checks both `kind` and `type`
 // because the two normalizers above set both, but older rows / other writers
 // may carry only one. One predicate so every surface (preview, composer gate,

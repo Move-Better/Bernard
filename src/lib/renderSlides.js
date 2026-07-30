@@ -17,7 +17,7 @@
 import { apiFetch } from '@/lib/api'
 import { renderFreeformSlide } from '@/lib/overlayTemplates'
 import { resolveTheme } from '@/lib/photoTemplates'
-import { photoSourceUrl, slidePhotos, slidePhotoEntry, slideMediaEntry, isVideoEntry } from '@/lib/mediaEntry'
+import { photoSourceUrl, slidePhotos, slidePhotoEntry, slideMediaEntry, isVideoEntry, carouselPublishEntry } from '@/lib/mediaEntry'
 
 // Re-exported for existing importers; the definition now lives in mediaEntry.js
 // alongside the rest of the media_urls entry contract, so the preview, the
@@ -125,7 +125,9 @@ export function buildPublishMediaUrls(slides, mediaUrls) {
   return (slides || [])
     .map((s) => {
       const entry = slideMediaEntry(s, mediaUrls)
-      if (entry && isVideoEntry(entry)) return entry
+      // A video slide ships its 4:5 carousel variant when it has one — the
+      // 9:16 master is below Instagram's aspect floor and would be rejected.
+      if (entry && isVideoEntry(entry)) return carouselPublishEntry(entry)
       return s?.rendered_url ? { url: s.rendered_url, type: 'photo' } : null
     })
     .filter(Boolean)
