@@ -50,6 +50,14 @@ export function pickerItemToMediaEntry(asset) {
     mediaAssetId: asset.id,
     name:         asset.filename || asset.name,
     ...(asset.duration_s != null ? { duration_s: asset.duration_s } : {}),
+    // Dimensions when the source knows them. Consumed by the carousel fit step
+    // to tell a natively-eligible 16:9 master from a 9:16 clip that Instagram
+    // would reject in a carousel. Conditional because the suggestion path
+    // (clipSearch) does not select these columns — see mayNeedCarouselRebake,
+    // which fails open rather than guessing when they're absent.
+    ...(Number.isFinite(asset.width) && Number.isFinite(asset.height)
+      ? { width: asset.width, height: asset.height }
+      : {}),
   }
 }
 

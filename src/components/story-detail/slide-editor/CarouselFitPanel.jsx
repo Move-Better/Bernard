@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2, Crop } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
-import { CAROUSEL_REFRAME_Y, clampReframeY, needsCarouselRebake } from '@/lib/carouselCrop'
+import { CAROUSEL_REFRAME_Y, clampReframeY, mayNeedCarouselRebake } from '@/lib/carouselCrop'
 
 // Fit-to-carousel — the crop step for a video slide (mockup rev 2, screen 2).
 //
@@ -25,8 +25,13 @@ export default function CarouselFitPanel({ entry, onFitted }) {
   const [busy, setBusy] = useState(false)
 
   // A landscape or square master already sits inside Instagram's 0.8–1.91
-  // window — it needs nothing, and offering a crop step would invent work.
-  const needsFit = needsCarouselRebake({ width: entry?.width, height: entry?.height })
+  // window and needs nothing. But media entries only carry width/height when
+  // they came through the Library picker — the suggestion path (clipSearch)
+  // doesn't select those columns — so dimensions are frequently UNKNOWN, and a
+  // strict check would hide this panel on almost every clip. mayNeedCarouselRebake
+  // fails open for exactly that reason: a redundant render is recoverable, a
+  // hidden control that would have prevented a rejected publish is not.
+  const needsFit = mayNeedCarouselRebake(entry)
   if (!needsFit && !existing) return null
 
   async function runFit() {
