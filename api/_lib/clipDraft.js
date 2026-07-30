@@ -97,6 +97,12 @@ export async function createClipDraft({
     workspace_id: ws.id,
     status: 'draft',
     platform,
+    // A draft born from a rendered vertical clip IS a reel — that is the whole
+    // reason this path exists. Stamping it explicitly means the piece stops
+    // relying on the legacy any-video derivation, and the producer can still
+    // move it to a carousel with the picker (which re-stamps 'human').
+    // Non-Instagram platforms have no reel lane, so they stay underived.
+    ...(platform === 'instagram' ? { format: 'reel', format_source: 'bernard' } : {}),
     media_urls: [entry],
     content: text,
     overlay_text: text,

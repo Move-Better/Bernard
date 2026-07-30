@@ -12,6 +12,9 @@
 //   post  — single image / text post. The historical default; NULL means post.
 //   reel  — short vertical video cut from a real clinician clip.
 //   story — 9:16 ephemeral frame (instagram_story).
+// Cross-checked against the content_items vocabulary — see contentFormatForAtom.
+import { FORMAT_IDS } from '../../src/lib/platformFormats.js'
+
 export const ATOM_FORMATS = Object.freeze({ POST: 'post', REEL: 'reel', STORY: 'story' })
 
 // The format an atom platform plans in by default. REEL is deliberately absent:
@@ -24,6 +27,28 @@ const PLATFORM_DEFAULT_FORMAT = { instagram_story: ATOM_FORMATS.STORY }
 
 export function defaultFormatForPlatform(platform) {
   return PLATFORM_DEFAULT_FORMAT[platform] || ATOM_FORMATS.POST
+}
+
+// The content_items.format a draft born from this atom should carry.
+//
+// Until now the planner's format dimension stopped at the atom: every draft
+// INSERT omitted `format`, so a slot planned as a reel produced a draft that
+// re-derived its own format from whatever media later attached — the exact
+// derivation the explicit-format work replaced. This is the join.
+//
+// Returns null when the atom carries no format AND the platform has no
+// meaningful default, so a legacy row keeps deriving rather than being stamped
+// with a guess. A null format is a real state (see content_items.format), not
+// a missing value.
+//
+// Vocabularies are checked against each other rather than assumed equal: the
+// atom column has NO CHECK constraint (migration 179, deliberately), while
+// content_items.format DOES (migration 195). An atom format outside the
+// content_items vocabulary must not be copied through or the INSERT 400s.
+export function contentFormatForAtom(atom) {
+  const raw = typeof atom?.format === 'string' ? atom.format : null
+  const fmt = raw || defaultFormatForPlatform(atom?.platform || '')
+  return FORMAT_IDS.includes(fmt) ? fmt : null
 }
 
 export const ATOM_DEFINITIONS = {
