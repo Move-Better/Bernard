@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Mixed carousel — SlideEditor + format picker mockup</title>
+<title>Mixed carousel — SlideEditor, 4:5 crop step, format picker</title>
 <style>
   :root {
     --background: 0 0% 100%;
@@ -20,258 +20,255 @@
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0;
-    font-family: 'Geist', 'Inter', system-ui, sans-serif;
-    background: #f8fafc;
-    color: hsl(var(--foreground));
-    padding: 32px;
+    margin: 0; font-family: 'Geist','Inter',system-ui,sans-serif;
+    background: #f8fafc; color: hsl(var(--foreground)); padding: 32px;
   }
   h1 { font-size: 20px; margin: 0 0 4px; }
-  .sub { color: hsl(var(--muted-foreground)); font-size: 13px; margin: 0 0 28px; }
-  .section-label {
-    font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-    color: hsl(var(--muted-foreground)); margin: 0 0 10px;
-  }
-  .today-change {
-    display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600;
-    padding: 2px 8px; border-radius: 999px; margin-left: 8px; vertical-align: middle;
-  }
-  .today-change.today { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
-  .today-change.change { background: hsl(var(--action) / .12); color: hsl(var(--action)); }
-
+  .sub { color: hsl(var(--muted-foreground)); font-size: 13px; margin: 0 0 28px; max-width: 900px; line-height: 1.5; }
   .screen {
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
-    border-radius: 14px;
-    padding: 24px;
-    margin-bottom: 40px;
-    max-width: 980px;
+    background: hsl(var(--card)); border: 1px solid hsl(var(--border));
+    border-radius: 14px; padding: 24px; margin-bottom: 36px; max-width: 1080px;
   }
   .screen-title { font-size: 14px; font-weight: 600; margin: 0 0 2px; }
-  .screen-note { font-size: 12px; color: hsl(var(--muted-foreground)); margin: 0 0 18px; }
+  .screen-note { font-size: 12px; color: hsl(var(--muted-foreground)); margin: 0 0 18px; max-width: 780px; line-height: 1.55; }
+  .tag {
+    display: inline-flex; align-items: center; font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px; margin-left: 8px; vertical-align: middle;
+  }
+  .tag.today { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .tag.change { background: hsl(var(--action) / .14); color: hsl(var(--action)); }
+  .tag.new { background: hsl(var(--primary) / .12); color: hsl(var(--primary)); }
 
-  /* ── Format picker ─────────────────────────────────────────────── */
-  .format-row { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-  .format-pill-group {
-    display: inline-flex; border: 1px solid hsl(var(--border)); border-radius: 10px;
-    overflow: hidden; background: hsl(var(--muted) / .5);
-  }
-  .format-pill {
-    padding: 7px 14px; font-size: 12.5px; font-weight: 600; color: hsl(var(--muted-foreground));
-    background: transparent; border: none; cursor: pointer; border-right: 1px solid hsl(var(--border));
-    display: flex; align-items: center; gap: 5px;
-  }
-  .format-pill:last-child { border-right: none; }
-  .format-pill.active { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
-  .format-pill.disabled { opacity: .35; cursor: not-allowed; }
-  .format-pill .dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; opacity: .6; }
-  .format-hint { font-size: 11.5px; color: hsl(var(--muted-foreground)); }
-  .format-hint b { color: hsl(var(--foreground)); font-weight: 600; }
+  /* format picker */
+  .format-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .pill-group { display: inline-flex; border: 1px solid hsl(var(--border)); border-radius: 10px; overflow: hidden; background: hsl(var(--muted) / .5); }
+  .pill { padding: 7px 14px; font-size: 12.5px; font-weight: 600; color: hsl(var(--muted-foreground));
+    background: transparent; border: none; border-right: 1px solid hsl(var(--border)); display:flex; align-items:center; gap:5px; }
+  .pill:last-child { border-right: none; }
+  .pill.active { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .pill.disabled { opacity: .35; }
+  .hint { font-size: 11.5px; color: hsl(var(--muted-foreground)); }
+  .hint b { color: hsl(var(--foreground)); font-weight: 600; }
 
-  /* ── Work area: rail | inspector | canvas (abbreviated) ───────────── */
-  .work-area { display: flex; gap: 16px; }
-  .rail {
-    width: 44px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;
-    padding-top: 4px;
+  /* crop step */
+  .crop-wrap { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+  .crop-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .col-label { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: hsl(var(--muted-foreground)); }
+  .col-label.warn { color: hsl(var(--destructive)); }
+  .col-label.ok { color: hsl(var(--success)); }
+
+  .vframe { position: relative; border-radius: 8px; overflow: hidden; background: #1e293b; }
+  .vframe.r916 { width: 150px; aspect-ratio: 9/16; }
+  .vframe.r45  { width: 190px; aspect-ratio: 4/5; }
+  /* stand-in "photo": a subject blob positioned to mimic the real clip */
+  .subject { position: absolute; border-radius: 999px 999px 40% 40%; background: linear-gradient(#3f5875,#2c405a); }
+  .ground { position: absolute; left: 0; right: 0; bottom: 0; height: 46%; background: linear-gradient(#8a8f96,#6f747b); }
+  .brandband {
+    position: absolute; left: 0; right: 0; background: #1f3a4d; color: #fff; font-size: 7.5px;
+    font-weight: 700; text-align: center; padding: 5px 4px; letter-spacing: .01em;
   }
-  .rail-btn {
-    width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
-    color: hsl(var(--muted-foreground)); font-size: 15px; border: 1px solid transparent;
+  .karaoke {
+    position: absolute; left: 6px; right: 6px; text-align: center; color: #fff;
+    font-size: 11px; font-weight: 800; line-height: 1.15;
+    -webkit-text-stroke: 2.5px #000; paint-order: stroke fill;
   }
+  .collide-badge {
+    position: absolute; z-index: 5; background: hsl(var(--destructive)); color: #fff;
+    font-size: 8.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; white-space: nowrap;
+  }
+  .cropbar { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .cropbar label { font-size: 10.5px; color: hsl(var(--muted-foreground)); font-weight: 600; }
+  .slider { width: 120px; height: 4px; background: hsl(var(--border)); border-radius: 999px; position: relative; }
+  .slider .knob { position: absolute; top: 50%; transform: translate(-50%,-50%); width: 12px; height: 12px; border-radius: 999px; background: hsl(var(--primary)); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .auto-chip {
+    display:inline-flex; align-items:center; gap:5px; font-size: 10.5px; font-weight: 600;
+    background: hsl(var(--primary) / .1); color: hsl(var(--primary)); padding: 3px 9px; border-radius: 999px;
+  }
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+  .btn { font-size: 11.5px; font-weight: 600; padding: 6px 12px; border-radius: 7px; border: 1px solid hsl(var(--border)); background: #fff; color: hsl(var(--foreground)); }
+  .btn.primary { background: hsl(var(--primary)); color: #fff; border-color: hsl(var(--primary)); }
+
+  .callout {
+    border-left: 3px solid hsl(var(--action)); background: hsl(var(--action) / .07);
+    padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 12px; line-height: 1.55;
+    color: hsl(var(--foreground)); margin: 16px 0 0; max-width: 800px;
+  }
+  .callout b { font-weight: 700; }
+
+  /* filmstrip */
+  .work { display: flex; gap: 16px; }
+  .rail { width: 44px; display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+  .rail-btn { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    color: hsl(var(--muted-foreground)); font-size: 14px; border: 1px solid transparent; }
   .rail-btn.active { background: hsl(var(--primary) / .1); color: hsl(var(--primary)); border-color: hsl(var(--primary) / .25); }
-
   .canvas-col { flex: 1; display: flex; flex-direction: column; align-items: center; }
-  .canvas {
-    width: 260px; aspect-ratio: 4/5; border-radius: 10px; overflow: hidden; position: relative;
-    background: linear-gradient(135deg,#334155,#64748b);
-  }
-  .canvas img, .canvas video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .canvas .overlay-text {
-    position: absolute; left: 16px; right: 16px; bottom: 20px; color: white;
-    font-size: 20px; font-weight: 700; line-height: 1.15; text-shadow: 0 2px 10px rgba(0,0,0,.5);
-  }
-  .canvas .play-chip {
-    position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,.55); color: white;
-    border-radius: 999px; padding: 3px 9px; font-size: 10.5px; font-weight: 600; display:flex; align-items:center; gap:4px;
-  }
-  .canvas .locked-note {
-    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    flex-direction: column; gap: 8px; color: white; text-align: center; padding: 0 20px;
-    background: rgba(15,23,42,.35); font-size: 12px;
-  }
-  .canvas .locked-note .edit-link {
-    background: white; color: hsl(var(--foreground)); font-weight: 600; font-size: 12px;
-    padding: 6px 14px; border-radius: 8px;
-  }
+  .canvas { width: 220px; aspect-ratio: 4/5; border-radius: 10px; overflow: hidden; position: relative; background: #1e293b; }
+  .lock-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; background: rgba(15,23,42,.45); color: #fff; text-align: center; padding: 0 18px; font-size: 11.5px; line-height: 1.45; }
+  .lock-overlay .btn { background: #fff; border: none; }
+  .filmstrip { margin-top: 14px; display: flex; align-items: center; gap: 6px; }
+  .thumb { position: relative; width: 45px; height: 56px; border-radius: 6px; overflow: hidden; border: 1.5px solid hsl(var(--border)); background: #475569; }
+  .thumb.active { border-color: hsl(var(--primary)); box-shadow: 0 0 0 2px hsl(var(--primary) / .3); }
+  .thumb .idx { position: absolute; left: 2px; top: 2px; background: rgba(0,0,0,.6); color:#fff; font-size:8px; font-weight:700; border-radius:3px; padding:0 3px; }
+  .thumb .vbadge { position: absolute; right: 2px; bottom: 2px; background: rgba(0,0,0,.65); color:#fff; border-radius:3px; padding:1px 3px; font-size:7px; font-weight:700; }
+  .thumb .ready { position:absolute; left:2px; bottom:2px; width:6px; height:6px; border-radius:999px; background: hsl(var(--success)); border:1px solid #fff; }
+  .thumb .tdot { position:absolute; right:2px; top:2px; width:5px; height:5px; border-radius:999px; background: hsl(var(--action)); }
+  .add { width:45px; height:56px; border-radius:6px; border:1.5px dashed hsl(var(--muted-foreground)/.35); color:hsl(var(--muted-foreground));
+    display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .cap { font-size: 11px; color: hsl(var(--muted-foreground)); margin-top: 8px; text-align: center; max-width: 460px; line-height: 1.5; }
 
-  /* ── Filmstrip (the core diff) ─────────────────────────────────── */
-  .filmstrip { margin-top: 14px; display: flex; align-items: center; gap: 6px; overflow-x: auto; padding: 4px; }
-  .slide-thumb {
-    position: relative; flex-shrink: 0; width: 45px; height: 56px; border-radius: 6px; overflow: hidden;
-    border: 1.5px solid hsl(var(--border));
-  }
-  .slide-thumb.active { border-color: hsl(var(--primary)); box-shadow: 0 0 0 2px hsl(var(--primary) / .3); }
-  .slide-thumb img, .slide-thumb video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-  .slide-thumb .idx {
-    position: absolute; left: 2px; top: 2px; background: rgba(0,0,0,.55); color: white;
-    font-size: 8.5px; font-weight: 700; border-radius: 3px; padding: 0 3px; line-height: 1.3;
-  }
-  .slide-thumb .kind-badge {
-    position: absolute; right: 2px; bottom: 2px; background: rgba(0,0,0,.6); color: white;
-    border-radius: 3px; padding: 1px 4px; font-size: 7.5px; font-weight: 700; display: flex; align-items: center; gap: 2px;
-  }
-  .slide-thumb .template-dot {
-    position: absolute; right: 2px; top: 2px; width: 5px; height: 5px; border-radius: 999px; background: hsl(var(--action));
-  }
-  .add-slide-btn {
-    flex-shrink: 0; width: 45px; height: 56px; border-radius: 6px; border: 1.5px dashed hsl(var(--muted-foreground) / .35);
-    color: hsl(var(--muted-foreground)); display: flex; align-items: center; justify-content: center; font-size: 16px;
-  }
-
-  .caption { font-size: 11.5px; color: hsl(var(--muted-foreground)); margin-top: 8px; text-align: center; max-width: 520px; }
-
-  /* ── Publish preview (carousel swipe) ─────────────────────────── */
-  .ig-post { width: 300px; border: 1px solid hsl(var(--border)); border-radius: 12px; overflow: hidden; }
-  .ig-header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
-  .ig-avatar { width: 28px; height: 28px; border-radius: 999px; background: linear-gradient(135deg,#0c757a,#0a5a60); }
-  .ig-name { font-size: 12.5px; font-weight: 600; }
-  .ig-media { position: relative; width: 100%; aspect-ratio: 4/5; background: #111; }
-  .ig-media img, .ig-media video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-  .ig-dots { display: flex; justify-content: center; gap: 4px; padding: 8px 0; }
-  .ig-dot { width: 5px; height: 5px; border-radius: 999px; background: hsl(var(--border)); }
-  .ig-dot.active { background: hsl(var(--primary)); }
-  .ig-play-badge {
-    position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,.55); color: white; border-radius: 999px;
-    padding: 3px 9px; font-size: 10.5px; font-weight: 600; display: flex; align-items: center; gap: 4px;
-  }
-  .ig-counter { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,.55); color: white; border-radius: 999px;
-    padding: 3px 8px; font-size: 10.5px; font-weight: 600; }
-
-  /* ── Platform capability table ─────────────────────────────────── */
-  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; margin-top: 4px; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid hsl(var(--border)); }
   th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: hsl(var(--muted-foreground)); font-weight: 700; }
   .yes { color: hsl(var(--success)); font-weight: 700; }
-  .no { color: hsl(var(--muted-foreground)); }
-  .badge-inline {
-    display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600;
-    padding: 2px 7px; border-radius: 999px; background: hsl(var(--muted));
-  }
-
-  .flow-row { display: flex; gap: 24px; flex-wrap: wrap; }
-  .flow-col { flex: 1; min-width: 300px; }
+  .no  { color: hsl(var(--muted-foreground)); }
+  .cols2 { display: flex; gap: 28px; flex-wrap: wrap; }
+  .cols2 > * { flex: 1; min-width: 300px; }
 </style>
 </head>
 <body>
 
-<h1>Mixed photo+video carousels — editor &amp; format-picker mockup</h1>
-<p class="sub">Three screens: the explicit format picker, SlideEditor's filmstrip with a video slide mixed in, and the resulting Instagram carousel preview. Nothing here is final — sign off on the shape, not the pixels.</p>
+<h1>Mixed photo+video carousels — editor mockup <span class="tag new">rev 2</span></h1>
+<p class="sub">
+  Revised after baking a real clinic clip at both aspects and looking at the frames. <b>Screen 2 is new</b> and
+  is the reason for the revision: a 9:16 clip re-baked to a 4:5 carousel slot puts the karaoke caption on the
+  subject's face unless its crop is adjusted — so "add a video to a carousel" has to include a crop step, not
+  just an attach.
+</p>
 
-<!-- SCREEN 1 — Format picker -->
+<!-- 1 · FORMAT PICKER -->
 <div class="screen">
-  <p class="screen-title">1 · Explicit format picker <span class="today-change today">TODAY: auto-derived, no choice</span><span class="today-change change">CHANGE: explicit control</span></p>
-  <p class="screen-note">Replaces the passive "Instagram Carousel · 5 slides" badge with an actual control. Reel is its own lane — video only, never implied by "a video is present."</p>
+  <p class="screen-title">1 · Format picker <span class="tag today">TODAY: derived, no choice</span><span class="tag change">CHANGE: explicit</span></p>
+  <p class="screen-note">Reel becomes its own lane (video only), never implied by "a video is attached." Shipped server-side already — this is the control that exposes it.</p>
 
   <div class="format-row">
-    <div class="format-pill-group">
-      <button class="format-pill">Post</button>
-      <button class="format-pill active">Carousel</button>
-      <button class="format-pill">Reel</button>
-    </div>
-    <span class="format-hint">Carousel selected — <b>3 photos + 1 video</b>, mixed order preserved</span>
+    <div class="pill-group"><button class="pill">Post</button><button class="pill active">Carousel</button><button class="pill">Reel</button></div>
+    <span class="hint">Instagram — <b>3 photos + 1 video</b>, mixed order preserved</span>
   </div>
-
   <div class="format-row">
-    <div class="format-pill-group">
-      <button class="format-pill">Post</button>
-      <button class="format-pill active">Carousel</button>
-      <button class="format-pill disabled">Reel <span class="dot"></span></button>
-    </div>
-    <span class="format-hint">Reel disabled — needs exactly one video, no photos attached</span>
+    <div class="pill-group"><button class="pill active">Post</button><button class="pill">Reel</button><button class="pill">Story</button></div>
+    <span class="hint">Facebook — no mixed carousel (<b>API rejects it</b>); album is photos-only or video-only</span>
   </div>
 </div>
 
-<!-- SCREEN 2 — SlideEditor filmstrip -->
+<!-- 2 · THE NEW CROP STEP -->
 <div class="screen">
-  <p class="screen-title">2 · SlideEditor — mixed filmstrip</p>
-  <p class="screen-note">Photo slides keep full text-template editing (unchanged). A video slide is a locked thumbnail with a play badge — reorder, remove, or jump to VideoEditor. No canvas text-overlay tooling appears for it.</p>
+  <p class="screen-title">2 · Fit this clip to the carousel <span class="tag new">NEW — required, not optional</span></p>
+  <p class="screen-note">
+    Fires when a video is added to a 4:5 carousel. Bernard re-bakes the clip at 4:5 from the stored recipe
+    (~5s) and proposes a downward crop nudge; the producer confirms or drags. Captions are re-placed for the
+    new frame automatically — what needs a human is <em>where the subject sits</em>.
+  </p>
 
-  <div class="work-area">
+  <div class="crop-wrap">
+    <div class="crop-col">
+      <span class="col-label">Source · 9:16 reel</span>
+      <div class="vframe r916">
+        <div class="ground"></div>
+        <div class="subject" style="left:42%; top:26%; width:17%; height:34%;"></div>
+        <div class="brandband" style="top:0;">Hip flexion drives hip extension</div>
+        <div class="karaoke" style="top:14%;">Hip flexion<br>drives hip</div>
+      </div>
+      <span class="cap" style="max-width:150px">Unchanged. Caption clear of the subject.</span>
+    </div>
+
+    <div class="crop-col">
+      <span class="col-label warn">4:5 · naive re-bake</span>
+      <div class="vframe r45">
+        <div class="ground"></div>
+        <div class="subject" style="left:42%; top:15%; width:19%; height:40%;"></div>
+        <div class="brandband" style="top:0;">Hip flexion drives hip extension</div>
+        <div class="karaoke" style="top:13%;">Hip flexion<br>drives hip</div>
+        <div class="collide-badge" style="top:19%; left:50%; transform:translateX(-50%);">caption on her face</div>
+      </div>
+      <span class="cap" style="max-width:190px">What ships if we just replay the reel's crop. <b>Never show this state as final.</b></span>
+    </div>
+
+    <div class="crop-col">
+      <span class="col-label ok">4:5 · adjusted (proposed)</span>
+      <div class="vframe r45">
+        <div class="ground" style="height:52%"></div>
+        <div class="subject" style="left:42%; top:33%; width:19%; height:40%;"></div>
+        <div class="brandband" style="top:0;">Hip flexion drives hip extension</div>
+        <div class="karaoke" style="top:13%;">Hip flexion<br>drives hip</div>
+      </div>
+      <div class="cropbar">
+        <label>Vertical</label>
+        <div class="slider"><div class="knob" style="left:68%"></div></div>
+      </div>
+      <span class="auto-chip">◆ Bernard nudged this down</span>
+      <div class="btn-row">
+        <button class="btn primary">Use this</button>
+        <button class="btn">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="callout">
+    <b>Why a human is in this loop.</b> Captions reposition by formula, but the crop can't:
+    trimming 285px off the top moves the subject from 26% to 16% of frame height while the caption margin
+    stays a fixed 14% — so they converge <em>by construction</em> on any clip with the subject up high.
+    Bernard proposes the nudge; the producer confirms. Every confirm-vs-drag is override signal for the
+    confidence loop, so this step should get quieter over time.
+  </p>
+</div>
+
+<!-- 3 · FILMSTRIP -->
+<div class="screen">
+  <p class="screen-title">3 · SlideEditor — mixed filmstrip</p>
+  <p class="screen-note">Photo slides keep full text-template editing, unchanged. A video slide is a locked card: reorder, remove, re-crop, or jump to VideoEditor. The green dot means its 4:5 bake is ready.</p>
+
+  <div class="work">
     <div class="rail">
-      <div class="rail-btn active">▤</div>
-      <div class="rail-btn">Aa</div>
-      <div class="rail-btn">◐</div>
-      <div class="rail-btn">♪</div>
+      <div class="rail-btn active">▤</div><div class="rail-btn">Aa</div><div class="rail-btn">◐</div><div class="rail-btn">♪</div>
     </div>
-
     <div class="canvas-col">
-      <!-- Active slide = the video slide, showing the locked state -->
       <div class="canvas">
-        <video autoplay muted loop playsinline poster="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNjAiIGhlaWdodD0iMzI1Ij48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzM0MTU1Ii8+PC9zdmc+">
-        </video>
-        <div class="play-chip">▶ 0:08</div>
-        <div class="locked-note">
-          <div>This slide is a video clip.<br>Style it in the video editor.</div>
-          <div class="edit-link">Edit clip →</div>
+        <div class="ground" style="height:52%"></div>
+        <div class="subject" style="left:42%; top:33%; width:19%; height:40%;"></div>
+        <div class="brandband" style="top:0; font-size:9px;">Hip flexion drives hip extension</div>
+        <div class="lock-overlay">
+          <div>This slide is a video clip.<br>Trim, captions and music live in the video editor.</div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn">Adjust 4:5 crop</button>
+            <button class="btn">Edit clip →</button>
+          </div>
         </div>
       </div>
-      <p class="caption">Slide 2 of 4 · video · locked to VideoEditor for trim/captions/music</p>
-
+      <p class="cap">Slide 2 of 4 · video · 4:5 bake ready</p>
       <div class="filmstrip">
-        <div class="slide-thumb">
-          <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI1NiI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzQ3NTU2OSIvPjwvc3ZnPg==" />
-          <span class="idx">1</span>
-          <span class="template-dot"></span>
-        </div>
-        <div class="slide-thumb active">
-          <video muted></video>
-          <span class="idx">2</span>
-          <span class="kind-badge">▶ 0:08</span>
-        </div>
-        <div class="slide-thumb">
-          <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI1NiI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzY0NzQ4YiIvPjwvc3ZnPg==" />
-          <span class="idx">3</span>
-        </div>
-        <div class="slide-thumb">
-          <video muted></video>
-          <span class="idx">4</span>
-          <span class="kind-badge">▶ 0:14</span>
-        </div>
-        <div class="add-slide-btn">+</div>
+        <div class="thumb"><span class="idx">1</span><span class="tdot"></span></div>
+        <div class="thumb active" style="background:#334155"><span class="idx">2</span><span class="vbadge">▶ 0:08</span><span class="ready"></span></div>
+        <div class="thumb" style="background:#64748b"><span class="idx">3</span></div>
+        <div class="thumb" style="background:#334155"><span class="idx">4</span><span class="vbadge">▶ 0:14</span><span class="ready"></span></div>
+        <div class="add">+</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- SCREEN 3 — Publish preview -->
+<!-- 4 · CAPABILITY -->
 <div class="screen">
-  <p class="screen-title">3 · Publish preview — what actually ships</p>
-  <p class="screen-note">Preview must show the real interleaved order, not a photos-then-videos regroup — this is the "preview ≠ published artifact" scar tissue.</p>
-
-  <div class="flow-row">
-    <div class="flow-col">
-      <div class="ig-post">
-        <div class="ig-header"><div class="ig-avatar"></div><span class="ig-name">movebetter</span></div>
-        <div class="ig-media">
-          <video autoplay muted loop playsinline poster="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzc1Ij48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzM0MTU1Ii8+PC9zdmc+"></video>
-          <span class="ig-counter">2/4</span>
-        </div>
-        <div class="ig-dots">
-          <span class="ig-dot"></span><span class="ig-dot active"></span><span class="ig-dot"></span><span class="ig-dot"></span>
-        </div>
-      </div>
-      <p class="caption">Currently on the video slide (2 of 4) — swipe dots show position across the mixed set.</p>
-    </div>
-
-    <div class="flow-col">
-      <p class="section-label">Per-platform capability (enforced by the format picker + publish gate)</p>
+  <p class="screen-title">4 · What each channel can take</p>
+  <div class="cols2">
+    <div>
       <table>
-        <tr><th>Platform</th><th>Post</th><th>Carousel (mixed)</th><th>Reel</th></tr>
-        <tr><td>Instagram</td><td class="yes">✓</td><td class="yes">✓ photo+video</td><td class="yes">✓</td></tr>
-        <tr><td>Facebook</td><td class="yes">✓</td><td class="no">photos-only OR video-only</td><td class="yes">✓</td></tr>
-        <tr><td>LinkedIn / X / etc.</td><td class="yes">✓</td><td class="no">n/a (no swipe carousel)</td><td class="no">—</td></tr>
+        <tr><th>Platform</th><th>Post</th><th>Carousel</th><th>Reel</th></tr>
+        <tr><td>Instagram</td><td class="yes">✓</td><td class="yes">✓ photo + video</td><td class="yes">✓</td></tr>
+        <tr><td>Facebook</td><td class="yes">✓ album</td><td class="no">single-kind only</td><td class="yes">✓</td></tr>
+        <tr><td>LinkedIn / X / GBP</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
+        <tr><td>TikTok / YouTube</td><td class="no">—</td><td class="no">—</td><td class="yes">✓ video lanes</td></tr>
       </table>
-      <p class="screen-note" style="margin-top:10px">Facebook's API rejects mixed carousels outright — confirmed live. The format picker disables "Carousel (mixed)" for Facebook and instead offers "Album" scoped to one media kind at a time. Reel works as its own real format on both.</p>
+    </div>
+    <div>
+      <p class="screen-note" style="margin:0">
+        16:9 masters are natively eligible for IG feed and carousel (1.78 sits inside the 0.8–1.91 window)
+        and post as-is to LinkedIn and X. They only need a re-frame for the vertical lanes — Reels, Shorts,
+        TikTok, Stories — which is the same derived-clip job Moment Miner already does.
+        <br><br>
+        One master per upload in the library, always. A 4:5 bake is stored as a variant nested under its
+        master, so it is rendered once and reused — the library still shows a single tile.
+      </p>
     </div>
   </div>
 </div>

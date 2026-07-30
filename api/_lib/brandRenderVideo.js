@@ -179,6 +179,10 @@ export const VIDEO_CHANNEL_SPECS = {
   youtube_short:   channelSpec('youtube_short',   { captionPos: 'top' }),
   blog_hero_video: channelSpec('blog_hero_video', { captionPos: 'bottom' }),
   facebook_video:  channelSpec('facebook_video',  { captionPos: 'top' }),
+  // 4:5 carousel-slot re-bake of a clip (see CHANNEL_DESTINATIONS). captionPos
+  // 'top' matches the reel lane so a clip re-baked for a carousel keeps the
+  // caption in the same place relative to the speaker.
+  instagram_carousel_video: channelSpec('instagram_carousel_video', { captionPos: 'top' }),
   // Long-form / "keep whole" channels — landscape masters for teaching content
   // that should NOT be cropped into a reel. fit:'contain' letterboxes to keep
   // the WHOLE frame (a teaching video must never crop the speaker out of frame);
