@@ -132,11 +132,21 @@ export function defaultSlotsForChannel(platform, targetPerWeek, quietDays) {
 // split by the reel worker's own ratio, posts first so a single-slot week is a
 // post, not a reel. Shared by distributeEvenSlots (and mirrors the split
 // defaultSlotsForChannel does inline).
-function unitFormats(platform, target) {
+export function unitFormats(platform, target, { carouselTarget = 0 } = {}) {
   if (platform !== 'instagram') return Array(target).fill(defaultFormatForPlatform(platform))
   const reelCount = target > 0 ? Math.min(target, Math.max(1, Math.round(target * DEFAULT_REEL_SHARE))) : 0
-  const postCount = Math.max(0, target - reelCount)
-  return [...Array(postCount).fill('post'), ...Array(reelCount).fill('reel')]
+  // Carousels carve from the POST share, never the reel share. Reels are the
+  // format with a hard supply constraint (each needs a real rendered clip), so
+  // silently trading them away for carousels would under-fill the lane the reel
+  // worker is actively trying to satisfy. Default 0 keeps every existing
+  // workspace's mix byte-identical until someone opts in.
+  const carouselCount = Math.min(Math.max(0, Math.trunc(carouselTarget) || 0), Math.max(0, target - reelCount))
+  const postCount = Math.max(0, target - reelCount - carouselCount)
+  return [
+    ...Array(postCount).fill('post'),
+    ...Array(carouselCount).fill('carousel'),
+    ...Array(reelCount).fill('reel'),
+  ]
 }
 
 /**
@@ -162,7 +172,7 @@ function unitFormats(platform, target) {
  * @param {string[]} quietDays day codes to exclude (e.g. ['sat','sun'] or [])
  * @returns {Record<string,object[]>} platform -> slots[]
  */
-export function distributeEvenSlots(channels, quietDays) {
+export function distributeEvenSlots(channels, quietDays, formatTargets = null) {
   const quiet = new Set((quietDays || []).map((d) => String(d).toLowerCase()))
   const openDays = MONFIRST.filter((d) => !quiet.has(d))
   const D = openDays.length
@@ -176,7 +186,12 @@ export function distributeEvenSlots(channels, quietDays) {
   let g = 0
   for (const [platform, cfg] of active) {
     const target = Math.max(0, Math.round(Number(cfg.target_per_week) || 0))
-    const formats = unitFormats(platform, target)
+    // `formats` is cadence_policy.formats — per-format weekly targets. Named
+    // `formatTargets` locally because `formats` is already the slot-format list
+    // below; shadowing it silently produced an empty mix in an earlier pass.
+    const formats = unitFormats(platform, target, {
+      carouselTarget: Number(formatTargets?.carousel?.target_per_week) || 0,
+    })
     const baseHour = BEST_HOUR[platform] ?? 11
     const C = formats.length
     const slots = formats.map((format, i) => ({
@@ -208,7 +223,7 @@ export function distributeEvenSlots(channels, quietDays) {
  * /week quiet-day toggle (and Settings day-pills, and T4's day-proposal accept)
  * actually re-open a weekend rather than silently no-op.
  */
-export function mergeSlotsIntoCadence(cadence, policyChannels, quietDays) {
+export function mergeSlotsIntoCadence(cadence, policyChannels, quietDays, formatTargets = null) {
   const entries = Object.entries(cadence || {})
   const persistedByPlatform = {}
   const needDefaults = {}
@@ -221,7 +236,7 @@ export function mergeSlotsIntoCadence(cadence, policyChannels, quietDays) {
     persistedByPlatform[platform] = enabledPersisted
     if (!enabledPersisted.length) needDefaults[platform] = cfg
   }
-  const computed = distributeEvenSlots(needDefaults, quietDays)
+  const computed = distributeEvenSlots(needDefaults, quietDays, formatTargets)
   const out = {}
   for (const [platform, cfg] of entries) {
     const slots = persistedByPlatform[platform].length ? persistedByPlatform[platform] : (computed[platform] || [])

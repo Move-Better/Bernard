@@ -53,7 +53,7 @@ export default async function handler(req, res) {
   // per-week — the exploration rotation and other week-to-week variation is
   // out of scope for a "light overview"; Week view is the source of truth).
   const rawChannels = ws.cadence_policy?.channels || {}
-  const cadenceWithSlots = mergeSlotsIntoCadence(rawChannels, rawChannels, quietDays)
+  const cadenceWithSlots = mergeSlotsIntoCadence(rawChannels, rawChannels, quietDays, ws.cadence_policy?.formats)
   const slotsPerWeekday = {}
   for (const wd of WEEKDAY_CODES) slotsPerWeekday[wd] = 0
   for (const cfg of Object.values(cadenceWithSlots)) {

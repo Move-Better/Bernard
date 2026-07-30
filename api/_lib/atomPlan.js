@@ -10,12 +10,16 @@
 // karaoke-captioned video) that both key under the `instagram` atom platform.
 //
 //   post  — single image / text post. The historical default; NULL means post.
+//   carousel — a multi-slide deck. A distinct CONTENT SHAPE, not just a post
+//     that happens to carry several photos: planning one means Bernard builds
+//     a teaching deck deliberately. Opt-in — the default weekly target is 0, so
+//     a workspace that never asks for carousels sees an unchanged slot mix.
 //   reel  — short vertical video cut from a real clinician clip.
 //   story — 9:16 ephemeral frame (instagram_story).
 // Cross-checked against the content_items vocabulary — see contentFormatForAtom.
 import { FORMAT_IDS } from '../../src/lib/platformFormats.js'
 
-export const ATOM_FORMATS = Object.freeze({ POST: 'post', REEL: 'reel', STORY: 'story' })
+export const ATOM_FORMATS = Object.freeze({ POST: 'post', CAROUSEL: 'carousel', REEL: 'reel', STORY: 'story' })
 
 // The format an atom platform plans in by default. REEL is deliberately absent:
 // a reel slot is never planned speculatively, because a reel can only exist if a
