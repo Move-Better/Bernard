@@ -22,6 +22,7 @@
     "schema:verify": "node scripts/verify-schema-drift.mjs",
     "schema:snapshot": "node scripts/verify-schema-drift.mjs --write",
     "verify-caption-fidelity": "node scripts/verify-caption-fidelity.mjs",
+    "verify-caption-regression": "node scripts/verify-caption-regression.mjs",
     "g6-smoke": "node scripts/g6-video-onboarding-smoke.mjs",
     "deploy:prod:preflight": "bash scripts/deploy-prod-preflight.sh",
     "deploy:prod": "npm run deploy:prod:preflight && vercel deploy --prod --build-env VERCEL_GIT_COMMIT_SHA=$(git rev-parse HEAD)"
