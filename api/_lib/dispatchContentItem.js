@@ -81,7 +81,9 @@ export async function dispatchContentItem({ ws, piece }) {
   // A reel (video) has slides skipped and dispatches here. Scoped to
   // carousel-capable platforms so GBP never routes to the fallback. This gate is
   // BEFORE the claim/dispatch, so a deferred piece has posted nothing.
-  const reel = isInstagramReel(piece.media_urls)
+  // Reel-ness honors the explicit format when set (a video can now live INSIDE
+  // a carousel), falling back to the legacy any-video derivation for null.
+  const reel = piece.format ? piece.format === 'reel' : isInstagramReel(piece.media_urls)
   if (!reel && CAROUSEL_PLATFORMS.has(piece.platform) && Array.isArray(piece.slides) && piece.slides.length > 0) {
     return { dispatched: false, fallback: 'client', needs_client_bake: true }
   }
@@ -175,7 +177,7 @@ export async function dispatchContentItem({ ws, piece }) {
       const publisher = piece.platform === 'gbp'
         ? new BundlePublisher(ws, { teamId: t.teamId })
         : new BundlePublisher(ws)
-      const r = await publisher.publish({ platform: piece.platform, content: text, mediaUrls, scheduledAt })
+      const r = await publisher.publish({ platform: piece.platform, content: text, mediaUrls, scheduledAt, format: piece.format || null })
       firstResult = firstResult || r
       // Record THIS post immediately so a mid-fan-out failure can't cause a
       // retry to double-post an already-posted location.

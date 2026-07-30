@@ -17,6 +17,7 @@
 // in production (every workspace defaults to Buffer).
 import { Bundlesocial } from 'bundlesocial'
 import { SocialPublisher, publishError, emptyMetrics } from './socialPublisher.js'
+import { validateFormatMedia } from '../../../src/lib/platformFormats.js'
 
 // Bernard platform id -> bundle.social social account type (SDK enum, verified).
 const PLATFORM_TO_BUNDLE_TYPE = {
@@ -182,11 +183,15 @@ function countMedia(uploads) {
   return { video, image }
 }
 
-// An all-video payload is a Reel on Instagram and Facebook. Mirrors the legacy
-// Buffer path's rule exactly (buildMetadata in api/_routes/publish/buffer.js:
-// `videoCount > 0 && imageCount === 0`): a mixed photo+video payload stays a
-// POST, because neither network accepts a Reel with a still in it and this
-// publisher can't produce a mixed carousel anyway.
+// An all-video payload is a Reel on Instagram and Facebook — the LEGACY
+// derivation, used only when the piece carries no explicit format. Mirrors the
+// legacy Buffer path's rule exactly (buildMetadata in api/_routes/publish/
+// buffer.js: `videoCount > 0 && imageCount === 0`). With an explicit
+// content_items.format the caller's choice wins instead (see buildDataBlock);
+// mixed photo+video carousels are real on Instagram via carouselItems
+// (verified live 2026-07-29), so "any video → Reel" is no longer a law of
+// nature, just the null-format fallback that keeps every legacy row publishing
+// exactly as it always has.
 export function isReelPayload(uploads) {
   const { video, image } = countMedia(uploads)
   return video > 0 && image === 0
@@ -194,8 +199,14 @@ export function isReelPayload(uploads) {
 
 // Build the per-platform `data` block for postCreate. Pure — takes the resolved
 // bundle uploads (not our media entries) plus an optional already-uploaded cover
-// URL — so the Reel-vs-POST decision is unit-testable without an API key.
-export function buildDataBlock({ platform, type, text, uploads = [], coverUrl = null }) {
+// URL — so the format decision is unit-testable without an API key.
+//
+// `format` is the piece's explicit content_items.format ('post' | 'carousel' |
+// 'reel' | 'story') or null for legacy derived behavior. Media-vs-format
+// validity (a reel with a photo in it, a mixed Facebook album) is enforced
+// upstream in publish() via validateFormatMedia — by the time we're here the
+// combination is legal, so this stays a pure shape-builder.
+export function buildDataBlock({ platform, type, text, uploads = [], coverUrl = null, format = null }) {
   const uploadIds = uploads.map((u) => u?.id).filter(Boolean)
   const media = uploadIds.length ? { uploadIds } : {}
   // bundle's `thumbnail` is "the URL to an image uploaded on bundle.social" —
@@ -204,11 +215,24 @@ export function buildDataBlock({ platform, type, text, uploads = [], coverUrl = 
   const cover = coverUrl ? { thumbnail: coverUrl } : {}
 
   if (type === 'INSTAGRAM') {
-    if (platform === 'instagram_story') return { type: 'STORY', text, ...media }
-    if (isReelPayload(uploads)) {
+    if (platform === 'instagram_story' || format === 'story') return { type: 'STORY', text, ...media }
+    if (format === 'reel' || (!format && isReelPayload(uploads))) {
       // shareToFeed puts the Reel in the main feed as well as the Reels tab.
       // The legacy Buffer path set the same flag (shouldShareToFeed).
       return { type: 'REEL', text, shareToFeed: true, ...media, ...cover }
+    }
+    if (format === 'carousel') {
+      // Explicit carousel — all-photo, all-video, or MIXED. carouselItems is
+      // bundle's per-item list (each entry must reference an id in uploadIds).
+      // autoFitImage letterboxes any item outside Instagram's 0.8–1.91 aspect
+      // window instead of 400-ing the whole post; fit (not crop) because our
+      // rendered clips carry burned-in lower-third captions that a crop would
+      // eat. Both flags verified live 2026-07-29 — without one, a 9:16 item is
+      // rejected with "image aspect ratio must be at least 0.8".
+      return {
+        type: 'POST', text, ...media, autoFitImage: true,
+        carouselItems: uploads.filter((u) => u?.id).map((u) => ({ uploadId: u.id })),
+      }
     }
     return { type: 'POST', text, ...media }
   }
@@ -216,7 +240,8 @@ export function buildDataBlock({ platform, type, text, uploads = [], coverUrl = 
     return { text, topicType: 'STANDARD', ...media }
   }
   if (type === 'FACEBOOK') {
-    if (isReelPayload(uploads)) return { type: 'REEL', text, ...media, ...cover }
+    if (format === 'story') return { type: 'STORY', text, ...media }
+    if (format === 'reel' || (!format && isReelPayload(uploads))) return { type: 'REEL', text, ...media, ...cover }
     return { type: 'POST', text, ...media }
   }
   if (type === 'YOUTUBE') {
@@ -328,9 +353,18 @@ export class BundlePublisher extends SocialPublisher {
     return { url: res?.url }
   }
 
-  async publish({ platform, content, mediaUrls = [], scheduledAt = null } = {}) {
+  async publish({ platform, content, mediaUrls = [], scheduledAt = null, format = null } = {}) {
     if (!platform) throw publishError('publish requires a platform', 400)
     const type = this._bundleType(platform)
+
+    // An explicit format must be legal for this platform+media combination
+    // BEFORE anything uploads — bundle's own rejection for e.g. a mixed
+    // Facebook album arrives as an opaque 400 after the media round-trip.
+    // Null format skips this entirely (legacy derived behavior).
+    if (format) {
+      const check = validateFormatMedia(platform, format, mediaUrls)
+      if (!check.ok) throw publishError(`format_${check.reason}`, 400)
+    }
 
     // bundle takes a single postDate + status SCHEDULED|DRAFT. "Now" = a
     // near-future timestamp the queue picks up immediately (mirrors the spike);
@@ -351,7 +385,10 @@ export class BundlePublisher extends SocialPublisher {
     }
 
     // A Reel gets an explicit cover frame; a photo post never needs one.
-    const coverUrl = REEL_COVER_TYPES.has(type) && isReelPayload(uploads)
+    // Reel-ness follows the explicit format when one is set, else the legacy
+    // all-video derivation — same precedence as buildDataBlock.
+    const isReel = format ? format === 'reel' : isReelPayload(uploads)
+    const coverUrl = REEL_COVER_TYPES.has(type) && isReel
       ? await this._uploadCover(mediaUrls)
       : null
 
@@ -362,7 +399,7 @@ export class BundlePublisher extends SocialPublisher {
         postDate,
         status: 'SCHEDULED',
         socialAccountTypes: [type],
-        data: { [type]: this._dataBlock(platform, type, content || '', uploads, coverUrl) },
+        data: { [type]: this._dataBlock(platform, type, content || '', uploads, coverUrl, format) },
       },
     })
     return {
@@ -538,8 +575,8 @@ export class BundlePublisher extends SocialPublisher {
     }
   }
 
-  _dataBlock(platform, type, text, uploads, coverUrl) {
-    return buildDataBlock({ platform, type, text, uploads, coverUrl })
+  _dataBlock(platform, type, text, uploads, coverUrl, format = null) {
+    return buildDataBlock({ platform, type, text, uploads, coverUrl, format })
   }
 }
 

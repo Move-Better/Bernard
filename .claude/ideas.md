@@ -154,7 +154,7 @@ Append-only list of out-of-scope ideas that surfaced during sessions. Not a road
 - **TLDR:** Let one IG post mix photo slides and a video slide (photo → video → photo, one swipeable carousel). Instagram's own Graph API supports this (≤10 items, video ≤60s, all cropped to the first item's aspect), but **Buffer — our publisher — does not** (IG carousels are images-only through Buffer's API). `buildMetadata` already encodes the limit: `type='reel'` only when `videoCount>0 && imageCount===0`, else `'post'`, which silently drops/breaks a mixed payload. Until unblocked, video posts as its own Reel.
 - **Effort:** ~1 week (path 2 below); near-zero if path 1 lands on Buffer's side
 - **Trigger to revisit:** Buffer ships mixed-carousel API support (path 1, check Buffer changelog), OR a clinician specifically asks to combine a clip + photos in one IG post often enough to justify a **direct Instagram Graph API** publish path for IG (path 2 — bypasses Buffer, supports mixed, but needs IG OAuth + long-lived token and loses Buffer's unified scheduling for that channel).
-- **Status:** Parked
+- **Status:** UNPARKED 2026-07-29 — a third path neither predicted: bundle.social (the provider that replaced Buffer) supports mixed `carouselItems`, verified empirically with live DRAFT posts. In build as the explicit-format sprint (see `.claude/decisions.md` 2026-07-29 entry; publish floor = PR with `platformFormats.js` + `content_items.format`).
 
 ## Idea: P1 UI batch — mockup-first design session (from 2026-06-09 audit)
 - **Surfaced:** 2026-06-09 (P1 UI items from /auditfull)

@@ -78,6 +78,79 @@ describe('buildDataBlock — Instagram', () => {
   })
 })
 
+describe('buildDataBlock — explicit format (content_items.format)', () => {
+  it('format=carousel builds carouselItems with aspect normalization — mixed included', () => {
+    const block = buildDataBlock({
+      platform: 'instagram', type: 'INSTAGRAM', text: 'hi',
+      uploads: [VIDEO, PHOTO], format: 'carousel',
+    })
+    expect(block.type).toBe('POST')
+    expect(block.carouselItems).toEqual([{ uploadId: 'up_vid' }, { uploadId: 'up_img' }])
+    expect(block.uploadIds).toEqual(['up_vid', 'up_img'])
+    // autoFitImage (letterbox, never crop) — a 9:16 item otherwise 400s on
+    // Instagram's 0.8 aspect floor; fit not crop because rendered clips carry
+    // burned-in captions. Verified live 2026-07-29.
+    expect(block.autoFitImage).toBe(true)
+  })
+
+  it('format=carousel with all videos stays a POST carousel, never a Reel', () => {
+    const block = buildDataBlock({
+      platform: 'instagram', type: 'INSTAGRAM', text: 'hi',
+      uploads: [VIDEO, { id: 'up_vid2', type: 'video' }], format: 'carousel',
+    })
+    expect(block.type).toBe('POST')
+    expect(block.carouselItems).toHaveLength(2)
+    expect('shareToFeed' in block).toBe(false)
+  })
+
+  it('format=reel is explicit — no media-derived guessing', () => {
+    const block = buildDataBlock({
+      platform: 'instagram', type: 'INSTAGRAM', text: 'hi', uploads: [VIDEO], format: 'reel',
+    })
+    expect(block.type).toBe('REEL')
+    expect(block.shareToFeed).toBe(true)
+  })
+
+  it('format=post with a photo is a plain POST — no carouselItems leak', () => {
+    const block = buildDataBlock({
+      platform: 'instagram', type: 'INSTAGRAM', text: 'hi', uploads: [PHOTO], format: 'post',
+    })
+    expect(block.type).toBe('POST')
+    expect('carouselItems' in block).toBe(false)
+    expect('autoFitImage' in block).toBe(false)
+  })
+
+  it('format=story routes to STORY on both networks', () => {
+    expect(buildDataBlock({
+      platform: 'instagram', type: 'INSTAGRAM', text: 'hi', uploads: [PHOTO], format: 'story',
+    }).type).toBe('STORY')
+    expect(buildDataBlock({
+      platform: 'facebook', type: 'FACEBOOK', text: 'hi', uploads: [PHOTO], format: 'story',
+    }).type).toBe('STORY')
+  })
+
+  it('Facebook format=reel is explicit, with cover and without shareToFeed', () => {
+    const block = buildDataBlock({
+      platform: 'facebook', type: 'FACEBOOK', text: 'hi', uploads: [VIDEO],
+      coverUrl: 'https://cdn.bundle.social/cover.jpg', format: 'reel',
+    })
+    expect(block.type).toBe('REEL')
+    expect(block.thumbnail).toBe('https://cdn.bundle.social/cover.jpg')
+    expect('shareToFeed' in block).toBe(false)
+  })
+
+  it('null format keeps the legacy derivation byte-identical (mixed → plain POST)', () => {
+    const explicit = buildDataBlock({
+      platform: 'instagram', type: 'INSTAGRAM', text: 'hi', uploads: [VIDEO, PHOTO], format: null,
+    })
+    const legacy = buildDataBlock({
+      platform: 'instagram', type: 'INSTAGRAM', text: 'hi', uploads: [VIDEO, PHOTO],
+    })
+    expect(explicit).toEqual(legacy)
+    expect('carouselItems' in legacy).toBe(false)
+  })
+})
+
 describe('buildDataBlock — Facebook', () => {
   it('sends an all-video post as a REEL', () => {
     const block = buildDataBlock({

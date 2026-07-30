@@ -113,6 +113,10 @@ export async function publishItem(item, { scheduledAt, useQueue } = {}) {
 
   if (BUFFER_PLATFORMS.includes(platform)) {
     const body = { platform, content, mediaUrls, scheduledAt, useQueue }
+    // Explicit content_items.format ('post'|'carousel'|'reel'|'story') — lets
+    // the bundle path publish e.g. a mixed photo+video carousel instead of
+    // deriving Reel-vs-post from the media. Absent = legacy derived behavior.
+    if (item.format) body.format = item.format
     // contentItemId — lets the server enforce the words-approval gate
     // (Phase 3, story-monitor redesign) and the pre-existing workspace-
     // ownership check. item.id is the content_items row id.

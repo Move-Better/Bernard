@@ -82,6 +82,9 @@ export async function publishPieceToBuffer(
       mediaUrls,
       scheduledAt,
       useQueue,
+      // Explicit format choice (content_items.format) rides through to the
+      // publish endpoint; null/undefined keeps legacy derived behavior.
+      format: piece.format || undefined,
       // GBP fan-out target — an explicit target_locations selection (the
       // location picker) wins, else location_overrides' key set (Producer
       // drafted per-location copy for these), else undefined = every active

@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mixed carousel — SlideEditor + format picker mockup</title>
+<style>
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 8%;
+    --card: 0 0% 100%;
+    --primary: 186 83% 27%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 19% 34%;
+    --destructive: 0 84% 60%;
+    --border: 214 32% 91%;
+    --success: 152 76% 40%;
+    --action: 32 95% 44%;
+    --action-foreground: 0 0% 100%;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Geist', 'Inter', system-ui, sans-serif;
+    background: #f8fafc;
+    color: hsl(var(--foreground));
+    padding: 32px;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: hsl(var(--muted-foreground)); font-size: 13px; margin: 0 0 28px; }
+  .section-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: hsl(var(--muted-foreground)); margin: 0 0 10px;
+  }
+  .today-change {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 999px; margin-left: 8px; vertical-align: middle;
+  }
+  .today-change.today { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .today-change.change { background: hsl(var(--action) / .12); color: hsl(var(--action)); }
+
+  .screen {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 40px;
+    max-width: 980px;
+  }
+  .screen-title { font-size: 14px; font-weight: 600; margin: 0 0 2px; }
+  .screen-note { font-size: 12px; color: hsl(var(--muted-foreground)); margin: 0 0 18px; }
+
+  /* ── Format picker ─────────────────────────────────────────────── */
+  .format-row { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .format-pill-group {
+    display: inline-flex; border: 1px solid hsl(var(--border)); border-radius: 10px;
+    overflow: hidden; background: hsl(var(--muted) / .5);
+  }
+  .format-pill {
+    padding: 7px 14px; font-size: 12.5px; font-weight: 600; color: hsl(var(--muted-foreground));
+    background: transparent; border: none; cursor: pointer; border-right: 1px solid hsl(var(--border));
+    display: flex; align-items: center; gap: 5px;
+  }
+  .format-pill:last-child { border-right: none; }
+  .format-pill.active { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .format-pill.disabled { opacity: .35; cursor: not-allowed; }
+  .format-pill .dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; opacity: .6; }
+  .format-hint { font-size: 11.5px; color: hsl(var(--muted-foreground)); }
+  .format-hint b { color: hsl(var(--foreground)); font-weight: 600; }
+
+  /* ── Work area: rail | inspector | canvas (abbreviated) ───────────── */
+  .work-area { display: flex; gap: 16px; }
+  .rail {
+    width: 44px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;
+    padding-top: 4px;
+  }
+  .rail-btn {
+    width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    color: hsl(var(--muted-foreground)); font-size: 15px; border: 1px solid transparent;
+  }
+  .rail-btn.active { background: hsl(var(--primary) / .1); color: hsl(var(--primary)); border-color: hsl(var(--primary) / .25); }
+
+  .canvas-col { flex: 1; display: flex; flex-direction: column; align-items: center; }
+  .canvas {
+    width: 260px; aspect-ratio: 4/5; border-radius: 10px; overflow: hidden; position: relative;
+    background: linear-gradient(135deg,#334155,#64748b);
+  }
+  .canvas img, .canvas video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .canvas .overlay-text {
+    position: absolute; left: 16px; right: 16px; bottom: 20px; color: white;
+    font-size: 20px; font-weight: 700; line-height: 1.15; text-shadow: 0 2px 10px rgba(0,0,0,.5);
+  }
+  .canvas .play-chip {
+    position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,.55); color: white;
+    border-radius: 999px; padding: 3px 9px; font-size: 10.5px; font-weight: 600; display:flex; align-items:center; gap:4px;
+  }
+  .canvas .locked-note {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 8px; color: white; text-align: center; padding: 0 20px;
+    background: rgba(15,23,42,.35); font-size: 12px;
+  }
+  .canvas .locked-note .edit-link {
+    background: white; color: hsl(var(--foreground)); font-weight: 600; font-size: 12px;
+    padding: 6px 14px; border-radius: 8px;
+  }
+
+  /* ── Filmstrip (the core diff) ─────────────────────────────────── */
+  .filmstrip { margin-top: 14px; display: flex; align-items: center; gap: 6px; overflow-x: auto; padding: 4px; }
+  .slide-thumb {
+    position: relative; flex-shrink: 0; width: 45px; height: 56px; border-radius: 6px; overflow: hidden;
+    border: 1.5px solid hsl(var(--border));
+  }
+  .slide-thumb.active { border-color: hsl(var(--primary)); box-shadow: 0 0 0 2px hsl(var(--primary) / .3); }
+  .slide-thumb img, .slide-thumb video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .slide-thumb .idx {
+    position: absolute; left: 2px; top: 2px; background: rgba(0,0,0,.55); color: white;
+    font-size: 8.5px; font-weight: 700; border-radius: 3px; padding: 0 3px; line-height: 1.3;
+  }
+  .slide-thumb .kind-badge {
+    position: absolute; right: 2px; bottom: 2px; background: rgba(0,0,0,.6); color: white;
+    border-radius: 3px; padding: 1px 4px; font-size: 7.5px; font-weight: 700; display: flex; align-items: center; gap: 2px;
+  }
+  .slide-thumb .template-dot {
+    position: absolute; right: 2px; top: 2px; width: 5px; height: 5px; border-radius: 999px; background: hsl(var(--action));
+  }
+  .add-slide-btn {
+    flex-shrink: 0; width: 45px; height: 56px; border-radius: 6px; border: 1.5px dashed hsl(var(--muted-foreground) / .35);
+    color: hsl(var(--muted-foreground)); display: flex; align-items: center; justify-content: center; font-size: 16px;
+  }
+
+  .caption { font-size: 11.5px; color: hsl(var(--muted-foreground)); margin-top: 8px; text-align: center; max-width: 520px; }
+
+  /* ── Publish preview (carousel swipe) ─────────────────────────── */
+  .ig-post { width: 300px; border: 1px solid hsl(var(--border)); border-radius: 12px; overflow: hidden; }
+  .ig-header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
+  .ig-avatar { width: 28px; height: 28px; border-radius: 999px; background: linear-gradient(135deg,#0c757a,#0a5a60); }
+  .ig-name { font-size: 12.5px; font-weight: 600; }
+  .ig-media { position: relative; width: 100%; aspect-ratio: 4/5; background: #111; }
+  .ig-media img, .ig-media video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .ig-dots { display: flex; justify-content: center; gap: 4px; padding: 8px 0; }
+  .ig-dot { width: 5px; height: 5px; border-radius: 999px; background: hsl(var(--border)); }
+  .ig-dot.active { background: hsl(var(--primary)); }
+  .ig-play-badge {
+    position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,.55); color: white; border-radius: 999px;
+    padding: 3px 9px; font-size: 10.5px; font-weight: 600; display: flex; align-items: center; gap: 4px;
+  }
+  .ig-counter { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,.55); color: white; border-radius: 999px;
+    padding: 3px 8px; font-size: 10.5px; font-weight: 600; }
+
+  /* ── Platform capability table ─────────────────────────────────── */
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid hsl(var(--border)); }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: hsl(var(--muted-foreground)); font-weight: 700; }
+  .yes { color: hsl(var(--success)); font-weight: 700; }
+  .no { color: hsl(var(--muted-foreground)); }
+  .badge-inline {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600;
+    padding: 2px 7px; border-radius: 999px; background: hsl(var(--muted));
+  }
+
+  .flow-row { display: flex; gap: 24px; flex-wrap: wrap; }
+  .flow-col { flex: 1; min-width: 300px; }
+</style>
+</head>
+<body>
+
+<h1>Mixed photo+video carousels — editor &amp; format-picker mockup</h1>
+<p class="sub">Three screens: the explicit format picker, SlideEditor's filmstrip with a video slide mixed in, and the resulting Instagram carousel preview. Nothing here is final — sign off on the shape, not the pixels.</p>
+
+<!-- SCREEN 1 — Format picker -->
+<div class="screen">
+  <p class="screen-title">1 · Explicit format picker <span class="today-change today">TODAY: auto-derived, no choice</span><span class="today-change change">CHANGE: explicit control</span></p>
+  <p class="screen-note">Replaces the passive "Instagram Carousel · 5 slides" badge with an actual control. Reel is its own lane — video only, never implied by "a video is present."</p>
+
+  <div class="format-row">
+    <div class="format-pill-group">
+      <button class="format-pill">Post</button>
+      <button class="format-pill active">Carousel</button>
+      <button class="format-pill">Reel</button>
+    </div>
+    <span class="format-hint">Carousel selected — <b>3 photos + 1 video</b>, mixed order preserved</span>
+  </div>
+
+  <div class="format-row">
+    <div class="format-pill-group">
+      <button class="format-pill">Post</button>
+      <button class="format-pill active">Carousel</button>
+      <button class="format-pill disabled">Reel <span class="dot"></span></button>
+    </div>
+    <span class="format-hint">Reel disabled — needs exactly one video, no photos attached</span>
+  </div>
+</div>
+
+<!-- SCREEN 2 — SlideEditor filmstrip -->
+<div class="screen">
+  <p class="screen-title">2 · SlideEditor — mixed filmstrip</p>
+  <p class="screen-note">Photo slides keep full text-template editing (unchanged). A video slide is a locked thumbnail with a play badge — reorder, remove, or jump to VideoEditor. No canvas text-overlay tooling appears for it.</p>
+
+  <div class="work-area">
+    <div class="rail">
+      <div class="rail-btn active">▤</div>
+      <div class="rail-btn">Aa</div>
+      <div class="rail-btn">◐</div>
+      <div class="rail-btn">♪</div>
+    </div>
+
+    <div class="canvas-col">
+      <!-- Active slide = the video slide, showing the locked state -->
+      <div class="canvas">
+        <video autoplay muted loop playsinline poster="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNjAiIGhlaWdodD0iMzI1Ij48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzM0MTU1Ii8+PC9zdmc+">
+        </video>
+        <div class="play-chip">▶ 0:08</div>
+        <div class="locked-note">
+          <div>This slide is a video clip.<br>Style it in the video editor.</div>
+          <div class="edit-link">Edit clip →</div>
+        </div>
+      </div>
+      <p class="caption">Slide 2 of 4 · video · locked to VideoEditor for trim/captions/music</p>
+
+      <div class="filmstrip">
+        <div class="slide-thumb">
+          <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI1NiI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzQ3NTU2OSIvPjwvc3ZnPg==" />
+          <span class="idx">1</span>
+          <span class="template-dot"></span>
+        </div>
+        <div class="slide-thumb active">
+          <video muted></video>
+          <span class="idx">2</span>
+          <span class="kind-badge">▶ 0:08</span>
+        </div>
+        <div class="slide-thumb">
+          <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI1NiI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzY0NzQ4YiIvPjwvc3ZnPg==" />
+          <span class="idx">3</span>
+        </div>
+        <div class="slide-thumb">
+          <video muted></video>
+          <span class="idx">4</span>
+          <span class="kind-badge">▶ 0:14</span>
+        </div>
+        <div class="add-slide-btn">+</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 3 — Publish preview -->
+<div class="screen">
+  <p class="screen-title">3 · Publish preview — what actually ships</p>
+  <p class="screen-note">Preview must show the real interleaved order, not a photos-then-videos regroup — this is the "preview ≠ published artifact" scar tissue.</p>
+
+  <div class="flow-row">
+    <div class="flow-col">
+      <div class="ig-post">
+        <div class="ig-header"><div class="ig-avatar"></div><span class="ig-name">movebetter</span></div>
+        <div class="ig-media">
+          <video autoplay muted loop playsinline poster="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzc1Ij48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzM0MTU1Ii8+PC9zdmc+"></video>
+          <span class="ig-counter">2/4</span>
+        </div>
+        <div class="ig-dots">
+          <span class="ig-dot"></span><span class="ig-dot active"></span><span class="ig-dot"></span><span class="ig-dot"></span>
+        </div>
+      </div>
+      <p class="caption">Currently on the video slide (2 of 4) — swipe dots show position across the mixed set.</p>
+    </div>
+
+    <div class="flow-col">
+      <p class="section-label">Per-platform capability (enforced by the format picker + publish gate)</p>
+      <table>
+        <tr><th>Platform</th><th>Post</th><th>Carousel (mixed)</th><th>Reel</th></tr>
+        <tr><td>Instagram</td><td class="yes">✓</td><td class="yes">✓ photo+video</td><td class="yes">✓</td></tr>
+        <tr><td>Facebook</td><td class="yes">✓</td><td class="no">photos-only OR video-only</td><td class="yes">✓</td></tr>
+        <tr><td>LinkedIn / X / etc.</td><td class="yes">✓</td><td class="no">n/a (no swipe carousel)</td><td class="no">—</td></tr>
+      </table>
+      <p class="screen-note" style="margin-top:10px">Facebook's API rejects mixed carousels outright — confirmed live. The format picker disables "Carousel (mixed)" for Facebook and instead offers "Album" scoped to one media kind at a time. Reel works as its own real format on both.</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
