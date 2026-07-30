@@ -26,7 +26,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const WEEKDAY_CODES = new Set(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'])
-const SLOT_FORMATS = new Set(['post', 'reel', 'story'])
+const SLOT_FORMATS = new Set(['post', 'carousel', 'reel', 'story'])
 // How far back to look for a candidate interview. Matches strategist.js's own
 // RECENT_TOPIC_DAYS window — a piece from further back is stale enough that
 // "recent captures" no longer honestly describes it.

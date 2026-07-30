@@ -324,7 +324,7 @@ export default async function handler(req, res) {
   // Default is weekends-OPEN (feedback 2026-07-26); a workspace opts specific
   // days quiet via cadence_policy.quiet_days.
   const cadenceQuietDays = ws.cadence_policy?.quiet_days || []
-  const cadenceWithSlots = mergeSlotsIntoCadence(rawChannels, rawChannels, cadenceQuietDays)
+  const cadenceWithSlots = mergeSlotsIntoCadence(rawChannels, rawChannels, cadenceQuietDays, ws.cadence_policy?.formats)
 
   return res.status(200).json({
     weekMonday,

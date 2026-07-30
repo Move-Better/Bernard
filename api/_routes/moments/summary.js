@@ -69,7 +69,7 @@ export default async function handler(req, res) {
   // /week board renders empty tiles from (persisted slots, else the computed
   // default), so composition's total matches what the user sees as tiles.
   const quietDays = ws.cadence_policy?.quiet_days || []
-  const cadenceWithSlots = mergeSlotsIntoCadence(rawChannels, rawChannels, quietDays)
+  const cadenceWithSlots = mergeSlotsIntoCadence(rawChannels, rawChannels, quietDays, ws.cadence_policy?.formats)
   const definedSlots = Object.entries(cadenceWithSlots)
     .filter(([platform, c]) => platform !== 'blog' && c?.enabled)
     .reduce((sum, [, c]) => sum + (Array.isArray(c.slots) ? c.slots.filter((s) => s?.enabled !== false).length : 0), 0)

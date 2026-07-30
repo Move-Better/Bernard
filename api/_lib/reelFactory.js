@@ -523,7 +523,7 @@ export async function fillReelSlots({ ws, weekMonday }) {
   // placeholders must carry format:'reel' or a reel would be slotted into a
   // photo tile. Falls back to the computed even-spread when nothing is pinned.
   const channels = ws.cadence_policy?.channels || {}
-  const slotsByPlatform = slotsByPlatformFromCadence(mergeSlotsIntoCadence(channels, channels, quietDays))
+  const slotsByPlatform = slotsByPlatformFromCadence(mergeSlotsIntoCadence(channels, channels, quietDays, ws.cadence_policy?.formats))
   const slotTimes = assignSlots(
     candidates.map(() => ({ platform: 'instagram', format: ATOM_FORMATS.REEL })),
     weekMonday,

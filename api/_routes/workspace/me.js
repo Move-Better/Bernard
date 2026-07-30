@@ -268,7 +268,11 @@ const CADENCE_QUIET_DAYS = new Set(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 's
 // T3 — posting-schedule slots (see api/_lib/cadenceSlots.js). One channel can
 // carry slots of more than one format (Instagram: post + reel), so format
 // lives per-slot, not per-channel.
-const SLOT_FORMATS = new Set(['post', 'reel', 'story'])
+// NOTE: sanitizeChannelSlots REWRITES persisted slots on every settings save
+// and coerces an unknown format to 'post' silently. So a format must be added
+// here BEFORE any UI can produce it — otherwise a saved carousel slot is not
+// rejected, it is quietly downgraded on the next unrelated save.
+const SLOT_FORMATS = new Set(['post', 'carousel', 'reel', 'story'])
 const MAX_SLOTS_PER_CHANNEL = 30
 
 // Shape: [{ weekday, hour, format?, enabled? }]. Returns the cleaned array on
@@ -293,7 +297,7 @@ function sanitizeChannelSlots(value) {
 // 'any' lets the reel worker auto-draft from any speaker; 'clinician' restricts
 // it to moments the speaker-voice classifier scored as the clinician talking
 // (migration 180). Manual rendering is never restricted by this.
-const CADENCE_FORMATS = new Set(['reel'])
+const CADENCE_FORMATS = new Set(['reel', 'carousel'])
 const CADENCE_FORMAT_VOICES = new Set(['any', 'clinician'])
 
 // Shape: { channels: { [platform]: { target_per_week, enabled, slots? } }, quiet_days, timezone, formats, ...rest }

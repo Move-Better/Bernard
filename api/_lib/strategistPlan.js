@@ -164,7 +164,7 @@ export async function getWeekInputs({ workspace, weekMonday, sb = defaultSb }) {
   // effectiveQuietDays) so a channel's default slot layout stays stable week
   // to week rather than shifting with T4's weekly exploration rotation. See
   // cadenceSlots.js.
-  cadence = mergeSlotsIntoCadence(cadence, policy?.channels || {}, configuredQuietDays)
+  cadence = mergeSlotsIntoCadence(cadence, policy?.channels || {}, configuredQuietDays, policy?.formats)
 
   // T4's exploration mechanism assumes a channel falls back to assignSlots'
   // legacy even-spread (which honors effectiveQuietDays) — but a channel with

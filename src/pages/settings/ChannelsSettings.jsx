@@ -2,7 +2,7 @@ import { useState, useEffect, Fragment } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
 import {
-  Loader2, Instagram, Youtube, Megaphone, Radio, Film, Puzzle, SlidersHorizontal, Send,
+  Loader2, Instagram, Youtube, Megaphone, Radio, Film, Layers, Puzzle, SlidersHorizontal, Send,
   Sparkles, Check, X,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -224,6 +224,19 @@ function CadenceCard({ cadence, onChange, onProposalResolved, enabledOutputs, pr
     : Math.min(igTarget, Math.max(igTarget ? 1 : 0, Math.round(igTarget * 0.75)))
   const reelVoice = formats.reel?.voice === 'clinician' ? 'clinician' : 'any'
 
+  // Carousels carve from the POST share, never the reel share — mirror of
+  // unitFormats() in api/_lib/cadenceSlots.js, keep in sync. Default 0: a
+  // workspace that never asks for carousels keeps its existing mix exactly.
+  const carouselMax = Math.max(0, igTarget - reelTarget)
+  const carouselTarget = Math.min(carouselMax, Math.max(0, Number(formats.carousel?.target_per_week) || 0))
+
+  function setCarouselFormat(patch) {
+    onChange({
+      ...(cadence || DEFAULT_CADENCE_POLICY),
+      formats: { ...formats, carousel: { target_per_week: carouselTarget, ...patch } },
+    })
+  }
+
   function setReelFormat(patch) {
     // Deliberately does NOT force provenance:'user'. Auto decides how many posts
     // a channel gets; it has no opinion on which format they take, so choosing
@@ -369,6 +382,31 @@ function CadenceCard({ cadence, onChange, onProposalResolved, enabledOutputs, pr
                       className="w-12 text-center text-sm border border-input rounded-md px-1 py-0.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                     <span className="text-2xs text-muted-foreground w-8">of {ch.target_per_week}</span>
+                  </div>
+                </div>
+              )}
+              {id === 'instagram' && (
+                <div className="flex items-center gap-3 px-3 py-2.5 pl-9 bg-muted/30">
+                  <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm flex-1 min-w-0">
+                    <span className="truncate">of which Carousels</span>
+                    <span className="block text-2xs text-muted-foreground">
+                      Multi-slide teaching decks. Taken from the non-Reel posts, so your Reels are unaffected
+                    </span>
+                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <input
+                      type="number"
+                      aria-label="Instagram Carousels per week target"
+                      min={0}
+                      max={carouselMax}
+                      value={carouselTarget}
+                      onChange={e => setCarouselFormat({
+                        target_per_week: Math.max(0, Math.min(carouselMax, parseInt(e.target.value, 10) || 0)),
+                      })}
+                      className="w-12 text-center text-sm border border-input rounded-md px-1 py-0.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <span className="text-2xs text-muted-foreground w-8">of {carouselMax}</span>
                   </div>
                 </div>
               )}
