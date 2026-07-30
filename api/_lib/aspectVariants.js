@@ -126,7 +126,7 @@ export async function saveAspectVariant({ sourceAsset, channel, render, reframe 
       `media_assets?id=eq.${encodeURIComponent(existing.id)}&workspace_id=eq.${encodeURIComponent(workspaceId)}`,
       { method: 'PATCH', body: JSON.stringify(body) },
     )
-    if (!upd.ok) throw new Error(`aspect variant update failed: ${upd.status}`)
+    if (!upd.ok) throw new Error(`aspect variant update failed: ${upd.status} ${await upd.text().catch(() => '')}`)
     variant = (await upd.json().catch(() => []))[0] || null
   } else {
     const row = {
@@ -146,7 +146,16 @@ export async function saveAspectVariant({ sourceAsset, channel, render, reframe 
       ...body,
     }
     const ins = await sb('media_assets', { method: 'POST', body: JSON.stringify(row) })
-    if (!ins.ok) throw new Error(`aspect variant insert failed: ${ins.status}`)
+    if (!ins.ok) {
+      // Include PostgREST's OWN message, not just the status. A bare
+      // "insert failed: 400" says nothing about which column or constraint —
+      // diagnosing one cost a full deploy cycle plus a hand-run SQL insert to
+      // prove the columns were fine and the fault was in the request. The
+      // codebase's dbErr() helper already logs the full body for this reason;
+      // this matches it. Server-side only — the route still returns an opaque
+      // key to the client.
+      throw new Error(`aspect variant insert failed: ${ins.status} ${await ins.text().catch(() => '')}`)
+    }
     variant = (await ins.json().catch(() => []))[0] || null
   }
 
