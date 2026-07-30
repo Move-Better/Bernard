@@ -79,11 +79,28 @@ if (scoredSamples.length < MIN_SAMPLE) {
   exitFail(`fixture has ${scoredSamples.length} scored samples (need ≥ ${MIN_SAMPLE}). Refresh with scripts/voice-fidelity-captions.mjs --fixture-out=${FIXTURE_PATH}`)
 }
 
+// STOPGAP (2026-07-30) — age WARNS, it no longer fails.
+//
+// The refresh path this check assumes is gone: regenerating the fixture needs
+// >= MIN_SAMPLE `complete` story_packages, and exactly ONE exists in prod
+// (newest 2026-06-02) because the pipeline moved to content_items/moments. So
+// the fixture expired on a 30-day timer that nothing could reset, and the gate
+// began failing EVERY pr in the repo while measuring nothing new.
+//
+// Failing forever is strictly worse than warning: it blocks all work and, once
+// people learn to ignore it, it is a hollow guard — the exact failure mode this
+// codebase keeps paying for. The score threshold below still enforces, so a
+// real regression against the frozen corpus is still caught.
+//
+// The real fix is the golden-set rebuild (scripts/verify-caption-regression.mjs):
+// commit the INPUTS, re-score them every run with the current prompt + judge,
+// and drop the expiry entirely — fixed inputs are the point, not a staleness
+// bug. Delete this stopgap when that lands.
 if (meta.generatedAt) {
   const ageMs = Date.now() - new Date(meta.generatedAt).getTime()
   const ageDays = ageMs / (1000 * 60 * 60 * 24)
   if (ageDays > MAX_AGE_D) {
-    exitFail(`fixture is ${ageDays.toFixed(1)}d old (max ${MAX_AGE_D}d). Refresh it.`)
+    out(`⚠ fixture is ${ageDays.toFixed(1)}d old (max ${MAX_AGE_D}d) — corpus can no longer refresh it; see verify-caption-regression.mjs`)
   }
 }
 
