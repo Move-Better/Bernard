@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { apiFetch } from '@/lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
+import LearningPanel from '@/components/producer/LearningPanel'
 import ErrorState from '@/components/ErrorState'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -185,6 +186,16 @@ export default function ProducerHome({ embedded = false }) {
           </div>
         )}
       </section>
+
+      {!isLoading && (
+        <section>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">How Bernard is learning</h2>
+          {/* Sits below the checkpoint queue on purpose: the queue is the work,
+              this is the context for it. Own query, so a slow or failed read
+              here never delays the actionable half of the page. */}
+          <LearningPanel />
+        </section>
+      )}
 
       {!isLoading && (
         <section>
