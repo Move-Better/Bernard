@@ -42,6 +42,7 @@ import TextDragLayer from './slide-editor/TextDragLayer'
 import ObjectDragLayer from './slide-editor/ObjectDragLayer'
 import CaptionPanel from './slide-editor/CaptionPanel'
 import SlidePickerStrip from './slide-editor/SlidePickerStrip'
+import CarouselFitPanel from './slide-editor/CarouselFitPanel'
 import FullPreviewOverlay from './slide-editor/FullPreviewOverlay'
 import { frameFor } from '@/lib/postFrames'
 
@@ -291,6 +292,26 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
       await updateItem.mutateAsync({ id: piece.id, patch: { format: next } })
     } catch {
       toast('Could not change the format', { variant: 'destructive' })
+    }
+  }
+
+  // Record a baked 4:5 variant on the ACTIVE video slide's media_urls entry.
+  //
+  // Stored on the entry rather than swapping media_urls[i].url outright: the
+  // master stays the thing the library, dedup and usage-counting resolve to,
+  // while carouselPublishEntry() substitutes the variant at publish. Swapping
+  // the url would make the piece look like it references a different asset.
+  async function attachCarouselVariant(variant) {
+    if (!piece?.id || !activeEntry) return
+    const raw = Array.isArray(piece?.media_urls) ? piece.media_urls : []
+    const key = mediaEntryKey(activeEntry)
+    const next = raw.map((m) => (mediaEntryKey(m) === key
+      ? { ...m, carouselVariant: variant }
+      : m))
+    try {
+      await updateItem.mutateAsync({ id: piece.id, patch: { mediaUrls: next } })
+    } catch {
+      toast.error('Saved the 4:5 render but could not attach it — try again')
     }
   }
 
@@ -781,16 +802,23 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                 )}
 
                 {tool === 'photo' && (
-                  <PhotoInspector
-                    slide={activeSlide}
-                    photoUrl={activePhotoUrl}
-                    mediaUrls={mediaUrls}
-                    pieceId={piece?.id}
-                    attachedKeys={attachedKeys}
-                    onAttachPhoto={attachPhoto}
-                    onChange={(next) => updateSlide(activeSlideIdx, next)}
-                    singleSlide={singleSlide}
-                  />
+                  activeIsVideo ? (
+                    // A video slide has no photo to inspect — the photo-template
+                    // tooling can't act on it. What it DOES need is the 4:5 fit,
+                    // so the Media tool becomes the crop step for this slide.
+                    <CarouselFitPanel entry={activeEntry} onFitted={attachCarouselVariant} />
+                  ) : (
+                    <PhotoInspector
+                      slide={activeSlide}
+                      photoUrl={activePhotoUrl}
+                      mediaUrls={mediaUrls}
+                      pieceId={piece?.id}
+                      attachedKeys={attachedKeys}
+                      onAttachPhoto={attachPhoto}
+                      onChange={(next) => updateSlide(activeSlideIdx, next)}
+                      singleSlide={singleSlide}
+                    />
+                  )
                 )}
 
                 {tool === 'text' && (
@@ -948,6 +976,11 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                       >
                         Edit clip →
                       </a>
+                    )}
+                    {activeEntry?.carouselVariant?.url && (
+                      <span className="rounded-full bg-black/40 px-2 py-0.5 text-3xs font-medium text-white">
+                        4:5 version ready
+                      </span>
                     )}
                   </div>
                 )}
