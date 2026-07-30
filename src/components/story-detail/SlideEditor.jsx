@@ -10,7 +10,7 @@ import { buildPhotoTemplateFromEditor, suggestPhotoTemplateName } from '@/lib/ph
 import { apiFetch } from '@/lib/api'
 import { normalizeGrade, isNeutralGrade } from '@/lib/gradeParams'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
-import { photoSourceUrl, clipToMediaEntry, mediaEntryKey, slidePhotos } from '@/lib/mediaEntry'
+import { photoSourceUrl, clipToMediaEntry, mediaEntryKey, slidePhotos, slideMediaEntry, isVideoEntry } from '@/lib/mediaEntry'
 import { formatChoicesFor } from '@/lib/platformFormats'
 import { brandStyleForRender } from '@/lib/brandSwatches'
 import { deriveStory } from '@/lib/storyFields'
@@ -210,7 +210,10 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
       const pick = picks[i]
       if (!pick) return s
       const idx = photoOnly.findIndex((m) => mediaEntryKey(m) === mediaEntryKey(pick))
-      return idx >= 0 ? { ...s, photo_idx: idx } : s
+      const rawIdx = nextRaw.findIndex((m) => mediaEntryKey(m) === mediaEntryKey(pick))
+      // Write BOTH numberings: media_idx (raw, the successor — the only one that
+      // can name a video) and photo_idx (filtered, for consumers not yet moved).
+      return idx >= 0 ? { ...s, photo_idx: idx, media_idx: rawIdx } : s
     })
     setSlides(newSlides)
     if (toAdd.length > 0) {
@@ -317,8 +320,13 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
       // the editor uses for `mediaUrls`/`photo_idx` everywhere.
       const photoOnly = slidePhotos(nextRaw)
       const photoIdx = photoOnly.findIndex((m) => mediaEntryKey(m) === key)
-      if (photoIdx >= 0) {
-        setSlides((cur) => cur.map((s, i) => (i === activeSlideIdx ? { ...s, photo_idx: photoIdx } : s)))
+      const rawIdx = nextRaw.findIndex((m) => mediaEntryKey(m) === key)
+      if (rawIdx >= 0) {
+        // Both numberings — see the auto-attach writer above. photoIdx is -1 for
+        // a video (absent from the filtered list); media_idx still addresses it.
+        setSlides((cur) => cur.map((s, i) => (
+          i === activeSlideIdx ? { ...s, photo_idx: photoIdx >= 0 ? photoIdx : null, media_idx: rawIdx } : s
+        )))
       }
       if (singleSlide && !already && raw.length > 0) {
         toast.success('Photo replaced', { description: 'This platform supports one photo — the previous photo was removed.' })
@@ -374,6 +382,10 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   async function saveDraft(next) {
     const cleaned = next.slides.map((s) => ({
       photo_idx: typeof s.photo_idx === 'number' ? s.photo_idx : null,
+      // media_idx must be in this whitelist or every autosave silently strips
+      // the binding a video slide depends on (saveDraft rebuilds slides from
+      // scratch, so an omitted field is a deletion, not a passthrough).
+      ...(typeof s.media_idx === 'number' ? { media_idx: s.media_idx } : {}),
       template:  s.template,
       // Preserve the per-slide theme override. Without this it was silently
       // dropped on save — the picker set slide.template_id, the resolver and the
@@ -464,9 +476,15 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   // already resolve per-aspect in the renderer, so only custom {x,y} blocks move.
   // Active slide derived values — used by the canvas and the inspector.
   const activeSlide = slides[activeSlideIdx] || slides[0]
-  const activePhotoUrl = typeof activeSlide?.photo_idx === 'number' && mediaUrls[activeSlide.photo_idx]
-    ? photoSourceUrl(mediaUrls[activeSlide.photo_idx])
-    : null
+  // The entry the active slide is bound to, resolved from RAW media_urls so a
+  // video slide resolves at all (videos are absent from the photo-only list).
+  const activeEntry = slideMediaEntry(activeSlide, pieceMediaUrls)
+  // A video slide has NO photo to draw. The text-template canvas can only
+  // composite a still, so it renders its locked state instead of silently
+  // drawing a text card over nothing — trim/captions/music belong to the video
+  // editor, and a photo-styling surface must not imply it owns them.
+  const activeIsVideo = isVideoEntry(activeEntry)
+  const activePhotoUrl = !activeIsVideo && activeEntry ? photoSourceUrl(activeEntry) : null
   const activeTheme = resolveTheme(activeSlide?.template_id || themeId, customThemes)
 
   // Save the look as a reusable photo template. Same principle as the reel
@@ -912,6 +930,27 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                 className={`relative ${ASPECT_STAGE[aspect]?.twAspect ?? 'aspect-[4/5]'} rounded-xl ${selection.type === 'photo' ? 'ring-[2.5px] ring-primary ring-offset-2 ring-offset-muted' : ''}`}
                 style={{ height: `min(calc(100vh - 210px), calc((100vw - 470px) * ${ASPECT_STAGE[aspect]?.hFactor ?? 1.25}))` }}
               >
+                {/* VIDEO slide — a locked card, not a text canvas (mockup rev 2,
+                    screen 3). The photo-template tooling below can only composite
+                    a still, and burned-in captions/trim/music are the video
+                    editor's job; showing the text canvas here would imply this
+                    surface owns them and would bake a text card over nothing. */}
+                {activeIsVideo && (
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-xl bg-slate-900/45 px-6 text-center backdrop-blur-[1px]">
+                    <p className="text-sm font-medium leading-snug text-white">
+                      This slide is a video clip.<br />
+                      <span className="font-normal text-white/80">Trim, captions and music live in the video editor.</span>
+                    </p>
+                    {activeEntry?.mediaAssetId && (
+                      <a
+                        href={`/moments/clip/${activeEntry.mediaAssetId}`}
+                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:bg-white/90"
+                      >
+                        Edit clip →
+                      </a>
+                    )}
+                  </div>
+                )}
                 <SlidePreview
                   slide={editingBlockIdx != null ? { ...activeSlide, blocks: activeSlide.blocks.map((b, i) => (i === editingBlockIdx ? { ...b, text: '' } : b)) } : activeSlide}
                   photoUrl={activePhotoUrl}
@@ -997,7 +1036,11 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
               <SlidePickerStrip
                 slides={slides}
                 activeIdx={activeSlideIdx}
-                mediaUrls={mediaUrls}
+                // RAW media_urls, not the photo-only list: a video slide is
+                // absent from the filtered array entirely, so the strip could
+                // not render one. slideMediaEntry inside handles both
+                // numberings (media_idx raw, photo_idx legacy filtered).
+                mediaUrls={pieceMediaUrls}
                 onSelect={goToSlide}
                 onAdd={addSlide}
                 onRemove={removeSlide}

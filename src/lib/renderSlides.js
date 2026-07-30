@@ -17,7 +17,7 @@
 import { apiFetch } from '@/lib/api'
 import { renderFreeformSlide } from '@/lib/overlayTemplates'
 import { resolveTheme } from '@/lib/photoTemplates'
-import { photoSourceUrl, slidePhotos, slidePhotoEntry } from '@/lib/mediaEntry'
+import { photoSourceUrl, slidePhotos, slidePhotoEntry, slideMediaEntry, isVideoEntry } from '@/lib/mediaEntry'
 
 // Re-exported for existing importers; the definition now lives in mediaEntry.js
 // alongside the rest of the media_urls entry contract, so the preview, the
@@ -105,6 +105,32 @@ async function renderAndUploadSlide({ slide, photoUrl, brandStyle, theme, sig, p
   return url
 }
 
+/**
+ * Compose the publish media list from baked slides, in SLIDE order.
+ *
+ * Pure and exported ONLY so it can be tested: ensureRenderedSlides needs a DOM
+ * canvas and a live upload endpoint, so this rule was unreachable by any test
+ * while it lived inline — a mutation deleting the video branch left the whole
+ * suite green, which is how a surviving mutant exposed the false coverage.
+ *
+ * The rule: a photo slide contributes its BAKED still (photo + on-screen text);
+ * a video slide contributes the REAL video entry, never a bake. Baking a video
+ * slide would publish a text card in place of the producer's clip — the slide
+ * renders with no photo (slidePhotoEntry returns null for a video), so the
+ * output is a caption over an empty background, shipped as type:'photo'.
+ *
+ * Order is preserved so a mixed deck ships interleaved exactly as arranged.
+ */
+export function buildPublishMediaUrls(slides, mediaUrls) {
+  return (slides || [])
+    .map((s) => {
+      const entry = slideMediaEntry(s, mediaUrls)
+      if (entry && isVideoEntry(entry)) return entry
+      return s?.rendered_url ? { url: s.rendered_url, type: 'photo' } : null
+    })
+    .filter(Boolean)
+}
+
 // Ensure every slide has an up-to-date baked image. Re-renders only changed
 // slides. Returns:
 //   { slides }            — slides with rendered_url + rendered_sig populated
@@ -117,6 +143,18 @@ export async function ensureRenderedSlides({ slides, mediaUrls, brandStyle, them
 
   for (let idx = 0; idx < slides.length; idx++) {
     const slide = slides[idx]
+
+    // A VIDEO slide is never baked. slidePhotoEntry returns null for one, so
+    // without this branch the slide would render as a text-only card (the photo
+    // simply absent) and ship below as type:'photo' — silently REPLACING the
+    // producer's clip with a still. Pass the slide through untouched; the
+    // publish list picks up the real video entry.
+    const entry = slideMediaEntry(slide, mediaUrls)
+    if (entry && isVideoEntry(entry)) {
+      out.push(slide)
+      continue
+    }
+
     const photoUrl = photoSourceUrl(slidePhotoEntry(slide, mediaUrls))
     const sig = slideSignature({ slide, photoUrl, themeId, brandStyle, aspect })
 
@@ -133,11 +171,7 @@ export async function ensureRenderedSlides({ slides, mediaUrls, brandStyle, them
     changed = true
   }
 
-  const publishMediaUrls = out
-    .filter((s) => s.rendered_url)
-    .map((s) => ({ url: s.rendered_url, type: 'photo' }))
-
-  return { slides: out, publishMediaUrls, changed }
+  return { slides: out, publishMediaUrls: buildPublishMediaUrls(out, mediaUrls), changed }
 }
 
 // Carousel ad aspects → pixel dims. All 1080 wide (only height varies), so the

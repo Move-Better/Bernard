@@ -27,6 +27,22 @@ export const ROLE_META = {
 export function normalizeSlide(s, idx) {
   return {
     photo_idx: typeof s?.photo_idx === 'number' ? s.photo_idx : idx,
+    // media_idx — index into RAW media_urls, the successor to photo_idx.
+    //
+    // photo_idx indexes the PHOTO-ONLY filtered list (slidePhotos), which was
+    // fine while a carousel could only hold photos. A mixed carousel breaks
+    // that: the moment a video sits in media_urls the two numberings diverge,
+    // and every stored photo_idx would silently point at the wrong item.
+    //
+    // Additive on purpose. Verified against prod 2026-07-29: for all 86
+    // slide-bearing pieces the filtered list is byte-identical to raw
+    // media_urls (zero video or url-less entries), so every legacy photo_idx
+    // IS already a valid raw index — reading `media_idx ?? photo_idx` is
+    // correct for old rows with no backfill. Writers set both; the four other
+    // photo_idx consumers (slidePhotoEntry, producer/slidesBlock,
+    // AdCarouselExportModal, PostPreview's SlidesCarousel) keep working
+    // untouched rather than all having to flip at once.
+    ...(typeof s?.media_idx === 'number' ? { media_idx: s.media_idx } : {}),
     template:  typeof s?.template === 'string' && SLIDE_TEMPLATES[s.template] ? s.template : 'custom',
     // Preserve the per-slide theme override on load — without this it was
     // stripped when slides were read back from the DB, so a saved per-slide
