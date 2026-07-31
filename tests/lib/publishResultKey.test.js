@@ -60,10 +60,12 @@ describe('publishAndTrack — reads back what publishItem wrote', () => {
     expect(patch, 'expected a PATCH to /api/db/content').toBeTruthy()
     const body = JSON.parse(patch[1].body)
 
-    // The regression: a key mismatch makes both of these undefined, so the
-    // published row keeps a null post id and nothing downstream can find it.
+    // The regression: a key mismatch makes this undefined, so the published row
+    // keeps a null post id and nothing downstream can find it. Before migration
+    // 202 this asserted on bufferUpdateId too — the two columns held the same
+    // value, and platform_post_id is the one that survived.
     expect(body.platformPostId).toBe('bundle-post-123')
-    expect(body.bufferUpdateId).toBe('bundle-post-123')
+    expect(body.bufferUpdateId).toBeUndefined()
   })
 
   it('echoes the provider-assigned slot back in queue mode', async () => {

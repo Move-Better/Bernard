@@ -199,7 +199,7 @@ export default function StoryComposer({ piece, remainingNeedsMedia = [] }) {
           </Link>
         )}
 
-        {published && piece.buffer_update_id && <PostMetricsRow contentItemId={piece.id} />}
+        {published && piece.platform_post_id && <PostMetricsRow contentItemId={piece.id} />}
         {published && <WinnerToggle piece={piece} />}
       </div>
 

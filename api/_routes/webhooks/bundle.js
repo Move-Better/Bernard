@@ -98,10 +98,10 @@ export default async function handler(req, res) {
   }
 
   // Resolve the content_item by bundle post id (globally unique within the org,
-  // stored in buffer_update_id). We then scope every write by the row's own
+  // stored in platform_post_id). We then scope every write by the row's own
   // workspace_id.
   const look = await sb(
-    `content_items?buffer_update_id=eq.${encodeURIComponent(postId)}` +
+    `content_items?platform_post_id=eq.${encodeURIComponent(postId)}` +
     `&select=id,workspace_id,status,platform,topic,content,resolved_url&limit=1`,
     { method: 'GET' }
   )

@@ -1,6 +1,6 @@
 // PostMetricsRow — compact post-performance chip row for published content.
 //
-// Shown beneath a content piece body when the piece has a buffer_update_id.
+// Shown beneath a content piece body when the piece has a platform_post_id.
 // Fetches via /api/post-analytics, which serves the latest engagement_snapshots
 // row for the piece — the same daily-refreshed numbers the "What's working"
 // widget and the scoring layer read. A Refresh icon forces a live pull from the

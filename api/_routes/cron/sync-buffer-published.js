@@ -1,7 +1,7 @@
 export const config = { runtime: 'nodejs' }
 // Cron: sync published status back from bundle.social (runs hourly).
 //
-// Finds all content_items where status='scheduled', buffer_update_id IS NOT NULL,
+// Finds all content_items where status='scheduled', platform_post_id IS NOT NULL,
 // and scheduled_at is in the past. For each, asks bundle whether the post has
 // actually gone out. If yes, promotes the row to status='published'; if bundle
 // rejected it permanently, marks it failed and alerts the owner.
@@ -9,9 +9,9 @@ export const config = { runtime: 'nodejs' }
 // This is the slower backstop for the inbound bundle webhook — it covers the
 // deliveries the webhook missed (endpoint not registered, dropped delivery).
 //
-// The route path and the buffer_update_id column keep their old names for now;
-// the provider itself is gone (Buffer retired 2026-07-30). Renaming the column
-// is a follow-up, since platform_post_id duplicates it.
+// The route PATH still says "buffer" — the provider is gone (retired 2026-07-30)
+// and the column was collapsed into platform_post_id in migration 202, but the
+// cron path is registered in vercel.json and renaming it is a separate change.
 //
 // Auth: Bearer CRON_SECRET (same as all other crons).
 
@@ -52,11 +52,11 @@ async function fetchOverdueItems(wsFilter) {
   const r = await sb(
     `content_items` +
     `?status=eq.scheduled` +
-    `&buffer_update_id=not.is.null` +
+    `&platform_post_id=not.is.null` +
     `&scheduled_at=lt.${new Date().toISOString()}` +
     `&scheduled_at=gte.${cutoff}` +
     wsFilter +
-    `&select=id,workspace_id,buffer_update_id,scheduled_at,platform,topic,resolved_url` +
+    `&select=id,workspace_id,platform_post_id,scheduled_at,platform,topic,resolved_url` +
     `&order=scheduled_at.asc` +
     `&limit=${MAX_ITEMS}`
   )
@@ -217,7 +217,7 @@ export default async function handler(req, res) {
 
     for (const item of wsItems) {
       try {
-        const status = await publisher.getPostStatus({ postId: item.buffer_update_id })
+        const status = await publisher.getPostStatus({ postId: item.platform_post_id })
         if (!status?.status) {
           // Null response — post not found or deleted; leave as-is.
           wsResult.notFound++

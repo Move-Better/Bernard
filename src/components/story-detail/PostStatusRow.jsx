@@ -176,7 +176,7 @@ export default function PostStatusRow({ piece }) {
 
         {isPublished && (
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            {piece.buffer_update_id && <PostMetricsRow contentItemId={piece.id} />}
+            {piece.platform_post_id && <PostMetricsRow contentItemId={piece.id} />}
             {piece.platform === 'gbp' && <GbpInsightsRow contentItemId={piece.id} />}
             <WinnerToggle piece={piece} />
           </div>

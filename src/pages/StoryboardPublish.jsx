@@ -158,7 +158,7 @@ export default function StoryboardPublish() {
             </span>
           </Link>
         )}
-        {piece.status === 'published' && piece.buffer_update_id && (
+        {piece.status === 'published' && piece.platform_post_id && (
           <PostMetricsRow contentItemId={piece.id} />
         )}
         {piece.status === 'published' && <WinnerToggle piece={piece} />}
