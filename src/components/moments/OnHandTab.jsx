@@ -82,6 +82,16 @@ function RowMenu({ m, onRetire, onRestore }) {
         <button type="button" className={item} onClick={() => { setOpen(false); navigate(`/stories/${m.interview_id}`) }}>
           Open story
         </button>
+        {/* DORMANT BY DESIGN, not dead code — don't delete it as unreachable.
+            moments.clip_asset_id is never written today (0 of 208 in prod,
+            2026-07-31), so this never renders, and the same is true of the
+            "clip attached" chip in Provenance below. Both are deliberate: the
+            signed-off IA direction has a moment carry footage once Lane A links
+            them, and says so ("no clips are linked yet in prod; it renders only
+            when clip_asset_id is set" — .claude/mockups/moment-ia-direction.html).
+            Blocked upstream, not here: linking needs the moment's position in
+            the video, and every moment is text-anchored (anchor.msg_idx), none
+            time-anchored. See api/_lib/autoAttachMedia.js for the full note. */}
         {m.clip_asset_id && (
           <button type="button" className={item} onClick={() => { setOpen(false); navigate(`/moments/clip/${m.clip_asset_id}`) }}>
             Open clip
