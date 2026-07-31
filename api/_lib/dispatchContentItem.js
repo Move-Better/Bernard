@@ -200,7 +200,7 @@ export async function dispatchContentItem({ ws, piece }) {
   // All targets posted — commit the row to scheduled + clear the claim.
   await releaseClaim({
     status: 'scheduled',
-    buffer_update_id: firstResult?.postId ?? null,
+    platform_post_id: firstResult?.postId ?? null,
     scheduled_at: firstResult?.scheduledAt ?? scheduledAt ?? null,
   })
   return {

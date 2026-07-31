@@ -317,15 +317,15 @@ export function useContentWorkflow(piece) {
   }
 
   // Cancel a scheduled Buffer post. Resets the row to status='approved' with
-  // scheduled_at + buffer_update_id cleared. NOT for already-published pieces.
+  // scheduled_at + platform_post_id cleared. NOT for already-published pieces.
   const cancelScheduled = async () => {
-    if (!piece.buffer_update_id) {
+    if (!piece.platform_post_id) {
       toast.error('Cannot cancel — no scheduled post ID on file')
       return
     }
     setPublishing(true)
     try {
-      await runWithToast(cancelScheduledPost(piece.buffer_update_id), {
+      await runWithToast(cancelScheduledPost(piece.platform_post_id), {
         loading: 'Cancelling…',
         success: 'Cancelled — back to Approved',
         error: (e) => ({ message: 'Cancel failed', description: e.message }),
@@ -334,7 +334,7 @@ export function useContentWorkflow(piece) {
         id: piece.id,
         status: 'approved',
         scheduledAt: null,
-        bufferUpdateId: null,
+        platformPostId: null,
         publishedAt: null,
       })
       qc.invalidateQueries({ queryKey: queryKeys.stories.detail(piece.interview_id) })

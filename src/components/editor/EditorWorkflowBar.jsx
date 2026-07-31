@@ -354,7 +354,7 @@ export default function EditorWorkflowBar({ piece }) {
             <Button
               size="sm"
               variant="ghost"
-              disabled={wf.publishing || !piece.buffer_update_id}
+              disabled={wf.publishing || !piece.platform_post_id}
               loading={wf.publishing}
               onClick={wf.cancelScheduled}
               className="text-warning hover:bg-warning/10 hover:text-warning"

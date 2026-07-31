@@ -667,7 +667,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
               size="sm"
               variant="outline"
               onClick={handleCancelScheduled}
-              disabled={publishing || !piece.buffer_update_id}
+              disabled={publishing || !piece.platform_post_id}
               loading={publishing}
               className="border-warning/30 text-warning hover:bg-warning/10"
             >

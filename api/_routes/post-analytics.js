@@ -155,14 +155,14 @@ export default async function handler(req, res) {
 
   // Fetch the content item — must belong to this workspace
   const itemRes = await sb(
-    `content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}&select=id,platform,buffer_update_id&limit=1`,
+    `content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}&select=id,platform,platform_post_id&limit=1`,
   )
   if (!itemRes.ok) return res.status(500).json({ error: 'Database error' })
   const items = await itemRes.json().catch(() => [])
   const item = items[0]
   if (!item) return res.status(404).json({ error: 'Content item not found' })
 
-  if (!item.buffer_update_id) {
+  if (!item.platform_post_id) {
     return res.status(200).json({ metrics: null, reason: 'not_published' })
   }
 
@@ -228,7 +228,7 @@ async function handleBundleRefresh(res, ws, contentItemId, item, snap) {
   try {
     const publisher = new BundlePublisher(ws)
     analytics = await publisher.getAnalytics({
-      postId: item.buffer_update_id,
+      postId: item.platform_post_id,
       platformType: item.platform,
       force: true,
     })

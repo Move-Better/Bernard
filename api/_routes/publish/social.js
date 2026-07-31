@@ -122,10 +122,10 @@ async function handler(req, res) {
 }
 
 // Bundle.social publish path. Request/response contract, unchanged since the
-// Buffer fork was deleted: DELETE { bufferUpdateId }; POST { platform, content,
+// Buffer fork was deleted: DELETE { platformPostId }; POST { platform, content,
 // mediaUrls, scheduledAt, locationIds?, locationContents? }; response
 // { success, postId, bufferId, … } where both id fields carry the same bundle
-// post id (stored as content_items.buffer_update_id downstream).
+// post id (stored as content_items.platform_post_id downstream).
 //
 // `bufferId` is retained alongside `postId` only so a browser tab on the
 // previous JS bundle still reads an id back — see ./buffer.js for when both it
@@ -145,17 +145,22 @@ async function handleBundlePublish(req, res, workspace) {
 
   if (req.method === 'DELETE') {
     const body = (typeof req.body === 'object' && req.body) ? req.body : {}
-    const postId = body.bufferUpdateId
+    // `bufferUpdateId` is the pre-rename request field. Accepted alongside the
+    // current name because a browser tab on the previous JS bundle still sends
+    // it, and Bernard is a PWA whose service worker can serve a cached shell for
+    // a while after a deploy — cancelling a scheduled post is exactly where a
+    // 400 costs the user a real post going out. Drop with ./buffer.js.
+    const postId = body.platformPostId || body.bufferUpdateId
     if (!postId || typeof postId !== 'string') {
-      return res.status(400).json({ error: 'Missing bufferUpdateId' })
+      return res.status(400).json({ error: 'Missing platformPostId' })
     }
     // Verify the scheduled post belongs to this workspace before cancelling —
     // prevents a member of workspace A from cancelling workspace B's posts.
-    // The bundle post id is stored as content_items.buffer_update_id
+    // The bundle post id is stored as content_items.platform_post_id
     // downstream, which is what makes this ownership check possible.
     if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ error: 'Service not configured' })
     const ownerCheck = await fetch(
-      `${SUPABASE_URL}/rest/v1/content_items?buffer_update_id=eq.${encodeURIComponent(postId)}&workspace_id=eq.${workspace.id}&select=id`,
+      `${SUPABASE_URL}/rest/v1/content_items?platform_post_id=eq.${encodeURIComponent(postId)}&workspace_id=eq.${workspace.id}&select=id`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
     )
     if (ownerCheck.ok) {

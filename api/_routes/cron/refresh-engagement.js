@@ -120,9 +120,9 @@ async function processWorkspaceBundle(ws, summary) {
   const itemsRes = await sb(
     `content_items?workspace_id=eq.${ws.id}` +
     `&status=eq.published` +
-    `&buffer_update_id=not.is.null` +
+    `&platform_post_id=not.is.null` +
     `&published_at=gte.${encodeURIComponent(sinceIso)}` +
-    `&select=id,platform,buffer_update_id,performed_well,published_at`
+    `&select=id,platform,platform_post_id,performed_well,published_at`
   )
   if (!itemsRes.ok) {
     summary.workspaces.push({ id: ws.id, slug: ws.slug, source: 'bundle', error: `items fetch ${itemsRes.status}` })
@@ -215,7 +215,7 @@ async function processWorkspaceBundle(ws, summary) {
     bump(item.platform, 'forced')
     let analytics
     try {
-      analytics = await publisher.getAnalytics({ postId: item.buffer_update_id, platformType: item.platform, force: true })
+      analytics = await publisher.getAnalytics({ postId: item.platform_post_id, platformType: item.platform, force: true })
     } catch (e) {
       // A 400 from bundle means analytics are STRUCTURALLY unavailable for this
       // post — IG carousels/stories are the common case (bundle literally can't

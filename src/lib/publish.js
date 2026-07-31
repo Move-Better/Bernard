@@ -201,17 +201,18 @@ export async function sendBlogToBeehiiv(post) {
 export const SOCIAL_DISPATCH_PLATFORMS = SOCIAL_PLATFORMS
 
 // Cancel a scheduled post by its provider post id (stored as
-// content_items.buffer_update_id). The endpoint treats "already gone"
+// content_items.platform_post_id). The endpoint treats "already gone"
 // (NotFoundError) as success — idempotent. Throws on real failures so callers
 // can keep the row in 'scheduled' on error.
 //
-// The request field stays `bufferUpdateId` to match the column it mirrors;
-// both move together when that column is renamed.
-export async function cancelScheduledPost(bufferUpdateId) {
+// The request field matches the column it mirrors. It was `bufferUpdateId`
+// before migration 202; the route still accepts that spelling so a tab on the
+// previous JS bundle can still cancel — see api/_routes/publish/social.js.
+export async function cancelScheduledPost(platformPostId) {
   return apiFetch('/api/publish/social', {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ bufferUpdateId }),
+    body: JSON.stringify({ platformPostId }),
   })
 }
 
@@ -299,7 +300,6 @@ export async function publishAndTrack(item, userId) {
           ...(item.useQueue && dueAt ? { scheduledAt: dueAt } : {}),
         }),
     platformPostId: postId,
-    bufferUpdateId: postId,
     approvedBy: userId,
   })
 

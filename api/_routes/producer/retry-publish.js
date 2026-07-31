@@ -15,7 +15,7 @@
 // of a fresh request body.
 //
 // On success: content_items → status back to scheduled/published,
-// publish_error cleared, platform_post_id/buffer_update_id set; an
+// publish_error cleared, platform_post_id set; an
 // agent_actions 'published' row is written so needs-you.js's
 // unresolvedPublishFailures() supersedes the earlier 'publish_failed' row for
 // this content_item_id on the next fetch.
@@ -152,7 +152,6 @@ export default async function handler(req, res) {
     status:            willBeScheduled ? 'scheduled' : 'published',
     published_at:      willBeScheduled ? null : new Date().toISOString(),
     platform_post_id:  result.body.postId ?? null,
-    buffer_update_id:  result.body.postId ?? null,
     publish_error:     null,
     dispatching_at:    null,  // release the dispatch claim atomically with the terminal status
     updated_at:        new Date().toISOString(),

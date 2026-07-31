@@ -350,7 +350,7 @@ async function processWorkspace(ws, summary) {
           method: 'PATCH',
           body: JSON.stringify({
             status:           'scheduled',
-            buffer_update_id: firstPostId,
+            platform_post_id: firstPostId,
             auto_published:   true,
             dispatching_at:   null,
             // Do NOT write approved_at here — it's set by the human editorial
