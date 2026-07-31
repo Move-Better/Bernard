@@ -174,18 +174,18 @@ export async function fetchSearchTotals({ credential, serviceAccountJson, siteUr
   return { clicks: row?.clicks || 0, impressions: row?.impressions || 0 }
 }
 
-// Non-branded clicks/impressions totals for an explicit [startDate, endDate]
-// range — same shape as fetchSearchTotals, but excludes queries matching the
-// clinic's own brand name ("move better" / "movebetter") via a query-level
-// dimensionFilterGroups regex. Uses dimensions:['date'] (never no dimensions)
-// because query-level filtering triggers GSC's anonymization of rare
-// queries — summing per-day rows from a filtered query is the only way to
-// get a filtered total that's internally consistent; a separate 'total' and
+// Non-branded clicks/impressions broken down by day for an explicit
+// [startDate, endDate] range — excludes queries matching the clinic's own
+// brand name ("move better" / "movebetter") via a query-level
+// dimensionFilterGroups regex. Uses dimensions:['date'] (never no
+// dimensions) because query-level filtering triggers GSC's anonymization of
+// rare queries — per-day rows from a filtered query are the only way to get
+// a filtered total that's internally consistent; a separate 'total' and
 // 'non-branded' call filtered independently will NOT subtract cleanly to a
-// stable 'branded' number if computed the other way (never add a third,
-// includingRegex call for that reason — see fetchSearchTotals usage).
-// Returns { clicks, impressions }.
-export async function fetchNonBrandedSearchTotals({ credential, serviceAccountJson, siteUrl, startDate, endDate }) {
+// stable 'branded' number (never add a third, includingRegex call for that
+// reason — see fetchSearchTotals usage). Returns [{ date: 'YYYY-MM-DD',
+// clicks, impressions }].
+export async function fetchNonBrandedSearchTotalsByDate({ credential, serviceAccountJson, siteUrl, startDate, endDate }) {
   const url = siteUrl || credential?.config?.site_url
   if (!url) throw new Error('gsc: siteUrl is required')
   const token = await resolveToken({ credential, serviceAccountJson })
@@ -207,11 +207,24 @@ export async function fetchNonBrandedSearchTotals({ credential, serviceAccountJs
     const text = await r.text().catch(() => '')
     if (r.status === 403) throw new Error(`gsc: access denied for ${url} (403) — ${text.slice(0, 300)}`)
     if (r.status === 400 || r.status === 404) throw new Error(`gsc: site not found (${r.status}) — check the Site URL matches your Search Console property exactly.`)
-    throw new Error(`gsc: searchAnalytics (non-branded totals) query failed (${r.status}) — ${text.slice(0, 300)}`)
+    throw new Error(`gsc: searchAnalytics (non-branded by-date) query failed (${r.status}) — ${text.slice(0, 300)}`)
   }
   const data = await r.json()
-  return (data.rows || []).reduce(
-    (acc, row) => ({ clicks: acc.clicks + (row.clicks || 0), impressions: acc.impressions + (row.impressions || 0) }),
+  return (data.rows || []).map((row) => ({
+    date: row?.keys?.[0] || '',
+    clicks: row?.clicks || 0,
+    impressions: row?.impressions || 0,
+  }))
+}
+
+// Non-branded clicks/impressions totals for an explicit [startDate, endDate]
+// range — same shape as fetchSearchTotals, summed from
+// fetchNonBrandedSearchTotalsByDate so both callers share one filtered
+// query. Returns { clicks, impressions }.
+export async function fetchNonBrandedSearchTotals(args) {
+  const days = await fetchNonBrandedSearchTotalsByDate(args)
+  return days.reduce(
+    (acc, d) => ({ clicks: acc.clicks + d.clicks, impressions: acc.impressions + d.impressions }),
     { clicks: 0, impressions: 0 },
   )
 }

@@ -19,7 +19,7 @@ import { enforceLimit } from '../../_lib/ratelimit.js'
 import { scoreSnapshot } from '../../_lib/engagementScoring.js'
 import { decryptSecret } from '../../_lib/credentialCrypto.js'
 import { fetchGA4SessionsByDate } from '../../_lib/ga4.js'
-import { fetchSearchTotalsByDate } from '../../_lib/searchConsole.js'
+import { fetchSearchTotalsByDate, fetchNonBrandedSearchTotalsByDate } from '../../_lib/searchConsole.js'
 import { GRANULARITIES, prevPeriodBounds, periodBounds, toDateStr } from '../../_lib/periodMath.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -179,14 +179,22 @@ export default async function handler(req, res) {
   }
 
   // search
-  for (const p of base.series) Object.assign(p, { clicks: 0, impressions: 0 })
+  for (const p of base.series) Object.assign(p, { clicks: 0, impressions: 0, non_branded_clicks: 0, branded_clicks: 0 })
   try {
-    const days = await fetchSearchTotalsByDate({
-      credential: { secret, config: row.config || {} },
-      siteUrl: ws.gsc_site_url,
-      startDate: spanStartStr,
-      endDate: spanEndStr,
-    })
+    const [days, nonBrandedDays] = await Promise.all([
+      fetchSearchTotalsByDate({
+        credential: { secret, config: row.config || {} },
+        siteUrl: ws.gsc_site_url,
+        startDate: spanStartStr,
+        endDate: spanEndStr,
+      }),
+      fetchNonBrandedSearchTotalsByDate({
+        credential: { secret, config: row.config || {} },
+        siteUrl: ws.gsc_site_url,
+        startDate: spanStartStr,
+        endDate: spanEndStr,
+      }),
+    ])
     for (const d of days) {
       const idx = bucketFor(windows, new Date(`${d.date}T00:00:00Z`))
       if (idx >= 0) {
@@ -194,6 +202,14 @@ export default async function handler(req, res) {
         base.series[idx].impressions += d.impressions
       }
     }
+    for (const d of nonBrandedDays) {
+      const idx = bucketFor(windows, new Date(`${d.date}T00:00:00Z`))
+      if (idx >= 0) base.series[idx].non_branded_clicks += d.clicks
+    }
+    // branded = total - non_branded, derived per-bucket rather than queried
+    // independently — see fetchNonBrandedSearchTotals for why a third,
+    // includingRegex call would silently disagree with this subtraction.
+    for (const p of base.series) p.branded_clicks = Math.max(0, p.clicks - p.non_branded_clicks)
   } catch (e) {
     console.error('[insights/series] gsc by-date failed:', e?.message)
     return res.status(200).json({ ...base, connected: true, error: 'gsc_fetch_failed' })
