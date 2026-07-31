@@ -6,7 +6,7 @@ import {
   Play, Pause, Film, Sparkles, Captions, Type,
   Plus, Trash2, Check, Loader2, AlertCircle, Move,
   FolderOpen, Megaphone, ChevronDown, Scissors, ChevronLeft, ChevronRight, FileText, History,
-  Music, Volume2, LayoutTemplate,
+  Music, Volume2, LayoutTemplate, ThumbsDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
@@ -26,6 +26,8 @@ import { useContentItem, useUpdateContentItem, useUpdateContentItemStatus } from
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '@/lib/gradeParams'
 import { toast } from '@/lib/toast'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import ClipDiscardReasons from '@/components/moments/ClipDiscardReasons'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import SaveStatus from '@/components/editor/SaveStatus'
 import UndoRedoButtons from '@/components/editor/UndoRedoButtons'
@@ -1118,6 +1120,10 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   const [snap, setSnap] = useState({ v: false, h: false })
   const [selectedSegmentId, setSelectedSegmentId] = useState(null)
   const seededRef = useRef(false)
+  // Deny verdict (header) — reasons are optional, same contract as moment Retire.
+  const [denyOpen, setDenyOpen] = useState(false)
+  const [denyReasons, setDenyReasons] = useState([])
+  const [denyNote, setDenyNote] = useState('')
 
   const durationSec = Math.max(1, endSec - startSec)
   const playClipT = clamp(currentTime - startSec, 0, durationSec)
@@ -1747,6 +1753,22 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     updateSegment(id, 'discarded').then(() => queryClient.invalidateQueries({ queryKey: ['video-segments', assetId] })).catch(() => {})
     if (selectedSegmentId === id) setSelectedSegmentId(null)
   }, [assetId, selectedSegmentId, queryClient])
+
+  // Deny the clip you're looking at, with an optional reason (migration 202).
+  // The same status write the side-panel Discard link does — this is the header
+  // affordance for it, because the link was findable enough to be used once in
+  // 172 segments. Reasons ride along; skipping them still denies.
+  const denyClip = useAppMutation({
+    errorMessage: "Couldn't deny this clip",
+    mutationFn: () => updateSegment(selectedSegmentId, 'discarded', { reasons: denyReasons, note: denyNote }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['video-segments', assetId] })
+      posthogCapture('clip_denied', { assetId, segmentId: selectedSegmentId, reasons: denyReasons })
+      setSelectedSegmentId(null)
+      setDenyOpen(false); setDenyReasons([]); setDenyNote('')
+      toast.success('Clip denied', { description: 'It won’t be offered again.' })
+    },
+  })
   const findMomentsMutation = useAppMutation({
     mutationFn: async () => {
       await findClips(assetId)
@@ -1963,20 +1985,59 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
         ) : post ? (
           <EditorWorkflowBar piece={post} />
         ) : (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                disabled={busy}
-                loading={finalizeToPost.isPending}
-                onClick={() => finalizeToPost.mutate()}
+          <>
+            {/* Deny — the other half of the verdict. Only meaningful on a clip
+                that hasn't become a post yet (once a post exists the workflow
+                bar owns Approve/Reject), and only when a proposal is actually
+                selected, since the verdict lands on that segment. Red per the
+                house rule: approve=green, reject=red, brand teal reads as
+                navigation. */}
+            {selectedSegmentId && (
+              <Popover
+                open={denyOpen}
+                onOpenChange={(o) => { setDenyOpen(o); if (!o) { setDenyReasons([]); setDenyNote('') } }}
               >
-                {!finalizeToPost.isPending && <Check className="mr-1.5 h-3.5 w-3.5" />}
-                {finalizeToPost.isPending ? 'Rendering clip…' : 'Approve'}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Renders this clip into a post and approves it — then publish right here</TooltipContent>
-          </Tooltip>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" disabled={busy} className="border-destructive/40 text-destructive hover:bg-destructive/10">
+                    <ThumbsDown className="mr-1.5 h-3.5 w-3.5" />Deny
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 space-y-3">
+                  <p className="text-sm font-semibold text-foreground">Why doesn&rsquo;t this clip work?</p>
+                  <ClipDiscardReasons
+                    reasons={denyReasons}
+                    onToggleReason={(k) => setDenyReasons((rs) => (rs.includes(k) ? rs.filter((x) => x !== k) : [...rs, k]))}
+                    note={denyNote}
+                    onNoteChange={setDenyNote}
+                  />
+                  <Button
+                    size="sm"
+                    disabled={busy}
+                    loading={denyClip.isPending}
+                    onClick={() => denyClip.mutate()}
+                    className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {!denyClip.isPending && <ThumbsDown className="mr-1.5 h-3.5 w-3.5" />}
+                    {denyClip.isPending ? 'Denying…' : 'Deny this clip'}
+                  </Button>
+                </PopoverContent>
+              </Popover>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  disabled={busy}
+                  loading={finalizeToPost.isPending}
+                  onClick={() => finalizeToPost.mutate()}
+                >
+                  {!finalizeToPost.isPending && <Check className="mr-1.5 h-3.5 w-3.5" />}
+                  {finalizeToPost.isPending ? 'Rendering clip…' : 'Approve'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Renders this clip into a post and approves it — then publish right here</TooltipContent>
+            </Tooltip>
+          </>
         )}
         {/* Export — b-roll + ad sizes. Hidden when embedded: on the publish
             screen the destination is THIS post, not a new Library clip / an ad
