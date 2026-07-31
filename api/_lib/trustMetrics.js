@@ -8,7 +8,7 @@
 // Two separate queries (rejected vs. approved-ish), not one combined filter —
 // each status family has its own meaningful timestamp (rejected_at vs.
 // approved_at), and content_items.updated_at also moves on unrelated writes
-// (e.g. a buffer_metrics refresh), which would silently skew the window if
+// (e.g. a publish-receipt write), which would silently skew the window if
 // used as the single filter column.
 
 const DEFAULT_WINDOW_DAYS = 28

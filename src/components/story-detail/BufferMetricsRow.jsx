@@ -1,10 +1,11 @@
 // BufferMetricsRow — compact post-performance chip row for published content.
 //
 // Shown beneath a content piece body when the piece has a buffer_update_id.
-// Fetches via /api/buffer-analytics (30-min client-side cache) and shows
-// reach, engagement, and clicks at a glance. A Refresh icon forces a re-fetch
-// so the user can pull the latest numbers without waiting for the cache to
-// expire.
+// Fetches via /api/buffer-analytics, which serves the latest engagement_snapshots
+// row for the piece — the same daily-refreshed numbers the "What's working"
+// widget and the scoring layer read. A Refresh icon forces a live pull from the
+// network (and records a new snapshot) for a user who doesn't want to wait for
+// tomorrow's cron.
 
 import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
@@ -99,7 +100,22 @@ export default function BufferMetricsRow({ contentItemId }) {
     )
   }
 
-  // No metrics available (not published, no Buffer ID, or Buffer not configured)
+  // `analytics_unavailable` is a real answer, not an absence: the network told
+  // us it cannot report on this post type at all (an Instagram carousel or
+  // story). Say so, rather than rendering nothing or a row of confident zeros —
+  // both of which read as "this post got no engagement."
+  if (data?.reason === 'analytics_unavailable') {
+    return (
+      <div className="flex items-center gap-1.5 pt-1">
+        <span className="inline-flex items-center text-xs text-muted-foreground bg-muted/50 rounded px-2 py-0.5">
+          Analytics not available for this post type
+        </span>
+      </div>
+    )
+  }
+
+  // Nothing to show yet — not published, no post id, or no snapshot recorded
+  // for it. The daily refresh cron fills these in; Refresh forces one now.
   if (!data || !data.metrics) return null
 
   const { metrics } = data
