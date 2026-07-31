@@ -37,7 +37,7 @@ export default function CaptionPanel({ piece, onUseAsHook, updateItem }) {
 
   // Not every platform caps captions (see CAPTION_LIMITS) — only warn when
   // the destination actually enforces one. GBP silently truncates over-limit
-  // text at publish time (api/_routes/publish/buffer.js), so this is the only
+  // text at publish time (api/_routes/publish/social.js), so this is the only
   // place the author can see and fix it before that happens.
   const limit = CAPTION_LIMITS[piece?.platform]
   const overLimit = limit ? draft.length > limit : false

@@ -158,7 +158,7 @@ export function platformCap(platform) {
 // blocked at approve. Google Business posts are short machine-written
 // announcements and Google hard-rejects anything over 1500, so a sentence-aware
 // trim is the right trade there (and is long-standing behaviour — see the GBP
-// branches in publish/buffer.js). Every other platform carries the clinician's
+// branches in publish/social.js). Every other platform carries the clinician's
 // own words: quietly cutting those is worse than asking someone to shorten it,
 // so they block instead.
 export const AUTO_CLAMP_PLATFORMS = new Set(['gbp'])

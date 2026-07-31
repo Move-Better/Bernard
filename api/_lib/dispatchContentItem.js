@@ -4,7 +4,7 @@
 // AND schedule in one action, so it no longer depends on the browser tab
 // completing the dispatch. Mirrors the client's publishPieceToBuffer payload
 // exactly (content = string|JSON.stringify; mediaUrls = piece.media_urls) and
-// reuses the SAME bundle publisher + GBP fan-out the /api/publish/buffer path
+// reuses the SAME bundle publisher + GBP fan-out the /api/publish/social path
 // uses, so server- and client-dispatched posts are identical.
 //
 // Scope (deliberately conservative — see the sprint doc):
@@ -170,7 +170,7 @@ export async function dispatchContentItem({ ws, piece }) {
       // (keyed by workspace_locations.id) — matching the client publish path.
       // Clamp to Google's 1500-char cap here too: this is the final gate for
       // manually-edited captions on this path, same as runBundlePublish in
-      // publish/buffer.js — without it an over-length caption 400s at bundle
+      // publish/social.js — without it an over-length caption 400s at bundle
       // behind an opaque dispatch_failed.
       const rawText = (piece.platform === 'gbp' && locationOverrides[t.id]) ? locationOverrides[t.id] : content
       const text = piece.platform === 'gbp' ? clampToCap(rawText, GBP_CAP) : rawText

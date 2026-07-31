@@ -11,7 +11,7 @@ import {
   useCarouselThemes,
   queryKeys,
 } from '@/lib/queries'
-import { publishBlogToWebsite, sendBlogToBeehiiv, cancelBufferPost } from '@/lib/publish'
+import { publishBlogToWebsite, sendBlogToBeehiiv, cancelScheduledPost } from '@/lib/publish'
 import { publishPieceToBuffer } from '@/lib/publishPiece'
 import { suggestScheduleTime } from '@/lib/scheduleHeuristics'
 import { buildImagesManifest } from '@/lib/publishImageMirror'
@@ -325,7 +325,7 @@ export function useContentWorkflow(piece) {
     }
     setPublishing(true)
     try {
-      await runWithToast(cancelBufferPost(piece.buffer_update_id), {
+      await runWithToast(cancelScheduledPost(piece.buffer_update_id), {
         loading: 'Cancelling…',
         success: 'Cancelled — back to Approved',
         error: (e) => ({ message: 'Cancel failed', description: e.message }),

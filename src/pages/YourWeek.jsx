@@ -16,7 +16,7 @@ import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { useUpdateContentItemStatus, useUpdateContentItem, useCarouselThemes, queryKeys } from '@/lib/queries'
-import { BUFFER_DISPATCH_PLATFORMS } from '@/lib/publish'
+import { SOCIAL_DISPATCH_PLATFORMS } from '@/lib/publish'
 import { publishPieceToBuffer } from '@/lib/publishPiece'
 import { adHocSlotOptions, computeEmptySlots, localSlotParts } from '@/lib/postingSlots'
 import { toast } from '@/lib/toast'
@@ -1216,7 +1216,7 @@ export default function YourWeek() {
     (item) =>
       item.contentPieceId &&
       item.contentItemStatus === 'approved' &&
-      BUFFER_DISPATCH_PLATFORMS.includes(item.platform),
+      SOCIAL_DISPATCH_PLATFORMS.includes(item.platform),
   )
 
   const stageIdx = Math.max(0, LADDER.findIndex(([s]) => s === (data?.trustStage || 'approve_all')))

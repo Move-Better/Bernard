@@ -114,7 +114,7 @@ async function dispatchGbpBundle({ pkg, workspace, targets }) {
   return { posted, failed }
 }
 
-// Resolve Buffer GBP channel IDs for a workspace (same logic as api/publish/buffer.js).
+// Resolve GBP channel IDs for a workspace (same logic as api/publish/social.js).
 async function resolveGbpChannelIds(workspaceId) {
   const r = await sb(
     `workspace_locations?workspace_id=eq.${workspaceId}&status=eq.active&gbp_location_id=not.is.null&select=id,gbp_location_id`

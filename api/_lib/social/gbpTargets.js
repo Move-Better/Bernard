@@ -7,7 +7,7 @@
 // Only active locations with a connected Team are targeted; optionally narrowed
 // to an explicit locationIds set (validated UUIDs).
 //
-// Extracted from api/_routes/publish/buffer.js so the client publish path and
+// Extracted from api/_routes/publish/social.js so the client publish path and
 // the server-side approve→dispatch path (api/_lib/dispatchContentItem.js) share
 // one source of truth for location resolution and can't drift.
 
