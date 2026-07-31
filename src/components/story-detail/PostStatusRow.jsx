@@ -9,7 +9,7 @@ import { PLATFORM_META, statusMetaFor } from '@/lib/contentMeta'
 import { photoSourceUrl, isVideoEntry } from '@/lib/mediaEntry'
 import { useAddComment, useUpdateContentItemStatus } from '@/lib/queries'
 import { toast } from '@/lib/toast'
-import BufferMetricsRow from './BufferMetricsRow'
+import PostMetricsRow from './PostMetricsRow'
 import GbpInsightsRow from './GbpInsightsRow'
 import WinnerToggle from './WinnerToggle'
 
@@ -176,7 +176,7 @@ export default function PostStatusRow({ piece }) {
 
         {isPublished && (
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            {piece.buffer_update_id && <BufferMetricsRow contentItemId={piece.id} />}
+            {piece.buffer_update_id && <PostMetricsRow contentItemId={piece.id} />}
             {piece.platform === 'gbp' && <GbpInsightsRow contentItemId={piece.id} />}
             <WinnerToggle piece={piece} />
           </div>

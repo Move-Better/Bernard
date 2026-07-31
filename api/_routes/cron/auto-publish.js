@@ -24,7 +24,7 @@ import { evaluate } from '../../_lib/autoPublishGate.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
 import { getCredential } from '../../_lib/getCredential.js'
-import { prepareMediaForBuffer } from '../../_lib/prepareMediaForBuffer.js'
+import { prepareMediaForPublish } from '../../_lib/prepareMediaForPublish.js'
 import { filterCampaignsForStaff } from '../../_lib/tentpoleCampaignContext.js'
 import { getActiveCampaigns } from '../../_lib/activeCampaigns.js'
 import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
@@ -114,7 +114,7 @@ async function dispatchGbpBundle({ pkg, workspace, targets }) {
   return { posted, failed }
 }
 
-// Resolve Buffer GBP channel IDs for a workspace (same logic as api/publish/buffer.js).
+// Resolve GBP channel IDs for a workspace (same logic as api/publish/social.js).
 async function resolveGbpChannelIds(workspaceId) {
   const r = await sb(
     `workspace_locations?workspace_id=eq.${workspaceId}&status=eq.active&gbp_location_id=not.is.null&select=id,gbp_location_id`
@@ -139,7 +139,7 @@ async function dispatchGbp({ pkg, token, locationChannels }) {
         .filter((r) => r.channel === 'gbp_post' && r.blobUrl)
         .map((r) => ({ url: r.blobUrl, type: 'image' }))
     : []
-  const preparedMedia = await prepareMediaForBuffer(mediaUrls)
+  const preparedMedia = await prepareMediaForPublish(mediaUrls)
   const assets = preparedMedia.map((m) =>
     m.type?.startsWith('video') ? { video: { url: m.url } } : { image: { url: m.url } }
   )

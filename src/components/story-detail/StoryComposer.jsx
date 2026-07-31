@@ -4,7 +4,7 @@ import { ArrowRight, Eye, Image as ImageIcon, Link2, Type, Video, X } from 'luci
 import PostPreview from '@/components/PostPreview'
 import MediaPicker from '@/components/MediaPicker'
 import { ApprovalPanel } from '@/components/story-detail/AssetsPane'
-import BufferMetricsRow from '@/components/story-detail/BufferMetricsRow'
+import PostMetricsRow from '@/components/story-detail/PostMetricsRow'
 import WinnerToggle from '@/components/story-detail/WinnerToggle'
 import { useUpdateContentItem } from '@/lib/queries'
 import { deriveStory } from '@/lib/storyFields'
@@ -199,7 +199,7 @@ export default function StoryComposer({ piece, remainingNeedsMedia = [] }) {
           </Link>
         )}
 
-        {published && piece.buffer_update_id && <BufferMetricsRow contentItemId={piece.id} />}
+        {published && piece.buffer_update_id && <PostMetricsRow contentItemId={piece.id} />}
         {published && <WinnerToggle piece={piece} />}
       </div>
 

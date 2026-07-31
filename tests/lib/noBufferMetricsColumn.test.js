@@ -42,7 +42,7 @@ describe('content_items.buffer_metrics stays dropped', () => {
     // Pin the two files that used to carry the column, so an empty or
     // mis-rooted walk can't make the assertion below trivially true.
     expect(FILES.some((f) => f.endsWith('/_routes/db/content.js'))).toBe(true)
-    expect(FILES.some((f) => f.endsWith('/_routes/buffer-analytics.js'))).toBe(true)
+    expect(FILES.some((f) => f.endsWith('/_routes/post-analytics.js'))).toBe(true)
   })
 
   it('no handler selects, filters on, or writes the dropped columns', () => {
@@ -53,7 +53,7 @@ describe('content_items.buffer_metrics stays dropped', () => {
 
   it('the per-post metrics endpoint reads engagement_snapshots instead', () => {
     const src = readFileSync(
-      fileURLToPath(new URL('../../api/_routes/buffer-analytics.js', import.meta.url)),
+      fileURLToPath(new URL('../../api/_routes/post-analytics.js', import.meta.url)),
       'utf8',
     )
     // Require the real query/insert, not just the table name in a comment.

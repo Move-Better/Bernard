@@ -16,8 +16,8 @@ import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { useUpdateContentItemStatus, useUpdateContentItem, useCarouselThemes, queryKeys } from '@/lib/queries'
-import { BUFFER_DISPATCH_PLATFORMS } from '@/lib/publish'
-import { publishPieceToBuffer } from '@/lib/publishPiece'
+import { SOCIAL_DISPATCH_PLATFORMS } from '@/lib/publish'
+import { publishPieceToSocial } from '@/lib/publishPiece'
 import { adHocSlotOptions, computeEmptySlots, localSlotParts } from '@/lib/postingSlots'
 import { toast } from '@/lib/toast'
 import MomentProvenance from '@/components/MomentProvenance'
@@ -1039,7 +1039,7 @@ export default function YourWeek() {
         // Server approved it but can't dispatch (carousel bake / Buffer provider)
         // — finish on the client via the proven publish path.
         const piece = await apiFetch(`/api/db/content?id=${encodeURIComponent(item.contentPieceId)}`)
-        const { scheduledAt, renderedSlides } = await publishPieceToBuffer(piece, {
+        const { scheduledAt, renderedSlides } = await publishPieceToSocial(piece, {
           scheduledAt: item.scheduled_at || null,
           useQueue: !item.scheduled_at,
           userEmail,
@@ -1216,7 +1216,7 @@ export default function YourWeek() {
     (item) =>
       item.contentPieceId &&
       item.contentItemStatus === 'approved' &&
-      BUFFER_DISPATCH_PLATFORMS.includes(item.platform),
+      SOCIAL_DISPATCH_PLATFORMS.includes(item.platform),
   )
 
   const stageIdx = Math.max(0, LADDER.findIndex(([s]) => s === (data?.trustStage || 'approve_all')))
@@ -1268,7 +1268,7 @@ export default function YourWeek() {
     })
     .map((c) => ({ ...c, short: !isPast && c.got < (c.target * weekElapsedDays) / 7 }))
 
-  // Batch schedule: fetch piece details then publishPieceToBuffer for each approved piece.
+  // Batch schedule: fetch piece details then publishPieceToSocial for each approved piece.
   async function batchSchedule() {
     if (!approvedSchedulable.length || scheduling) return
     setScheduling(true)
@@ -1283,7 +1283,7 @@ export default function YourWeek() {
         try {
           // Fetch full piece data (needed for slide-baking, media_urls, etc.)
           const piece = await apiFetch(`/api/db/content?id=${encodeURIComponent(item.contentPieceId)}`)
-          const { scheduledAt, renderedSlides } = await publishPieceToBuffer(piece, {
+          const { scheduledAt, renderedSlides } = await publishPieceToSocial(piece, {
             scheduledAt: item.scheduled_at || null,
             useQueue: !item.scheduled_at,
             userEmail,

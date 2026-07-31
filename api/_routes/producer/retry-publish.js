@@ -9,7 +9,7 @@
 // recorded, or when the 24h FAILURE_WINDOW_MS in needs-you.js ages it out.
 //
 // Reuses the exact channel-resolution + fan-out logic from
-// api/_routes/publish/buffer.js (runBufferPublish / runBundlePublish) so a
+// api/_routes/publish/social.js (runBundlePublish) so a
 // retry runs through the identical code path as the original publish, just
 // sourcing platform/content/media from the content_items row itself instead
 // of a fresh request body.
@@ -30,7 +30,7 @@ import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { recordAgentAction } from '../../_lib/agentActions.js'
 import { notifyPublishFailure } from '../../_lib/notifyPublishFailure.js'
-import { runBundlePublish } from '../publish/buffer.js'
+import { runBundlePublish } from '../publish/social.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
 import { resolveGbpLocationIds } from '../../../src/lib/gbpLocations.js'
@@ -151,8 +151,8 @@ export default async function handler(req, res) {
   const patch = {
     status:            willBeScheduled ? 'scheduled' : 'published',
     published_at:      willBeScheduled ? null : new Date().toISOString(),
-    platform_post_id:  result.body.bufferId ?? null,
-    buffer_update_id:  result.body.bufferId ?? null,
+    platform_post_id:  result.body.postId ?? null,
+    buffer_update_id:  result.body.postId ?? null,
     publish_error:     null,
     dispatching_at:    null,  // release the dispatch claim atomically with the terminal status
     updated_at:        new Date().toISOString(),

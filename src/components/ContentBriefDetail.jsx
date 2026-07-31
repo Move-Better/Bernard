@@ -10,7 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Badge } from '@/components/ui/badge'
 import { updateContentPiece, deleteContentPiece } from '@/lib/contentLib'
 import { uploadMedia, getMediaAsset } from '@/lib/mediaLib'
-import { dispatchBrief, BUFFER_DISPATCH_PLATFORMS } from '@/lib/publish'
+import { dispatchBrief, SOCIAL_DISPATCH_PLATFORMS } from '@/lib/publish'
 import { queryKeys } from '@/lib/queries'
 import { runWithToast } from '@/lib/toast'
 
@@ -139,7 +139,7 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
 
   async function handlePublish() {
     if (!platform) { setError('Pick a target platform first'); return }
-    if (!BUFFER_DISPATCH_PLATFORMS.includes(platform)) {
+    if (!SOCIAL_DISPATCH_PLATFORMS.includes(platform)) {
       setError(`Platform "${platform}" isn't wired for direct dispatch yet. Save the brief and publish manually.`)
       return
     }
@@ -331,7 +331,7 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
             </div>
 
             {/* Publish workbench — visible once a target platform is set and we
-                have a clip to attach. Routes through api/publish/buffer.js so
+                have a clip to attach. Routes through api/publish/social.js so
                 this surface stays in sync with ReviewPost's dispatch path. */}
             {brief.status !== 'published' && (
               <div className="rounded-md border p-3 space-y-2">

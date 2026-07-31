@@ -3,7 +3,7 @@
 // A single content_items row can be dispatched to bundle.social from more than
 // one place:
 //   - the /week Approve path        (api/_lib/dispatchContentItem.js)
-//   - the editor Publish/Schedule   (api/_routes/publish/buffer.js handleBundlePublish)
+//   - the editor Publish/Schedule   (api/_routes/publish/social.js handleBundlePublish)
 //   - the manual "Retry" action     (api/_routes/producer/retry-publish.js)
 // Without a shared lock two of these can run concurrently against the SAME piece
 // and post it twice to the customer's live channel (GBP / Instagram / …) — the

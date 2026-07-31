@@ -9,7 +9,7 @@
 // refresh-engagement cron can auto-set the same flag — this toggle is the
 // manual seed that makes the loop real today.
 //
-// Rendered beneath BufferMetricsRow on published pieces in AssetsPane.
+// Rendered beneath PostMetricsRow on published pieces in AssetsPane.
 
 import { Trophy } from 'lucide-react'
 import { useUpdateContentItem } from '@/lib/queries'

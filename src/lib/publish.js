@@ -90,18 +90,18 @@ export function suggestHashtags(contentItemId) {
 
 // ── Publishing ────────────────────────────────────────────────────────────────
 
-// Buffer is the universal distribution path. As of 2026-05-11 every social +
-// local surface (including GBP) routes through Buffer — there are no direct
-// platform integrations left. To add a new Buffer-supported platform: (1) add
-// to BUFFER_PLATFORMS, (2) add the matching service string to
-// PLATFORM_TO_SERVICE in api/publish/buffer.js, (3) add a prompt generator in
+// bundle.social is the universal distribution path — every social + local
+// surface (including GBP) routes through it; there are no direct platform
+// integrations left. To add a new supported platform: (1) add to
+// SOCIAL_PLATFORMS, (2) add the matching entry to PLATFORM_TO_BUNDLE_TYPE in
+// api/_lib/social/bundlePublisher.js, (3) add a prompt generator in
 // src/lib/prompts.js.
 //
 // `locationIds` only applies to gbp: it carries an array of workspace_locations
-// row UUIDs selected in the Review picker. The buffer endpoint resolves those
-// to Buffer GBP profile IDs via workspace_locations.gbp_location_id. Empty/
-// missing means "fan out to every active location with a Buffer GBP channel".
-const BUFFER_PLATFORMS = [
+// row UUIDs selected in the Review picker. The publish endpoint resolves those
+// to per-location bundle Teams. Empty/missing means "fan out to every active
+// location with a connected Google Business listing".
+const SOCIAL_PLATFORMS = [
   'instagram', 'instagram_story', 'facebook', 'linkedin',
   'tiktok', 'youtube_short', 'youtube', 'twitter', 'threads', 'bluesky', 'mastodon',
   'gbp',
@@ -111,7 +111,7 @@ export async function publishItem(item, { scheduledAt, useQueue } = {}) {
   const { platform, content, mediaUrls = [], locationIds, location_overrides } = item
   const results = {}
 
-  if (BUFFER_PLATFORMS.includes(platform)) {
+  if (SOCIAL_PLATFORMS.includes(platform)) {
     const body = { platform, content, mediaUrls, scheduledAt, useQueue }
     // Explicit content_items.format ('post'|'carousel'|'reel'|'story') — lets
     // the bundle path publish e.g. a mixed photo+video carousel instead of
@@ -123,7 +123,7 @@ export async function publishItem(item, { scheduledAt, useQueue } = {}) {
     if (item.id) body.contentItemId = item.id
     if (platform === 'gbp') {
       if (locationIds?.length) body.locationIds = locationIds
-      // Pass per-location content overrides so the Buffer route posts distinct
+      // Pass per-location content overrides so the publish route posts distinct
       // copy to each Google listing instead of the same canonical body.
       if (location_overrides && typeof location_overrides === 'object') {
         body.locationContents = Object.fromEntries(
@@ -133,7 +133,7 @@ export async function publishItem(item, { scheduledAt, useQueue } = {}) {
         )
       }
     }
-    results.buffer = await apiFetch('/api/publish/buffer', {
+    results.social = await apiFetch('/api/publish/social', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -195,15 +195,20 @@ export async function sendBlogToBeehiiv(post) {
   }
 }
 
-// Universal Buffer-eligible platform list — exposed so workbench UIs know which
-// targets they can dispatch to. Mirrors PLATFORM_TO_SERVICE in api/publish/buffer.js.
-export const BUFFER_DISPATCH_PLATFORMS = BUFFER_PLATFORMS
+// Universal dispatch-eligible platform list — exposed so workbench UIs know
+// which targets they can dispatch to. Mirrors PLATFORM_TO_BUNDLE_TYPE in
+// api/_lib/social/bundlePublisher.js.
+export const SOCIAL_DISPATCH_PLATFORMS = SOCIAL_PLATFORMS
 
-// Cancel a scheduled Buffer post by its bufferUpdateId. The endpoint treats
-// "already gone" (NotFoundError) as success — idempotent. Throws on real
-// failures so callers can keep the row in 'scheduled' on error.
-export async function cancelBufferPost(bufferUpdateId) {
-  return apiFetch('/api/publish/buffer', {
+// Cancel a scheduled post by its provider post id (stored as
+// content_items.buffer_update_id). The endpoint treats "already gone"
+// (NotFoundError) as success — idempotent. Throws on real failures so callers
+// can keep the row in 'scheduled' on error.
+//
+// The request field stays `bufferUpdateId` to match the column it mirrors;
+// both move together when that column is renamed.
+export async function cancelScheduledPost(bufferUpdateId) {
+  return apiFetch('/api/publish/social', {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ bufferUpdateId }),
@@ -212,7 +217,7 @@ export async function cancelBufferPost(bufferUpdateId) {
 
 // ── Workbench dispatch (Media Hub editor briefs) ─────────────────────────────
 // Materializes an edit brief into a content_items row and pushes it through the
-// universal api/publish/buffer.js endpoint. Returns the new content_items row.
+// universal api/publish/social.js endpoint. Returns the new content_items row.
 //
 // Keeps content_items as the canonical published-post record while leaving the
 // brief (content_pieces row) intact as the editor's draft surface — callers
@@ -247,7 +252,7 @@ export async function dispatchBrief({
   })
   if (!created?.id) throw new Error('Failed to create content item')
 
-  // 2. Dispatch through Buffer (no parallel dispatcher logic).
+  // 2. Dispatch through the publish endpoint (no parallel dispatcher logic).
   const item = {
     id: created.id,
     platform: brief.target_platform,
@@ -262,15 +267,15 @@ export async function dispatchBrief({
 
 // Publish one item to all relevant platforms at once.
 //
-// item.useQueue (boolean): when true on a Buffer platform, the post is added
-// to Buffer's existing queue (shareNext) instead of being given a specific
-// dueAt or fired immediately. The resulting content_items row is marked
-// `scheduled` even though we don't know the exact dueAt up-front — Buffer
-// returns one in the webhook payload and downstream sync fills it in.
+// item.useQueue (boolean): when true, the post is added to the provider's
+// existing queue instead of being given a specific dueAt or fired immediately.
+// The resulting content_items row is marked `scheduled` even though we don't
+// know the exact dueAt up-front — the provider returns one in the webhook
+// payload and downstream sync fills it in.
 export async function publishAndTrack(item, userId) {
   const result = await publishItem(item, { scheduledAt: item.scheduledAt, useQueue: item.useQueue })
-  const postId = result.buffer?.bufferId
-  const dueAt = result.buffer?.scheduledAt || null
+  const postId = result.social?.postId
+  const dueAt = result.social?.scheduledAt || null
   const willBeScheduled = !!item.scheduledAt || !!item.useQueue
 
   // The bundle path commits the row's status server-side, inside the same
@@ -279,9 +284,8 @@ export async function publishAndTrack(item, userId) {
   // point (it goes live ~a minute later and confirms by webhook), so writing
   // 'published' would be a claim we can't back — and it would block the
   // post.published webhook from ever promoting the row, since that promote is
-  // guarded on status='scheduled'. The Buffer path sends no committedStatus and
-  // keeps its original behaviour untouched.
-  const committedStatus = result.buffer?.committedStatus
+  // guarded on status='scheduled'.
+  const committedStatus = result.social?.committedStatus
 
   await updateContentItem(item.id, {
     ...(committedStatus
@@ -289,12 +293,13 @@ export async function publishAndTrack(item, userId) {
       : {
           status: willBeScheduled ? 'scheduled' : 'published',
           publishedAt: willBeScheduled ? null : new Date().toISOString(),
-          // When Buffer assigned the slot (queue mode), echo it back to the row
-          // so the calendar shows the right time without a webhook round-trip.
+          // When the provider assigned the slot (queue mode), echo it back to
+          // the row so the calendar shows the right time without a webhook
+          // round-trip.
           ...(item.useQueue && dueAt ? { scheduledAt: dueAt } : {}),
         }),
     platformPostId: postId,
-    bufferUpdateId: result.buffer?.bufferId,
+    bufferUpdateId: postId,
     approvedBy: userId,
   })
 

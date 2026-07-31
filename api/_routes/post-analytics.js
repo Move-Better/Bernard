@@ -104,7 +104,7 @@ function extractMetrics(stats = {}) {
 // platform regardless of whether that platform actually reports each field
 // (LinkedIn never reports views/likes/comments/shares/saves; GBP has no bundle
 // analytics at all — see processWorkspaceBundle in refresh-engagement.js).
-// `source`/`platform` let BufferMetricsRow pick platform-native labels
+// `source`/`platform` let PostMetricsRow pick platform-native labels
 // (IG/FB call the impressions number "Views"; LinkedIn calls it
 // "Impressions") instead of guessing from field names alone.
 function mapBundleMetrics(m = {}, platform) {
@@ -123,7 +123,7 @@ function mapBundleMetrics(m = {}, platform) {
 }
 
 // The wire shape is unchanged from the buffer_metrics era — { metrics,
-// fetchedAt, cached } — so BufferMetricsRow needs no rework. The difference is
+// fetchedAt, cached } — so PostMetricsRow needs no rework. The difference is
 // where `metrics` comes from: a snapshot's `stats.statistics` (the writer-side
 // shape refresh-engagement.js records) projected through the same two mappers
 // that used to run on a live API response.
@@ -248,11 +248,11 @@ async function handleBundleRefresh(res, ws, contentItemId, item, snap) {
       }
       waitUntil(
         writeSnapshot(ws.id, contentItemId, 'bundle', stats)
-          .catch((err) => console.error('[buffer-analytics/bundle] sentinel write failed:', err?.message))
+          .catch((err) => console.error('[post-analytics/bundle] sentinel write failed:', err?.message))
       )
       return res.status(200).json({ metrics: null, reason: 'analytics_unavailable' })
     }
-    console.error('[buffer-analytics/bundle] failed:', e?.stack || e?.message)
+    console.error('[post-analytics/bundle] failed:', e?.stack || e?.message)
     return staleFallback(res, snap, 'bundle', item.platform, 'bundle analytics error; returning cached metrics')
   }
 
@@ -265,7 +265,7 @@ async function handleBundleRefresh(res, ws, contentItemId, item, snap) {
   const fetchedAt = new Date().toISOString()
   waitUntil(
     writeSnapshot(ws.id, contentItemId, 'bundle', stats)
-      .catch((e) => console.error('[buffer-analytics/bundle] snapshot write failed:', e?.message))
+      .catch((e) => console.error('[post-analytics/bundle] snapshot write failed:', e?.message))
   )
   return res.status(200).json({ metrics: mapBundleMetrics(stats.statistics, item.platform), fetchedAt, cached: false })
 }
@@ -282,7 +282,7 @@ async function handleBufferRefresh(res, ws, contentItemId, item, snap) {
 
   const result = await fetchPostStats(cred.secret, item.buffer_update_id)
   if (!result.ok || !result.post) {
-    console.error(`[buffer-analytics] fetchPostStats failed for ${item.buffer_update_id}`)
+    console.error(`[post-analytics] fetchPostStats failed for ${item.buffer_update_id}`)
     return staleFallback(res, snap, 'buffer', item.platform, 'Buffer API error; returning cached metrics')
   }
 
@@ -290,7 +290,7 @@ async function handleBufferRefresh(res, ws, contentItemId, item, snap) {
   const fetchedAt = new Date().toISOString()
   waitUntil(
     writeSnapshot(ws.id, contentItemId, 'buffer', stats)
-      .catch((e) => console.error('[buffer-analytics] snapshot write failed:', e?.message))
+      .catch((e) => console.error('[post-analytics] snapshot write failed:', e?.message))
   )
   return res.status(200).json({ metrics: extractMetrics(stats.statistics), fetchedAt, cached: false })
 }

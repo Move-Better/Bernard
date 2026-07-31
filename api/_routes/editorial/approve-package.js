@@ -207,7 +207,7 @@ export default async function handler(req, res) {
     content:        pkg.caption_text,
     overlay_text:   pkg.caption_text,
     // Canonical media_urls shape is [{url, type, kind}] — NOT bare strings.
-    // The Buffer publish path (prepareMediaForBuffer / buildAssets) keys video
+    // The publish path (prepareMediaForPublish / buildAssets) keys video
     // detection off `m.type`, and the Drafts UI reads `m.url`. Bare strings
     // would publish a long-form (.mp4) render as a broken image. Derive video
     // vs image from the render extension (video renders are .mp4, photos .jpg).

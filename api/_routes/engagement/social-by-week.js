@@ -28,7 +28,7 @@ const SOCIAL_PLATFORMS = new Set([
 ])
 
 // bundle.social's real per-platform numbers (Views/Impressions, Likes,
-// Comments, Shares, Saves) — same fields BufferMetricsRow shows on a single
+// Comments, Shares, Saves) — same fields PostMetricsRow shows on a single
 // post. Returns null for non-bundle snapshots (Buffer's shape has no
 // views/saves and shouldn't be summed as if it did).
 function rawBundleMetrics(snap) {
@@ -186,7 +186,7 @@ export default withSentry(async function handler(req, res) {
       bucket.engagement += engagement
       // bundle-sourced platforms get their own real numbers shown instead of
       // the reach/engagement composite (Q, 2026-07-22: "just display
-      // everything we can get" — same reasoning as BufferMetricsRow). Rolled
+      // everything we can get" — same reasoning as PostMetricsRow). Rolled
       // up into overallRaw too, so the Overall card can show real summed
       // numbers instead of the same composite.
       if (raw) {

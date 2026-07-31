@@ -785,7 +785,9 @@ Rule: whenever a domain is retired or changed, check every service with a webhoo
 
 ## Buffer vs bundle.social publish paths: platform-specific limits don't auto-share
 
-`api/_routes/publish/buffer.js` routes every publish through one of two provider paths — the original Buffer path, or `handleBundlePublish` for workspaces on `publish_provider='bundle'`. The bundle path's own comment calls it "byte-for-byte identical" to the Buffer path for non-GBP platforms, which reads as if platform-specific rules (character caps, media limits) are shared — they are NOT. Each path independently re-implements any provider constraint, so a rule enforced in one silently doesn't exist in the other unless someone copies it over by hand.
+*(Historical — the file is now `api/_routes/publish/social.js` and the Buffer fork was deleted in #2488, so the divergence described here no longer exists. The LESSON is what survives: two hand-synced paths for one job silently diverge, and that is why they were collapsed.)*
+
+`api/_routes/publish/buffer.js` routed every publish through one of two provider paths — the original Buffer path, or `handleBundlePublish` for workspaces on `publish_provider='bundle'`. The bundle path's own comment calls it "byte-for-byte identical" to the Buffer path for non-GBP platforms, which reads as if platform-specific rules (character caps, media limits) are shared — they are NOT. Each path independently re-implements any provider constraint, so a rule enforced in one silently doesn't exist in the other unless someone copies it over by hand.
 
 Found 2026-07-07: the Buffer GBP branch already truncated captions to Google's 1500-char cap (`rawText.slice(0, 1500)`, line ~297) — but `handleBundlePublish`'s GBP branch never did. Any workspace on the bundle.social provider publishing a caption over 1500 chars got a 502 `bundle_gbp_post_failed` with no indication why (bundle.social's real error — a 400 "String must contain at most 1500 character(s)" — was swallowed into the opaque error key per the no-`detail`-in-error-response rule; only visible via `vercel logs --status-code 502 --expand`).
 

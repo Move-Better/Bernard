@@ -2,7 +2,7 @@
 //
 // The old v1 REST API (api.bufferapp.com/1/updates/:id.json?access_token=...)
 // rejects Personal Access Tokens (PAT) with "OIDC tokens are not accepted for
-// direct API access." All three analytics paths (buffer-analytics, engagement/
+// direct API access." All three analytics paths (post-analytics, engagement/
 // refresh, cron/refresh-engagement) now go through here instead.
 //
 // Schema notes (2026-05-17):

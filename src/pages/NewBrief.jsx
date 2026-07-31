@@ -14,7 +14,7 @@ import { OUTPUT_CHANNELS } from '@/lib/outputChannels'
 import { CAPTION_LIMITS, PLATFORM_META } from '@/lib/contentMeta'
 import { uploadMedia } from '@/lib/mediaLib'
 import { useUser } from '@clerk/react'
-import { publishPieceToBuffer } from '@/lib/publishPiece'
+import { publishPieceToSocial } from '@/lib/publishPiece'
 import { updateContentItem } from '@/lib/publish'
 import { toast } from '@/lib/toast'
 
@@ -227,7 +227,7 @@ export default function NewBrief() {
         : null
       const results = await Promise.allSettled(
         items.map(async (it) => {
-          const r = await publishPieceToBuffer(it, {
+          const r = await publishPieceToSocial(it, {
             scheduledAt: scheduledISO, useQueue: false, userEmail, workspace, themes: [],
           })
           // publishAndTrack sets status but persists scheduled_at only in queue

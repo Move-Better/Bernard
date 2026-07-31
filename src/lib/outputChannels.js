@@ -43,13 +43,15 @@ export const EXPORT_SHAPES = Object.freeze({
 })
 
 export const PUBLISH_MODES = Object.freeze({
-  // Buffer is the universal social + local path: IG, FB, LinkedIn, X/Twitter,
-  // TikTok, YouTube Shorts, Threads, Bluesky, Mastodon, GBP. Adding
-  // a new Buffer-supported platform = (1) entry here in the registry with this
-  // mode, (2) entry in PLATFORM_TO_SERVICE in api/publish/buffer.js, (3) prompt
+  // The universal social + local path: IG, FB, LinkedIn, X/Twitter, TikTok,
+  // YouTube Shorts, Threads, Bluesky, Mastodon, GBP. Adding a new supported
+  // platform = (1) entry here in the registry with this mode, (2) entry in
+  // PLATFORM_TO_BUNDLE_TYPE in api/_lib/social/bundlePublisher.js, (3) prompt
   // generator in src/lib/prompts.js. No new credential card, no OAuth flow.
-  // GBP additionally needs a Buffer GBP channel ID pasted into each
-  // workspace_locations row at /settings/workspace.
+  //
+  // The id stays 'buffer' because it is persisted data — it is matched against
+  // workspaces.publish_intent.social and workspace_credentials.service — so it
+  // can only move in a migration, not a rename.
   BUFFER:    'buffer',
   WEBSITE:   'website',    // Astro+GitHub (animals) or WordPress REST (equine), dispatched in api/publish/website.js
   TDC:       'tdc',        // TrustDrivenCare newsletter — currently a paste-into-template flow, not a true API publish
@@ -223,7 +225,7 @@ export function channelIdForPlatform(platform) {
 // Credential `service` values (workspace_credentials.service) that satisfy each
 // publishMode. Connecting any one of these flips the channel from Export to
 // Publish — this is the runtime signal the publish endpoints actually gate on
-// (e.g. api/publish/buffer.js requires a buffer credential, not a flag).
+// (e.g. api/publish/social.js requires a publish credential, not a flag).
 const PUBLISH_MODE_SERVICES = Object.freeze({
   [PUBLISH_MODES.BUFFER]:  ['buffer'],
   [PUBLISH_MODES.WEBSITE]: ['wordpress', 'astro_github', 'website'],

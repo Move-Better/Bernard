@@ -17,7 +17,7 @@ import { useUpdateContentItemStatus } from '@/lib/queries'
  * Cards can be dragged between the REVIEW lanes (draft / in review / approved)
  * — each drop writes the same audit stamp the story-detail actions do
  * (reviewedBy / approvedBy+approvedAt). Scheduling and publishing are NOT
- * drag targets: those carry Buffer side-effects and stay in the story detail.
+ * drag targets: those carry publish side-effects and stay in the story detail.
  * Clicking a card still navigates to the story.
  */
 export default function StoriesPipelineView({ stories, isLoading }) {

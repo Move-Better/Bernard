@@ -1,7 +1,7 @@
-// BufferMetricsRow — compact post-performance chip row for published content.
+// PostMetricsRow — compact post-performance chip row for published content.
 //
 // Shown beneath a content piece body when the piece has a buffer_update_id.
-// Fetches via /api/buffer-analytics, which serves the latest engagement_snapshots
+// Fetches via /api/post-analytics, which serves the latest engagement_snapshots
 // row for the piece — the same daily-refreshed numbers the "What's working"
 // widget and the scoring layer read. A Refresh icon forces a live pull from the
 // network (and records a new snapshot) for a user who doesn't want to wait for
@@ -10,7 +10,7 @@
 import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useBufferMetrics, queryKeys } from '@/lib/queries'
+import { usePostMetrics, queryKeys } from '@/lib/queries'
 import { apiFetch } from '@/lib/api'
 
 function StatChip({ label, value }) {
@@ -42,7 +42,7 @@ function BufferStatChips({ metrics }) {
 // 2026-07-22: "just display everything we can get"). Every chip is gated on
 // >0 rather than shown as a fake zero, because bundle sends the same 9-field
 // shape for every platform whether or not that platform actually reports the
-// field (see mapBundleMetrics in buffer-analytics.js) — a 0 here could mean
+// field (see mapBundleMetrics in post-analytics.js) — a 0 here could mean
 // "measured, genuinely zero" or "this platform never sends this field," and
 // showing it as a confident zero would misrepresent the second case.
 //
@@ -66,8 +66,8 @@ function BundleStatChips({ metrics }) {
   )
 }
 
-export default function BufferMetricsRow({ contentItemId }) {
-  const { data, isLoading, isFetching } = useBufferMetrics(contentItemId)
+export default function PostMetricsRow({ contentItemId }) {
+  const { data, isLoading, isFetching } = usePostMetrics(contentItemId)
   const qc = useQueryClient()
   const [forcing, setForcing] = useState(false)
 
@@ -79,8 +79,8 @@ export default function BufferMetricsRow({ contentItemId }) {
   const handleRefresh = async () => {
     setForcing(true)
     try {
-      const res = await apiFetch(`/api/buffer-analytics?contentItemId=${encodeURIComponent(contentItemId)}&force=true`)
-      qc.setQueryData(queryKeys.bufferMetrics(contentItemId), res)
+      const res = await apiFetch(`/api/post-analytics?contentItemId=${encodeURIComponent(contentItemId)}&force=true`)
+      qc.setQueryData(queryKeys.postMetrics(contentItemId), res)
     } catch {
       // Leave the existing cached data in place — a transient failure here
       // shouldn't blank out numbers the user could already see.
