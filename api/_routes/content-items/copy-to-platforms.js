@@ -199,6 +199,18 @@ export default async function handler(req, res) {
     if (verdict.action === 'skipped') return { platform: t.platform, ...verdict }
 
     if (verdict.action === 'fill') {
+      // Re-read immediately before writing so a producer mid-edit on this
+      // exact sibling (or a concurrent auto-attach) can't be silently
+      // clobbered by the fill PATCH — mirrors the same guard in
+      // autoAttachMedia.js, which exists for the identical reason.
+      const curRes = await sb(
+        `content_items?id=eq.${verdict.id}&workspace_id=eq.${ws.id}&select=media_urls&limit=1`,
+      )
+      if (!curRes.ok) return { platform: t.platform, action: 'skipped', reason: 'recheck_failed' }
+      const curRow = (await curRes.json().catch(() => []))?.[0]
+      const curMedia = Array.isArray(curRow?.media_urls) ? curRow.media_urls : []
+      if (curMedia.length > 0) return { platform: t.platform, action: 'skipped', reason: 'raced_has_media' }
+
       const patchRes = await sb(`content_items?id=eq.${verdict.id}&workspace_id=eq.${ws.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ media_urls: [targetEntry], content: caption, updated_at: new Date().toISOString() }),
