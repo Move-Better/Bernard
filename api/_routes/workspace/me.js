@@ -765,9 +765,11 @@ async function handler(req, res) {
         continue
       }
       if (key === 'publish_provider') {
-        // Which social publisher routes this workspace's posts. Constrained to
-        // the same values as the DB CHECK so a bad value 400s, not 500s.
-        if (value !== 'buffer' && value !== 'bundle') {
+        // bundle.social is the only publisher (Buffer retired 2026-07-30, see
+        // migration 198). Constrained to the same value as the DB CHECK so a bad
+        // value 400s, not 500s. The key stays writable so the column can still
+        // be set explicitly during onboarding.
+        if (value !== 'bundle') {
           return res.status(400).json({ error: 'invalid-publish-provider' })
         }
         patch.publish_provider = value

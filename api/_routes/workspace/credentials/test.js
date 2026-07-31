@@ -11,7 +11,6 @@ export const config = { runtime: 'nodejs' }
 // secret server-side; plaintext never crosses the wire.
 //
 // What each service does for "test":
-//   - buffer       → GET /1/user.json (returns the connected Buffer account)
 //   - wordpress    → GET <site_url>?per_page=1 with Basic auth
 //                    (Application Password endpoint accepts a list-posts probe)
 //   - astro_github → POST <url> with { test: true } payload + bearer
@@ -38,37 +37,6 @@ function fetchWithTimeout(url, init = {}) {
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
   return fetch(url, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(t))
-}
-
-async function testBuffer(secret) {
-  // GraphQL API (api.buffer.com/graphql) — the only endpoint that accepts
-  // Personal Keys and App Client tokens. The old v1 REST API rejects them.
-  const r = await fetchWithTimeout('https://api.buffer.com/graphql', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: '{ account { id name email } }' }),
-  })
-  if (!r.ok) {
-    const bodyText = await r.text().catch(() => '')
-    console.error('[credentials/test] buffer rejected', r.status, bodyText)
-    if (r.status === 401 || r.status === 403) return { ok: false, error: 'Token rejected by Buffer (401/403). Generate a fresh Personal Key at buffer.com/api and try again.' }
-    return { ok: false, error: 'buffer_error' }
-  }
-  const body = await r.json().catch(() => ({}))
-  if (body.errors) {
-    const msg = body.errors[0]?.message || 'GraphQL error'
-    console.error('[credentials/test] buffer graphql error', JSON.stringify(body.errors))
-    if (msg.toLowerCase().includes('auth') || msg.toLowerCase().includes('token')) {
-      return { ok: false, error: 'buffer_auth_error' }
-    }
-    console.error('[credentials/test] buffer graphql error msg:', msg)
-    return { ok: false, error: 'buffer_graphql_error' }
-  }
-  const acct = body.data?.account
-  return {
-    ok: true,
-    info: { account: acct?.name || acct?.email || acct?.id || 'verified' },
-  }
 }
 
 async function testWordPress({ config, secret }) {
@@ -174,7 +142,6 @@ async function testSearchConsole({ config, secret }) {
 }
 
 const TESTERS = {
-  buffer:          ({ secret }) => testBuffer(secret),
   wordpress:       testWordPress,
   astro_github:    testBearerEndpoint,
   website:         testBearerEndpoint,

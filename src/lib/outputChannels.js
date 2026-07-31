@@ -227,6 +227,11 @@ export function channelIdForPlatform(platform) {
 // Publish — this is the runtime signal the publish endpoints actually gate on
 // (e.g. api/publish/social.js requires a publish credential, not a flag).
 const PUBLISH_MODE_SERVICES = Object.freeze({
+  // 'buffer' is retained deliberately. No NEW buffer credential can be created
+  // (the provider was retired 2026-07-30), but five rows still exist in prod and
+  // this entry is what makes those workspaces' social channels read as Publish
+  // rather than Export. Dropping it is a user-visible downgrade, so it waits on
+  // a decision about the rows themselves.
   [PUBLISH_MODES.BUFFER]:  ['buffer'],
   [PUBLISH_MODES.WEBSITE]: ['wordpress', 'astro_github', 'website'],
   [PUBLISH_MODES.TDC]:     ['tdc', 'beehiiv'],
@@ -283,10 +288,11 @@ export function exportShapeForPlatform(platform) {
 // (src/pages/Integrations.jsx), and the claim handler (api/onboarding/claim.js).
 export const PUBLISH_INTENT_OPTIONS = Object.freeze({
   website:    ['wordpress', 'astro', 'none'],
-  // 'bundle' = bundle.social (Bernard connects + posts directly); 'buffer' =
-  // bring-your-own Buffer; 'manual' = copy & paste. The choice maps to
-  // workspaces.publish_provider (bundle|buffer) at claim time.
-  social:     ['buffer', 'bundle', 'manual'],
+  // 'bundle' = bundle.social (Bernard connects + posts directly); 'manual' =
+  // copy & paste. Buffer was retired 2026-07-30, so every claimed workspace
+  // gets publish_provider='bundle' regardless of this answer — it now only
+  // tailors which cards the UI shows.
+  social:     ['bundle', 'manual'],
   newsletter: ['beehiiv', 'other', 'skip'],
 })
 
@@ -333,7 +339,6 @@ export function isIntegrationRelevantForIntent(serviceId, intent) {
     case 'wordpress':    return intent.website === 'wordpress'
     case 'astro_github': return intent.website === 'astro'
     case 'website':      return intent.website === 'wordpress' || intent.website === 'astro'
-    case 'buffer':       return intent.social === 'buffer'
     case 'beehiiv':      return intent.newsletter === 'beehiiv'
     case 'ga4':          return true   // analytics is always offerable
     default:             return true   // unknown services are never hidden by intent
@@ -346,7 +351,10 @@ export function channelOneClickReadyForIntent(channelId, intent) {
   const channel = OUTPUT_CHANNELS[channelId]
   if (!channel || !channel.publishMode) return false
   switch (channel.publishMode) {
-    case PUBLISH_MODES.BUFFER:  return intent?.social === 'buffer'
+    // The mode id is still the persisted 'buffer' string, but the integration
+    // that upgrades a social channel to one-click is bundle.social — Buffer was
+    // retired 2026-07-30 and is no longer a selectable intent.
+    case PUBLISH_MODES.BUFFER:  return intent?.social === 'bundle'
     case PUBLISH_MODES.WEBSITE: return intent?.website === 'wordpress' || intent?.website === 'astro'
     case PUBLISH_MODES.TDC:     return intent?.newsletter === 'beehiiv'
     default:                    return false

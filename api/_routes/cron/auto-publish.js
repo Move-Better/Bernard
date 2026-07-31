@@ -4,8 +4,7 @@ export const config = { runtime: 'nodejs' }
 // For each video-pipeline-enabled workspace that has at least one channel
 // with auto_publish enabled, walks approved story_packages that haven't been
 // auto-published yet, runs the gate evaluator, and dispatches eligible
-// packages via the existing Buffer publish path (useQueue=true so the post
-// lands in the Buffer queue rather than firing immediately).
+// packages via bundle.social, one post per GBP location Team.
 //
 // GBP is the only live channel at launch — other channels in
 // auto_publish_settings are accepted and stored but silently skipped here
@@ -23,8 +22,6 @@ export const config = { runtime: 'nodejs' }
 import { evaluate } from '../../_lib/autoPublishGate.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
-import { getCredential } from '../../_lib/getCredential.js'
-import { prepareMediaForPublish } from '../../_lib/prepareMediaForPublish.js'
 import { filterCampaignsForStaff } from '../../_lib/tentpoleCampaignContext.js'
 import { getActiveCampaigns } from '../../_lib/activeCampaigns.js'
 import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
@@ -43,7 +40,6 @@ const GBP_CAP = platformCap('gbp')
 
 const SUPABASE_URL  = process.env.SUPABASE_URL
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY
-const BUFFER_GQL    = 'https://api.buffer.com/graphql'
 
 // How many approved packages to consider per workspace per run.
 const BATCH_SIZE = 20
@@ -62,16 +58,6 @@ function sb(path, init = {}) {
       ...init.headers,
     },
   })
-}
-
-async function gql(token, query, variables = {}) {
-  const r = await fetch(BUFFER_GQL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ query, variables }),
-  })
-  const json = await r.json().catch(() => ({}))
-  return { ok: r.ok, status: r.status, data: json.data, errors: json.errors }
 }
 
 // Resolve bundle GBP location targets for a workspace: active locations with a bundle Team.
@@ -110,71 +96,6 @@ async function dispatchGbpBundle({ pkg, workspace, targets }) {
       console.error('[auto-publish] bundle GBP dispatch failed for location:', target.label, e?.message)
       failed.push(target.id)
     }
-  }
-  return { posted, failed }
-}
-
-// Resolve GBP channel IDs for a workspace (same logic as api/publish/social.js).
-async function resolveGbpChannelIds(workspaceId) {
-  const r = await sb(
-    `workspace_locations?workspace_id=eq.${workspaceId}&status=eq.active&gbp_location_id=not.is.null&select=id,gbp_location_id`
-  )
-  if (!r.ok) return []
-  const rows = await r.json().catch(() => [])
-  return (Array.isArray(rows) ? rows : [])
-    .filter((row) => typeof row.gbp_location_id === 'string' && row.gbp_location_id.trim())
-    .map((row) => ({ locationId: row.id, channelId: row.gbp_location_id }))
-}
-
-// Post a GBP package to Buffer queue. `locationChannels` is the PENDING subset
-// (caller filters out already-posted locations). Returns
-// { posted: [{ id, postId }], failed: [id] } keyed by stable target id
-// (= Buffer channelId) so the caller records exactly which locations posted.
-async function dispatchGbp({ pkg, token, locationChannels }) {
-  // Google rejects >1500-char captions; caption_text is editable in Moment
-  // Miner pre-approval, so clamp here like every other GBP dispatch path.
-  const text = clampToCap(pkg.caption_text || pkg.topic || '', GBP_CAP)
-  const mediaUrls = Array.isArray(pkg.renders)
-    ? pkg.renders
-        .filter((r) => r.channel === 'gbp_post' && r.blobUrl)
-        .map((r) => ({ url: r.blobUrl, type: 'image' }))
-    : []
-  const preparedMedia = await prepareMediaForPublish(mediaUrls)
-  const assets = preparedMedia.map((m) =>
-    m.type?.startsWith('video') ? { video: { url: m.url } } : { image: { url: m.url } }
-  )
-
-  const posted = []
-  const failed = []
-  for (const { id, channelId } of locationChannels) {
-    const input = {
-      channelId,
-      text,
-      schedulingType: 'automatic',
-      mode: 'shareNext',
-      assets,
-      metadata: { google: { type: 'whats_new', detailsWhatsNew: { button: 'learn_more' } } },
-    }
-    const r = await gql(token, `
-      mutation CreatePost($input: CreatePostInput!) {
-        createPost(input: $input) {
-          __typename
-          ... on PostActionSuccess { post { id status dueAt } }
-          ... on NotFoundError { message }
-          ... on UnauthorizedError { message }
-          ... on UnexpectedError { message }
-          ... on InvalidInputError { message }
-          ... on LimitReachedError { message }
-        }
-      }
-    `, { input })
-    if (r.errors || r.data?.createPost?.__typename !== 'PostActionSuccess') {
-      const msg = r.errors?.[0]?.message || r.data?.createPost?.message || 'unknown'
-      console.error('[auto-publish] GBP createPost failed:', msg, 'channelId:', channelId, 'pkg:', pkg.id)
-      failed.push(id)
-      continue
-    }
-    posted.push({ id, postId: r.data.createPost.post?.id ?? null })
   }
   return { posted, failed }
 }
@@ -226,22 +147,10 @@ async function processWorkspace(ws, summary) {
     return
   }
 
-  const isBundle = ws.publish_provider === 'bundle'
-
-  // Resolve provider credential / GBP targets once (same for all packages).
-  let cred = null
-  let gbpChannels = []
+  // Resolve GBP targets once (same for all packages). bundle.social is the only
+  // provider (Buffer retired 2026-07-30).
   let bundleGbpTargets = []
-  if (isBundle) {
-    if (settings.gbp?.enabled) bundleGbpTargets = await resolveBundleGbpTargets(ws.id)
-  } else {
-    cred = await getCredential(ws.id, 'buffer')
-    if (!cred?.secret) {
-      summary.workspaces.push({ id: ws.id, slug: ws.slug, skipped: 'no-buffer-token' })
-      return
-    }
-    if (settings.gbp?.enabled) gbpChannels = await resolveGbpChannelIds(ws.id)
-  }
+  if (settings.gbp?.enabled) bundleGbpTargets = await resolveBundleGbpTargets(ws.id)
 
   // Load active campaigns once — used to enforce target_staff_ids per package.
   const activeCampaigns = await getActiveCampaigns(ws.id).catch(() => [])
@@ -329,15 +238,13 @@ async function processWorkspace(ws, summary) {
       // a future live channel without a dispatch branch can't silently 'complete'.
       if (channel !== 'gbp') continue
 
-      // Full per-location target list with a stable id (Buffer channelId /
-      // bundle teamId) used as the skip key in published_channels.
-      const targets = isBundle
-        ? bundleGbpTargets.map((t) => ({ id: t.teamId, teamId: t.teamId, label: t.label }))
-        : gbpChannels.map((c) => ({ id: c.channelId, channelId: c.channelId, locationId: c.locationId }))
+      // Full per-location target list with a stable id (bundle teamId) used as
+      // the skip key in published_channels.
+      const targets = bundleGbpTargets.map((t) => ({ id: t.teamId, teamId: t.teamId, label: t.label }))
 
       if (targets.length === 0) {
         // No locations configured — permanent (admin must fix); don't retry forever.
-        held.push({ id: pkg.id, reasons: [{ signal: 'config', detail: `No ${isBundle ? 'bundle ' : ''}GBP locations configured` }] })
+        held.push({ id: pkg.id, reasons: [{ signal: 'config', detail: 'No bundle GBP locations configured' }] })
         channelStatus[channel] = 'permanent'
         continue
       }
@@ -423,9 +330,7 @@ async function processWorkspace(ws, summary) {
       let posted = []
       let failed = []
       if (pending.length > 0) {
-        const dispatch = isBundle
-          ? await dispatchGbpBundle({ pkg, workspace: ws, targets: pending }).catch(() => null)
-          : await dispatchGbp({ pkg, token: cred.secret, locationChannels: pending }).catch(() => null)
+        const dispatch = await dispatchGbpBundle({ pkg, workspace: ws, targets: pending }).catch(() => null)
         posted = dispatch?.posted || []
         failed = dispatch?.failed || pending.map((t) => t.id)
       }

@@ -158,7 +158,7 @@ export const ROLE_DEFS = [
   { id: 'logo_on_light', label: 'Logo for light bg',  hint: 'Canonical version when placed on a light surface.' },
   { id: 'logo_on_dark',  label: 'Logo for dark bg',   hint: 'Reversed-out variant for dark surfaces.' },
   { id: 'favicon',       label: 'Favicon',            hint: '32×32 export used by the browser tab icon.' },
-  { id: 'social_avatar', label: 'Social avatar',      hint: 'Square profile image for Buffer / IG / FB.' },
+  { id: 'social_avatar', label: 'Social avatar',      hint: 'Square profile image for IG / FB / LinkedIn.' },
   { id: 'social_cover',  label: 'Social cover',       hint: '1500×500-ish banner for profile headers.' },
   { id: 'brand_book',    label: 'Brand book',         hint: 'Reference PDF — stored for humans, not rendered.' },
 ]

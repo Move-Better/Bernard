@@ -1,18 +1,20 @@
 export const config = { runtime: 'nodejs' }
-// Cron: sync published status back from Buffer (runs hourly).
+// Cron: sync published status back from bundle.social (runs hourly).
 //
 // Finds all content_items where status='scheduled', buffer_update_id IS NOT NULL,
-// and scheduled_at is in the past. For each, asks Buffer whether the post has
-// actually been sent (post.sentAt set). If yes, promotes the row to
-// status='published' with published_at=sentAt.
+// and scheduled_at is in the past. For each, asks bundle whether the post has
+// actually gone out. If yes, promotes the row to status='published'; if bundle
+// rejected it permanently, marks it failed and alerts the owner.
 //
-// This closes the gap where Buffer publishes a scheduled post autonomously but
-// Bernard has no inbound webhook to hear about it.
+// This is the slower backstop for the inbound bundle webhook — it covers the
+// deliveries the webhook missed (endpoint not registered, dropped delivery).
+//
+// The route path and the buffer_update_id column keep their old names for now;
+// the provider itself is gone (Buffer retired 2026-07-30). Renaming the column
+// is a follow-up, since platform_post_id duplicates it.
 //
 // Auth: Bearer CRON_SECRET (same as all other crons).
 
-import { getCredential } from '../../_lib/getCredential.js'
-import { fetchPostStats } from '../../_lib/bufferPostStats.js'
 import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
 import { notifyPublishFailure } from '../../_lib/notifyPublishFailure.js'
 import { recordAgentAction } from '../../_lib/agentActions.js'
@@ -190,109 +192,75 @@ export default async function handler(req, res) {
       continue
     }
 
-    if (wsRow.publish_provider === 'bundle') {
-      // bundle.social path: postGet({ id }) returns { status, postedDate }.
-      // bundle transitions SCHEDULED → POSTED autonomously within seconds/minutes.
-      let publisher
+    // bundle.social is the only provider. A workspace with no Team can't be
+    // asked about its posts — skip the whole group cleanly rather than letting
+    // the teamId getter throw once per item (it throws lazily, not in the
+    // constructor, so without this guard N items become N errors).
+    if (!wsRow.bundle_team_id) {
+      console.warn('[sync-buffer-published] workspace not onboarded to bundle.social:', workspaceId)
+      summary.skipped += wsItems.length
+      summary.workspaces.push({ workspaceId, skipped: wsItems.length, reason: 'no-bundle-team' })
+      continue
+    }
+
+    // postGet({ id }) returns { status, postedDate }. bundle transitions
+    // SCHEDULED → POSTED autonomously within seconds/minutes.
+    let publisher
+    try {
+      publisher = new BundlePublisher(wsRow)
+    } catch (e) {
+      console.warn('[sync-buffer-published] bundle init failed for workspace:', workspaceId, e?.message)
+      summary.skipped += wsItems.length
+      summary.workspaces.push({ workspaceId, skipped: wsItems.length, reason: 'bundle-init-failed' })
+      continue
+    }
+
+    for (const item of wsItems) {
       try {
-        publisher = new BundlePublisher(wsRow)
-      } catch (e) {
-        console.warn('[sync-buffer-published] bundle init failed for workspace:', workspaceId, e?.message)
-        summary.skipped += wsItems.length
-        summary.workspaces.push({ workspaceId, skipped: wsItems.length, reason: 'bundle-init-failed' })
-        continue
-      }
-
-      for (const item of wsItems) {
-        try {
-          const status = await publisher.getPostStatus({ postId: item.buffer_update_id })
-          if (!status?.status) {
-            // Null response — post not found or deleted; leave as-is.
-            wsResult.notFound++
-            continue
-          }
-          if (!status.isPosted) {
-            if (status.isError) {
-              // Network rejected it permanently — mark failed so the UI surfaces it
-              // (badge + Home banner) instead of it sitting forever as "scheduled".
-              const reason = status.error || 'Publishing failed on the network.'
-              const r = await markFailed(item.id, workspaceId, reason)
-              if (!r.ok) { summary.errors++; wsResult.errors++ }
-              else if (r.transitioned) {
-                summary.failed++; wsResult.failed++
-                // Phase 4: alert the workspace owner — only on a real transition,
-                // so the cron and webhook never double-email the same failure.
-                await notifyPublishFailure({ workspaceId, item, reason })
-              }
-            } else if (status.isFailed) {
-              // DELETED in bundle (usually intentional) — not a publish failure; leave as-is.
-              wsResult.notFound++
-            } else {
-              // SCHEDULED / PROCESSING / REVIEW / RETRYING — still in flight, check next run.
-              summary.skipped++; wsResult.skipped++
-            }
-            continue
-          }
-          if (status.permalink && !item.resolved_url) {
-            await recordPermalink(item.id, workspaceId, status.permalink)
-          }
-          const promoted = await promoteToPublished(
-            item.id, workspaceId,
-            status.postedAt || new Date().toISOString()
-          )
-          if (promoted.ok) {
-            summary.promoted++; wsResult.promoted++
-            if (promoted.transitioned) await recordPublished(workspaceId, item)
-          }
-          else { summary.errors++; wsResult.errors++ }
-        } catch (e) {
-          console.error('[sync-buffer-published] bundle postGet error for item:', item.id, e?.message)
-          summary.errors++
-          wsResult.errors++
-        }
-      }
-    } else {
-      // Buffer path (unchanged).
-      const cred = await getCredential(workspaceId, 'buffer')
-      if (!cred?.secret) {
-        console.warn('[sync-buffer-published] no Buffer token for workspace:', workspaceId)
-        summary.skipped += wsItems.length
-        summary.workspaces.push({ workspaceId, skipped: wsItems.length, reason: 'no-token' })
-        continue
-      }
-
-      for (const item of wsItems) {
-        const { ok, post, errors } = await fetchPostStats(cred.secret, item.buffer_update_id)
-
-        if (!ok) {
-          console.error('[sync-buffer-published] Buffer API error for item:', item.id, errors)
-          summary.errors++
-          wsResult.errors++
-          continue
-        }
-
-        if (!post) {
-          // Buffer returned null — post was deleted or ID is no longer valid.
+        const status = await publisher.getPostStatus({ postId: item.buffer_update_id })
+        if (!status?.status) {
+          // Null response — post not found or deleted; leave as-is.
           wsResult.notFound++
           continue
         }
-
-        // Buffer sets sentAt when the post has been delivered to the platform.
-        if (!post.sentAt) {
-          summary.skipped++
-          wsResult.skipped++
+        if (!status.isPosted) {
+          if (status.isError) {
+            // Network rejected it permanently — mark failed so the UI surfaces it
+            // (badge + Home banner) instead of it sitting forever as "scheduled".
+            const reason = status.error || 'Publishing failed on the network.'
+            const r = await markFailed(item.id, workspaceId, reason)
+            if (!r.ok) { summary.errors++; wsResult.errors++ }
+            else if (r.transitioned) {
+              summary.failed++; wsResult.failed++
+              // Phase 4: alert the workspace owner — only on a real transition,
+              // so the cron and webhook never double-email the same failure.
+              await notifyPublishFailure({ workspaceId, item, reason })
+            }
+          } else if (status.isFailed) {
+            // DELETED in bundle (usually intentional) — not a publish failure; leave as-is.
+            wsResult.notFound++
+          } else {
+            // SCHEDULED / PROCESSING / REVIEW / RETRYING — still in flight, check next run.
+            summary.skipped++; wsResult.skipped++
+          }
           continue
         }
-
-        const promoted = await promoteToPublished(item.id, workspaceId, post.sentAt)
-        if (promoted.ok) {
-          summary.promoted++
-          wsResult.promoted++
-          if (promoted.transitioned) await recordPublished(workspaceId, item)
-        } else {
-          summary.errors++
-          wsResult.errors++
+        if (status.permalink && !item.resolved_url) {
+          await recordPermalink(item.id, workspaceId, status.permalink)
         }
+        const promoted = await promoteToPublished(
+          item.id, workspaceId,
+          status.postedAt || new Date().toISOString()
+        )
+        if (promoted.ok) {
+          summary.promoted++; wsResult.promoted++
+          if (promoted.transitioned) await recordPublished(workspaceId, item)
+        }
+        else { summary.errors++; wsResult.errors++ }
+      } catch (e) {
+        console.error('[sync-buffer-published] bundle postGet error for item:', item.id, e?.message)
+        summary.errors++
+        wsResult.errors++
       }
     }
 

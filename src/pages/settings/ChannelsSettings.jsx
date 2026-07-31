@@ -151,7 +151,6 @@ const BLOG_OPTIONS = [
 ]
 const SOCIAL_OPTIONS = [
   { value: 'bundle', label: 'bundle.social',  desc: 'Bernard connects — no extra tool' },
-  { value: 'buffer', label: 'Buffer',          desc: 'Bring your existing Buffer account' },
   { value: 'manual', label: 'Copy & paste',   desc: 'Export captions, post manually' },
 ]
 const NEWSLETTER_OPTIONS = [
