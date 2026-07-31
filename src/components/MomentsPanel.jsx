@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
+import RatingBadge from '@/components/ui/RatingBadge'
 import { toast } from '@/lib/toast'
 import MomentRetireReasons from '@/components/moments/MomentRetireReasons'
 import { MOMENT_RETIRE_REASON_LABEL } from '@/lib/momentRetire'
@@ -32,24 +33,13 @@ const MOMENT_TYPE_LABELS = {
   story: 'Story',
 }
 
-function scoreTone(score) {
-  if (score >= 80) return 'bg-primary/10 text-primary'
-  if (score >= 60) return 'text-foreground/70 bg-muted'
-  return 'bg-muted text-muted-foreground'
-}
-
 function MomentRow({ moment, onRetire, onRestore, busy }) {
   const typeLabel = MOMENT_TYPE_LABELS[moment.moment_type] || moment.moment_type || 'Moment'
   const retired = moment.status === 'retired'
   return (
     <li className="py-3 first:pt-1 last:pb-1">
       <div className="flex items-start gap-3">
-        <span
-          className={`shrink-0 inline-flex items-center justify-center rounded-md px-1.5 py-0.5 text-2xs font-bold tabular-nums ${scoreTone(moment.score ?? 0)}`}
-          title="Post-worthiness score at extraction (0–100)"
-        >
-          {moment.score ?? '—'}
-        </span>
+        <RatingBadge score={moment.score} signal="quote" size="sm" />
         <div className="min-w-0 flex-1 space-y-1">
           <blockquote className={`text-sm leading-relaxed ${retired ? 'text-muted-foreground' : 'text-foreground/90'}`}>
             “{moment.excerpt}”

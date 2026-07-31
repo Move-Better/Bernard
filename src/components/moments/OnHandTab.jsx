@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
+import RatingBadge from '@/components/ui/RatingBadge'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
@@ -43,12 +44,6 @@ const REVIEW_FILTERS = [
 // How many cards the queue shows at once. Three is enough to compare and build
 // a rhythm without turning the screen into a wall of quotes.
 const QUEUE_SIZE = 3
-
-function scoreTone(score) {
-  if (score >= 80) return 'bg-primary/10 text-primary'
-  if (score >= 60) return 'text-foreground/70 bg-muted'
-  return 'bg-muted text-muted-foreground'
-}
 
 function fmtDay(iso) {
   if (!iso) return null
@@ -286,12 +281,7 @@ function QueueCard({ m, staffName, onApprove, onRetire, onSkip, onSaveExcerpt, o
   const authorLabel = staffName || 'the author'
   return (
     <article className="rounded-xl border border-border bg-card shadow-sm p-4 flex gap-3.5">
-      <span
-        className={`shrink-0 self-start inline-flex items-center justify-center min-w-[34px] rounded-md px-1.5 py-1 text-sm font-bold tabular-nums ${scoreTone(m.score ?? 0)}`}
-        title="Post-worthiness score at extraction (0–100)"
-      >
-        {m.score ?? '—'}
-      </span>
+      <RatingBadge score={m.score} signal="quote" size="md" />
       <div className="min-w-0 flex-1">
         <MomentExcerpt m={m} onSave={onSaveExcerpt} disabled={busy}>
           <div className="mt-2.5">
@@ -435,12 +425,7 @@ function MomentRow({ m, staffName, reviewerName, onRetire, onRestore }) {
   const retired = m.status === 'retired'
   return (
     <div className="flex items-start gap-3 py-3.5 border-t border-border first:border-t-0">
-      <span
-        className={`shrink-0 inline-flex items-center justify-center min-w-[30px] rounded-md px-1.5 py-0.5 text-xs font-bold tabular-nums ${scoreTone(m.score ?? 0)}`}
-        title="Post-worthiness score at extraction (0–100)"
-      >
-        {m.score ?? '—'}
-      </span>
+      <RatingBadge score={m.score} signal="quote" size="sm" />
       <div className="min-w-0 flex-1">
         <blockquote className={`text-sm leading-relaxed ${retired ? 'text-muted-foreground' : 'text-foreground/90'}`}>
           &ldquo;{m.excerpt}&rdquo;
