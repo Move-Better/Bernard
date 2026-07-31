@@ -117,7 +117,7 @@ export default function NewBrief() {
   // relevant when a workspace has more than one — GbpLocationPicker no-ops
   // otherwise.
   const gbpLocations = useMemo(
-    () => (workspace?.locations || []).filter((l) => l.gbp_location_id),
+    () => (workspace?.locations || []).filter((l) => l.bundle_team_id),
     [workspace],
   )
   const selectedGbpLocationIds = gbpLocationIds ?? new Set(gbpLocations.map((l) => l.id))

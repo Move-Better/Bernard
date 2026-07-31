@@ -741,7 +741,7 @@ function GradePanel({ piece, aspect }) {
 // flows the producer back into the queue after publishing one piece.
 function PublishPanel({ piece, remainingNeedsMedia = [], isReel, updateItem }) {
   const workspace = useWorkspace()
-  const gbpLocations = (workspace?.locations || []).filter((l) => l.gbp_location_id)
+  const gbpLocations = (workspace?.locations || []).filter((l) => l.bundle_team_id)
   const locked = piece.status === 'published' || piece.status === 'scheduled'
   const selectedGbpIds = new Set(resolveGbpLocationIds(piece) || gbpLocations.map((l) => l.id))
 

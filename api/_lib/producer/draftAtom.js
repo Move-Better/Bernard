@@ -525,7 +525,8 @@ export async function draftAtom({ ws, atom, interview }) {
 
 /**
  * For a GBP atom, generate a per-location caption variant for every active
- * workspace_location with a gbp_location_id. Extracted verbatim from draft.js so
+ * workspace_location connected for Google Business publishing (bundle_team_id).
+ * Extracted verbatim from draft.js so
  * the interactive route AND the pre-draft path fan out GBP listings identically.
  * Returns the `location_overrides` object ({ [locationId]: {content, location_name,
  * generated_at} }) — the caller PATCHes it onto the content_item (no DB write here).
@@ -549,8 +550,15 @@ export async function buildGbpLocationVariants({ ws, atom, interview, staffName,
     modelExemplarsBlock,
   } = gbpContext || {}
 
+  // Connected-for-publishing is the marker, NOT gbp_location_id. That column
+  // held a Buffer GBP channel id; Buffer was retired 2026-07-30, its value is
+  // read by nothing (this query never even selected it — only its presence was
+  // used), and a new tenant has no way to obtain one. bundle_team_id is the only
+  // marker a tenant can actually populate, via the per-location connect portal,
+  // and it is the same signal the publish paths use — so a location that gets a
+  // tailored draft written for it is exactly a location that can receive it.
   const locsRes = await sb(
-    `workspace_locations?workspace_id=eq.${ws.id}&status=eq.active&gbp_location_id=not.is.null` +
+    `workspace_locations?workspace_id=eq.${ws.id}&status=eq.active&bundle_team_id=not.is.null` +
     `&select=id,label,city,location_keyword`,
   )
   const locations = locsRes.ok ? ((await locsRes.json()) ?? []) : []

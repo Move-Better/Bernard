@@ -169,7 +169,7 @@ export default async function handler(req, res) {
     }
 
     // For GBP atoms: generate a per-location variant for every workspace_location
-    // that has a gbp_location_id configured, so Google sees genuinely distinct
+    // connected for Google Business publishing, so Google sees genuinely distinct
     // local copy per listing. Extracted into buildGbpLocationVariants (P3) so the
     // pre-draft path fans out identically. Failures are non-blocking (canonical kept).
     if (atom.platform === 'gbp') {
