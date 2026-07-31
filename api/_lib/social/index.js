@@ -11,27 +11,26 @@
 // a workspace is explicitly flipped to 'bundle' (a later phase). A missing or
 // unknown value falls back to Buffer — never knock the publish path offline on a
 // bad/absent flag.
-import { BufferPublisher } from './bufferPublisher.js'
 import { BundlePublisher } from './bundlePublisher.js'
 
-export { BufferPublisher, BundlePublisher }
+export { BundlePublisher }
 export { SocialPublisher, publishError, emptyMetrics } from './socialPublisher.js'
 
-/** Known providers — the values workspaces.publish_provider is constrained to. */
-export const PUBLISH_PROVIDERS = ['buffer', 'bundle']
+/** Known providers. Buffer was retired 2026-07-30 — see getPublisher. */
+export const PUBLISH_PROVIDERS = ['bundle']
 
 /**
  * Resolve the social publisher for a workspace.
+ *
+ * bundle.social is the only provider (2026-07-30). The factory is kept rather
+ * than inlined because it is the seam a future second provider would re-enter
+ * through — and because collapsing it to a bare `new BundlePublisher()` at ~10
+ * call sites would make re-introducing one a 10-file change again, which is
+ * how the two paths drifted apart the first time.
+ *
  * @param {Object} workspace Full `workspaces` row (from workspaceContext/workspaceById).
- * @returns {BufferPublisher|BundlePublisher}
+ * @returns {BundlePublisher}
  */
 export function getPublisher(workspace) {
-  const provider = workspace?.publish_provider || 'buffer'
-  switch (provider) {
-    case 'bundle':
-      return new BundlePublisher(workspace)
-    case 'buffer':
-    default:
-      return new BufferPublisher(workspace)
-  }
+  return new BundlePublisher(workspace)
 }
