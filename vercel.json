@@ -68,6 +68,7 @@
     { "path": "/api/cron/agent-tick", "schedule": "*/5 * * * *" },
     { "path": "/api/cron/check-channel-health", "schedule": "0 14 * * *" },
     { "path": "/api/cron/approval-escalation", "schedule": "0 16 * * *" },
+    { "path": "/api/cron/moment-sendback-nudge", "schedule": "30 16 * * *" },
     { "path": "/api/cron/auto-reel-week", "schedule": "20 * * * *" },
     { "path": "/api/cron/snapshot-social-posts", "schedule": "30 5 * * 0" },
     { "path": "/api/cron/generate-product-updates", "schedule": "0 3 * * *" },

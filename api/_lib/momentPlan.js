@@ -76,14 +76,20 @@ export function rankExemplarMoments(moments, now, limit = BANK_PROMPT_LIMIT) {
 
 /**
  * Fetch the workspace's drawable exemplar moments: banked, exemplar, off
- * cooldown, and not already backing a live drafted piece (belt-and-suspenders
- * for a missed usage bump). Returns ranked, prompt-sized list; [] on any error.
+ * cooldown, not awaiting an author repair, and not already backing a live
+ * drafted piece (belt-and-suspenders for a missed usage bump). Returns ranked,
+ * prompt-sized list; [] on any error.
+ *
+ * sent_back_at is a HARD exclusion (migration 200): a producer has said these
+ * words are garbled, so drafting from them would spend a real content slot on
+ * copy a human already rejected. It re-enters the draw the moment the author
+ * repairs the excerpt or confirms it reads right.
  */
 export async function selectExemplarMoments({ workspaceId, sb, now = new Date().toISOString() }) {
   try {
     const cutoff = new Date(new Date(now).getTime() - MOMENT_COOLDOWN_DAYS * 86_400_000).toISOString()
     const res = await sb(
-      `moments?workspace_id=eq.${workspaceId}&status=eq.banked&is_exemplar=eq.true` +
+      `moments?workspace_id=eq.${workspaceId}&status=eq.banked&is_exemplar=eq.true&sent_back_at=is.null` +
         `&or=(last_used_at.is.null,last_used_at.lt.${encodeURIComponent(cutoff)})` +
         `&select=id,interview_id,staff_id,excerpt,hook,moment_type,topic,region,tags,score,usage_count,last_used_at,created_at` +
         `&order=score.desc&limit=${BANK_FETCH_LIMIT}`,

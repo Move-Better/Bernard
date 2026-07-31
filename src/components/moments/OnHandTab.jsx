@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Loader2, MoreHorizontal, Search, PlayCircle, Quote, Check, Archive, CheckCircle2 } from 'lucide-react'
+import { Loader2, MoreHorizontal, Search, PlayCircle, Quote, Check, Archive, CheckCircle2, Pencil, X, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
@@ -12,6 +13,7 @@ import { toast } from '@/lib/toast'
 import ErrorState from '@/components/ErrorState'
 import MomentRetireReasons from '@/components/moments/MomentRetireReasons'
 import { MOMENT_RETIRE_REASON_LABEL } from '@/lib/momentRetire'
+import { MOMENT_SEND_BACK_NOTE_MAX, MOMENT_SEND_BACK_PLACEHOLDER } from '@/lib/momentSendBack'
 
 // Display labels for the scoreMoments.js taxonomy. Local mirror — the api/
 // module can't be imported across the client/server boundary (same note as
@@ -53,8 +55,16 @@ function fmtDay(iso) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+// The producer's queue. sent_back_at is excluded so a quote waiting on its
+// author doesn't keep resurfacing to the one person who already said they
+// can't fix it — it returns here automatically once the author resolves it.
 function isPending(m) {
-  return m.status === 'banked' && !m.reviewed_at
+  return m.status === 'banked' && !m.reviewed_at && !m.sent_back_at
+}
+
+// The author's queue: quotes sent back to THEM, still awaiting a repair.
+function isSentBackTo(m, staffId) {
+  return Boolean(staffId) && m.staff_id === staffId && m.status === 'banked' && Boolean(m.sent_back_at)
 }
 
 function RowMenu({ m, onRetire, onRestore }) {
@@ -162,22 +172,118 @@ function ReviewStamp({ m, reviewerName, tone = 'reviewed' }) {
  * navigation everywhere else in the app, so a teal button here wouldn't read as
  * a decision.
  *
- * Retire opens a small reason popover (mirrors ModelPostRating's "what made
- * this land" flow, just for the opposite verdict) rather than firing
- * instantly — a reject is worth a beat to say why. The 'R' keyboard shortcut
- * still fires instantly with no reason, so blitzing the queue stays fast; the
- * popover is the enrichment path for whoever clicks.
+ * Retire and Send back each open a small popover (mirroring ModelPostRating's
+ * "what made this land" flow, for the opposite verdicts) rather than firing
+ * instantly — a reject is worth a beat to say why, and a send-back is useless
+ * to the author without a note saying what looked wrong.
  */
-function QueueCard({ m, staffName, onApprove, onRetire, onSkip, busy }) {
+/**
+ * The quote itself, with an inline Edit affordance. Shared by the producer's
+ * queue card and the author's fix card so a repair reads and behaves the same
+ * wherever it happens.
+ *
+ * Editing swaps the whole action row (passed as children) for Save/Cancel:
+ * mid-edit is not a moment to also be offering Approve or Retire, and a verdict
+ * fired against half-rewritten text would stamp the wrong words.
+ *
+ * The excerpt is transcript-derived, and ASR reliably mangles clinical speech —
+ * clauses run together, terms come out wrong. Editing is for repairing THAT,
+ * which is why it sits next to the verdicts rather than behind a menu.
+ */
+function MomentExcerpt({ m, onSave, disabled, children }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(m.excerpt)
+  const [saving, setSaving] = useState(false)
+
+  function startEdit() {
+    setDraft(m.excerpt)
+    setEditing(true)
+  }
+  function cancelEdit() {
+    setEditing(false)
+    setDraft(m.excerpt)
+  }
+  async function save() {
+    const trimmed = draft.trim()
+    if (!trimmed || trimmed === m.excerpt) { setEditing(false); return }
+    setSaving(true)
+    try {
+      await onSave(m, trimmed)
+      setEditing(false)
+    } catch {
+      // useAppMutation already raised the error toast. Staying in edit mode is
+      // deliberate — dropping back to the read view would discard a rewrite the
+      // person just typed.
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <>
+        <Textarea
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          maxLength={4000}
+          rows={6}
+          className="text-base leading-relaxed max-w-[66ch]"
+        />
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          <Button size="sm" disabled={saving || !draft.trim()} onClick={save}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            Save quote
+          </Button>
+          <Button size="sm" variant="ghost" disabled={saving} onClick={cancelEdit} className="text-muted-foreground">
+            <X className="h-4 w-4" />Cancel
+          </Button>
+          <span className="text-2xs text-muted-foreground">
+            Tidy up how it reads — keep what they actually meant.
+          </span>
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <div className="flex items-start gap-2">
+        <blockquote className="text-base leading-relaxed text-foreground max-w-[66ch] flex-1">
+          &ldquo;{m.excerpt}&rdquo;
+        </blockquote>
+        <button
+          type="button"
+          onClick={startEdit}
+          disabled={disabled}
+          aria-label="Edit this quote"
+          className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {children}
+    </>
+  )
+}
+
+function QueueCard({ m, staffName, onApprove, onRetire, onSkip, onSaveExcerpt, onSendBack, busy }) {
   const [retireOpen, setRetireOpen] = useState(false)
   const [reasons, setReasons] = useState([])
   const [note, setNote] = useState('')
+  const [sendBackOpen, setSendBackOpen] = useState(false)
+  const [sendBackNote, setSendBackNote] = useState('')
   const toggleReason = (key) =>
     setReasons((prev) => (prev.includes(key) ? prev.filter((r) => r !== key) : [...prev, key]))
   const confirmRetire = () => {
     onRetire(m, { reasons, note })
     setRetireOpen(false)
   }
+  const confirmSendBack = () => {
+    onSendBack(m, sendBackNote)
+    setSendBackOpen(false)
+  }
+  const authorLabel = staffName || 'the author'
   return (
     <article className="rounded-xl border border-border bg-card shadow-sm p-4 flex gap-3.5">
       <span
@@ -187,52 +293,81 @@ function QueueCard({ m, staffName, onApprove, onRetire, onSkip, busy }) {
         {m.score ?? '—'}
       </span>
       <div className="min-w-0 flex-1">
-        <blockquote className="text-base leading-relaxed text-foreground max-w-[66ch]">
-          &ldquo;{m.excerpt}&rdquo;
-        </blockquote>
-        <div className="mt-2.5">
-          <MomentMeta m={m} staffName={staffName} />
-        </div>
-        <div className="flex flex-wrap items-center gap-2 mt-3.5">
-          <Button
-            size="sm"
-            disabled={busy}
-            onClick={() => onApprove(m)}
-            className="bg-success text-white hover:bg-success/90"
-          >
-            <Check className="h-4 w-4" />Approve
-          </Button>
-          <Popover
-            open={retireOpen}
-            onOpenChange={(o) => { setRetireOpen(o); if (!o) { setReasons([]); setNote('') } }}
-          >
-            <PopoverTrigger asChild>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy}
-                className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-              >
-                <Archive className="h-4 w-4" />Retire
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-80 space-y-3">
-              <p className="text-sm font-semibold text-foreground">Why doesn&rsquo;t this one work?</p>
-              <MomentRetireReasons reasons={reasons} onToggleReason={toggleReason} note={note} onNoteChange={setNote} />
-              <Button
-                size="sm"
-                disabled={busy}
-                onClick={confirmRetire}
-                className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                <Archive className="h-4 w-4" />Retire
-              </Button>
-            </PopoverContent>
-          </Popover>
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => onSkip(m)} className="text-muted-foreground">
-            Skip for now
-          </Button>
-        </div>
+        <MomentExcerpt m={m} onSave={onSaveExcerpt} disabled={busy}>
+          <div className="mt-2.5">
+            <MomentMeta m={m} staffName={staffName} />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-3.5">
+            <Button
+              size="sm"
+              disabled={busy}
+              onClick={() => onApprove(m)}
+              className="bg-success text-white hover:bg-success/90"
+            >
+              <Check className="h-4 w-4" />Approve
+            </Button>
+            <Popover
+              open={retireOpen}
+              onOpenChange={(o) => { setRetireOpen(o); if (!o) { setReasons([]); setNote('') } }}
+            >
+              <PopoverTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy}
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Archive className="h-4 w-4" />Retire
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-80 space-y-3">
+                <p className="text-sm font-semibold text-foreground">Why doesn&rsquo;t this one work?</p>
+                <MomentRetireReasons reasons={reasons} onToggleReason={toggleReason} note={note} onNoteChange={setNote} />
+                <Button
+                  size="sm"
+                  disabled={busy}
+                  onClick={confirmRetire}
+                  className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  <Archive className="h-4 w-4" />Retire
+                </Button>
+              </PopoverContent>
+            </Popover>
+            <Popover
+              open={sendBackOpen}
+              onOpenChange={(o) => { setSendBackOpen(o); if (!o) setSendBackNote('') }}
+            >
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="outline" disabled={busy}>
+                  <Undo2 className="h-4 w-4" />Send back
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-80 space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Send back to {authorLabel}</p>
+                  <p className="mt-1 text-2xs text-muted-foreground">
+                    Use this when the words are garbled and only they can say what they meant.
+                    Bernard won&rsquo;t write from it until they fix it.
+                  </p>
+                </div>
+                <Textarea
+                  value={sendBackNote}
+                  onChange={(e) => setSendBackNote(e.target.value)}
+                  maxLength={MOMENT_SEND_BACK_NOTE_MAX}
+                  rows={3}
+                  placeholder={MOMENT_SEND_BACK_PLACEHOLDER}
+                  className="text-sm"
+                />
+                <Button size="sm" disabled={busy} onClick={confirmSendBack} className="w-full">
+                  <Undo2 className="h-4 w-4" />Send back
+                </Button>
+              </PopoverContent>
+            </Popover>
+            <Button size="sm" variant="ghost" disabled={busy} onClick={() => onSkip(m)} className="text-muted-foreground">
+              Skip for now
+            </Button>
+          </div>
+        </MomentExcerpt>
       </div>
     </article>
   )
@@ -249,6 +384,50 @@ function RetireReasonLine({ m }) {
     <p className="mt-1 text-2xs text-muted-foreground">
       Why: {[labels, m.retire_note].filter(Boolean).join(' — ')}
     </p>
+  )
+}
+
+/**
+ * The author's side of a send-back: one of YOUR quotes that a producer flagged
+ * as garbled. Only two ways out, both one click from here — repair the words,
+ * or say it already reads right. Either resolves the flag and hands the moment
+ * back to the producer's queue for the actual verdict.
+ *
+ * The producer's note leads the card. Without it this is just "something's
+ * wrong with a thing you said months ago", which is not enough to act on.
+ */
+function AuthorFixCard({ m, senderName, onSaveExcerpt, onConfirmFine, busy }) {
+  return (
+    <article className="rounded-xl border border-action/40 bg-action/5 shadow-sm p-4 flex gap-3.5">
+      <span
+        className="shrink-0 self-start inline-flex items-center justify-center rounded-md px-1.5 py-1 bg-action/15 text-action"
+        title="Sent back for your fix"
+      >
+        <Undo2 className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-2xs font-bold uppercase tracking-wide text-action">
+          {senderName ? `${senderName} sent this back` : 'Sent back for your fix'}
+          {m.sent_back_at && <> · {fmtDay(m.sent_back_at)}</>}
+        </p>
+        {m.sent_back_note && (
+          <p className="mt-1 mb-2.5 text-sm text-foreground/80">&ldquo;{m.sent_back_note}&rdquo;</p>
+        )}
+        <MomentExcerpt m={m} onSave={onSaveExcerpt} disabled={busy}>
+          <div className="mt-2.5">
+            <MomentMeta m={m} />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-3.5">
+            <span className="text-2xs text-muted-foreground">
+              Fix the wording with the pencil, or:
+            </span>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => onConfirmFine(m)}>
+              <Check className="h-4 w-4" />It already reads right
+            </Button>
+          </div>
+        </MomentExcerpt>
+      </div>
+    </article>
   )
 }
 
@@ -305,7 +484,7 @@ function MomentRow({ m, staffName, reviewerName, onRetire, onRestore }) {
  * Data comes from the page-level bank query so the header stats and the tab
  * count stay one fetch.
  */
-export default function OnHandTab({ moments, isLoading, error, refetch, staffMap, staffByUserId = {} }) {
+export default function OnHandTab({ moments, isLoading, error, refetch, staffMap, staffByUserId = {}, myStaffId = null }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [mode, setMode] = useState('queue')          // 'queue' | 'browse'
@@ -339,6 +518,15 @@ export default function OnHandTab({ moments, isLoading, error, refetch, staffMap
       (a, b) => rank(a) - rank(b) || (b.score || 0) - (a.score || 0),
     )
   }, [moments, skipped])
+
+  // Quotes a producer sent back to THIS signed-in person. Oldest first: a
+  // repair request that has been waiting two weeks is the one to answer.
+  const myFixes = useMemo(() => {
+    if (!myStaffId) return []
+    return (moments || [])
+      .filter((m) => isSentBackTo(m, myStaffId))
+      .sort((a, b) => new Date(a.sent_back_at) - new Date(b.sent_back_at))
+  }, [moments, myStaffId])
 
   const visible = useMemo(() => {
     let list = moments || []
@@ -397,6 +585,17 @@ export default function OnHandTab({ moments, isLoading, error, refetch, staffMap
         toast.success('Approved — staying on hand.')
       } else if (vars.status === 'banked') {
         toast('Restored — back on hand.')
+      } else if (vars.excerpt !== undefined) {
+        toast.success('Quote updated.')
+      } else if (vars.sentBack === true) {
+        toast('Sent back — Bernard won’t use it until it’s fixed.', {
+          action: {
+            label: 'Undo',
+            onClick: () => patchMutation.mutate({ id: vars.id, sentBack: false, silent: true }),
+          },
+        })
+      } else if (vars.sentBack === false) {
+        toast.success('Thanks — it’s back in the review queue.')
       }
     },
   })
@@ -417,6 +616,17 @@ export default function OnHandTab({ moments, isLoading, error, refetch, staffMap
     [patchMutation],
   )
   const skip = useCallback((m) => setSkipped((prev) => (prev.includes(m.id) ? prev : [...prev, m.id])), [])
+  // mutateAsync, not mutate: MomentExcerpt awaits this to decide whether to
+  // leave edit mode, so a failed save has to reject rather than resolve.
+  const saveExcerpt = useCallback(
+    (m, excerpt) => patchMutation.mutateAsync({ id: m.id, excerpt }),
+    [patchMutation],
+  )
+  const sendBack = useCallback(
+    (m, note = '') => patchMutation.mutate({ id: m.id, sentBack: true, sentBackNote: note.trim() || undefined }),
+    [patchMutation],
+  )
+  const confirmFine = useCallback((m) => patchMutation.mutate({ id: m.id, sentBack: false }), [patchMutation])
 
   const queue = pending.slice(0, QUEUE_SIZE)
 
@@ -488,6 +698,33 @@ export default function OnHandTab({ moments, isLoading, error, refetch, staffMap
           </Button>
         </div>
 
+        {/* Your own quotes a producer couldn't fix. Above the review queue on
+            purpose: nobody else can unblock these, and each one is currently
+            held out of drafting. */}
+        {myFixes.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <div>
+              <div className="text-sm font-bold">
+                {myFixes.length === 1 ? 'One of your quotes needs a fix' : `${myFixes.length} of your quotes need a fix`}
+              </div>
+              <p className="text-2xs text-muted-foreground">
+                Sent back because the wording came out garbled — only you know what you meant.
+                Bernard won&rsquo;t write from {myFixes.length === 1 ? 'it' : 'them'} until fixed.
+              </p>
+            </div>
+            {myFixes.map((m) => (
+              <AuthorFixCard
+                key={m.id}
+                m={m}
+                senderName={staffByUserId[m.sent_back_by]}
+                busy={busy}
+                onSaveExcerpt={saveExcerpt}
+                onConfirmFine={confirmFine}
+              />
+            ))}
+          </div>
+        )}
+
         {pending.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-14 gap-2 text-center rounded-xl border-2 border-dashed border-border">
             <CheckCircle2 className="h-8 w-8 text-success" />
@@ -514,6 +751,8 @@ export default function OnHandTab({ moments, isLoading, error, refetch, staffMap
                 onApprove={approve}
                 onRetire={retireNow}
                 onSkip={skip}
+                onSaveExcerpt={saveExcerpt}
+                onSendBack={sendBack}
               />
             ))}
           </div>

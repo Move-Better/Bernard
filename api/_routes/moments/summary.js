@@ -75,7 +75,10 @@ export default async function handler(req, res) {
     .reduce((sum, [, c]) => sum + (Array.isArray(c.slots) ? c.slots.filter((s) => s?.enabled !== false).length : 0), 0)
 
   const [usable, anyMoment, newestRows, gapRows, weekAtoms, strongestRows] = await Promise.all([
-    countRows(`moments?workspace_id=eq.${ws.id}&status=eq.banked&is_exemplar=is.true&select=id`),
+    // sent_back_at is excluded to match what the planner can actually draw
+    // (momentPlan.js) — a runway figure that counts quotes awaiting an author
+    // repair would overstate the weeks of content genuinely on hand.
+    countRows(`moments?workspace_id=eq.${ws.id}&status=eq.banked&is_exemplar=is.true&sent_back_at=is.null&select=id`),
     countRows(`moments?workspace_id=eq.${ws.id}&select=id`),
     sb(`interviews?workspace_id=eq.${ws.id}&status=eq.completed&select=created_at&order=created_at.desc&limit=1`)
       .then((r) => (r.ok ? r.json() : []))
@@ -86,7 +89,7 @@ export default async function handler(req, res) {
     sb(`content_plan_atoms?workspace_id=eq.${ws.id}&plan_week=eq.${weekMonday}&scheduled_at=not.is.null&select=id,moment_id`)
       .then((r) => (r.ok ? r.json() : []))
       .catch(() => []),
-    sb(`moments?workspace_id=eq.${ws.id}&status=eq.banked&is_exemplar=is.true&select=id,excerpt,score&order=score.desc.nullslast&limit=5`)
+    sb(`moments?workspace_id=eq.${ws.id}&status=eq.banked&is_exemplar=is.true&sent_back_at=is.null&select=id,excerpt,score&order=score.desc.nullslast&limit=5`)
       .then((r) => (r.ok ? r.json() : []))
       .catch(() => []),
   ])

@@ -2,14 +2,17 @@
 // GET   /api/db/moments                       — workspace-wide bank listing
 //                                               (powers the /moments "On hand" tab, step ③;
 //                                               header stats come from GET /api/moments/summary)
-// PATCH /api/db/moments?id=<uuid>             — retire/restore one moment (status banked|retired)
-//                                               and/or stamp the review marker (reviewed true|false)
+// PATCH /api/db/moments?id=<uuid>             — retire/restore one moment (status banked|retired),
+//                                               stamp the review marker (reviewed true|false),
+//                                               rewrite the excerpt, and/or send it back to its
+//                                               author for repair (sentBack true|false)
 //
-// The bank is the workspace's inventory of scored VERBATIM excerpts
-// (migration 191). Embedding is never selected (1536 floats per row is pure
-// payload weight for a list view). Retire is QUIET by design: it only stops
-// future draws — content_plan_atoms.moment_id is ON DELETE SET NULL and this
-// handler never touches atoms, so already-planned pieces keep their drafts.
+// The bank is the workspace's inventory of scored excerpts (migration 191 —
+// originally verbatim-only; a reviewer may now repair the wording, see the
+// excerpt note below). Embedding is never selected (1536 floats per row is
+// pure payload weight for a list view). Retire is QUIET by design: it only
+// stops future draws — content_plan_atoms.moment_id is ON DELETE SET NULL and
+// this handler never touches atoms, so already-planned pieces keep their drafts.
 //
 // Review (migration 198) is a MARKER, not a gate — an approved moment is drawn
 // by the planner exactly like an unreviewed one. It exists so the On-hand
@@ -23,7 +26,22 @@
 // it's worth capturing WHY. Nothing reads these back into extraction or
 // ranking yet; see momentRetire.js.
 //
-// Auth: any workspace role reads; retire/restore needs an editor role.
+// Editing the excerpt rewrites ONLY the display/anchor string. Two things it
+// deliberately does NOT touch, both checked before this was allowed:
+//   - anchor {msg_idx,char_start,char_end} still points at the original turn,
+//     and momentWindow() (momentPlan.js) builds a draft's source window from
+//     the TRANSCRIPT, not from this string — so an edited excerpt cannot
+//     desync a draft from what was actually said.
+//   - embedding is left stale. It is computed at extraction and read only by
+//     match_moments for dedup clustering. An edit is a readability repair of
+//     the same claim, so the vector stays substantially right; re-embedding on
+//     a UI save would add a paid call for no measurable gain. If edits ever
+//     become substantive rewrites, re-embed here.
+// An edit also CLEARS any pending send-back (migration 200): repairing the
+// text is what resolves the request, and the moment drops back into the normal
+// unreviewed queue so a producer still gives the final verdict.
+//
+// Auth: any workspace role reads; retire/restore/edit/send-back need an editor role.
 
 export const config = { runtime: 'nodejs' }
 
@@ -32,6 +50,12 @@ import { requireRole } from '../../_lib/auth.js'
 import { ALL_KNOWN_ROLES, EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { MOMENT_RETIRE_REASON_KEYS, MOMENT_RETIRE_NOTE_MAX } from '../../../src/lib/momentRetire.js'
+import { MOMENT_SEND_BACK_NOTE_MAX } from '../../../src/lib/momentSendBack.js'
+
+// Upper bound on a repaired excerpt. Generous — the longest banked excerpt is
+// a seminar-length turn — but bounded so a PATCH can't write an essay into a
+// column the planner injects into a prompt.
+const EXCERPT_MAX = 4000
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -44,7 +68,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const BANK_LIMIT = 1000
 
 const MOMENT_FIELDS =
-  'id,excerpt,hook,moment_type,topic,region,tags,score,cluster_id,is_exemplar,status,usage_count,last_used_at,clip_asset_id,staff_id,interview_id,reviewed_at,reviewed_by,retire_reasons,retire_note,created_at'
+  'id,excerpt,hook,moment_type,topic,region,tags,score,cluster_id,is_exemplar,status,usage_count,last_used_at,clip_asset_id,staff_id,interview_id,reviewed_at,reviewed_by,retire_reasons,retire_note,sent_back_at,sent_back_by,sent_back_note,created_at'
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -78,14 +102,32 @@ export default async function handler(req, res) {
     const reviewed = req.body?.reviewed
     const retireReasons = req.body?.retireReasons
     const retireNote = req.body?.retireNote
+    const excerpt = req.body?.excerpt
+    const sentBack = req.body?.sentBack
+    const sentBackNote = req.body?.sentBackNote
     const hasStatus = status !== undefined
     const hasReviewed = reviewed !== undefined
+    const hasExcerpt = excerpt !== undefined
+    const hasSentBack = sentBack !== undefined
 
     if (hasStatus && status !== 'banked' && status !== 'retired') {
       return res.status(400).json({ error: 'invalid_status' })
     }
     if (hasReviewed && typeof reviewed !== 'boolean') {
       return res.status(400).json({ error: 'invalid_reviewed' })
+    }
+    const trimmedExcerpt = hasExcerpt && typeof excerpt === 'string' ? excerpt.trim() : ''
+    if (hasExcerpt && (typeof excerpt !== 'string' || !trimmedExcerpt || trimmedExcerpt.length > EXCERPT_MAX)) {
+      return res.status(400).json({ error: 'invalid_excerpt' })
+    }
+    if (hasSentBack && typeof sentBack !== 'boolean') {
+      return res.status(400).json({ error: 'invalid_sent_back' })
+    }
+    if (
+      sentBackNote !== undefined && sentBackNote !== null &&
+      (typeof sentBackNote !== 'string' || sentBackNote.length > MOMENT_SEND_BACK_NOTE_MAX)
+    ) {
+      return res.status(400).json({ error: 'invalid_sent_back_note' })
     }
     if (
       retireReasons !== undefined &&
@@ -97,9 +139,30 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'invalid_retire_note' })
     }
     // An empty PATCH would silently succeed and look like it worked.
-    if (!hasStatus && !hasReviewed) return res.status(400).json({ error: 'nothing_to_update' })
+    if (!hasStatus && !hasReviewed && !hasExcerpt && !hasSentBack) {
+      return res.status(400).json({ error: 'nothing_to_update' })
+    }
 
     const patch = { updated_at: new Date().toISOString() }
+    if (hasExcerpt) {
+      patch.excerpt = trimmedExcerpt
+      // Repairing the text IS the resolution of a send-back, so clear the flag
+      // and the nudge watermark together — otherwise the next daily cron would
+      // re-mail an author about a quote they already fixed.
+      patch.sent_back_at = null
+      patch.sent_back_by = null
+      patch.sent_back_note = null
+      patch.sent_back_notified_at = null
+    }
+    if (hasSentBack) {
+      // Server-set identity, same rule as reviewed_by. Clearing (sentBack:false)
+      // is the author's "it already reads right" — it drops the moment back
+      // into the producer's queue without changing a word.
+      patch.sent_back_at = sentBack ? new Date().toISOString() : null
+      patch.sent_back_by = sentBack ? auth.userId : null
+      patch.sent_back_note = sentBack ? (sentBackNote?.trim() || null) : null
+      if (!sentBack) patch.sent_back_notified_at = null
+    }
     if (hasStatus) {
       patch.status = status
       // Reasons only mean something attached to the verdict that produced
@@ -143,7 +206,7 @@ export default async function handler(req, res) {
     if (!UUID_RE.test(interviewId)) return res.status(400).json({ error: 'invalid_interview_id' })
     const r = await sb(
       `moments?workspace_id=eq.${ws.id}&interview_id=eq.${interviewId}` +
-      `&select=id,excerpt,hook,moment_type,topic,region,tags,score,cluster_id,is_exemplar,status,usage_count,last_used_at,retire_reasons,retire_note,created_at,planned:content_plan_atoms(count)` +
+      `&select=id,excerpt,hook,moment_type,topic,region,tags,score,cluster_id,is_exemplar,status,usage_count,last_used_at,retire_reasons,retire_note,sent_back_at,sent_back_by,sent_back_note,created_at,planned:content_plan_atoms(count)` +
       `&order=score.desc.nullslast,created_at.asc`,
     )
     if (!r.ok) {
