@@ -43,14 +43,23 @@ export function getSegments(assetId) {
 
 /**
  * Set a segment's review status (keep / discard / reset to proposed).
+ *
+ * `reasons`/`note` are the why-it-was-denied signal (migration 202) and only
+ * apply to status='discarded' — the server ignores them otherwise and clears
+ * them on any un-deny. Both optional: denying without a reason still denies.
+ *
  * @param {string} segmentId
  * @param {'kept'|'discarded'|'proposed'} status
+ * @param {{reasons?: string[], note?: string}} [why]
  */
-export function updateSegment(segmentId, status) {
+export function updateSegment(segmentId, status, why = {}) {
+  const body = { status }
+  if (why.reasons?.length) body.discardReasons = why.reasons
+  if (why.note?.trim()) body.discardNote = why.note.trim()
   return apiFetch(`/api/editorial/segments/${encodeURIComponent(segmentId)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(body),
   })
 }
 

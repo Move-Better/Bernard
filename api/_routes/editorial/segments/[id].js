@@ -6,7 +6,12 @@
 // endpoint only moves review state.
 //
 // Body:
-//   { status: 'kept' | 'discarded' | 'proposed' }
+//   { status: 'kept' | 'discarded' | 'proposed',
+//     discardReasons?: string[], discardNote?: string }
+//
+// The reason fields are only meaningful alongside status='discarded' and are
+// ignored otherwise — a keep carries no rejection reason. Both are optional:
+// denying without saying why still denies (same contract as moment Retire).
 //
 // Auth: Clerk JWT + workspace org-id.
 // Only the owning workspace's segments are accessible.
@@ -19,6 +24,7 @@ import { requireRole } from '../../../_lib/auth.js'
 import { ALL_KNOWN_ROLES } from '../../../_lib/roles.js'
 import { workspaceContext } from '../../../_lib/workspaceContext.js'
 import { enforceLimit } from '../../../_lib/ratelimit.js'
+import { CLIP_DISCARD_REASON_KEYS, CLIP_DISCARD_NOTE_MAX } from '../../../../src/lib/clipDiscard.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -62,9 +68,35 @@ export default async function handler(req, res) {
   }
   if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
-  const status = String((req.body || {}).status || '')
+  const body = req.body || {}
+  const status = String(body.status || '')
   if (!ALLOWED_STATUS.has(status)) {
     return res.status(400).json({ error: 'invalid_status', allowed: [...ALLOWED_STATUS] })
+  }
+
+  // Reason capture (migration 202). Validated against the shared vocabulary in
+  // src/lib/clipDiscard.js so an unknown key 400s here rather than landing in
+  // the column as a value no reader will ever recognise.
+  let discardReasons = null
+  let discardNote = null
+  if (status === 'discarded') {
+    if (body.discardReasons !== undefined && body.discardReasons !== null) {
+      if (!Array.isArray(body.discardReasons)) {
+        return res.status(400).json({ error: 'invalid_discard_reasons' })
+      }
+      const bad = body.discardReasons.filter((r) => !CLIP_DISCARD_REASON_KEYS.has(r))
+      if (bad.length) {
+        return res.status(400).json({ error: 'invalid_discard_reasons', allowed: [...CLIP_DISCARD_REASON_KEYS] })
+      }
+      // De-dupe so a double-tapped chip doesn't skew any future rollup.
+      discardReasons = [...new Set(body.discardReasons)]
+    }
+    if (body.discardNote !== undefined && body.discardNote !== null) {
+      if (typeof body.discardNote !== 'string') {
+        return res.status(400).json({ error: 'invalid_discard_note' })
+      }
+      discardNote = body.discardNote.trim().slice(0, CLIP_DISCARD_NOTE_MAX) || null
+    }
   }
 
   // Don't let a review toggle stomp a segment that's already been rendered into
@@ -79,9 +111,15 @@ export default async function handler(req, res) {
     return res.status(409).json({ error: 'already_rendered' })
   }
 
+  // Un-denying (back to proposed/kept) clears the reasons — leaving them behind
+  // would attach a rejection to a segment nobody is rejecting any more.
+  const patch = status === 'discarded'
+    ? { status, discard_reasons: discardReasons, discard_note: discardNote }
+    : { status, discard_reasons: null, discard_note: null }
+
   const patchRes = await sb(`video_segments?id=eq.${id}&workspace_id=eq.${ws.id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(patch),
   })
   if (!patchRes.ok) return res.status(500).json({ error: 'db_error' })
   const updated = (await patchRes.json())?.[0]

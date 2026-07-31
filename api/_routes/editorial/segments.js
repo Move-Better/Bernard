@@ -78,7 +78,10 @@ export default async function handler(req, res) {
   const segRes = await sb(
     `video_segments?source_asset_id=eq.${assetId}&workspace_id=eq.${ws.id}` +
       `&order=order_index.asc` +
-      `&select=id,start_sec,end_sec,hook,why_it_stands_alone,transcript_excerpt,order_index,status,story_package_id,rendered_asset_id`,
+      // discard_reasons/discard_note are SELECTed, not just PATCHable — a column
+      // you can write but not read is inert, not broken (CLAUDE.md, #2505). The
+      // editor reads them back to show what a denied clip was denied for.
+      `&select=id,start_sec,end_sec,hook,why_it_stands_alone,transcript_excerpt,order_index,status,story_package_id,rendered_asset_id,discard_reasons,discard_note`,
   )
   if (!segRes.ok) return res.status(500).json({ error: 'db_error' })
   const segments = await segRes.json()
