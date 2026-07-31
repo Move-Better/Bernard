@@ -15,6 +15,8 @@ import {
   useInsightsSeries,
 } from '@/lib/queries'
 import TrendStrip from '@/components/insights/TrendStrip'
+import LearningPanel from '@/components/producer/LearningPanel'
+import CheckInCard from '@/components/producer/CheckInCard'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { deriveInsights } from '@/lib/insightsReads'
@@ -1269,7 +1271,16 @@ export default function Analytics() {
       )}
 
       {activeTab === 'social' && (
-        <SocialTab data={socialPeriod} loading={socialPeriodLoading} cost={periodOffset === 0 ? cost : null} granularity={granularity} />
+        <div className="space-y-3">
+          <SocialTab data={socialPeriod} loading={socialPeriodLoading} cost={periodOffset === 0 ? cost : null} granularity={granularity} />
+          {/* Moved here from ProducerHome (Q, 2026-07-30): that page answers
+              "what do I need to do"; these are reflection, which is what this
+              page is for. The check-in still REACHES the owner — as a due
+              checkpoint in the ProducerHome queue that links to #checkin here
+              — so moving it off the home page doesn't bury the loop. */}
+          <div id="checkin" className="scroll-mt-20"><CheckInCard /></div>
+          <LearningPanel />
+        </div>
       )}
 
       {activeTab === 'website' && (

@@ -1,5 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
-import { CalendarCheck, ImageOff } from 'lucide-react'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { CalendarCheck, ImageOff, Check, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { apiFetch } from '@/lib/api'
 
 // The periodic check-in (Phase 4, mockup-approved): "is Bernard still trending
@@ -53,6 +55,30 @@ function Sample({ s }) {
 }
 
 export default function CheckInCard() {
+  const qc = useQueryClient()
+  const [saving, setSaving] = useState(false)
+  const [done, setDone] = useState(false)
+
+  // Marking the check-in done is the ONLY write in this loop, and it is just a
+  // timestamp — it clears the due checkpoint on ProducerHome. Deliberately NOT
+  // a trust dial: nothing can graduate yet, so a stay-auto / go-manual control
+  // would have nothing to control. It joins this call when graduation exists.
+  async function markDone() {
+    setSaving(true)
+    try {
+      await apiFetch('/api/producer/checkin-done', { method: 'POST' })
+      setDone(true)
+      // The checkpoint queue is what actually changes — refetch it so the item
+      // disappears rather than lingering until the next page load.
+      qc.invalidateQueries({ queryKey: ['producer-checkpoints'] })
+      toast.success('Check-in noted', { description: 'Bernard will ask again in about a month.' })
+    } catch {
+      toast.error('Could not save the check-in')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['producer-checkin'],
     queryFn: () => apiFetch('/api/producer/checkin'),
@@ -152,7 +178,22 @@ export default function CheckInCard() {
           The numbers and the portfolio are useful on their own — this is a
           review surface today, and becomes a decision surface when there is a
           decision to make. */}
-      <p className="mt-4 text-3xs leading-relaxed text-muted-foreground">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={markDone}
+          disabled={saving || done}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+        >
+          {saving && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
+          {done && <Check className="h-3 w-3" aria-hidden="true" />}
+          {done ? 'Noted' : saving ? 'Saving…' : 'I’ve reviewed this'}
+        </button>
+        <span className="text-3xs text-muted-foreground">
+          Clears this from your checkpoints until next month.
+        </span>
+      </div>
+      <p className="mt-2 text-3xs leading-relaxed text-muted-foreground">
         Bernard still shows you every post before it goes out. When it has earned
         the right to stop asking about something, you’ll be able to decide that here.
       </p>

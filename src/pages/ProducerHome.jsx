@@ -14,8 +14,6 @@ import { Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { apiFetch } from '@/lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
-import LearningPanel from '@/components/producer/LearningPanel'
-import CheckInCard from '@/components/producer/CheckInCard'
 import ErrorState from '@/components/ErrorState'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -188,18 +186,13 @@ export default function ProducerHome({ embedded = false }) {
         )}
       </section>
 
-      {!isLoading && (
-        <section>
-          <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">How Bernard is learning</h2>
-          {/* Sits below the checkpoint queue on purpose: the queue is the work,
-              this is the context for it. Own query, so a slow or failed read
-              here never delays the actionable half of the page. */}
-          <LearningPanel />
-          {/* Its own query — a slow check-in read must not delay the panel above
-              it, nor the actionable checkpoint queue above that. */}
-          <div className="mt-3"><CheckInCard /></div>
-        </section>
-      )}
+      {/* The learning panel and the check-in card used to sit here. Both moved
+          to /analytics (Q, 2026-07-30): this page answers "what do I need to
+          do", and two standing data cards competed with the queue that IS the
+          work — against the P5 finding that the bottleneck is reviewer
+          ATTENTION. The check-in still reaches the owner, but as a DUE
+          checkpoint in the queue above (type: 'learning_checkin') rather than a
+          card that is always present. */}
 
       {!isLoading && (
         <section>
