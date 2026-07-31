@@ -11,7 +11,7 @@ import ffmpegStaticPath from 'ffmpeg-static'
 import sharp from 'sharp'
 import { downloadImageToTemp } from './imageSource.js'
 
-// Per-platform caps used by Buffer's media validator:
+// Per-platform caps enforced by the publisher's media validator:
 //   Instagram: 5000px image, 1920px video, 60s reel
 //   Twitter:   4096px image, 1280px video
 //   Facebook:  — generous, but 1920px video is safe
@@ -115,12 +115,12 @@ async function transcodeVideoIfNeeded(url) {
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 // Walk a mediaUrls array, downsizing oversized images and transcoding oversized
-// videos before the URLs are handed to Buffer. Results are stored at
+// videos before the URLs are handed to the publisher. Results are stored at
 // deterministic blob paths (sha256 of source URL) so retrying the same publish
 // reuses the cached output. On any error, falls back to the original URL —
-// the publish still attempts and Buffer surfaces a readable error if the asset
-// truly exceeds the platform cap.
-export async function prepareMediaForBuffer(mediaUrls) {
+// the publish still attempts and the provider surfaces a readable error if the
+// asset truly exceeds the platform cap.
+export async function prepareMediaForPublish(mediaUrls) {
   if (!Array.isArray(mediaUrls) || mediaUrls.length === 0) return mediaUrls || []
   return Promise.all(
     mediaUrls.map(async (m) => {
@@ -136,7 +136,7 @@ export async function prepareMediaForBuffer(mediaUrls) {
         const kind = isVideo ? 'video transcode' : 'image resize'
         // Log e.stack, not e.message — sharp/ffmpeg native crashes often have
         // an empty .message and only a useful .stack (CLAUDE.md).
-        console.error(`[publish/buffer] ${kind} failed`, m.url, e?.stack || e?.message)
+        console.error(`[prepareMediaForPublish] ${kind} failed`, m.url, e?.stack || e?.message)
         return m
       }
     }),
