@@ -15,6 +15,8 @@ import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
+import { uuid } from '../../_lib/requestSchemas/primitives.js'
+import { assetIdListSchema } from '../../_lib/requestSchemas/collectionsItems.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -53,8 +55,7 @@ async function handler(req, res) {
 
   const collectionId = body.collectionId || searchParams.get('collectionId')
   if (!collectionId) return res.status(400).json({ error: 'collectionId required' })
-  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-  if (!UUID_RE.test(collectionId)) return res.status(400).json({ error: 'invalid_collectionId' })
+  if (!uuid.safeParse(collectionId).success) return res.status(400).json({ error: 'invalid_collectionId' })
 
   const scope = await workspaceScope(req)
   if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })
@@ -71,7 +72,7 @@ async function handler(req, res) {
   if (!colCheck.ok) return res.status(404).json({ error: 'Collection not found' })
 
   if (req.method === 'POST') {
-    const assetIds = (Array.isArray(body.assetIds) ? body.assetIds.filter(Boolean) : []).filter(id => UUID_RE.test(String(id)))
+    const assetIds = assetIdListSchema.parse(body.assetIds)
     if (!assetIds.length) return res.status(400).json({ error: 'assetIds[] required' })
 
     const assetCheck = await verifyScope(scope, 'media_assets', assetIds)
@@ -96,10 +97,8 @@ async function handler(req, res) {
 
   // DELETE — single via query, bulk via body.
   const singleAssetId = searchParams.get('assetId')
-  if (singleAssetId && !UUID_RE.test(singleAssetId)) return res.status(400).json({ error: 'invalid_assetId' })
-  const assetIds = singleAssetId
-    ? [singleAssetId]
-    : (Array.isArray(body.assetIds) ? body.assetIds.filter(Boolean).filter(id => UUID_RE.test(String(id))) : [])
+  if (singleAssetId && !uuid.safeParse(singleAssetId).success) return res.status(400).json({ error: 'invalid_assetId' })
+  const assetIds = singleAssetId ? [singleAssetId] : assetIdListSchema.parse(body.assetIds)
 
   if (!assetIds.length) return res.status(400).json({ error: 'assetId or assetIds[] required' })
 
