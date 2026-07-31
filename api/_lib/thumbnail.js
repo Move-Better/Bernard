@@ -8,13 +8,12 @@ import { join } from 'node:path'
 import { put as blobPut, del as blobDel } from '@vercel/blob'
 import ffmpegStaticPath from 'ffmpeg-static'
 
+import { supabaseRest } from './supabaseRest.js'
 // Generates a JPEG poster frame for a video asset and persists thumbnail_url.
 // Used by api/media/upload.js (auto on upload) and api/media/[id]/thumbnail.js
 // (manual / backfill). Originals are never modified — only the thumbnail blob
 // and the media_assets.thumbnail_url column.
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const FFMPEG_BIN = process.env.FFMPEG_PATH || ffmpegStaticPath || 'ffmpeg'
 
@@ -36,18 +35,8 @@ function requireScope(scope) {
   return scope
 }
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 function runFfmpeg(args) {
   return new Promise((resolve, reject) => {

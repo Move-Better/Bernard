@@ -27,8 +27,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import ffmpegPath from 'ffmpeg-static'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest } from './supabaseRest.js'
 const OPENAI_KEY = process.env.OPENAI_API_KEY
 const WHISPER_URL = 'https://api.openai.com/v1/audio/transcriptions'
 
@@ -41,18 +40,8 @@ const SEGMENT_SECONDS = 600
 // talk into ~2 waves without tripping rate limits.
 const MAX_CONCURRENT = 6
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 // Write a terminal/intermediate status. Once the worker has resolved the row's
 // workspace_id, every write is scoped by it (defense-in-depth — interviewId

@@ -12,23 +12,13 @@
 
 import { judgeSupersessionStable } from './supersessionJudge.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 const SIM_THRESHOLD = 0.6     // below this, "same topic" is too weak to be a supersession
 const EXCERPT_LEN   = 600
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 /**
  * Detect supersession candidates for one workspace.

@@ -9,21 +9,14 @@
 // augments the existing patient_context / interview_context JSONB blocks, it
 // does not replace them.
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest } from './supabaseRest.js'
+
 
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5-minute in-process cache per workspace+topic
 const cache = new Map()
 
-function sb(path) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 // ── Core fetch ───────────────────────────────────────────────────────────────
 

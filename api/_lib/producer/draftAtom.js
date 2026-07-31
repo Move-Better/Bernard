@@ -38,23 +38,12 @@ import { buildFidelityPrompt, parseFidelity } from '../captionFidelityRubric.js'
 import { clampToCap, platformCap } from '../socialLengthTargets.js'
 import { momentWindow } from '../momentPlan.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from '../supabaseRest.js'
 // Background/lib reads; workspace_id is always supplied by the caller's atom/ws and
 // every query below is scoped by it. (require-workspace-scope only lints _routes.)
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer:        'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 // The judge grades faithfulness against what the clinician ACTUALLY said, so it
 // must see (nearly) the WHOLE transcript — real interviews run 14–20k chars of

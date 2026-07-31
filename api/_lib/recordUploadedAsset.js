@@ -29,22 +29,11 @@ import { createAsset as createMuxAsset, muxConfigured } from './muxClient.js'
 import { recordAudit, snapshot } from './audit.js'
 import { workspaceById } from './workspaceContext.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest } from './supabaseRest.js'
 const FFMPEG_BIN   = process.env.FFMPEG_PATH || ffmpegStaticPath || 'ffmpeg'
 
-async function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 const PURPOSES = new Set(['interview', 'broll', 'photo', 'brand'])
 

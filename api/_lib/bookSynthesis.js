@@ -16,9 +16,8 @@
 
 import { generateText } from 'ai'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 const MODEL = 'anthropic/claude-opus-4-7'
 
 // Conservative input cap. Opus accepts ~200K tokens; we leave headroom for
@@ -30,17 +29,8 @@ const MAX_SOURCE_CHARS = 600_000
 // allow up to 16K to absorb tone work and long-quote inclusion.
 const MAX_OUTPUT_TOKENS = 16_000
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 // ── Source loading ─────────────────────────────────────────────────────────
 

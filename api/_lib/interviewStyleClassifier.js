@@ -16,8 +16,7 @@
 import { generateText } from 'ai'
 import { INTERVIEW_TACTICS, isTacticId, LEAD_TACTICS } from '../../src/lib/interviewTactics.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest, SUPABASE_URL, SUPABASE_KEY } from './supabaseRest.js'
 const MODEL = 'anthropic/claude-sonnet-4-6'
 const MODEL_TIMEOUT_MS = 60_000
 const MAX_SESSIONS = 3
@@ -26,17 +25,8 @@ const REGISTERS = new Set(['lay', 'mid', 'peer'])
 const RANK = { lay: 0, mid: 1, peer: 2 }
 const LEAD_IDS = new Set(LEAD_TACTICS.map((t) => t.id))
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 function buildTranscript(messages) {
   return (Array.isArray(messages) ? messages : [])

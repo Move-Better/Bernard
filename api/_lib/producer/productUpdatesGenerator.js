@@ -13,6 +13,7 @@
 import { generateObject } from 'ai'
 import { z } from 'zod'
 
+import { supabaseRest } from '../supabaseRest.js'
 const MODEL = 'anthropic/claude-sonnet-4-6'
 const REPO_OWNER = 'Move-Better'
 const REPO_NAME = 'Bernard'
@@ -26,17 +27,8 @@ const schema = z.object({
 
 const SYSTEM = `You write one-sentence "what's new" entries for Bernard, a chiropractic-clinic content-production platform. Given a merged PR's title and description, decide whether a PRODUCER (operational editor: approves posts, reviews video clips, monitors publishing) or CLINICIAN (records interviews, writes/approves patient-facing content) would notice this change using the app day-to-day. If it's pure infra/internal/no user-visible effect, set skip=true. Otherwise write ONE plain-language sentence in active voice describing what changed from the user's side of the screen, and tag which roles care (empty array = everyone).`
 
-function sb(path, init = {}) {
-  return fetch(`${process.env.SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: process.env.SUPABASE_SERVICE_KEY,
-      Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 async function lastGeneratedAt() {
   const r = await sb('product_updates?select=created_at&order=created_at.desc&limit=1')

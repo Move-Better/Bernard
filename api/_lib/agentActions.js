@@ -13,23 +13,13 @@
 // cron loops) omit it and the helper does one indexed PK lookup. A disabled
 // workspace therefore costs at most one cheap read and writes nothing.
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest, SUPABASE_URL, SUPABASE_KEY } from './supabaseRest.js'
+
 
 // Background writer: workspace_id is always supplied by the caller and every
 // query is scoped by it. (require-workspace-scope only lints api/_routes/**.)
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    signal: AbortSignal.timeout(8_000),
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { timeoutMs: 8_000, contentType: 'application/json' })
+
 
 async function fetchProducerConfig(workspaceId) {
   try {

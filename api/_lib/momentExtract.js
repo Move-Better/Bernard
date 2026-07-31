@@ -29,9 +29,8 @@ import { randomUUID } from 'node:crypto'
 import { scoreSegments } from './scoreMoments.js'
 import { embedTexts } from './embeddings.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 const MODEL = 'anthropic/claude-sonnet-4-6'
 
 // Extraction bar — provisional until the first backfill's score distribution
@@ -43,18 +42,8 @@ export const MOMENT_BANK_MIN_SCORE = Number(process.env.MOMENT_BANK_MIN_SCORE ||
 // neighbor-similarity report.
 export const MOMENT_DEDUP_SIM = Number(process.env.MOMENT_DEDUP_SIM || 0.85)
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    signal: AbortSignal.timeout(15_000),
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { timeoutMs: 15_000, contentType: 'application/json' })
+
 
 /**
  * Clinician turns from an interviews.messages array, keeping the RAW message

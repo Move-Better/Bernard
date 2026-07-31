@@ -18,9 +18,8 @@ import { computeEditDiff } from '../../_lib/editDiffMining.js'
 import { waitUntil } from '@vercel/functions'
 import { MODEL_REASON_KEYS, MODEL_NOTE_MAX } from '../../../src/lib/modelRating.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from '../../_lib/supabaseRest.js'
 // Allowlists for query-param values interpolated into PostgREST query strings.
 // Without these, a crafted value like `draft,approved)&limit=10000` would break
 // out of the intended clause and override server-side constraints.
@@ -44,18 +43,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // and surface as an opaque 500.
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(?:[T ][\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?$/
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 const ok  = (res, data, status = 200) => res.status(status).json(data)
 const err = (res, msg, status = 400)  => res.status(status).json({ error: msg })

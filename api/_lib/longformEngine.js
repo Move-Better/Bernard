@@ -30,9 +30,8 @@ import { stitchLongform } from './stitchLongform.js'
 import { scoreCaptionFidelity } from './captionFidelity.js'
 import { cancelableStatusFilter } from './packageStatus.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 // Fallback render channel if a package somehow has no channels stored. The
 // engine normally renders ONE master per piece at the package's first channel
 // (all keep-whole landscape channels share an identical spec) and fans the
@@ -54,19 +53,8 @@ const MAX_CHUNK_ATTEMPTS = 3
 // so we never reclaim a piece a still-running function is actively rendering.
 const STALE_RENDERING_MS = 6 * 60 * 1000
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    signal: AbortSignal.timeout(8_000),
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { timeoutMs: 8_000, contentType: 'application/json', prefer: 'return=representation' })
+
 
 async function getJson(res) {
   if (!res.ok) return null

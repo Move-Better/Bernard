@@ -25,22 +25,10 @@
 
 import { generateAndPersistThumbnail } from './thumbnail.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    signal: AbortSignal.timeout(10_000),
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+import { supabaseRest } from './supabaseRest.js'
+const sb = (path, init = {}) => supabaseRest(path, init, { timeoutMs: 10_000, contentType: 'application/json', prefer: 'return=representation' })
+
 
 // Stable, human-readable label per render channel. Stable matters: it is the
 // idempotency key (parent_id + variant_label), so changing these strings would

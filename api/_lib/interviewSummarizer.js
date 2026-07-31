@@ -13,9 +13,8 @@
 import { generateText } from 'ai'
 import { indexInterviewSummary } from './practiceMemoryRag.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 // Haiku 4.5, not Sonnet — validated 2026-07-16 against 3 real interview
 // transcripts (different clinicians/topics) run through this exact prompt:
 // summaries matched Sonnet on accuracy (no fabricated details in any sample)
@@ -37,18 +36,8 @@ const PATCH_TIMEOUT_MS  = 20_000
 // in a single Sonnet call comfortably under this cap.
 const MAX_WORDS = 4000
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer:        'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 function buildPrompt({ staffName, topic, transcriptText }) {
   const who = staffName || 'the clinician'

@@ -20,27 +20,16 @@
 
 import { generateText } from 'ai'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 // Thumbnails are 320×320 JPEG, typically 10-40KB each.
 // 10 per batch × 40KB = 400KB — well under the AI Gateway 20MB cap.
 const BATCH_SIZE = 10
 const DEFAULT_SAMPLE_SIZE = 20
 const ANALYSIS_MODEL = 'anthropic/claude-sonnet-4-6'
 
-async function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 /**
  * Fetch a sample of photo assets with thumbnails from the workspace.

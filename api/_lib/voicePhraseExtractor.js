@@ -20,8 +20,8 @@
 // ai_original_content against content and is meaningfully more complex than
 // the positive-signal path.
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest } from './supabaseRest.js'
+
 
 // Phrase-quality gates. Numbers picked to match the historical script — moving
 // them retroactively would invalidate any backfilled rows.
@@ -35,18 +35,8 @@ const HASHTAG_RE      = /^#/
 const MENTION_RE      = /^@/
 const EMOJI_HEAVY_RE  = /^[\p{Emoji}\s]{1,10}$/u
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer:        'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 // ── Pure extraction ──────────────────────────────────────────────────────────
 

@@ -22,21 +22,10 @@ import { waitUntil } from '@vercel/functions'
 import { indexMediaAsset } from './visualMemoryIndex.js'
 import { generateAndPersistThumbnail } from './thumbnail.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+import { supabaseRest } from './supabaseRest.js'
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 export async function saveBroll({ ws, renders, staffId, notes, parentAssetId, awaitThumbnails = false, variantLabel = null }) {
   const assetRows = renders.map((r) => {

@@ -18,9 +18,8 @@ import { buildFidelityPrompt, parseFidelity } from '../captionFidelityRubric.js'
 import { clampToCap, platformCap } from '../socialLengthTargets.js'
 import { recordAgentAction } from '../agentActions.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from '../supabaseRest.js'
 const REVISE_MODEL = 'anthropic/claude-sonnet-4-6'
 const JUDGE_MODEL  = 'anthropic/claude-haiku-4-5'
 
@@ -33,18 +32,8 @@ const PRODUCER_EMAIL   = 'producer@withbernard.ai'
 // scheduled, or published is off-limits (cooperative cancel).
 const REVISABLE = new Set(['draft', 'in_review'])
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    signal: AbortSignal.timeout(15_000),
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { timeoutMs: 15_000, contentType: 'application/json' })
+
 
 // The model returns the full revised post, then this delimiter, then a
 // one-sentence summary — a plain-text split (draft.js's ---SLIDES--- pattern),

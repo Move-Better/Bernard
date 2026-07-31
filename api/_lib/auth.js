@@ -26,6 +26,7 @@
 
 import { createClerkClient, verifyToken } from '@clerk/backend'
 import { timingSafeEqual } from 'node:crypto'
+import { supabaseRest, SUPABASE_URL, SUPABASE_KEY } from './supabaseRest.js'
 
 // Verify a CRON_SECRET bearer token in constant time. Returns true if valid.
 // Use instead of `req.headers.authorization !== \`Bearer \${secret}\`` in cron
@@ -74,14 +75,9 @@ async function lookupWorkspacePlanByOrgId(orgId) {
   if (!orgId) return null
   const cached = _orgPlanCache.get(orgId)
   if (cached && Date.now() < cached.expiresAt) return cached.plan
-  const supabaseUrl = process.env.SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_SERVICE_KEY
-  if (!supabaseUrl || !supabaseKey) return null
-  const url = `${supabaseUrl}/rest/v1/workspaces?clerk_org_id=eq.${encodeURIComponent(orgId)}&select=plan&limit=1`
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null
   try {
-    const r = await fetch(url, {
-      headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
-    })
+    const r = await supabaseRest(`workspaces?clerk_org_id=eq.${encodeURIComponent(orgId)}&select=plan&limit=1`)
     if (!r.ok) return null
     const rows = await r.json().catch(() => null)
     const plan = Array.isArray(rows) && rows[0] ? (rows[0].plan || null) : null
@@ -237,9 +233,6 @@ export async function requirePlatformAdmin(req) {
 //   const tierAuth = await requireTier(req, ws, [TIER_OWNER, TIER_PRODUCER])
 //   if (!tierAuth.ok) return res.status(403).json({ error: tierAuth.reason })
 
-const SUPABASE_URL_FOR_TIER = process.env.SUPABASE_URL
-const SUPABASE_KEY_FOR_TIER = process.env.SUPABASE_SERVICE_KEY
-
 /**
  * Look up clinicians.permission_tier for (userId, workspaceId).
  *
@@ -251,15 +244,9 @@ const SUPABASE_KEY_FOR_TIER = process.env.SUPABASE_SERVICE_KEY
 export async function lookupPermissionTier(userId, workspaceId) {
   if (!userId || !workspaceId) return { ok: true, tier: null }
   try {
-    const r = await fetch(
-      `${SUPABASE_URL_FOR_TIER}/rest/v1/staff?user_id=eq.${encodeURIComponent(userId)}` +
-      `&workspace_id=eq.${encodeURIComponent(workspaceId)}&select=permission_tier&limit=1`,
-      {
-        headers: {
-          apikey: SUPABASE_KEY_FOR_TIER,
-          Authorization: `Bearer ${SUPABASE_KEY_FOR_TIER}`,
-        },
-      }
+    const r = await supabaseRest(
+      `staff?user_id=eq.${encodeURIComponent(userId)}` +
+      `&workspace_id=eq.${encodeURIComponent(workspaceId)}&select=permission_tier&limit=1`
     )
     if (!r.ok) {
       // Real DB error — caller MUST treat as fail-closed, not as "no tier."

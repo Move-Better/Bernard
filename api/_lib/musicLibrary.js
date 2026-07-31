@@ -9,17 +9,14 @@
 // uploaded track. The render route resolves a client-supplied trackId → trusted
 // blob_url through here (never trusts a raw URL from the client).
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest } from './supabaseRest.js'
 
 export const MUSIC_MOODS = ['calm', 'upbeat', 'warm', 'cinematic']
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 async function sb(path) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  })
+  const res = await supabaseRest(path)
   if (!res.ok) {
     console.error('[musicLibrary] supabase error:', res.status, (await res.text()).slice(0, 200))
     return null

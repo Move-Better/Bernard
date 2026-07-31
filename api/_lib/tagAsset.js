@@ -10,6 +10,7 @@ import ffmpegStaticPath from 'ffmpeg-static'
 import { z } from 'zod'
 import { recordAudit, snapshot } from './audit.js'
 
+import { supabaseRest } from './supabaseRest.js'
 function requireScope(scope) {
   if (!scope?.workspace) {
     throw new Error('tagAsset: workspace scope is required (caller must pass a resolved scope)')
@@ -21,8 +22,6 @@ function requireScope(scope) {
 // and api/media/upload.js (auto-kick on upload). Talks to the Vercel AI
 // Gateway with a plain `provider/model` string (AI_GATEWAY_API_KEY in env).
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const MODEL = 'google/gemini-2.5-flash'
 
@@ -43,18 +42,8 @@ const PROXY_MAX_OUTPUT    = '18000000'                          // ffmpeg -fs
 //   3. 'ffmpeg' on PATH (local dev fallback)
 const FFMPEG_BIN = process.env.FFMPEG_PATH || ffmpegStaticPath || 'ffmpeg'
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 const VOCAB = {
   people:  'human anatomy and movement: low-back, mid-back, neck, shoulder, hip, knee, ankle, glute, hamstring, hinge, brace, breathing, runner, lifter, climber, post-op, senior',

@@ -49,9 +49,8 @@ import { buildDraftMatchQuery } from './draftMatchQuery.js'
 import { mediaKindForDraft, isTextOnlyPlatform } from './platformMedia.js'
 import { clipToMediaEntry } from '../../src/lib/mediaEntry.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 // Confidence bar for AUTO-attaching, deliberately well above suggest-media's
 // permissive 0.3 "show me options" floor. A suggestion the producer can reject
 // is cheap; a silent off-topic attach a rushed approver rubber-stamps is not.
@@ -69,18 +68,8 @@ const MAX_AUTO_VIDEO_SECS = Number(process.env.AUTO_ATTACH_MAX_VIDEO_SECS) || 60
 
 // Shared service-key fetch helper. Every caller below passes an explicit
 // workspace_id=eq.${ws.id} filter — never an unscoped tenant query.
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    signal: AbortSignal.timeout(10_000),
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { timeoutMs: 10_000, contentType: 'application/json' })
+
 
 /**
  * Attach one on-topic media entry to a media-less draft, in place. Best-effort:

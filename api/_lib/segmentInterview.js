@@ -1,6 +1,7 @@
 import { generateObject } from 'ai'
 import { z } from 'zod'
 
+import { supabaseRest } from './supabaseRest.js'
 function requireScope(scope) {
   if (!scope?.workspace) {
     throw new Error('segmentInterview: workspace scope is required (caller must pass a resolved scope)')
@@ -27,23 +28,11 @@ function requireScope(scope) {
 // through the Vercel AI Gateway using the AI_GATEWAY_API_KEY already in env
 // from Phase 2.
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const MODEL = 'anthropic/claude-sonnet-4-6'
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 const PLATFORMS = ['reels', 'feed', 'story', 'shorts', 'tiktok', 'gbp', 'newsletter']
 
