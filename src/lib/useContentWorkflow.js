@@ -12,7 +12,7 @@ import {
   queryKeys,
 } from '@/lib/queries'
 import { publishBlogToWebsite, sendBlogToBeehiiv, cancelScheduledPost } from '@/lib/publish'
-import { publishPieceToBuffer } from '@/lib/publishPiece'
+import { publishPieceToSocial } from '@/lib/publishPiece'
 import { suggestScheduleTime } from '@/lib/scheduleHeuristics'
 import { buildImagesManifest } from '@/lib/publishImageMirror'
 import { slugifyTitle, deriveSeoTitle, deriveMetaDescription, cleanBlogMarkdown } from '@/lib/blogOutput'
@@ -51,7 +51,7 @@ function getCachedScheduledItems(qc) {
  * class (see CLAUDE.md "Buffer vs bundle.social publish paths") is avoided by
  * having exactly one copy of the blog-vs-social branch and the status writes.
  *
- * The low-level Buffer dispatch already lives in publishPieceToBuffer; this hook
+ * The low-level publish dispatch already lives in publishPieceToSocial; this hook
  * owns the layer above it (blog website path, media gate, approver audit,
  * status transitions, cache invalidation, toasts).
  *
@@ -223,12 +223,12 @@ export function useContentWorkflow(piece) {
         })
         posthogCapture('published', { platform: 'blog', pieceId: piece.id })
       } else {
-        // Social publish runs through the shared publishPieceToBuffer helper —
+        // Social publish runs through the shared publishPieceToSocial helper —
         // the single source of truth for the Buffer path (incl. carousel
         // slide-baking). The helper dispatches + PATCHes status; we own the
         // toast, the baked-slide persist, and the approver audit.
         const { scheduling, scheduledAt: finalScheduledAt, renderedSlides } = await runWithToast(
-          publishPieceToBuffer(piece, {
+          publishPieceToSocial(piece, {
             scheduledAt: effectiveScheduledAt,
             useQueue: usingQueue,
             userEmail,

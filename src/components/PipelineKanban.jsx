@@ -28,7 +28,7 @@ const LANES = [
 
 // Statuses a card can be dragged between. draft/in_review/approved are pure
 // status flips with an audit stamp (reviewedBy / approvedBy) — safe to set from
-// a drag. scheduled & published carry Buffer side-effects (scheduledAt,
+// a drag. scheduled & published carry publish side-effects (scheduledAt,
 // bufferUpdateId, publish), so those lanes are NOT drop targets and their cards
 // are NOT draggable — schedule/publish stay in the story detail.
 const MOVABLE = new Set(['draft', 'in_review', 'approved'])

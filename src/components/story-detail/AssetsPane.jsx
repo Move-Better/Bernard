@@ -272,9 +272,10 @@ function ExportCard({ piece }) {
 // and inline alt actions (pick a time / publish now). Blog pieces collapse
 // to a single "Publish to website" button since the WP path is synchronous.
 //
-// bufferUseQueue: when true (workspace.buffer_use_queue), the primary CTA
-// flips to "Add to Buffer queue" — Buffer picks the next open slot from the
-// channel's own posting schedule. The explainer + heuristic suggestion are
+// bufferUseQueue: when true (workspace.buffer_use_queue — a column name, not a
+// provider), the primary CTA flips to "Add to queue" and the provider picks the
+// next open slot from the channel's own posting schedule. The explainer +
+// heuristic suggestion are
 // hidden in this mode; "Pick a specific time" remains available as an alt.
 //
 // prefsOverride: workspace.schedule_prefs JSONB — replaces the global
@@ -642,7 +643,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
 
       {/* Scheduled state — shows the scheduled time + Cancel button so the
           reviewer can pull the post out of the queue and pick a different
-          time (or unapprove). Only valid for Buffer/bundle-dispatched platforms;
+          time (or unapprove). Only valid for dispatched social platforms;
           blog publishes don't go through this state. */}
       {isPublish && piece.status === 'scheduled' && canReview && piece.platform !== 'blog' && (
         <div className="rounded-lg border bg-primary/5 border-primary/20 p-3 space-y-2.5">
@@ -775,8 +776,8 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
           </Button>
         )}
 
-        {/* Unapprove — reviewer only, while still on approved (pre-Buffer). Once
-            the piece is scheduled or published the post lives on Buffer and the
+        {/* Unapprove — reviewer only, while still on approved (pre-dispatch).
+            Once the piece is scheduled or published it lives at the provider and the
             undo path is Cancel scheduled / Delete published, not Unapprove. In
             the workflow (Words) view the Undo lives in the handoff banner above,
             so this standalone button only renders in the publish view. */}

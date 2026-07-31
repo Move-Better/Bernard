@@ -27,7 +27,7 @@ const KIND_OPTIONS = [
 ]
 
 // Instagram reels are the tightest platform cap (60s). Any video longer than
-// this will be rejected by Buffer for IG even after our transcode pre-flight
+// this will be rejected by Instagram even after our transcode pre-flight
 // (which only resizes dimensions, not duration). Staff need to trim it first.
 const REEL_MAX_SECONDS = 60
 

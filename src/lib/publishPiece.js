@@ -6,7 +6,7 @@ import { brandStyleForRender } from '@/lib/brandSwatches'
 import { resolveGbpLocationIds } from '@/lib/gbpLocations'
 
 /**
- * Publish — or schedule / queue — ONE social content piece through Buffer.
+ * Publish — or schedule / queue — ONE social content piece.
  *
  * This is the single source of truth for the social publish path, shared by the
  * per-piece ApprovalPanel (story-detail/AssetsPane) and the Review Inbox bulk
@@ -18,7 +18,7 @@ import { resolveGbpLocationIds } from '@/lib/gbpLocations'
  * Blog pieces are NOT handled here — they publish to the website via a separate
  * multi-step path that stays inline in ApprovalPanel.
  *
- * Side-effect boundary: this performs the Buffer dispatch (via publishAndTrack,
+ * Side-effect boundary: this performs the publish dispatch (via publishAndTrack,
  * which also PATCHes the row's status). It does NOT invalidate React Query
  * caches, write the approver audit trail, or toast — the CALLER owns those so it
  * can batch them (bulk) or attach per-piece approval fields (single). When a
@@ -28,13 +28,13 @@ import { resolveGbpLocationIds } from '@/lib/gbpLocations'
  * @param {object} piece content_items row (platform, content, media_urls, slides, photo_template_id, …)
  * @param {object} opts
  * @param {string|null} [opts.scheduledAt] ISO string for a specific slot, or null
- * @param {boolean} [opts.useQueue] add to the channel's Buffer queue (Buffer picks the slot)
+ * @param {boolean} [opts.useQueue] add to the channel's queue (the provider picks the slot)
  * @param {string} opts.userEmail approver/publisher identity
  * @param {object} opts.workspace workspace row (for brand_style on baked slides)
  * @param {Array} [opts.themes] photo templates (resolveTheme custom-template lookup)
  * @returns {Promise<{result:any, scheduling:boolean, scheduledAt:(string|null), renderedSlides:(Array|null)}>}
  */
-export async function publishPieceToBuffer(
+export async function publishPieceToSocial(
   piece,
   { scheduledAt = null, useQueue = false, userEmail, workspace, themes = [] },
 ) {
@@ -98,9 +98,9 @@ export async function publishPieceToBuffer(
   )
 
   const scheduling = !!scheduledAt || !!useQueue
-  // In queue mode Buffer returns the slot it assigned — echo it back so the
+  // In queue mode the provider returns the slot it assigned — echo it back so the
   // row's scheduled_at reflects the real time without a webhook round-trip.
-  const queueDueAt = result?.buffer?.scheduledAt || null
+  const queueDueAt = result?.social?.scheduledAt || null
 
   return {
     result,

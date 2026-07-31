@@ -327,7 +327,8 @@ function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square', trueFrame = f
 }
 
 // A single video attached to an Instagram post publishes as a Reel (9:16),
-// not a photo carousel — Instagram/Buffer can't mix photo + video in one post.
+// not a photo carousel — the legacy rule assumed one post can't mix photo +
+// video (see the format short-circuit below for when that stopped being true).
 // Shows the video in portrait with a Reel marker, and plays inline: on-clip text
 // was already baked upstream in Moment Miner, so what plays here is what ships.
 function ReelPreview({ video }) {
