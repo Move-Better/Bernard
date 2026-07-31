@@ -94,6 +94,7 @@ function ConfirmDialog({
   onOpenChange,
   title,
   description,
+  children,
   confirmLabel = 'Confirm',
   cancelLabel  = 'Cancel',
   onConfirm,
@@ -107,6 +108,7 @@ function ConfirmDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           {description && <AlertDialogDescription>{description}</AlertDialogDescription>}
         </AlertDialogHeader>
+        {children}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction

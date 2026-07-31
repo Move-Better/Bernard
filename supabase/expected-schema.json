@@ -569,6 +569,8 @@
     "last_used_at",
     "moment_type",
     "region",
+    "retire_note",
+    "retire_reasons",
     "review_by",
     "reviewed_at",
     "reviewed_by",

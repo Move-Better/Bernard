@@ -10,6 +10,8 @@ import { useAppMutation } from '@/lib/useAppMutation'
 import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import ErrorState from '@/components/ErrorState'
+import MomentRetireReasons from '@/components/moments/MomentRetireReasons'
+import { MOMENT_RETIRE_REASON_LABEL } from '@/lib/momentRetire'
 
 // Display labels for the scoreMoments.js taxonomy. Local mirror — the api/
 // module can't be imported across the client/server boundary (same note as
@@ -159,8 +161,23 @@ function ReviewStamp({ m, reviewerName, tone = 'reviewed' }) {
  * Approve is green and Retire is red on purpose: the brand teal reads as
  * navigation everywhere else in the app, so a teal button here wouldn't read as
  * a decision.
+ *
+ * Retire opens a small reason popover (mirrors ModelPostRating's "what made
+ * this land" flow, just for the opposite verdict) rather than firing
+ * instantly — a reject is worth a beat to say why. The 'R' keyboard shortcut
+ * still fires instantly with no reason, so blitzing the queue stays fast; the
+ * popover is the enrichment path for whoever clicks.
  */
 function QueueCard({ m, staffName, isTop, onApprove, onRetire, onSkip, busy }) {
+  const [retireOpen, setRetireOpen] = useState(false)
+  const [reasons, setReasons] = useState([])
+  const [note, setNote] = useState('')
+  const toggleReason = (key) =>
+    setReasons((prev) => (prev.includes(key) ? prev.filter((r) => r !== key) : [...prev, key]))
+  const confirmRetire = () => {
+    onRetire(m, { reasons, note })
+    setRetireOpen(false)
+  }
   return (
     <article className="rounded-xl border border-border bg-card shadow-sm p-4 flex gap-3.5">
       <span
@@ -185,15 +202,33 @@ function QueueCard({ m, staffName, isTop, onApprove, onRetire, onSkip, busy }) {
           >
             <Check className="h-4 w-4" />Approve
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy}
-            onClick={() => onRetire(m)}
-            className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          <Popover
+            open={retireOpen}
+            onOpenChange={(o) => { setRetireOpen(o); if (!o) { setReasons([]); setNote('') } }}
           >
-            <Archive className="h-4 w-4" />Retire
-          </Button>
+            <PopoverTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Archive className="h-4 w-4" />Retire
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-80 space-y-3">
+              <p className="text-sm font-semibold text-foreground">Why doesn&rsquo;t this one work?</p>
+              <MomentRetireReasons reasons={reasons} onToggleReason={toggleReason} note={note} onNoteChange={setNote} />
+              <Button
+                size="sm"
+                disabled={busy}
+                onClick={confirmRetire}
+                className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                <Archive className="h-4 w-4" />Retire
+              </Button>
+            </PopoverContent>
+          </Popover>
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => onSkip(m)} className="text-muted-foreground">
             Skip for now
           </Button>
@@ -207,6 +242,20 @@ function QueueCard({ m, staffName, isTop, onApprove, onRetire, onSkip, busy }) {
         </div>
       </div>
     </article>
+  )
+}
+
+// "Why: doesn't land, not social — reads flat on Reels." The reject reason —
+// visible so a human scanning retired moments can see the pattern, not just
+// that a verdict happened.
+function RetireReasonLine({ m }) {
+  const reasons = Array.isArray(m.retire_reasons) ? m.retire_reasons : []
+  if (!reasons.length && !m.retire_note) return null
+  const labels = reasons.map((r) => MOMENT_RETIRE_REASON_LABEL[r] || r).join(', ')
+  return (
+    <p className="mt-1 text-2xs text-muted-foreground">
+      Why: {[labels, m.retire_note].filter(Boolean).join(' — ')}
+    </p>
   )
 }
 
@@ -238,6 +287,7 @@ function MomentRow({ m, staffName, reviewerName, onRetire, onRestore }) {
               </span>
             )}
           </MomentMeta>
+          {retired && <RetireReasonLine m={m} />}
         </div>
       </div>
       <RowMenu m={m} onRetire={onRetire} onRestore={onRestore} />
@@ -272,6 +322,8 @@ export default function OnHandTab({ moments, isLoading, error, refetch, staffMap
   const [reviewState, setReviewState] = useState('all')
   const [sort, setSort] = useState('strongest')
   const [retireTarget, setRetireTarget] = useState(null)
+  const [retireReasons, setRetireReasons] = useState([])
+  const [retireNote, setRetireNote] = useState('')
   // Session-local: "skip for now" pushes a moment to the back of the queue
   // rather than recording a verdict, so it deliberately does not persist —
   // a reload brings skipped moments back for another look.
@@ -357,7 +409,21 @@ export default function OnHandTab({ moments, isLoading, error, refetch, staffMap
   })
 
   const approve = useCallback((m) => patchMutation.mutate({ id: m.id, reviewed: true }), [patchMutation])
-  const retireNow = useCallback((m) => patchMutation.mutate({ id: m.id, status: 'retired', reviewed: true }), [patchMutation])
+  // reasons/note are optional — the 'R' keyboard shortcut calls this with no
+  // second arg (instant retire, matches the pre-existing fast path); the
+  // queue card's Retire button goes through a reason popover first and
+  // passes what was picked.
+  const retireNow = useCallback(
+    (m, { reasons = [], note = '' } = {}) =>
+      patchMutation.mutate({
+        id: m.id,
+        status: 'retired',
+        reviewed: true,
+        retireReasons: reasons.length ? reasons : undefined,
+        retireNote: note.trim() || undefined,
+      }),
+    [patchMutation],
+  )
   const skip = useCallback((m) => setSkipped((prev) => (prev.includes(m.id) ? prev : [...prev, m.id])), [])
 
   const queue = pending.slice(0, QUEUE_SIZE)
@@ -577,7 +643,7 @@ export default function OnHandTab({ moments, isLoading, error, refetch, staffMap
           there's no rhythm for a modal to break. */}
       <ConfirmDialog
         open={!!retireTarget}
-        onOpenChange={(open) => { if (!open) setRetireTarget(null) }}
+        onOpenChange={(open) => { if (!open) { setRetireTarget(null); setRetireReasons([]); setRetireNote('') } }}
         title="Retire this moment?"
         description={
           plannedN > 0
@@ -589,10 +655,27 @@ export default function OnHandTab({ moments, isLoading, error, refetch, staffMap
         loading={busy}
         onConfirm={() => {
           if (!retireTarget) return
-          patchMutation.mutate({ id: retireTarget.id, status: 'retired', reviewed: true })
+          patchMutation.mutate({
+            id: retireTarget.id,
+            status: 'retired',
+            reviewed: true,
+            retireReasons: retireReasons.length ? retireReasons : undefined,
+            retireNote: retireNote.trim() || undefined,
+          })
           setRetireTarget(null)
+          setRetireReasons([])
+          setRetireNote('')
         }}
-      />
+      >
+        <MomentRetireReasons
+          reasons={retireReasons}
+          onToggleReason={(key) =>
+            setRetireReasons((prev) => (prev.includes(key) ? prev.filter((r) => r !== key) : [...prev, key]))
+          }
+          note={retireNote}
+          onNoteChange={setRetireNote}
+        />
+      </ConfirmDialog>
     </div>
   )
 }
