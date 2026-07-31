@@ -26,11 +26,23 @@
 // own library, so a workspace with a thin library simply gets no match — the
 // same outcome it has today — and this rolls out to all tenants at once.
 //
-// Scope (v1): Tier-2 SEMANTIC match only. A future Tier-1 could attach the
-// moment's own source clip directly via moments.clip_asset_id, but that column
-// can point at the raw (long) interview video rather than a rendered short, so
-// it is deferred until that's verified — attaching a 30-minute source as a reel
-// would be worse than a good semantic photo.
+// Scope (v1): Tier-2 SEMANTIC match only. A future Tier-1 would attach the
+// moment's own source clip directly via moments.clip_asset_id — but that column
+// is NEVER WRITTEN. Nothing in api/ or src/ sets it; verified in prod
+// 2026-07-31, 0 of 208 moments carry one.
+//
+// (This used to say the column "can point at the raw (long) interview video
+// rather than a rendered short", which implied it holds values and gave a
+// wrong reason for deferring. It holds none.)
+//
+// What actually blocks Tier-1 is upstream: linking a moment to a clip means
+// matching the moment's position in the source video against a segment's
+// start/end, and no moment has a position — all 208 are text-anchored
+// (anchor.msg_idx into interviews.messages), zero are time-anchored
+// (anchor.t_start). Time anchors are the video-interview pipeline's job
+// (.claude/moment-bank-sprint.md, "link clip_asset_id when the per-turn clip
+// exists"). Until moments carry timestamps, there is nothing to match on and
+// Tier-1 cannot be built regardless of what it would attach.
 
 import { searchClips } from './clipSearch.js'
 import { buildDraftMatchQuery } from './draftMatchQuery.js'
