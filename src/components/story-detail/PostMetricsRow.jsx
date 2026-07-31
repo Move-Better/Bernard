@@ -1,4 +1,4 @@
-// BufferMetricsRow — compact post-performance chip row for published content.
+// PostMetricsRow — compact post-performance chip row for published content.
 //
 // Shown beneath a content piece body when the piece has a buffer_update_id.
 // Fetches via /api/buffer-analytics, which serves the latest engagement_snapshots
@@ -10,7 +10,7 @@
 import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useBufferMetrics, queryKeys } from '@/lib/queries'
+import { usePostMetrics, queryKeys } from '@/lib/queries'
 import { apiFetch } from '@/lib/api'
 
 function StatChip({ label, value }) {
@@ -66,8 +66,8 @@ function BundleStatChips({ metrics }) {
   )
 }
 
-export default function BufferMetricsRow({ contentItemId }) {
-  const { data, isLoading, isFetching } = useBufferMetrics(contentItemId)
+export default function PostMetricsRow({ contentItemId }) {
+  const { data, isLoading, isFetching } = usePostMetrics(contentItemId)
   const qc = useQueryClient()
   const [forcing, setForcing] = useState(false)
 
@@ -80,7 +80,7 @@ export default function BufferMetricsRow({ contentItemId }) {
     setForcing(true)
     try {
       const res = await apiFetch(`/api/buffer-analytics?contentItemId=${encodeURIComponent(contentItemId)}&force=true`)
-      qc.setQueryData(queryKeys.bufferMetrics(contentItemId), res)
+      qc.setQueryData(queryKeys.postMetrics(contentItemId), res)
     } catch {
       // Leave the existing cached data in place — a transient failure here
       // shouldn't blank out numbers the user could already see.

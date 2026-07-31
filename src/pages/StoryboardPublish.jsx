@@ -9,7 +9,7 @@ import LoadingState from '@/components/LoadingState'
 import ErrorState from '@/components/ErrorState'
 import SlideEditor from '@/components/story-detail/SlideEditor'
 import StoryComposer from '@/components/story-detail/StoryComposer'
-import BufferMetricsRow from '@/components/story-detail/BufferMetricsRow'
+import PostMetricsRow from '@/components/story-detail/PostMetricsRow'
 import WinnerToggle from '@/components/story-detail/WinnerToggle'
 import UnifiedEditor from '@/components/editor/UnifiedEditor'
 import { ApprovalPanel } from '@/components/story-detail/AssetsPane'
@@ -159,7 +159,7 @@ export default function StoryboardPublish() {
           </Link>
         )}
         {piece.status === 'published' && piece.buffer_update_id && (
-          <BufferMetricsRow contentItemId={piece.id} />
+          <PostMetricsRow contentItemId={piece.id} />
         )}
         {piece.status === 'published' && <WinnerToggle piece={piece} />}
       </div>

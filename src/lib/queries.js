@@ -131,8 +131,8 @@ export const queryKeys = {
   producerNeedsYou: ['producer-needs-you'],
   relationshipCard: ['home-relationship-card'],
   gbpPerformance:   ['gbp-performance'],
-  bufferMetrics: (contentItemId) => ['buffer-metrics', contentItemId],
-  gbpMetrics:    (contentItemId) => ['gbp-metrics',    contentItemId],
+  postMetrics: (contentItemId) => ['post-metrics', contentItemId],
+  gbpMetrics:  (contentItemId) => ['gbp-metrics',  contentItemId],
   locations: {
     all:  ['locations'],
     list: () => ['locations', 'list'],
@@ -1405,16 +1405,16 @@ export function useUpdateContentItemStatus() {
   })
 }
 
-// ── Buffer Analytics ─────────────────────────────────────────────────────────
+// ── Post analytics ───────────────────────────────────────────────────────────
 
-export function useBufferMetrics(contentItemId, options = {}) {
+export function usePostMetrics(contentItemId, options = {}) {
   return useQuery({
-    queryKey: queryKeys.bufferMetrics(contentItemId),
+    queryKey: queryKeys.postMetrics(contentItemId),
     queryFn: () =>
       apiFetch(`/api/buffer-analytics?contentItemId=${encodeURIComponent(contentItemId)}`)
         .catch(() => null),
     enabled: !!contentItemId,
-    staleTime: 1000 * 60 * 30, // 30min — Buffer stats don't update by the second
+    staleTime: 1000 * 60 * 30, // 30min — post stats don't update by the second
     ...options,
   })
 }

@@ -104,7 +104,7 @@ function extractMetrics(stats = {}) {
 // platform regardless of whether that platform actually reports each field
 // (LinkedIn never reports views/likes/comments/shares/saves; GBP has no bundle
 // analytics at all — see processWorkspaceBundle in refresh-engagement.js).
-// `source`/`platform` let BufferMetricsRow pick platform-native labels
+// `source`/`platform` let PostMetricsRow pick platform-native labels
 // (IG/FB call the impressions number "Views"; LinkedIn calls it
 // "Impressions") instead of guessing from field names alone.
 function mapBundleMetrics(m = {}, platform) {

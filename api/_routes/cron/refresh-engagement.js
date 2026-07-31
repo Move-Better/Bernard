@@ -62,7 +62,7 @@ function scoreOf(stats) {
   if (!stats || typeof stats !== 'object') return 0
   // bundle's statistics blob carries BOTH `impressions` and `views` for the
   // SAME real number on IG/FB (Meta's 2024 "impressions"→"Views" rename — see
-  // BufferMetricsRow.jsx) — blindly summing every field below double-counts
+  // PostMetricsRow.jsx) — blindly summing every field below double-counts
   // that one number, inflating bundle-sourced scores relative to platforms
   // that don't have this duplicate naming (LinkedIn always has views=0).
   // Delegate to the same reach+engagement scorer used by

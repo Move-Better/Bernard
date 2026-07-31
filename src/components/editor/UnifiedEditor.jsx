@@ -8,7 +8,7 @@ import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
 import EditorIconRail from '@/components/editor/IconRail'
 import { RAIL_META } from '@/components/editor/railSections'
 import PostPreview from '@/components/PostPreview'
-import BufferMetricsRow from '@/components/story-detail/BufferMetricsRow'
+import PostMetricsRow from '@/components/story-detail/PostMetricsRow'
 import WinnerToggle from '@/components/story-detail/WinnerToggle'
 import OverlayTextEditor from '@/components/story-detail/OverlayTextEditor'
 import { ApprovalPanel } from '@/components/story-detail/AssetsPane'
@@ -798,7 +798,7 @@ function PublishPanel({ piece, remainingNeedsMedia = [], isReel, updateItem }) {
           </span>
         </Link>
       )}
-      {piece.status === 'published' && piece.buffer_update_id && <BufferMetricsRow contentItemId={piece.id} />}
+      {piece.status === 'published' && piece.buffer_update_id && <PostMetricsRow contentItemId={piece.id} />}
       {piece.status === 'published' && <WinnerToggle piece={piece} />}
     </div>
   )
