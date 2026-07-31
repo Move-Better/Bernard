@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useUser } from '@clerk/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Scissors, Loader2, BarChart3, Film, ShieldAlert, Plus,
@@ -404,6 +405,14 @@ export default function MomentMiner({ initialTab = 'onhand' }) {
     () => Object.fromEntries(staff.filter((c) => c.user_id).map((c) => [c.user_id, c.name])),
     [staff]
   )
+  // The signed-in person's own staff row, if they have one. Drives the "your
+  // quotes need a fix" strip — moments.staff_id names who SAID a quote, so
+  // this is what decides whether a send-back is addressed to you.
+  const { user } = useUser()
+  const myStaffId = useMemo(
+    () => staff.find((c) => c.user_id && c.user_id === user?.id)?.id || null,
+    [staff, user?.id]
+  )
 
   // Top-level page tabs: the on-hand inventory (default), the video intake
   // lane (the entire pre-2026-07-27 Moment Miner, unchanged inside), and the
@@ -757,6 +766,7 @@ export default function MomentMiner({ initialTab = 'onhand' }) {
           refetch={refetchBank}
           staffMap={staffMap}
           staffByUserId={staffByUserId}
+          myStaffId={myStaffId}
         />
       ) : topTab === 'coverage' ? (
         <CoverageTab gaps={s?.gaps} />
