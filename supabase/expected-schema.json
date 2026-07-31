@@ -900,7 +900,6 @@
     "bundle_team_id",
     "city",
     "created_at",
-    "gbp_location_id",
     "id",
     "is_primary",
     "label",

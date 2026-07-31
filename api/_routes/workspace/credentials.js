@@ -21,9 +21,9 @@ import { listConfiguredServices } from '../../_lib/getCredential.js'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-// 'facebook' retired 2026-05-10 — FB routes through Buffer.
-// 'gbp' retired 2026-05-11 — GBP routes through Buffer (per-location channel
-//   IDs live on workspace_locations.gbp_location_id).
+// 'facebook' retired 2026-05-10 — FB routes through the social publisher.
+// 'gbp' retired 2026-05-11 — GBP publishes through bundle.social, which connects
+//   per location; the Team id lives on workspace_locations.bundle_team_id.
 // 'drive' uses OAuth (api/integrations/drive/*) for write — listed here only
 //   so the standard GET/DELETE paths can read/remove the row uniformly.
 // 'beehiiv' newsletter publish via api/publish/beehiiv.js (creates drafts;
