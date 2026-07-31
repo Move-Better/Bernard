@@ -6,6 +6,25 @@ Generic build/verification methodology (challenge gate, design interview, mockup
 
 Bernard's SaaS-productization strategy (plan tiers, pricing, managed-vs-BYO analytics, onboarding/activation, what's tenant-product vs Move-Better-private) is tracked in the **Vigil** repo, not here: `specs/bernard-saas-productization.md` (plus follow-on specs `specs/bernard-tier-assignment.md` and `specs/bernard-onboarding-path.md` as they land). Vigil is the read-only oversight layer that authors these specs and hands them to Bernard. Key decisions as of 2026-07-11: per-location flat pricing + free trial; jobs-based tiers (Get Found → Grow → Scale/Pro); base-tier analytics is *managed* (OAuth channel data + bought SEO data), never make a clinic wire up GA4/GSC/PostHog. Before building anything tiering-, pricing-, onboarding-, or feature-gating-shaped, read that spec so you don't build against the plan.
 
+## A column you can WRITE must also be a column you can READ
+
+`api/_routes/db/content.js` keeps two independent lists: the PATCH allowlist (camelCase →
+snake_case) and the `SELECT` string. Adding to one and not the other produces a **write-only
+column** — the PATCH succeeds, the row updates, and every reader gets `undefined`. Nothing errors.
+The feature is inert, not broken, which is much harder to notice.
+
+That is exactly how `format` shipped in #2467: the picker wrote `content_items.format` correctly,
+but SELECT omitted it, so the control never showed its own selection, the badge never changed, and
+`publishPiece`'s `piece.format` was undefined — meaning the explicit format never reached the
+publish payload either. lint, typecheck, build, 902 unit tests and route-smoke were all green;
+only driving the real authed page in prod found it (#2468).
+
+`tests/lib/contentSelectCoversPatch.test.js` now parses both lists out of the route and asserts they
+cover each other, with a non-vacuity check so a rotted regex can't pass by matching nothing. It has
+already paid for itself: adding `media_source` in #2479 tripped it in CI within seconds, catching in
+one test run what had previously cost a full prod debugging session. **When adding a column here,
+add both halves in the same edit — and if that guard goes red, it is telling you the truth.**
+
 ## API handler checklist — 7 rules every new route must follow
 
 These patterns caused 26+ consecutive audit rounds because each appeared in one reference handler and got copy-pasted to ~15 others without being caught. The ESLint rule `bernard/no-detail-in-error-response` catches #1 at lint time; the PR review job's Claude prompt checks these. But check them manually before opening a PR:
@@ -578,8 +597,6 @@ Three project-specific rules bite hard if you don't know them:
 `--popover` / `--popover-foreground` are defined in `src/index.css` (opaque white), and `bg-popover`/`text-popover-foreground` are used in several components (`WorkspaceSwitcher`'s dropdown, `SidebarNavLink`'s collapsed tooltip) — but `popover` was never added to `theme.extend.colors` in `tailwind.config.js` (unlike `card`, `accent`, etc., which all have a matching entry). Tailwind silently drops unknown utility classes rather than erroring, so `bg-popover` compiled to **nothing** — those menus/tooltips rendered with zero background and page content showed straight through. This had apparently been live and unnoticed in `WorkspaceSwitcher` before a new sidebar nav flyout (#1895) hit the same bug and made it visible (#1896 fix).
 
 Rule: when using any `bg-<token>`/`text-<token>-foreground` class backed by a CSS custom property in `src/index.css`, confirm the token has a matching entry in `tailwind.config.js`'s `theme.extend.colors` — grep the config, don't assume a var's existence means the utility class works. If you're unsure, check the built CSS (`grep -o "\.bg-<token>{[^}]*}" dist/assets/*.css` after `npm run build`) — a real rule should show `background-color:hsl(var(--<token>))`; an empty/missing match means the utility is a no-op.
-
-**A different, worse sibling of the same failure: some bare two-digit opacity fractions (`bg-<token>/12`) silently fail to compile in this repo's Tailwind (v3.4.1), even though the color token itself is real and correctly configured.** Unlike the `bg-popover` case above, this isn't a missing `theme.extend.colors` entry — `text-action` and `border-action/35` on the *same element* compiled fine; only `bg-action/12` produced zero CSS. Reproduced in isolation against a stock `bg-red-500/12`, unrelated to any custom token, so it's a real upstream JIT bug (`/9` and `/15` compile; `/11`, `/12`, `/13` do not) — not a config problem, and not fixable by editing `tailwind.config.js`. **No error anywhere**: lint, build, and a full green unit-test suite all shipped it to prod; only caught by inspecting `getComputedStyle(el).backgroundColor` on the live page and finding `rgba(0, 0, 0, 0)`. Rule: for any bare `bg-<token>/N` (or `text-`/`border-`) opacity modifier using a fraction that isn't a small set of common round numbers (5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95, 100), don't trust it — either confirm the exact class string appears in the built CSS (`grep -o "bg-action\\\\/12{[^}]*}" dist/assets/*.css`), or just use bracket syntax (`bg-action/[0.12]`) up front, which routes through a different, unaffected parser path and is already the established workaround elsewhere in this codebase (`bg-action/[0.07]`). (#2503, 2026-07-31 — shipped invisible in #2498, caught same-session by a post-deploy Chrome computed-style check per the standard verification loop.)
 
 ## Template literal backticks in `src/lib/prompts.js`
 
