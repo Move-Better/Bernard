@@ -15,7 +15,7 @@ import { workspaceContext }  from '../../_lib/workspaceContext.js'
 import { requireRole }       from '../../_lib/auth.js'
 import { enforceLimit }      from '../../_lib/ratelimit.js'
 import { decryptSecret }     from '../../_lib/credentialCrypto.js'
-import { fetchSearchTotals } from '../../_lib/searchConsole.js'
+import { fetchSearchTotals, fetchNonBrandedSearchTotals } from '../../_lib/searchConsole.js'
 import { periodBounds, prevPeriodBounds, toDateStr } from '../../_lib/periodMath.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -78,10 +78,12 @@ export default async function handler(req, res) {
   // Prev is best-effort: its failure nulls the deltas, not the card.
   const { start: prevStart, end: prevEnd } = prevPeriodBounds(granularity, periodOffset)
   let totals
+  let nonBrandedTotals
   let prevTotals = null
   try {
-    ;[totals, prevTotals] = await Promise.all([
+    ;[totals, nonBrandedTotals, prevTotals] = await Promise.all([
       fetchSearchTotals({ credential, siteUrl: ws.gsc_site_url, startDate: periodStartStr, endDate: periodEndStr }),
+      fetchNonBrandedSearchTotals({ credential, siteUrl: ws.gsc_site_url, startDate: periodStartStr, endDate: periodEndStr }),
       fetchSearchTotals({
         credential, siteUrl: ws.gsc_site_url,
         startDate: toDateStr(prevStart), endDate: toDateStr(new Date(prevEnd.getTime() - 1)),
@@ -95,11 +97,19 @@ export default async function handler(req, res) {
     return res.status(200).json({ ...body, connected: true, error: 'gsc_fetch_failed' })
   }
 
+  // branded = total - non_branded, derived rather than independently
+  // queried — see fetchNonBrandedSearchTotals for why a third, includingRegex
+  // call would silently disagree with this subtraction.
+  const nonBrandedClicks = nonBrandedTotals.clicks
+  const brandedClicks = Math.max(0, totals.clicks - nonBrandedClicks)
+
   return res.status(200).json({
     ...body,
     connected: true,
     clicks: totals.clicks,
     impressions: totals.impressions,
+    non_branded_clicks: nonBrandedClicks,
+    branded_clicks: brandedClicks,
     prev: prevTotals ? { clicks: prevTotals.clicks, impressions: prevTotals.impressions } : null,
   })
 }

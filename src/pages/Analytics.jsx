@@ -280,11 +280,19 @@ function SeoPeriodRead({ data, granularity }) {
       </h3>
       <div className="mt-4 space-y-3 text-sm">
         <div className="flex justify-between items-baseline">
-          <span className="text-muted-foreground">Clicks</span>
+          <span className="text-muted-foreground">Non-branded clicks</span>
+          <span className="font-semibold tabular-nums text-base">{fmtNum(data.non_branded_clicks)}</span>
+        </div>
+        <div className="flex justify-between items-baseline text-2xs text-muted-foreground">
+          <span>Total clicks</span>
           <span className="inline-flex items-center gap-2">
             <PeriodDelta cur={data.clicks} prev={data?.prev?.clicks} granularity={granularity} />
-            <span className="font-semibold tabular-nums">{fmtNum(data.clicks)}</span>
+            <span className="tabular-nums">{fmtNum(data.clicks)}</span>
           </span>
+        </div>
+        <div className="flex justify-between items-baseline text-2xs text-muted-foreground">
+          <span>Branded clicks</span>
+          <span className="tabular-nums">{fmtNum(data.branded_clicks)}</span>
         </div>
         <div className="flex justify-between items-baseline">
           <span className="text-muted-foreground">Impressions</span>
