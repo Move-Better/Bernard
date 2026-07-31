@@ -37,10 +37,21 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 // would be better (the comparison would track when the owner actually last
 // looked) — deferred rather than faked, since it needs its own column.
 const WINDOW_DAYS = 30
-// Below this many measurable posts a format's delta is not reported. Same
-// reasoning as the learning panel's MIN_SAMPLE: with 2 posts, one good day
-// reads as a trend.
-const MIN_POSTS_FOR_DELTA = 3
+// Below this many measurable posts a format's delta is not reported.
+//
+// Raised 3 -> 10 after seeing it rendered against real data: the Post row read
+// "+174%" off a base of a few hundred impressions, where one post doing
+// modestly well moves the figure that far. It reads as a strong finding and is
+// closer to noise.
+//
+// 3 was also inconsistent with this feature's own sibling: the learning panel
+// withholds a rate below MIN_SAMPLE=20, on the argument that at n=10 a single
+// data point swings it 10 points. Applying that reasoning at 3 here, in a card
+// sitting directly above that panel, was indefensible.
+//
+// At current volumes this means most rows will read "not enough yet" for a
+// while. That is the honest state, and the card is built to say so.
+const MIN_POSTS_FOR_DELTA = 10
 const SAMPLE_COUNT = 5
 
 function sb(path) {
