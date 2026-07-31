@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Loader2, MoreHorizontal, Search, PlayCircle, Quote, Check, Archive, CheckCircle2 } from 'lucide-react'
@@ -160,7 +160,7 @@ function ReviewStamp({ m, reviewerName, tone = 'reviewed' }) {
  * navigation everywhere else in the app, so a teal button here wouldn't read as
  * a decision.
  */
-function QueueCard({ m, staffName, isTop, onApprove, onRetire, onSkip, busy }) {
+function QueueCard({ m, staffName, onApprove, onRetire, onSkip, busy }) {
   return (
     <article className="rounded-xl border border-border bg-card shadow-sm p-4 flex gap-3.5">
       <span
@@ -197,13 +197,6 @@ function QueueCard({ m, staffName, isTop, onApprove, onRetire, onSkip, busy }) {
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => onSkip(m)} className="text-muted-foreground">
             Skip for now
           </Button>
-          {isTop && (
-            <span className="hidden sm:flex items-center gap-1 ml-auto text-3xs text-muted-foreground">
-              <kbd className="rounded bg-muted px-1.5 py-0.5 font-bold">A</kbd>
-              <kbd className="rounded bg-muted px-1.5 py-0.5 font-bold">R</kbd>
-              <kbd className="rounded bg-muted px-1.5 py-0.5 font-bold">S</kbd>
-            </span>
-          )}
         </div>
       </div>
     </article>
@@ -361,25 +354,6 @@ export default function OnHandTab({ moments, isLoading, error, refetch, staffMap
   const skip = useCallback((m) => setSkipped((prev) => (prev.includes(m.id) ? prev : [...prev, m.id])), [])
 
   const queue = pending.slice(0, QUEUE_SIZE)
-  const top = queue[0]
-
-  // A / R / S act on the top card only — the queue is a stack, so there is
-  // never ambiguity about which moment a keypress lands on. Ignored while a
-  // field has focus or a modifier is held so it can't hijack real typing.
-  useEffect(() => {
-    if (mode !== 'queue' || !top) return
-    const onKey = (e) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return
-      const el = e.target
-      if (el && (el.isContentEditable || /^(input|textarea|select)$/i.test(el.tagName))) return
-      const k = e.key.toLowerCase()
-      if (k === 'a') { e.preventDefault(); approve(top) }
-      else if (k === 'r') { e.preventDefault(); retireNow(top) }
-      else if (k === 's') { e.preventDefault(); skip(top) }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [mode, top, approve, retireNow, skip])
 
   if (isLoading) {
     return (
@@ -466,12 +440,11 @@ export default function OnHandTab({ moments, isLoading, error, refetch, staffMap
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {queue.map((m, i) => (
+            {queue.map((m) => (
               <QueueCard
                 key={m.id}
                 m={m}
                 staffName={staffMap[m.staff_id]}
-                isTop={i === 0}
                 busy={busy}
                 onApprove={approve}
                 onRetire={retireNow}
