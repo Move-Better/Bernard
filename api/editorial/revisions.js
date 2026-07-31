@@ -12,10 +12,17 @@ import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
 import { workspaceContext } from '../_lib/workspaceContext.js'
+import { firstFieldErrorKey } from '../_lib/requestSchemas/primitives.js'
+import {
+  revisionSubjectSchema,
+  revisionDocSchema,
+  revisionLabelSchema,
+  REVISION_SUBJECT_FIELD_ORDER,
+  REVISION_SUBJECT_ERROR_KEYS,
+} from '../_lib/requestSchemas/editorialRevisions.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const MAX_KEEP = 30
 
 async function sb(path, init = {}) {
@@ -41,8 +48,13 @@ export default async function handler(req, res) {
   const body = req.body || {}
   const subjectType = req.method === 'GET' ? String(params.get('subjectType') || '') : String(body.subjectType || '')
   const subjectId = req.method === 'GET' ? String(params.get('subjectId') || '') : String(body.subjectId || '')
-  if (!['video', 'slides'].includes(subjectType)) return res.status(400).json({ error: 'invalid_subject_type' })
-  if (!UUID_RE.test(subjectId)) return res.status(400).json({ error: 'invalid_subject_id' })
+  const subjectErrorKey = firstFieldErrorKey(
+    revisionSubjectSchema,
+    { subjectType, subjectId },
+    REVISION_SUBJECT_FIELD_ORDER,
+    REVISION_SUBJECT_ERROR_KEYS
+  )
+  if (subjectErrorKey) return res.status(400).json({ error: subjectErrorKey })
 
   const scope = `workspace_id=eq.${ws.id}&subject_type=eq.${subjectType}&subject_id=eq.${subjectId}`
 
@@ -54,8 +66,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      if (!body.doc || typeof body.doc !== 'object') return res.status(400).json({ error: 'invalid_doc' })
-      const label = typeof body.label === 'string' ? body.label.slice(0, 120) : null
+      if (!revisionDocSchema.safeParse(body.doc).success) return res.status(400).json({ error: 'invalid_doc' })
+      const label = revisionLabelSchema.parse(body.label)
       const ins = await sb('editor_revisions', {
         method: 'POST',
         headers: { Prefer: 'return=representation' },

@@ -16,35 +16,22 @@ import { indexContentItem } from '../../_lib/practiceMemoryRag.js'
 import { mondayOf } from '../../_lib/strategist.js'
 import { computeEditDiff } from '../../_lib/editDiffMining.js'
 import { waitUntil } from '@vercel/functions'
-import { MODEL_REASON_KEYS, MODEL_NOTE_MAX } from '../../../src/lib/modelRating.js'
-
-
+import { uuid, uuidCoerced, isoDateOrTimestamp } from '../../_lib/requestSchemas/primitives.js'
+import {
+  statusSchema,
+  statusListSchema,
+  platformSchema,
+  rejectReasonSchema,
+  originSchema,
+  targetLocationsSchema,
+  modelReasonsSchema,
+  modelNoteSchema,
+} from '../../_lib/requestSchemas/dbContent.js'
 import { supabaseRest } from '../../_lib/supabaseRest.js'
-// Allowlists for query-param values interpolated into PostgREST query strings.
-// Without these, a crafted value like `draft,approved)&limit=10000` would break
-// out of the intended clause and override server-side constraints.
-const VALID_STATUSES  = new Set(['draft', 'in_review', 'approved', 'published', 'scheduled', 'rejected'])
-// T4 learning loop — fixed reason enum for a hard reject (see migration 180).
-const REJECT_REASONS = new Set(['wrong_visuals', 'wrong_words', 'wrong_topic', 'wrong_timing', 'other'])
-const VALID_PLATFORMS = new Set([
-  // atom-namespace keys (ATOM_DEFINITIONS in api/_lib/atomPlan.js)
-  'instagram', 'linkedin', 'facebook', 'gbp', 'tiktok', 'twitter',
-  'threads', 'bluesky', 'mastodon',
-  // single-output platforms
-  'blog', 'email', 'landing_page', 'youtube', 'youtube_short',
-  'google_ads', 'instagram_ads', 'ig_ads', 'instagram_post', 'instagram_reel',
-])
 
 const MAX_LIMIT = 100
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-// Accepts a date (YYYY-MM-DD) or a full ISO timestamp. Guards the from/to
-// range filters so a garbage value (e.g. `from=is.null`) can't reach PostgREST
-// and surface as an opaque 500.
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(?:[T ][\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?$/
-
 const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
-
 
 const ok  = (res, data, status = 200) => res.status(status).json(data)
 const err = (res, msg, status = 400)  => res.status(status).json({ error: msg })
@@ -112,7 +99,7 @@ export default async function handler(req, res) {
   // `id` is interpolated into the PostgREST id filter on the GET-by-id, PATCH,
   // and DELETE paths below. workspace_id is AND-combined so this is hardening,
   // not an isolation fix — see CLAUDE.md (PR #1391).
-  if (id && !UUID_RE.test(id)) return err(res, 'Invalid id', 400)
+  if (id && !uuid.safeParse(id).success) return err(res, 'Invalid id', 400)
 
   // ── GET ──────────────────────────────────────────────────────────────────
   if (req.method === 'GET') {
@@ -136,16 +123,13 @@ export default async function handler(req, res) {
     const origin      = searchParams.get('origin')      // 'post' = one-off Post/Brief content only
 
     // Validate allowlisted params before interpolating into the PostgREST query.
-    if (origin && origin !== 'post') return err(res, 'Invalid origin', 400)
-    if (status) {
-      const statuses = status.split(',')
-      if (statuses.some((s) => !VALID_STATUSES.has(s.trim()))) return err(res, 'Invalid status', 400)
-    }
-    if (platform && !VALID_PLATFORMS.has(platform)) return err(res, 'Invalid platform', 400)
-    if (interviewId && !UUID_RE.test(interviewId)) return err(res, 'Invalid interviewId', 400)
-    if (staffId && !UUID_RE.test(staffId)) return err(res, 'Invalid staffId', 400)
-    if (from && !ISO_DATE_RE.test(from)) return err(res, 'Invalid from date', 400)
-    if (to && !ISO_DATE_RE.test(to)) return err(res, 'Invalid to date', 400)
+    if (origin && !originSchema.safeParse(origin).success) return err(res, 'Invalid origin', 400)
+    if (status && !statusListSchema.safeParse(status).success) return err(res, 'Invalid status', 400)
+    if (platform && !platformSchema.safeParse(platform).success) return err(res, 'Invalid platform', 400)
+    if (interviewId && !uuid.safeParse(interviewId).success) return err(res, 'Invalid interviewId', 400)
+    if (staffId && !uuid.safeParse(staffId).success) return err(res, 'Invalid staffId', 400)
+    if (from && !isoDateOrTimestamp.safeParse(from).success) return err(res, 'Invalid from date', 400)
+    if (to && !isoDateOrTimestamp.safeParse(to).success) return err(res, 'Invalid to date', 400)
 
     const sel = view === 'card' ? SELECT_CARD : SELECT
     let qs = `content_items?${wsFilter}&select=${sel}&order=created_at.desc&limit=${limit}`
@@ -186,21 +170,21 @@ export default async function handler(req, res) {
     // Bulk insert
     if (Array.isArray(body)) {
       const interviewIds = [...new Set(body.map((row) => row.interview_id).filter(Boolean))]
-      if (interviewIds.some((iid) => !UUID_RE.test(iid))) return err(res, 'Invalid interview_id', 400)
+      if (interviewIds.some((iid) => !uuidCoerced.safeParse(iid).success)) return err(res, 'Invalid interview_id', 400)
       if (interviewIds.length > 0) {
         const ck = await sb(`interviews?id=in.(${interviewIds.join(',')})&workspace_id=eq.${ws.id}&select=id`)
         if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
         if ((await ck.json()).length !== interviewIds.length) return err(res, 'Interview not found in workspace', 422)
       }
       const staffIds = [...new Set(body.map((row) => row.staff_id).filter(Boolean))]
-      if (staffIds.some((sid) => !UUID_RE.test(sid))) return err(res, 'Invalid staff_id', 400)
+      if (staffIds.some((sid) => !uuidCoerced.safeParse(sid).success)) return err(res, 'Invalid staff_id', 400)
       if (staffIds.length > 0) {
         const ck = await sb(`staff?id=in.(${staffIds.join(',')})&workspace_id=eq.${ws.id}&select=id`)
         if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
         if ((await ck.json()).length !== staffIds.length) return err(res, 'Staff not found in workspace', 422)
       }
       const briefIds = [...new Set(body.map((row) => row.brief_id).filter(Boolean))]
-      if (briefIds.some((bid) => !UUID_RE.test(bid))) return err(res, 'Invalid brief_id', 400)
+      if (briefIds.some((bid) => !uuidCoerced.safeParse(bid).success)) return err(res, 'Invalid brief_id', 400)
       if (briefIds.length > 0) {
         const ck = await sb(`briefs?id=in.(${briefIds.join(',')})&workspace_id=eq.${ws.id}&select=id`)
         if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
@@ -215,7 +199,7 @@ export default async function handler(req, res) {
       for (const [k, v] of Object.entries(r)) {
         if (BULK_ALLOWED.has(k)) row[k] = v
       }
-      if (row.status !== undefined && !VALID_STATUSES.has(row.status)) row.status = 'draft'
+      if (row.status !== undefined && !statusSchema.safeParse(row.status).success) row.status = 'draft'
       return row
     })
       const r = await sb('content_items', {
@@ -229,8 +213,8 @@ export default async function handler(req, res) {
     // Single insert
     const { interviewId, staffId, staffName, topic, platform, content, status } = body || {}
     if (!interviewId || !platform || !content) return err(res, 'Missing required fields')
-    if (!UUID_RE.test(interviewId)) return err(res, 'Invalid interviewId', 400)
-    if (staffId && !UUID_RE.test(staffId)) return err(res, 'Invalid staffId', 400)
+    if (!uuidCoerced.safeParse(interviewId).success) return err(res, 'Invalid interviewId', 400)
+    if (staffId && !uuidCoerced.safeParse(staffId).success) return err(res, 'Invalid staffId', 400)
 
     if (staffId) {
       const sk = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${ws.id}&select=id`)
@@ -242,7 +226,7 @@ export default async function handler(req, res) {
     if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
     if (!(await ck.json()).length) return err(res, 'Interview not found in workspace', 422)
 
-    if (status && !VALID_STATUSES.has(status)) return err(res, 'Invalid status', 400)
+    if (status && !statusSchema.safeParse(status).success) return err(res, 'Invalid status', 400)
     const row = { workspace_id: ws.id, interview_id: interviewId, staff_id: staffId, staff_name: staffName, topic, platform, content }
     if (status) row.status = status
     const r = await sb('content_items', {
@@ -261,25 +245,25 @@ export default async function handler(req, res) {
     if (!id) return err(res, 'Missing id')
     const patch = req.body || {}
 
-    if (patch.status !== undefined && !VALID_STATUSES.has(patch.status)) return err(res, 'Invalid status', 400)
+    if (patch.status !== undefined && !statusSchema.safeParse(patch.status).success) return err(res, 'Invalid status', 400)
     // T4 learning loop — a reject must always carry a reason from the fixed
     // enum, or the whole point (capturing WHY) is lost. Note is optional.
-    if (patch.status === 'rejected' && !REJECT_REASONS.has(patch.rejectReason)) {
+    if (patch.status === 'rejected' && !rejectReasonSchema.safeParse(patch.rejectReason).success) {
       return err(res, 'Invalid rejectReason', 400)
     }
-    if (patch.locationId && !UUID_RE.test(patch.locationId)) return err(res, 'Invalid locationId', 400)
+    if (patch.locationId && !uuidCoerced.safeParse(patch.locationId).success) return err(res, 'Invalid locationId', 400)
     if (patch.targetLocations !== undefined && patch.targetLocations !== null) {
-      if (!Array.isArray(patch.targetLocations) || !patch.targetLocations.every((lid) => UUID_RE.test(String(lid)))) {
+      if (!targetLocationsSchema.safeParse(patch.targetLocations).success) {
         return err(res, 'Invalid targetLocations', 400)
       }
     }
     if (patch.modelReasons !== undefined && patch.modelReasons !== null) {
-      if (!Array.isArray(patch.modelReasons) || !patch.modelReasons.every((r) => MODEL_REASON_KEYS.has(r))) {
+      if (!modelReasonsSchema.safeParse(patch.modelReasons).success) {
         return err(res, 'Invalid modelReasons', 400)
       }
     }
     if (patch.modelNote !== undefined && patch.modelNote !== null) {
-      if (typeof patch.modelNote !== 'string' || patch.modelNote.length > MODEL_NOTE_MAX) {
+      if (!modelNoteSchema.safeParse(patch.modelNote).success) {
         return err(res, 'Invalid modelNote', 400)
       }
     }
@@ -318,7 +302,7 @@ export default async function handler(req, res) {
     // mondayOf() below (mondayOf throws RangeError on an Invalid Date, which
     // would surface a 500 AFTER the row already saved). null/undefined = leave
     // as-is or unschedule, both allowed.
-    if (patch.scheduledAt && !ISO_DATE_RE.test(patch.scheduledAt)) return err(res, 'Invalid scheduledAt', 400)
+    if (patch.scheduledAt && !isoDateOrTimestamp.safeParse(patch.scheduledAt).success) return err(res, 'Invalid scheduledAt', 400)
 
     // Map camelCase → snake_case. `archivedAt` accepts an ISO string to
     // archive or `null` to restore.
