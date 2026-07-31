@@ -66,7 +66,9 @@ export const POST_FRAMES = {
   // Google clips portrait AND 16:9 in the Maps carousel and Search preview card;
   // 4:3 is the only ratio that survives both surfaces uncropped. See
   // GBP_SAFE_ZONE below — GBP also trims the top/bottom of what it does show.
-  gbp:          { post: '4:3' },
+  // `video` shares the photo frame: the surfaces that crop are the same ones,
+  // so a clip that isn't 4:3 gets cropped exactly like a photo would.
+  gbp:          { post: '4:3', video: '4:3' },
 
   // LinkedIn renders 1:1 and 4:5 uncropped; 4:5 is chosen for mobile reach.
   linkedin:     { post: '4:5',  video: '4:5', longform: '16:9' },
@@ -145,6 +147,7 @@ export const CHANNEL_DESTINATIONS = {
   // Video channels (VIDEO_CHANNEL_SPECS)
   linkedin_video:       { platform: 'linkedin',  format: 'video' },
   instagram_reel:       { platform: 'instagram', format: 'reel' },
+  gbp_video:            { platform: 'gbp',       format: 'video' },
   tiktok:               { platform: 'tiktok',    format: 'video' },
   youtube_short:        { platform: 'youtube',   format: 'short' },
   blog_hero_video:      { platform: 'blog',      format: 'hero' },
