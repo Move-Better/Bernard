@@ -1262,15 +1262,15 @@ export default function Analytics() {
             <TrendStrip
               series={seriesData.series}
               granularity={granularity}
-              metric={activeTab === 'website' ? 'sessions' : activeTab === 'seo' ? 'clicks' : 'reach'}
-              metricLabel={activeTab === 'website' ? 'site sessions' : activeTab === 'seo' ? 'search clicks' : 'social reach'}
+              metric={activeTab === 'website' ? 'sessions' : activeTab === 'seo' ? 'non_branded_clicks' : 'reach'}
+              metricLabel={activeTab === 'website' ? 'site sessions' : activeTab === 'seo' ? 'non-branded search clicks' : 'social reach'}
               selectedOffset={periodOffset}
               onSelect={(o) => setPeriodOffset(Math.max(MAX_OFFSET[granularity], o))}
               tooltipFor={(p) =>
                 activeTab === 'social'
                   ? `${p.posts ?? 0} posts · ${fmtNum(p.reach)} reach · ${fmtNum(p.engagement)} engagement`
                   : activeTab === 'seo'
-                    ? `${fmtNum(p.clicks)} clicks · ${fmtNum(p.impressions)} impressions`
+                    ? `${fmtNum(p.non_branded_clicks)} non-branded clicks · ${fmtNum(p.branded_clicks)} branded · ${fmtNum(p.clicks)} total clicks · ${fmtNum(p.impressions)} impressions`
                     : `${fmtNum(p.sessions)} sessions`
               }
             />
