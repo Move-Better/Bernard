@@ -265,3 +265,21 @@ Challenge gate run on P5 at Q's request, one day after the moment bank (P1–P4)
 **Case against, considered:** the approval queue is the bottleneck (49 open drafts) and more format variety adds decisions per draft. Accepted because the floor also fixes a real defect (video hijacks posts into Reels with no recourse), and the confidence loop is the designed answer to queue attention — but see kill criterion.
 
 **Kill criterion — revisit-by 2026-09-30.** If 4 weeks after the editor UI ships, mixed/explicit-format posts are <5% of published IG pieces AND format overrides show producers reverting Bernard's non-default format picks >50% of the time, the format surface is noise — collapse the picker to a quiet override and stop drafting non-default formats proactively.
+
+## 2026-07-31 — One rating vocabulary; per-signal calibration; fixed thresholds
+
+**Job.** Make an auto-generated rating legible to someone who has never seen the scale. A bare `88` in a boxed left rail read as a row index — in the review queue, sorted strongest-first, the top of the list was a column of near-identical numbers with no label (Q: "It just looks like an error that all of them are the 88th one in the list").
+
+**Evidence.** Measured against live prod, not assumed: the badge's tooltip claimed **0–100**, but the quote scorer has only ever emitted **60–90** across 206 banked moments (mean 75, median 76). Its third colour state (`< 60`) had **never rendered once**, so a three-state rule was really two-state — and since the queue sorts strongest-first, every visible badge was the same colour AND a similar number. The tone rule was also already copy-pasted into `OnHandTab.jsx` and `MomentsPanel.jsx`, with a third bare "scored NN" in `MomentProvenance.jsx`.
+
+**Composition.** `src/lib/ratingBands.js` (thresholds + labels + tones + consequence tooltips, pure, no react) → `src/components/ui/RatingBadge.jsx` (md for the verdict card, sm for dense rows) → all four quote surfaces. Generalises the pattern `voiceFidelity.js` already proved rather than inventing a second one.
+
+**Chosen (Q, 2026-07-31):** words are **Strong / Typical / Weak**. Strong is `--success` green, not `--primary` — Blue Spruce at a low tint "falls visually flat and does not stand out" against the card, so Strong also carries a border and a stronger tint.
+
+**Two families, only one in this system.** MATERIAL STRENGTH (quote, camera) — a low score means weaker raw material and a lean toward retire; the reviewer still decides, so Weak is `--action` amber and **never** `--destructive` (red on a card whose whole job is asking for a verdict pre-judges it). TRUST (voice fidelity) — a low score means Bernard produced something *wrong*; it keeps its own four-tier scale ending in red and is deliberately NOT folded in. Media-match similarity stays invisible: it is a threshold, not a judgment.
+
+**Per-signal calibration is the load-bearing decision.** Every scorer emits 0–100 on the wire but occupies a different real range: quotes 60–90 (p25=70, p75=82), camera 12–92 (p25=52, p75=74). One shared cut would put a segment's *Strong* (74) inside a quote's *Typical* band — the badge would be confidently wrong on the video tab. Same three words, same component, different cut points. Both land on a clean split (quotes 57/105/44, segments 42/89/34). Pinned by `tests/lib/ratingBands.test.js`; mutation-verified (collapsing the two calibrations reddens 4 tests, `score ?? 0` reddens 7).
+
+**Case against, considered:** thresholds are **fixed numbers cut at today's quartiles**, so they will drift as each bank grows — in a year "Strong ≥ 82" may not be the top quarter. Accepted deliberately: recalculating percentiles at read time would silently change one moment's badge when *other* moments are added, which is worse than a threshold that needs re-cutting on a schedule.
+
+**Kill criterion — revisit-by 2026-10-31.** Re-run the quartile query for both signals. If either signal's real p25/p75 has moved more than 5 points from the committed thresholds (quote 70/82, camera 52/74), re-cut them in one PR. If the bands have stopped discriminating entirely — any single band holding >70% of a bank — the score has collapsed and the badge is decoration; drop it from that surface rather than shipping a label that always says the same thing.
