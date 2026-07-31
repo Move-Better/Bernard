@@ -186,11 +186,28 @@ export const OUTPUT_CHANNEL_IDS = Object.freeze(Object.keys(OUTPUT_CHANNELS))
 // Convention: `<publishMode>Publish` in camelCase. Move Better's three
 // workspaces will set these true on the rows where the integration is wired
 // up; external workspaces leave them unset/false.
+// Capability key per publish mode. Derived from the mode id EXCEPT for the
+// social mode, whose id is the persisted string 'buffer' (it is matched against
+// publish_intent.social and workspace_credentials.service, so it can only move
+// in a migration — see PUBLISH_MODES). Deriving from it produced
+// `bufferPublish`, a key NO workspace has ever had: prod holds exactly two
+// capability keys, websitePublish (4 workspaces) and socialPublish (1). So the
+// social capability has never once been read, and the only thing granting a
+// workspace the in-editor Publish affordance was a connected buffer credential
+// — which is why deleting those rows looked like it would break publishing on
+// the live workspace. Mapping the social mode to socialPublish is what the
+// stored data always meant.
+const MODE_CAPABILITY_KEYS = Object.freeze({
+  [PUBLISH_MODES.BUFFER]: 'socialPublish',
+})
+
 export function publishCapabilityKey(channelId) {
   const channel = OUTPUT_CHANNELS[channelId]
   if (!channel || !channel.publishMode) return null
   const mode = channel.publishMode
-  // website → websitePublish, tdc → tdcPublish, buffer → bufferPublish.
+  const explicit = MODE_CAPABILITY_KEYS[mode]
+  if (explicit) return explicit
+  // website → websitePublish, tdc → tdcPublish.
   const camel = mode.replace(/_([a-z])/g, (_, c) => c.toUpperCase())
   return `${camel}Publish`
 }
