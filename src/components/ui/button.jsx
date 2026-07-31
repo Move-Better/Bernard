@@ -10,6 +10,10 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground shadow hover:bg-primary/90',
+        // Verdict color, not navigation — approve=green per the house rule
+        // (brand teal reads as "go somewhere," not "decide this"). Use for
+        // any Approve/accept action; never the default variant for those.
+        success: 'bg-success text-success-foreground shadow-sm hover:bg-success/90',
         destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
         outline: 'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground',
         secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',

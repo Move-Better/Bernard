@@ -766,6 +766,7 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
         {((piece.status === 'draft' && skipReview && canReview) ||
           (piece.status === 'in_review' && canReview)) && (
           <Button
+            variant="success"
             size="sm"
             onClick={handleApprove}
             disabled={isBusy}
