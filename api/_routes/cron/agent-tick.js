@@ -153,9 +153,9 @@ async function todaysAiCalls(wsId) {
 
 // Optimistically claim one pending item (status=eq.pending guard → the loser of
 // a race matches 0 rows). Returns the claimed row or null.
-async function claimItem(item) {
+async function claimItem(item, wsId) {
   const r = await sb(
-    `agent_inbox?id=eq.${item.id}&status=eq.pending`,
+    `agent_inbox?id=eq.${item.id}&workspace_id=eq.${wsId}&status=eq.pending`,
     {
       method: 'PATCH',
       headers: { Prefer: 'return=representation' },
@@ -167,8 +167,8 @@ async function claimItem(item) {
   return Array.isArray(rows) && rows.length ? rows[0] : null
 }
 
-async function finishItem(id, status, result) {
-  await sb(`agent_inbox?id=eq.${id}`, {
+async function finishItem(id, wsId, status, result) {
+  await sb(`agent_inbox?id=eq.${id}&workspace_id=eq.${wsId}`, {
     method: 'PATCH',
     headers: { Prefer: 'return=minimal' },
     body: JSON.stringify({ status, result: result ?? null, processed_at: new Date().toISOString() }),
@@ -241,7 +241,7 @@ async function processWorkspace(ws, deadline, summary) {
   for (const item of pending) {
     if (Date.now() > deadline) { wsResult.partial = true; break }
     if (remaining <= 0) { wsResult.budget_stop = true; break }
-    const claimed = await claimItem(item)
+    const claimed = await claimItem(item, wsId)
     if (!claimed) continue // lost the race to another tick
     wsResult.claimed++
     remaining--
@@ -251,18 +251,18 @@ async function processWorkspace(ws, deadline, summary) {
       // All terminal outcomes finalize the inbox item as 'done' (only a thrown
       // transient error retries). revised/passed = success; escalated = we tried
       // and handed to the human; skipped = cooperative-cancel / not applicable.
-      if (st === 'revised') { wsResult.revised++; await finishItem(claimed.id, 'done', res) }
-      else if (st === 'passed') { wsResult.passed++; await finishItem(claimed.id, 'done', res) }
-      else if (st === 'escalated') { wsResult.escalated++; await finishItem(claimed.id, 'done', res) }
-      else if (st === 'drafted') { wsResult.drafted++; await finishItem(claimed.id, 'done', res) }
-      else { wsResult.skipped++; await finishItem(claimed.id, 'skipped', res) }
+      if (st === 'revised') { wsResult.revised++; await finishItem(claimed.id, wsId, 'done', res) }
+      else if (st === 'passed') { wsResult.passed++; await finishItem(claimed.id, wsId, 'done', res) }
+      else if (st === 'escalated') { wsResult.escalated++; await finishItem(claimed.id, wsId, 'done', res) }
+      else if (st === 'drafted') { wsResult.drafted++; await finishItem(claimed.id, wsId, 'done', res) }
+      else { wsResult.skipped++; await finishItem(claimed.id, wsId, 'skipped', res) }
     } catch (e) {
       console.error('[agent-tick]', ws.slug, claimed.id, e?.message)
       const attempts = claimed.attempts || 0
-      if (attempts >= MAX_ATTEMPTS) { wsResult.failed++; await finishItem(claimed.id, 'failed', { error: (e?.message || 'error').slice(0, 300) }) }
+      if (attempts >= MAX_ATTEMPTS) { wsResult.failed++; await finishItem(claimed.id, wsId, 'failed', { error: (e?.message || 'error').slice(0, 300) }) }
       else {
         // Back to pending for the next tick.
-        await sb(`agent_inbox?id=eq.${claimed.id}`, {
+        await sb(`agent_inbox?id=eq.${claimed.id}&workspace_id=eq.${wsId}`, {
           method: 'PATCH', headers: { Prefer: 'return=minimal' },
           body: JSON.stringify({ status: 'pending', result: { error: (e?.message || 'error').slice(0, 300) } }),
         }).catch(() => {})
