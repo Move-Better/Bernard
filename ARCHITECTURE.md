@@ -1043,6 +1043,31 @@ surface: `src/lib/brandSwatches.js` exports `brandSwatches()` (picker chips), `b
 `brandPaper`, with the old WHOOP navy/paper/sage only as fallback when a workspace has no palette.
 Don't reintroduce a hardcoded ground color; route it through `brandInk`/`brandPaper`.
 
+## Two kinds of zod schema — request validation vs. LLM structured output
+
+`zod` is used for two UNRELATED purposes in this repo, kept in separate files by convention:
+
+- **`api/_lib/requestSchemas/`** — validates the SHAPE of an incoming HTTP request (query params,
+  path params, PATCH/POST bodies) before it reaches business logic or gets interpolated into a
+  PostgREST filter. `primitives.js` holds shared building blocks (`uuid`, `uuidCoerced`,
+  `isoDateOrTimestamp`, `firstFieldErrorKey`); one file per endpoint (`editorialRevisions.js`,
+  `dbContent.js`, `collectionsItems.js`) holds that endpoint's enums/shapes. Added 2026-07-31
+  (#2517) to replace the ~130-file pattern of a hand-rolled `UUID_RE` regex + ad hoc
+  `.includes()`/`Set.has()` enum checks per handler with one shared, declarative definition.
+  `content.js`'s conversion is the reference example: every `if (!schema.safeParse(x).success)
+  return err(...)` preserves the exact original error key/status and check order — a schema
+  replaces the PREDICATE, never the control flow, so the endpoint's public contract doesn't move.
+  Only 3 endpoints are migrated so far; the other ~440 `api/**/*.js` handlers still validate ad
+  hoc — migrate opportunistically per file, same as the "Canonical `sb()` pattern" migration above.
+- **Everywhere else in `api/_lib/`** (`momentExtract.js`, `scoreMoments.js`, `segmentDetect.js`,
+  `speakerVoice.js`, `strategist.js`, etc.) — describes the shape of an LLM's `generateObject`
+  structured output, passed as the `schema` option and enforced by the model provider, not by a
+  request handler.
+
+Never mix the two in one file — the import path alone should tell you which kind you're looking
+at. A `requestSchemas/` file should never import `generateObject`; an LLM-schema file should never
+be imported by a route handler for request validation.
+
 ## LLM-generated structured data — never trust echoed ids/values
 
 When an LLM call returns structured output (`generateText`/`generateObject`) whose fields you
