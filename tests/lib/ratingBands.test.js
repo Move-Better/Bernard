@@ -1,4 +1,4 @@
-// Pins the rating-band contract. Two things here are load-bearing and were
+// Pins the rating-band contract. Three things here are load-bearing and were
 // each verified by mutation (break the source, watch the named test go red):
 //
 //   1. Per-signal calibration. Quotes cut at 82/70, camera at 74/52. A single
@@ -6,7 +6,21 @@
 //      Typical band — the badge would be confidently wrong on the video tab.
 //   2. An unscored item is null, never "weak". Coercing null → 0 would paint
 //      every unscored moment as the retire-lean band, a claim we haven't earned.
+//   3. Every bg-*/N alpha class this file emits actually compiles. Tailwind
+//      v3.4.1's JIT silently drops certain two-digit opacity fractions with
+//      NO build/lint error — reproduced against a stock `bg-red-500/12`, so
+//      this is an upstream bug, not a config issue (see the comment on the
+//      weak band's `bg` value). `bg-action/12` shipped to prod this way:
+//      fully transparent background, only caught by inspecting computed
+//      styles on the live page — lint, build, and 24 unit tests all stayed
+//      green through it. Static tests can't run the real Tailwind compiler,
+//      so this guard is a source-level proxy: any bare `/N` alpha modifier
+//      must be a value already confirmed to compile (see KNOWN_SAFE_FRACTIONS
+//      below); any other fraction must use bracket syntax, which routes
+//      through a different, unaffected parser path.
 
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import { ratingBand, ratingTooltip, RATING_SIGNALS } from '../../src/lib/ratingBands.js'
 
@@ -132,5 +146,37 @@ describe('every signal is fully specified', () => {
     expect(sig.tips.typical).toBeTruthy()
     expect(sig.tips.weak).toBeTruthy()
     expect(sig.noun).toBeTruthy()
+  })
+})
+
+// Fractions directly confirmed to compile in this repo's Tailwind build
+// (checked against the emitted CSS, 2026-07-31) — extend this list only after
+// the same check, never on the assumption that "it's just a number".
+const KNOWN_SAFE_FRACTIONS = new Set([
+  0, 5, 10, 15, 20, 25, 30, 35, 40, 50, 60, 70, 75, 80, 90, 95, 100,
+])
+
+describe('every bg-*/N alpha class either compiles or uses bracket syntax', () => {
+  const src = readFileSync(fileURLToPath(new URL('../../src/lib/ratingBands.js', import.meta.url)), 'utf8')
+
+  // Matches the bare-fraction form (bg-action/12) but not bracket form
+  // (bg-action/[0.12]) or the un-suffixed base (bg-action).
+  const bareFraction = /\bbg-[a-z-]+\/(\d+)\b/g
+
+  it('finds at least one bg-*/N class to check (non-vacuity)', () => {
+    // If this file stops using tinted backgrounds at all, the loop below
+    // would pass trivially with nothing checked — pin that it never goes
+    // vacuous silently.
+    const bg = src.match(/\bbg-[a-z-]+\/(\[[^\]]+\]|\d+)/g) || []
+    expect(bg.length).toBeGreaterThan(0)
+  })
+
+  it('every bare fraction is a value already proven to compile', () => {
+    const offenders = []
+    for (const match of src.matchAll(bareFraction)) {
+      const n = Number(match[1])
+      if (!KNOWN_SAFE_FRACTIONS.has(n)) offenders.push(match[0])
+    }
+    expect(offenders).toEqual([])
   })
 })
