@@ -5,8 +5,14 @@
 // legacy pieces stay clean.
 //
 // `moment` is the shared API shape: { excerpt, score, interviewTopic, interviewDate }.
+//
+// The strength reads "Strong 88", not a bare "scored 88" — same vocabulary as
+// the badge on every other moment surface (see @/lib/ratingBands).
+import { ratingBand } from '@/lib/ratingBands'
+
 export default function MomentProvenance({ moment, compact = false, className = '' }) {
   if (!moment?.excerpt) return null
+  const band = ratingBand(moment.score, 'quote')
   const date = moment.interviewDate
     ? new Date(moment.interviewDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : null
@@ -16,7 +22,7 @@ export default function MomentProvenance({ moment, compact = false, className = 
   return (
     <div className={`rounded-r-lg border-l-2 border-primary bg-primary/5 px-3 py-2 ${className}`}>
       <p className="text-3xs font-bold uppercase tracking-wider text-primary">
-        From your words{Number.isFinite(moment.score) ? ` · scored ${moment.score}` : ''}
+        From your words{band ? ` · ${band.label} ${band.score}` : ''}
       </p>
       <q className={`mt-0.5 block text-xs leading-relaxed text-foreground/85 ${compact ? 'line-clamp-2' : 'line-clamp-6'}`}>
         {moment.excerpt}
