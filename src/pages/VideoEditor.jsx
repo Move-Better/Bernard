@@ -2026,6 +2026,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
+                  variant="success"
                   size="sm"
                   disabled={busy}
                   loading={finalizeToPost.isPending}

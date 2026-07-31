@@ -914,7 +914,7 @@ function DayPlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approv
             type="button"
             disabled={approving}
             onClick={() => onApprove(item)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-success px-3 py-2 text-xs font-semibold text-success-foreground hover:bg-success/90 disabled:opacity-50"
           >
             {approving ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Check className="h-3.5 w-3.5" aria-hidden="true" />}
             Approve

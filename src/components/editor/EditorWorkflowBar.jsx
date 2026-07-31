@@ -399,6 +399,7 @@ export default function EditorWorkflowBar({ piece }) {
             </span>
           )}
           <Button
+            variant="success"
             size="sm"
             disabled={wf.statusPending || captionOver > 0}
             loading={wf.statusPending}

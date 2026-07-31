@@ -289,10 +289,10 @@ function QueueCard({ m, staffName, onApprove, onRetire, onSkip, onSaveExcerpt, o
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-3.5">
             <Button
+              variant="success"
               size="sm"
               disabled={busy}
               onClick={() => onApprove(m)}
-              className="bg-success text-white hover:bg-success/90"
             >
               <Check className="h-4 w-4" />Approve
             </Button>

@@ -164,7 +164,7 @@ export default function WordsApproval() {
                   Save edits
                 </Button>
               )}
-              <Button size="sm" onClick={handleApprove} disabled={saving || !value.trim()} loading={saving}>
+              <Button variant="success" size="sm" onClick={handleApprove} disabled={saving || !value.trim()} loading={saving}>
                 {!saving && <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />}
                 Approve the words
               </Button>

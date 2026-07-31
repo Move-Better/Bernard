@@ -555,8 +555,9 @@ export default function PackageCard({ pkg, staffName, triageReason, onApprove, o
                 Edit
               </Button>
               <Button
+                variant="success"
                 size="sm"
-                className="flex-1 text-xs h-8 bg-primary hover:bg-primary/90 text-primary-foreground disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
+                className="flex-1 text-xs h-8 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
                 onClick={() => setChoosingApprove(true)}
                 disabled={approving || consentBlocks}
                 title={consentBlocks
