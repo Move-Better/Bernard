@@ -268,6 +268,28 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'checkpoints_fetch_failed' })
   }
 
+  // Is a check-in due? NULL last_checkin_at means never — in which case it
+  // becomes due once there is enough published work to review, not on a timer
+  // from a date nobody set.
+  const CHECKIN_INTERVAL_D = 30
+  const CHECKIN_MIN_PUBLISHED = 10
+  const checkin = await (async () => {
+    const publishedCount = await exactCount(
+      `content_items?workspace_id=eq.${ws.id}&status=eq.published` +
+      `&published_at=gte.${encodeURIComponent(new Date(Date.now() - CHECKIN_INTERVAL_D * 86400_000).toISOString())}`,
+    )
+    const published = publishedCount ?? 0
+    const last = ws.last_checkin_at ? new Date(ws.last_checkin_at).getTime() : null
+    const daysSince = last == null ? null : Math.floor((Date.now() - last) / 86400_000)
+    return {
+      everDone: last != null,
+      daysSince,
+      published,
+      // Enough to review AND (never done OR the interval has elapsed).
+      due: published >= CHECKIN_MIN_PUBLISHED && (last == null || daysSince >= CHECKIN_INTERVAL_D),
+    }
+  })()
+
   const queue = []
 
   // Tier 1 — broken.
@@ -330,6 +352,28 @@ export default async function handler(req, res) {
       why: 'Footage can’t be used in a reel or post until consent is recorded.',
       gate: 'You are the checkpoint — unconsented footage stays out of every export.',
       count: consent, ctaHref: '/library', ctaLabel: 'Open Library →',
+    })
+  }
+
+  // Tier 3 — the periodic check-in. A checkpoint rather than a permanent card
+  // (Q, 2026-07-30): ProducerHome answers "what do I need to do", and a DUE
+  // check-in is exactly that, while a data card that is always there is not.
+  //
+  // Deliberately gated on having something worth reviewing. A clinic with three
+  // published posts does not need a trend review, and a checkpoint that appears
+  // before it can say anything useful teaches people to skip the queue.
+  if (checkin.due) {
+    queue.push({
+      type: 'learning_checkin', tier: 3,
+      title: checkin.everDone
+        ? 'Review how Bernard is doing'
+        : 'First check-in — is Bernard sounding like you?',
+      why: checkin.everDone
+        ? `It has been ${checkin.daysSince} days. Look at what published and whether the numbers are going the right way.`
+        : 'Bernard has published enough now to be worth a look — the numbers, and whether the posts still sound like the clinic.',
+      gate: 'Nothing is blocked by this — it is how Bernard learns whether to keep going as it is.',
+      count: checkin.published,
+      ctaHref: '/analytics#checkin', ctaLabel: 'Open the check-in →',
     })
   }
 
