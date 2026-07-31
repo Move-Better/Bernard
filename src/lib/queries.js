@@ -1411,7 +1411,7 @@ export function usePostMetrics(contentItemId, options = {}) {
   return useQuery({
     queryKey: queryKeys.postMetrics(contentItemId),
     queryFn: () =>
-      apiFetch(`/api/buffer-analytics?contentItemId=${encodeURIComponent(contentItemId)}`)
+      apiFetch(`/api/post-analytics?contentItemId=${encodeURIComponent(contentItemId)}`)
         .catch(() => null),
     enabled: !!contentItemId,
     staleTime: 1000 * 60 * 30, // 30min — post stats don't update by the second

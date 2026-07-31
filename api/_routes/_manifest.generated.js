@@ -222,17 +222,17 @@ import h216 from './workspace/locations.js'
 import h217 from './workspace/me.js'
 import h218 from './answers.js'
 import h219 from './book/index.js'
-import h220 from './buffer-analytics.js'
-import h221 from './content-item-comments.js'
-import h222 from './content-item-drafts.js'
-import h223 from './feedback.js'
-import h224 from './gbp-analytics.js'
-import h225 from './generate.js'
-import h226 from './health.js'
-import h227 from './import-url.js'
-import h228 from './interview-references/index.js'
-import h229 from './link-page.js'
-import h230 from './photo-templates/index.js'
+import h220 from './content-item-comments.js'
+import h221 from './content-item-drafts.js'
+import h222 from './feedback.js'
+import h223 from './gbp-analytics.js'
+import h224 from './generate.js'
+import h225 from './health.js'
+import h226 from './import-url.js'
+import h227 from './interview-references/index.js'
+import h228 from './link-page.js'
+import h229 from './photo-templates/index.js'
+import h230 from './post-analytics.js'
 import h231 from './product-updates.js'
 import h232 from './publish-blog.js'
 import h233 from './topic-backlog/index.js'
@@ -470,17 +470,17 @@ export const routes = [
   { path: "/api/workspace/me", handler: h217 },
   { path: "/api/answers", handler: h218 },
   { path: "/api/book", handler: h219 },
-  { path: "/api/buffer-analytics", handler: h220 },
-  { path: "/api/content-item-comments", handler: h221 },
-  { path: "/api/content-item-drafts", handler: h222 },
-  { path: "/api/feedback", handler: h223 },
-  { path: "/api/gbp-analytics", handler: h224 },
-  { path: "/api/generate", handler: h225 },
-  { path: "/api/health", handler: h226 },
-  { path: "/api/import-url", handler: h227 },
-  { path: "/api/interview-references", handler: h228 },
-  { path: "/api/link-page", handler: h229 },
-  { path: "/api/photo-templates", handler: h230 },
+  { path: "/api/content-item-comments", handler: h220 },
+  { path: "/api/content-item-drafts", handler: h221 },
+  { path: "/api/feedback", handler: h222 },
+  { path: "/api/gbp-analytics", handler: h223 },
+  { path: "/api/generate", handler: h224 },
+  { path: "/api/health", handler: h225 },
+  { path: "/api/import-url", handler: h226 },
+  { path: "/api/interview-references", handler: h227 },
+  { path: "/api/link-page", handler: h228 },
+  { path: "/api/photo-templates", handler: h229 },
+  { path: "/api/post-analytics", handler: h230 },
   { path: "/api/product-updates", handler: h231 },
   { path: "/api/publish-blog", handler: h232 },
   { path: "/api/topic-backlog", handler: h233 },

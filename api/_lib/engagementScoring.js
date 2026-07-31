@@ -38,7 +38,7 @@ export function scoreSnapshot(snap) {
   const likes = stats.likes ?? stats.favorites ?? 0
   if (snap.source === 'bundle') {
     // bundle.social has no `reach` field — mirror the mapping used by
-    // buffer-analytics.js's mapBundleMetrics (impressionsUnique -> reach,
+    // post-analytics.js's mapBundleMetrics (impressionsUnique -> reach,
     // likes+comments+shares+saves -> engagement), or every bundle row scores
     // 0 and gets filtered out as a candidate before it's ever ranked.
     const reach = stats.impressionsUnique ?? 0
