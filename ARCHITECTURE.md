@@ -424,8 +424,9 @@ thin adapter seam in `api/_lib/social/` — `SocialPublisher` (the interface),
   *after* the auth check and *before* any Buffer-specific logic, leaving the Buffer path
   BYTE-FOR-BYTE unchanged (the diff should be `+N/-0`). That makes the flip provably safe for
   every Buffer tenant; the "dedup the inline Buffer logic into BufferPublisher" cleanup is
-  deferred on purpose. See `api/_routes/publish/buffer.js` (`handleBundlePublish`) and
-  `api/_routes/buffer-analytics.js`.
+  deferred on purpose. See `api/_routes/publish/social.js` (`handleBundlePublish`) and
+  `api/_routes/post-analytics.js`. (Historical: the Buffer fork those two files forked
+  FROM was deleted in #2488, and both files were renamed off the Buffer name after.)
 - **The provider scope id is an AUTHORIZATION boundary**, not a parameter. One bundle API key
   reads/posts to every team in the org; derive the bundle `teamId` (or Buffer channel id) from
   the workspace / `workspace_locations` row — bound at adapter construction — NEVER from client
@@ -486,13 +487,12 @@ and catchUp stops re-forcing it. Old posts published under a prior connection ar
 reconnect mints a new account `externalId`) and can't be retro-linked.
 
 **Core publish execution is reusable — call it, don't re-derive it.** `api/_routes/publish/
-buffer.js` exports `runBufferPublish({ workspaceId, token, platform, content, mediaUrls,
-scheduledAt, useQueue, locationIds, locationContents })` and `runBundlePublish(workspace, {...})`
-— the channel-resolution + fan-out logic with the HTTP req/res stripped off, returning
-`{ status, body }`. Both the original `/api/publish/buffer` handler and
-`api/_routes/producer/retry-publish.js` call these directly. Any future caller that needs to
-(re)publish a `content_items` row (retry, a resend action, a cron) should call these, not
-duplicate the GraphQL/SDK sequence. GBP fan-out note for such callers: `content_items.
+social.js` exports `runBundlePublish(workspace, {...})` — the channel-resolution + fan-out
+logic with the HTTP req/res stripped off, returning `{ status, body }`. Both that file's own
+handler and `api/_routes/producer/retry-publish.js` call it directly. Any future caller that
+needs to (re)publish a `content_items` row (retry, a resend action, a cron) should call it, not
+duplicate the SDK sequence. (Its Buffer twin `runBufferPublish` was deleted in #2488.)
+GBP fan-out note for such callers: `content_items.
 location_overrides` is populated for **every** active GBP location at draft time
 (`buildGbpLocationVariants`), so `Object.keys(item.location_overrides)` already equals what
 `resolveGbpChannelIds`/`resolveBundleGbpTargets` default to when `locationIds` is omitted —
@@ -526,8 +526,8 @@ live channel; audit P2 same date — the cron originally never touched `dispatch
 
 **The words-approval hard gate covers SIX dispatch paths — and package content is a documented
 exception to its interview check.** `checkWordsApproved` (`api/_lib/wordsApprovalGate.js`) is
-called by every path that sends a `content_items` row to a live channel: `publish/buffer.js`
-(both provider paths), `publish/website.js`, `publish/beehiiv.js`, `producer/retry-publish.js`,
+called by every path that sends a `content_items` row to a live channel: `publish/social.js`,
+`publish/website.js`, `publish/beehiiv.js`, `producer/retry-publish.js`,
 `_lib/dispatchContentItem.js`, and the auto-publish cron (`cron/auto-publish.js`). Rows sourced
 from Moment-Miner story packages (`editorial/approve-package.js`) carry `interview_id: null`,
 which the gate deliberately passes through — for that pipeline, **package approval IS the human

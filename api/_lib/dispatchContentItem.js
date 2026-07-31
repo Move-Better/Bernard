@@ -2,7 +2,7 @@
 //
 // Lets api/_routes/content-plan/approve.js finish the job on the server: approve
 // AND schedule in one action, so it no longer depends on the browser tab
-// completing the dispatch. Mirrors the client's publishPieceToBuffer payload
+// completing the dispatch. Mirrors the client's publishPieceToSocial payload
 // exactly (content = string|JSON.stringify; mediaUrls = piece.media_urls) and
 // reuses the SAME bundle publisher + GBP fan-out the /api/publish/social path
 // uses, so server- and client-dispatched posts are identical.
@@ -67,7 +67,7 @@ const CAROUSEL_PLATFORMS = new Set(['instagram', 'facebook'])
  * @returns {Promise<object>} one of:
  *   { dispatched:true, postId, scheduledAt, profileCount }
  *   { dispatched:true, alreadyDispatched:true }
- *   { dispatched:false, fallback:'client', needs_client_bake?:true }   // client runs publishPieceToBuffer
+ *   { dispatched:false, fallback:'client', needs_client_bake?:true }   // client runs publishPieceToSocial
  *   { dispatched:false, reason:'in_progress' }                         // another dispatch holds the claim
  *   { dispatched:false, error:'<key>' }                                // surfaced; client must NOT re-dispatch
  */

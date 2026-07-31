@@ -7,7 +7,7 @@
 // Response tells the client whether the server finished the job:
 //   { status:'scheduled', dispatched:true, scheduledAt }         — done server-side
 //   { status:'approved', dispatched:false, fallback:'client', needs_client_bake? }
-//                                                                — client runs publishPieceToBuffer
+//                                                                — client runs publishPieceToSocial
 //   { status:'approved', dispatched:false, error }               — surface; client must NOT re-dispatch
 //   { status:'approved', dispatched:false, reason:'in_progress' } — another dispatch holds the claim
 //   { status, alreadyApproved:true }                             — already scheduled/published
