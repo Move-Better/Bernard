@@ -60,7 +60,16 @@ const BAND_STYLE = {
     key: 'weak',
     label: 'Weak',
     text: 'text-action',
-    bg: 'bg-action/12',
+    // Bracket syntax, not bare `/12` — Tailwind v3.4.1's JIT opacity-modifier
+    // parser silently drops certain two-digit fractions (reproduced in
+    // isolation: /9 and /15 compile, /11/12/13 do not, even for a stock
+    // `bg-red-500/12` unrelated to our tokens — a real upstream bug, not a
+    // config issue). It shipped invisible: no build/lint error, the class
+    // just never made it into the CSS bundle, so this badge rendered with a
+    // fully transparent background on prod (border and text-action still
+    // worked — bare `/35` happens to fall in the range that compiles).
+    // Bracket values route through a different, unaffected code path.
+    bg: 'bg-action/[0.12]',
     border: 'border-action/35',
   },
 }
