@@ -11,13 +11,17 @@
 // future draws — content_plan_atoms.moment_id is ON DELETE SET NULL and this
 // handler never touches atoms, so already-planned pieces keep their drafts.
 //
-// Review (migration 193) is a MARKER, not a gate — an approved moment is drawn
+// Review (migration 198) is a MARKER, not a gate — an approved moment is drawn
 // by the planner exactly like an unreviewed one. It exists so the On-hand
 // approval queue ("banked AND reviewed_at IS NULL") is finite and each verdict
 // carries an audit stamp. Both verdicts stamp it: Approve sends
 // {reviewed:true}, Retire sends {status:'retired', reviewed:true}. reviewed_at
 // and reviewed_by are SERVER-set only, never accepted from the client (same
-// rule as content_items.approved_by).
+// rule as content_items.approved_by). Retire may also carry retireReasons
+// (array, validated against MOMENT_RETIRE_REASON_KEYS) + retireNote (free
+// text, migration 199) — a reject is a stronger signal than an approve, so
+// it's worth capturing WHY. Nothing reads these back into extraction or
+// ranking yet; see momentRetire.js.
 //
 // Auth: any workspace role reads; retire/restore needs an editor role.
 
@@ -27,6 +31,7 @@ import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { ALL_KNOWN_ROLES, EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
+import { MOMENT_RETIRE_REASON_KEYS, MOMENT_RETIRE_NOTE_MAX } from '../../../src/lib/momentRetire.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -39,7 +44,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const BANK_LIMIT = 1000
 
 const MOMENT_FIELDS =
-  'id,excerpt,hook,moment_type,topic,region,tags,score,cluster_id,is_exemplar,status,usage_count,last_used_at,clip_asset_id,staff_id,interview_id,reviewed_at,reviewed_by,created_at'
+  'id,excerpt,hook,moment_type,topic,region,tags,score,cluster_id,is_exemplar,status,usage_count,last_used_at,clip_asset_id,staff_id,interview_id,reviewed_at,reviewed_by,retire_reasons,retire_note,created_at'
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -71,6 +76,8 @@ export default async function handler(req, res) {
 
     const status = req.body?.status
     const reviewed = req.body?.reviewed
+    const retireReasons = req.body?.retireReasons
+    const retireNote = req.body?.retireNote
     const hasStatus = status !== undefined
     const hasReviewed = reviewed !== undefined
 
@@ -80,11 +87,32 @@ export default async function handler(req, res) {
     if (hasReviewed && typeof reviewed !== 'boolean') {
       return res.status(400).json({ error: 'invalid_reviewed' })
     }
+    if (
+      retireReasons !== undefined &&
+      (!Array.isArray(retireReasons) || !retireReasons.every((r) => MOMENT_RETIRE_REASON_KEYS.has(r)))
+    ) {
+      return res.status(400).json({ error: 'invalid_retire_reasons' })
+    }
+    if (retireNote !== undefined && retireNote !== null && (typeof retireNote !== 'string' || retireNote.length > MOMENT_RETIRE_NOTE_MAX)) {
+      return res.status(400).json({ error: 'invalid_retire_note' })
+    }
     // An empty PATCH would silently succeed and look like it worked.
     if (!hasStatus && !hasReviewed) return res.status(400).json({ error: 'nothing_to_update' })
 
     const patch = { updated_at: new Date().toISOString() }
-    if (hasStatus) patch.status = status
+    if (hasStatus) {
+      patch.status = status
+      // Reasons only mean something attached to the verdict that produced
+      // them — accepted in the same PATCH as status:'retired', same pattern
+      // as content_items.model_reasons riding isModelPost:true. Deliberately
+      // NOT cleared when status flips back to 'banked' (Restore): the "why
+      // didn't this land" signal stays valid even if this instance is
+      // reconsidered later.
+      if (status === 'retired') {
+        if (retireReasons !== undefined) patch.retire_reasons = retireReasons.length ? retireReasons : null
+        if (retireNote !== undefined) patch.retire_note = retireNote?.trim() || null
+      }
+    }
     if (hasReviewed) {
       // Audit fields are server-set only — never accept a timestamp or an
       // identity from the client (same rule as content_items.approved_by).
@@ -115,7 +143,7 @@ export default async function handler(req, res) {
     if (!UUID_RE.test(interviewId)) return res.status(400).json({ error: 'invalid_interview_id' })
     const r = await sb(
       `moments?workspace_id=eq.${ws.id}&interview_id=eq.${interviewId}` +
-      `&select=id,excerpt,hook,moment_type,topic,region,tags,score,cluster_id,is_exemplar,status,usage_count,last_used_at,created_at,planned:content_plan_atoms(count)` +
+      `&select=id,excerpt,hook,moment_type,topic,region,tags,score,cluster_id,is_exemplar,status,usage_count,last_used_at,retire_reasons,retire_note,created_at,planned:content_plan_atoms(count)` +
       `&order=score.desc.nullslast,created_at.asc`,
     )
     if (!r.ok) {

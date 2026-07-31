@@ -5,6 +5,8 @@ import { apiFetch } from '@/lib/api'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
 import { toast } from '@/lib/toast'
+import MomentRetireReasons from '@/components/moments/MomentRetireReasons'
+import { MOMENT_RETIRE_REASON_LABEL } from '@/lib/momentRetire'
 
 /**
  * MomentsPanel — the banked moments mined from one interview, rendered inside
@@ -58,6 +60,17 @@ function MomentRow({ moment, onRetire, onRestore, busy }) {
             {retired && (
               <span className="uppercase tracking-wide font-semibold">· Retired</span>
             )}
+            {retired && (moment.retire_reasons?.length > 0 || moment.retire_note) && (
+              <span>
+                · why:{' '}
+                {[
+                  (moment.retire_reasons || []).map((r) => MOMENT_RETIRE_REASON_LABEL[r] || r).join(', '),
+                  moment.retire_note,
+                ]
+                  .filter(Boolean)
+                  .join(' — ')}
+              </span>
+            )}
             {!retired && !moment.is_exemplar && (
               <span title="A stronger near-duplicate moment represents this cluster; the planner draws that one.">
                 · duplicate of a stronger moment
@@ -93,6 +106,8 @@ function MomentRow({ moment, onRetire, onRestore, busy }) {
 export default function MomentsPanel({ interviewId }) {
   const queryClient = useQueryClient()
   const [retireTarget, setRetireTarget] = useState(null)
+  const [retireReasons, setRetireReasons] = useState([])
+  const [retireNote, setRetireNote] = useState('')
   const { data, isLoading, isError } = useQuery({
     queryKey: ['moments', interviewId],
     queryFn: () => apiFetch(`/api/db/moments?interview_id=${encodeURIComponent(interviewId)}`),
@@ -102,11 +117,14 @@ export default function MomentsPanel({ interviewId }) {
 
   const statusMutation = useAppMutation({
     errorMessage: 'Could not update this moment',
-    mutationFn: ({ id, status }) =>
+    mutationFn: ({ id, status, retireReasons: reasons, retireNote: note }) =>
       apiFetch(`/api/db/moments?id=${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({
+          status,
+          ...(status === 'retired' ? { retireReasons: reasons?.length ? reasons : undefined, retireNote: note?.trim() || undefined } : {}),
+        }),
       }),
     onSuccess: (_data, { status }) => {
       // This list + the /moments bank share the row; the Stories list and the
@@ -116,6 +134,8 @@ export default function MomentsPanel({ interviewId }) {
       queryClient.invalidateQueries({ queryKey: ['stories'] })
       queryClient.invalidateQueries({ queryKey: ['staff', 'card'] })
       setRetireTarget(null)
+      setRetireReasons([])
+      setRetireNote('')
       toast(status === 'retired' ? 'Retired — Bernard won’t use this moment again.' : 'Restored — back on hand.')
     },
   })
@@ -163,7 +183,7 @@ export default function MomentsPanel({ interviewId }) {
 
       <ConfirmDialog
         open={!!retireTarget}
-        onOpenChange={(open) => { if (!open) setRetireTarget(null) }}
+        onOpenChange={(open) => { if (!open) { setRetireTarget(null); setRetireReasons([]); setRetireNote('') } }}
         title="Retire this moment?"
         description={
           plannedN > 0
@@ -173,8 +193,20 @@ export default function MomentsPanel({ interviewId }) {
         confirmLabel="Retire"
         destructive={false}
         loading={statusMutation.isPending}
-        onConfirm={() => retireTarget && statusMutation.mutate({ id: retireTarget.id, status: 'retired' })}
-      />
+        onConfirm={() =>
+          retireTarget &&
+          statusMutation.mutate({ id: retireTarget.id, status: 'retired', retireReasons, retireNote })
+        }
+      >
+        <MomentRetireReasons
+          reasons={retireReasons}
+          onToggleReason={(key) =>
+            setRetireReasons((prev) => (prev.includes(key) ? prev.filter((r) => r !== key) : [...prev, key]))
+          }
+          note={retireNote}
+          onNoteChange={setRetireNote}
+        />
+      </ConfirmDialog>
     </div>
   )
 }

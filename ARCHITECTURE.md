@@ -1611,7 +1611,36 @@ Approve leaves `status = 'banked'`, Retire flips it — so "who decided this, an
 when" reads the same either way. Restore deliberately leaves the stamp intact: a
 restored moment has been reviewed and must not reappear in the queue.
 
-Queue Retire fires immediately with an Undo toast and **no** confirm dialog; the
-browse-list Retire keeps its `ConfirmDialog`. That asymmetry is intentional — a
-modal per rejection is what stops a 100+ item queue from ever being finished,
-while a one-off retire from a list has no rhythm for a dialog to break.
+The `R` keyboard shortcut retires the top queue card immediately with an Undo
+toast and **no** confirm dialog — a modal per rejection is what stops a 100+
+item queue from ever being finished. Clicking the on-screen Retire button
+instead opens a small reason popover first (see below); the browse-list Retire
+keeps its `ConfirmDialog`. That asymmetry is intentional: keyboard shortcuts
+are the fast-blitz path and stay one keystroke, while a click has room for one
+more tap.
+
+### Retire reasons (migration `199_moments_retire_reasons.sql`, 2026-07-30)
+
+A reject is a stronger signal than an approve — approving mostly means "no
+reason to say no yet" (it may still fall apart once media is attached),
+while retiring means the quote genuinely doesn't land or wouldn't work on
+social (Q). `moments.retire_reasons` (`text[]`) + `retire_note` (`text`)
+capture *why*, using the same shape as `content_items.model_reasons`/
+`model_note` (`src/lib/modelRating.js`): a fixed vocabulary
+(`src/lib/momentRetire.js`) rendered as chips + optional free text, sent in
+the same PATCH as `status:'retired'`, validated server-side in
+`api/_routes/db/moments.js`. Shared UI: `MomentRetireReasons.jsx`, used by the
+queue's Retire popover and both `ConfirmDialog`s (`OnHandTab` browse list,
+`MomentsPanel`/StoryDetail).
+
+**Capture only — nothing reads these back yet.** Selection ranking
+(`rankExemplarMoments` in `momentPlan.js`) and extraction (`scoreMoments.js`)
+are both unchanged; a retired moment already stops being drawn (`status`
+filter), same as before this migration. The deferred next step, once there's
+real reject volume: use retired excerpts as a negative-reference set so a
+newly extracted moment that resembles a past "doesn't land" rejection gets
+downweighted rather than banked fresh for a human to reject again. Don't build
+that against near-zero data — the review queue shipped un-backfilled
+(migration 198), so check actual reject volume before assuming this is ready.
+Deliberately NOT cleared on Restore: the reason stays valid signal even if a
+human reconsiders this one instance later.
