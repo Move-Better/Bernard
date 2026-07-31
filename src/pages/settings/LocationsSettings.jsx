@@ -403,22 +403,20 @@ function LocationFields({ draft, setDraft }) {
         />
       </div>
       <div className="space-y-1">
-        <Label className="text-xs">Buffer GBP channel ID</Label>
+        <Label className="text-xs">Google Business listing ID</Label>
         <Input
-          aria-label="Buffer GBP channel ID"
+          aria-label="Google Business listing ID"
           value={draft.gbp_location_id}
           onChange={e => set('gbp_location_id')(e.target.value)}
           placeholder="e.g. 6612a8c7d4e3f2b1a09f8765"
           className="text-sm font-mono"
         />
         <p className="text-3xs text-muted-foreground">
-          Buffer profile ID for this location&apos;s Google Business listing. Find it
-          at <a className="underline" href="https://publish.buffer.com/" target="_blank" rel="noreferrer">publish.buffer.com</a> →
-          select the GBP channel → copy the ID from the URL
-          (<code>publish.buffer.com/profile/&lt;id&gt;/...</code>), or call
-          <code> GET https://api.bufferapp.com/1/profiles.json?access_token=&lt;token&gt;</code> and
-          pick the entry whose <code>service</code> is googlebusiness.
-          Leave blank if this location has no GBP listing.
+          Marks this location as having its own Google Business listing, so Bernard
+          writes a distinct post per location instead of reusing one. Leave blank if
+          this location has no GBP listing. Connecting the listing for publishing is
+          separate — do that under Settings → Integrations → Social publishing, which
+          connects Google Business per location.
         </p>
       </div>
     </>

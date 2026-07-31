@@ -22,7 +22,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { SignIn, SignUp, useAuth, useUser, useOrganizationList } from '@clerk/react'
-import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Plus, X, Clapperboard, Smartphone, FileText, Mail, MapPin, Instagram, Film, Facebook, Linkedin, Music2, Youtube, Twitter, AtSign, Cloud, Globe, Megaphone, LayoutTemplate, Check, Info, Share2, BarChart3, Search, Rss, ClipboardCopy } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Plus, X, Clapperboard, Smartphone, FileText, Mail, MapPin, Instagram, Film, Facebook, Linkedin, Music2, Youtube, Twitter, AtSign, Cloud, Globe, Megaphone, LayoutTemplate, Check, Info, Share2, BarChart3, Search, ClipboardCopy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -1421,10 +1421,6 @@ function PublishIntentScreen({ form, setForm, onBack, onContinue }) {
           icon={Share2} badge="Recommended"
           title="Let Bernard post for me — bundle.social"
           body="Connect your accounts once. Bernard posts directly to Instagram, Facebook & Google Business — and reads back real performance stats (Instagram connects directly, so post reach & engagement come through). No third-party tool to manage." />
-        <IntentOption selected={intent.social === 'buffer'} onClick={() => set('social', 'buffer')}
-          icon={Rss}
-          title="I already use Buffer"
-          body="Connect your existing Buffer account and Bernard publishes through it." />
         <IntentOption selected={intent.social === 'manual'} onClick={() => set('social', 'manual')}
           icon={ClipboardCopy}
           title="I'll copy & paste myself for now"

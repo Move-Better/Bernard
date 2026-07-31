@@ -535,7 +535,7 @@ function CostBlock({ units, prevUnits, weekOffset, rangeLabel, mtdTotal, ytdTota
         <div className="p-3 text-center"><p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Year to date</p><p className="text-base font-extrabold mt-0.5">{fmtUsd(ytdTotal)}</p></div>
       </div>
       <div className="px-5 py-2.5 bg-muted/40 border-t border-border text-2xs text-muted-foreground">
-        Estimated from counted usage × provider rate card (not exact billed cost). Excludes flat subscriptions (Buffer, hosting).
+        Estimated from counted usage × provider rate card (not exact billed cost). Excludes flat subscriptions (bundle.social, hosting).
         {perPost != null ? ` ~${fmtUsd(perPost)} per published post ${isCurrent ? 'this week' : 'that week'}.` : ''}
       </div>
     </div>

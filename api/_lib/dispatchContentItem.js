@@ -8,13 +8,15 @@
 // uses, so server- and client-dispatched posts are identical.
 //
 // Scope (deliberately conservative — see the sprint doc):
-//   - Only workspaces on publish_provider='bundle' dispatch here. Buffer-provider
-//     workspaces get { fallback:'client' } and the client runs its proven path.
+//   - Platforms bundle.social can't post (e.g. blog) get { fallback:'client' }.
 //   - Carousels (slides needing a fresh canvas bake, which the server can't do)
 //     get { fallback:'client', needs_client_bake:true }. Text-only and video
 //     (reel) pieces dispatch directly.
 // These two sets are DISJOINT from what the server dispatches, so a piece is
 // ever handled by exactly one path — no double-post.
+//
+// There is no longer a provider check: bundle.social is the only provider
+// (Buffer retired 2026-07-30), so every workspace takes this path.
 //
 // Idempotency: content_items.dispatch_state records every posted target
 // (append-only, via autoPublishRetry's mergePostedLocations). A retry skips
@@ -62,7 +64,7 @@ const CAROUSEL_PLATFORMS = new Set(['instagram', 'facebook'])
 
 /**
  * @param {object} a
- * @param {object} a.ws     workspace row (publish_provider, id, clerk_org_id…)
+ * @param {object} a.ws     workspace row (id, clerk_org_id, bundle_team_id…)
  * @param {object} a.piece  content_items row: id,status,platform,content,media_urls,slides,scheduled_at,location_overrides
  * @returns {Promise<object>} one of:
  *   { dispatched:true, postId, scheduledAt, profileCount }
@@ -72,8 +74,6 @@ const CAROUSEL_PLATFORMS = new Set(['instagram', 'facebook'])
  *   { dispatched:false, error:'<key>' }                                // surfaced; client must NOT re-dispatch
  */
 export async function dispatchContentItem({ ws, piece }) {
-  const provider = ws.publish_provider || 'buffer'
-  if (provider !== 'bundle') return { dispatched: false, fallback: 'client' }
   if (!BUNDLE_PLATFORMS.has(piece.platform)) return { dispatched: false, fallback: 'client' }
 
   // Carousels need a fresh client canvas bake (renderFreeformSlide is DOM-bound);

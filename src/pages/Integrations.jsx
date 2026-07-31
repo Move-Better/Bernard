@@ -14,7 +14,6 @@ import {
   XCircle,
   Lightbulb,
   Share2,
-  Rss,
   AlertTriangle,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -31,35 +30,17 @@ import { isIntegrationRelevantForIntent, hasPublishIntent } from '@/lib/outputCh
 import { toast } from '@/lib/toast'
 
 // Customer-facing publishing connect page. Per-workspace credentials are
-// stored encrypted via /api/workspace/credentials. Buffer is the recommended
-// integration for every workspace and now covers Google Business Profile too
-// (per-location channel IDs live on workspace_locations rows). TDC stays
-// first-party only and renders behind a capability flag.
+// stored encrypted via /api/workspace/credentials. Social publishing runs
+// through bundle.social (see SocialPublishingSection below), which is connected
+// in bundle's own portal rather than by pasting a token — so it is not an
+// INTEGRATIONS entry. TDC stays first-party only and renders behind a
+// capability flag.
 
 const INTEGRATIONS = [
-  {
-    id: 'buffer',
-    label: 'Buffer',
-    recommended: true,
-    description:
-      'One connection that sends Bernard posts to Instagram, Facebook, LinkedIn, Twitter/X, Threads, TikTok, YouTube Shorts, Bluesky, Mastodon, Google Business Profile, and more. The fastest way to get Bernard publishing for your workspace.',
-    platforms: ['Instagram', 'Facebook', 'LinkedIn', 'Twitter/X', 'Threads', 'TikTok', 'YouTube Shorts', 'Mastodon', 'Bluesky', 'Google Business Profile'],
-    secretLabel: 'Buffer access token',
-    secretPlaceholder: 'access_token_…',
-    fields: [],
-    setupSteps: [
-      'Sign in (or sign up) at buffer.com.',
-      'In Buffer, connect every channel you want Bernard to publish to (Instagram, Facebook Page, LinkedIn, X, TikTok, etc.).',
-      'Open publish.buffer.com/settings/api and go to the Personal Keys tab.',
-      'Click + New Key, give it a name (e.g. "Bernard"), and copy the token.',
-      'Paste it below and Save — your token is stored encrypted and used only at publish time.',
-    ],
-    docsUrl: 'https://buffer.com/developers/api',
-  },
   // Facebook direct (Graph API) retired 2026-05-10. Google Business Profile
-  // direct (service account) retired 2026-05-11. Both publish through the
-  // Buffer channel above; GBP listings additionally need their per-location
-  // Buffer profile ID pasted into Workspace Settings → Locations.
+  // direct (service account) retired 2026-05-11. Buffer retired 2026-07-30.
+  // All social publishing now goes through bundle.social; GBP listings connect
+  // per-location under Social publishing.
   {
     id: 'wordpress',
     label: 'WordPress',
@@ -172,11 +153,7 @@ export default function Integrations() {
   // onboarded before the publish-intent step have an empty intent → all shown.
   const intent = ws?.publish_intent
   const connectedSet = new Set(ws?.connected_publish_services || [])
-  // Buffer is presented in the dedicated "Social publishing" section below (a
-  // provider choice alongside bundle.social), so keep it out of the generic list.
-  const bufferIntegration = INTEGRATIONS.find((i) => i.id === 'buffer') || null
-  const bufferRow = services?.find?.((s) => s.service === 'buffer') || null
-  const capableListed = capable.filter((i) => i.id !== 'buffer')
+  const capableListed = capable
   const visible = capableListed.filter(
     (i) =>
       showAllIntegrations ||
@@ -259,16 +236,7 @@ export default function Integrations() {
         </div>
       )}
 
-      {isAdmin && (
-        <SocialPublishingSection
-          ws={ws}
-          isAdmin={isAdmin}
-          getToken={getToken}
-          bufferIntegration={bufferIntegration}
-          bufferRow={bufferRow}
-          onChange={reload}
-        />
-      )}
+      {isAdmin && <SocialPublishingSection isAdmin={isAdmin} />}
 
       {isAdmin && <h2 className="text-sm font-semibold pt-1">Other integrations</h2>}
 
@@ -320,13 +288,10 @@ export default function Integrations() {
   )
 }
 
-// Social-publishing provider choice — Buffer OR bundle.social (both permanent;
-// the tenant picks). Owns the Buffer card too (filtered out of the list below to
-// avoid duplication). The active provider routes all social publishing; the
-// switch persists workspaces.publish_provider via /api/workspace/me.
-function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, bufferRow, onChange }) {
-  const provider = ws?.publish_provider || 'buffer'
-  const [switching, setSwitching] = useState(false)
+// Social publishing — bundle.social, the only provider (Buffer retired
+// 2026-07-30, see migration 198). There is no provider choice to present, so
+// this renders the connection state directly rather than a picker.
+function SocialPublishingSection({ isAdmin }) {
   const [busy, setBusy] = useState(false)
   const [locBusy, setLocBusy] = useState(false)
   const [status, setStatus] = useState(null) // { connected, accounts, locations } | null while loading
@@ -335,7 +300,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
   // Load bundle connection status, and refetch when the tab regains focus (the
   // connect portal opens in a new tab, so accounts may have changed on return).
   useEffect(() => {
-    if (provider !== 'bundle' || !isAdmin) { setStatus(null); return }
+    if (!isAdmin) { setStatus(null); return }
     let cancelled = false
     const load = () => apiFetch('/api/integrations/bundle/status')
       .then((d) => { if (!cancelled) setStatus(d || { connected: false, accounts: [] }) })
@@ -343,23 +308,7 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
     load()
     window.addEventListener('focus', load)
     return () => { cancelled = true; window.removeEventListener('focus', load) }
-  }, [provider, isAdmin])
-
-  async function switchProvider(next) {
-    if (!isAdmin || switching) return
-    setSwitching(true); setErr(null)
-    try {
-      await apiFetch('/api/workspace/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publish_provider: next }),
-      })
-      window.location.reload() // refresh workspace context so the new provider takes effect
-    } catch (e) {
-      setErr(e?.payload?.error || e?.message || 'Could not switch provider.')
-      setSwitching(false)
-    }
-  }
+  }, [isAdmin])
 
   async function openPortal() {
     if (busy) return
@@ -396,8 +345,6 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
     }
   }
 
-  const bundleActive = provider === 'bundle'
-  const bufferActive = provider === 'buffer'
   const accounts = status?.accounts || []
   const locations = status?.locations || []
   const unhealthyCount = accounts.filter((a) => !a.connected).length
@@ -407,12 +354,12 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
       <div>
         <h2 className="text-sm font-semibold">Social publishing</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Choose how Bernard posts to Instagram, Facebook, Google Business &amp; more. Pick one — you can switch anytime.
+          How Bernard posts to Instagram, Facebook, Google Business &amp; more.
         </p>
       </div>
 
       {/* bundle.social */}
-      <div className={`rounded-xl border bg-card ${bundleActive ? 'border-primary ring-1 ring-primary/30' : 'border-border'}`}>
+      <div className="rounded-xl border bg-card border-primary ring-1 ring-primary/30">
         <div className="px-5 py-4 flex items-start gap-3">
           <span className="h-9 w-9 shrink-0 rounded-md bg-primary/10 grid place-items-center">
             <Share2 className="h-5 w-5 text-primary" />
@@ -420,34 +367,21 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-base">bundle.social</span>
-              {bundleActive && (
-                <span className="text-3xs uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded ring-1 ring-primary/20">Active</span>
-              )}
-              {bundleActive && (
-                status?.connected ? (
-                  <ConnectedBadge upper />
-                ) : (
-                  <span className="text-3xs uppercase tracking-wide px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                    {status == null ? 'Checking…' : 'Not connected yet'}
-                  </span>
-                )
+              {status?.connected ? (
+                <ConnectedBadge upper />
+              ) : (
+                <span className="text-3xs uppercase tracking-wide px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                  {status == null ? 'Checking…' : 'Not connected yet'}
+                </span>
               )}
             </div>
             <p className="text-xs text-muted-foreground leading-snug mt-1">
               Bernard posts directly to your accounts and pulls back likes, reach &amp; impressions. Connect in bundle’s secure portal — Bernard never sees your passwords.
             </p>
-            {!bundleActive && (
-              <button
-                type="button" disabled={!isAdmin || switching} onClick={() => switchProvider('bundle')}
-                className="mt-3 text-sm bg-primary text-primary-foreground px-3.5 py-2 rounded-md font-medium disabled:opacity-60 hover:bg-primary/90"
-              >
-                {switching ? 'Switching…' : 'Use bundle.social'}
-              </button>
-            )}
           </div>
         </div>
 
-        {bundleActive && (
+        {(
           <>
             {/* Social accounts — Instagram/Facebook/X/LinkedIn/TikTok/YouTube/Threads/Bluesky/Mastodon on the workspace Team */}
             <div className="px-5 py-3.5 border-t border-border">
@@ -562,51 +496,6 @@ function SocialPublishingSection({ ws, isAdmin, getToken, bufferIntegration, buf
               </div>
             )}
           </>
-        )}
-      </div>
-
-      {/* Buffer */}
-      <div className={`rounded-xl border bg-card ${bufferActive ? 'border-primary ring-1 ring-primary/30' : 'border-border'}`}>
-        <div className="px-5 py-4 flex items-start gap-3">
-          <span className="h-9 w-9 shrink-0 rounded-md bg-muted grid place-items-center"><Rss className="h-5 w-5 text-muted-foreground" /></span>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-sm">Buffer</span>
-              {bufferActive && (
-                <span className="text-3xs uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded ring-1 ring-primary/20">Active</span>
-              )}
-              {bufferActive && bufferRow && (
-                <ConnectedBadge upper />
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground leading-snug mt-1">
-              Already use Buffer? Post through your existing Buffer account by pasting an access token.
-            </p>
-            {!bufferActive && (
-              <button
-                type="button" disabled={!isAdmin || switching} onClick={() => switchProvider('buffer')}
-                className="mt-3 text-sm border border-border px-3 py-1.5 rounded-md hover:bg-muted disabled:opacity-60"
-              >
-                {switching ? 'Switching…' : 'Switch to Buffer'}
-              </button>
-            )}
-          </div>
-        </div>
-        {bufferActive && bufferIntegration && (
-          <div className="px-5 pb-4 border-t border-border pt-4">
-            <CredentialForm
-              service={bufferIntegration}
-              row={bufferRow}
-              disabled={!isAdmin}
-              getToken={getToken}
-              tokenOpts={{ skipCache: true }}
-              onChange={onChange}
-              removeLabel="Disconnect"
-              saveLabel={({ configured }) => (configured ? 'Update token' : 'Connect Buffer')}
-              secretPlaceholder={bufferIntegration.secretPlaceholder}
-              confirmMessage={(svc) => `Disconnect ${svc.label} for this workspace?`}
-            />
-          </div>
         )}
       </div>
 

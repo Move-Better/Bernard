@@ -1084,7 +1084,7 @@ function DefinitionsModal({ onClose }) {
               <li>The overall card and top-post ranking use <span className="font-medium text-foreground">Reach</span> (unique accounts the platform reports having seen the post) and <span className="font-medium text-foreground">Engagement</span> (likes + comments + shares + saves).</li>
               <li>The by-platform breakdown shows each platform&rsquo;s own real numbers instead — <span className="font-medium text-foreground">Views</span>/<span className="font-medium text-foreground">Impressions</span>, Likes, Comments, Shares, Saves — only the ones that platform actually reports for the post.</li>
               <li>Numbers only update when Bernard pulls fresh stats — on a schedule (1, 3, 7, and 30 days after a post goes out), then it stops. A brand-new post can show 0 until its first pull.</li>
-              <li>If your workspace publishes through Buffer rather than bundle.social: Buffer&rsquo;s API doesn&rsquo;t provide per-post engagement data today, so these numbers won&rsquo;t be available.</li>
+              <li>Posts published before your workspace moved to bundle.social have no per-post engagement data — the old scheduler&rsquo;s API never provided it — so those show nothing.</li>
             </ul>
           </div>
           <div>

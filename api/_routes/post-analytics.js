@@ -28,8 +28,6 @@ import { waitUntil } from '@vercel/functions'
 import { workspaceContext } from '../_lib/workspaceContext.js'
 import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
-import { getCredential } from '../_lib/getCredential.js'
-import { fetchPostStats } from '../_lib/bufferPostStats.js'
 import { BundlePublisher } from '../_lib/social/index.js'
 import { isUnavailable } from '../_lib/engagementScoring.js'
 
@@ -168,8 +166,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ metrics: null, reason: 'not_published' })
   }
 
-  const isBundle = (ws.publish_provider || 'buffer') === 'bundle'
-  const source = isBundle ? 'bundle' : 'buffer'
+  // bundle.social is the only provider (Buffer retired 2026-07-30). `source`
+  // still keys the snapshot rows, which retain their historical 'buffer' values.
+  const source = 'bundle'
   const snap = await latestSnapshot(ws.id, contentItemId, source)
 
   // A sentinel snapshot records that analytics are STRUCTURALLY unavailable for
@@ -202,9 +201,7 @@ export default async function handler(req, res) {
 
   if (!force) return res.status(200).json({ metrics: null, reason: 'no_metrics_yet' })
 
-  return isBundle
-    ? handleBundleRefresh(res, ws, contentItemId, item, snap)
-    : handleBufferRefresh(res, ws, contentItemId, item, snap)
+  return handleBundleRefresh(res, ws, contentItemId, item, snap)
 }
 
 // Fall back to whatever the cache already held so a transient upstream hiccup
@@ -270,27 +267,3 @@ async function handleBundleRefresh(res, ws, contentItemId, item, snap) {
   return res.status(200).json({ metrics: mapBundleMetrics(stats.statistics, item.platform), fetchedAt, cached: false })
 }
 
-// Legacy Buffer read. Unreachable today — every workspace is on
-// publish_provider='bundle' and #2488 deleted the Buffer publish path — but
-// kept snapshot-backed rather than deleted so the follow-up Buffer-naming
-// cleanup owns removing it in one piece.
-async function handleBufferRefresh(res, ws, contentItemId, item, snap) {
-  const cred = await getCredential(ws.id, 'buffer')
-  if (!cred?.secret) {
-    return staleFallback(res, snap, 'buffer', item.platform, 'Buffer not configured; returning cached metrics')
-  }
-
-  const result = await fetchPostStats(cred.secret, item.buffer_update_id)
-  if (!result.ok || !result.post) {
-    console.error(`[post-analytics] fetchPostStats failed for ${item.buffer_update_id}`)
-    return staleFallback(res, snap, 'buffer', item.platform, 'Buffer API error; returning cached metrics')
-  }
-
-  const stats = { statistics: { ...(result.post.statistics ?? {}) }, source: 'buffer', service: item.platform }
-  const fetchedAt = new Date().toISOString()
-  waitUntil(
-    writeSnapshot(ws.id, contentItemId, 'buffer', stats)
-      .catch((e) => console.error('[post-analytics] snapshot write failed:', e?.message))
-  )
-  return res.status(200).json({ metrics: extractMetrics(stats.statistics), fetchedAt, cached: false })
-}
