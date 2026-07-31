@@ -262,8 +262,6 @@
     "aspect_ratio",
     "auto_published",
     "brief_id",
-    "buffer_metrics",
-    "buffer_metrics_fetched_at",
     "buffer_update_id",
     "content",
     "created_at",

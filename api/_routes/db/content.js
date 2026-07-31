@@ -76,18 +76,14 @@ async function dbErr(res, r, msg = 'Database error', status = 500) {
 // selected state, the badge, and publishPiece's `piece.format`) got undefined,
 // so the choice was invisible AND never reached the publish payload. Nothing
 // errored; the feature was simply inert. Add both halves together.
-const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,content,overlay_text,slides,text_card,status,publish_error,scheduled_at,published_at,media_urls,platform_post_id,buffer_update_id,resolved_url,target_locations,location_id,location_overrides,notes,reviewed_by,approved_by,approved_at,reject_reason,reject_note,rejected_at,rejected_by,edit_diff,performed_well,is_model_post,model_reasons,model_note,model_marked_at,archived_at,hashtag_suggestions,buffer_metrics,buffer_metrics_fetched_at,provenance,voice_fidelity_score,voice_audit,length_preset,series_id,series_part,series_total,photo_treatment,photo_composite_url,photo_template_id,aspect_ratio,seo_title,meta_description,format,format_source,media_source,created_at,updated_at'
+const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,content,overlay_text,slides,text_card,status,publish_error,scheduled_at,published_at,media_urls,platform_post_id,buffer_update_id,resolved_url,target_locations,location_id,location_overrides,notes,reviewed_by,approved_by,approved_at,reject_reason,reject_note,rejected_at,rejected_by,edit_diff,performed_well,is_model_post,model_reasons,model_note,model_marked_at,archived_at,hashtag_suggestions,provenance,voice_fidelity_score,voice_audit,length_preset,series_id,series_part,series_total,photo_treatment,photo_composite_url,photo_template_id,aspect_ratio,seo_title,meta_description,format,format_source,media_source,created_at,updated_at'
 
 // Slim shape for the Stories list (Cards / Pipeline / Calendar / Themes views).
-// Drops heavy columns (`content`, `media_urls`, `buffer_metrics`, `notes`, etc.)
-// that the list views don't render — full row is still available via id-fetch
-// or the per-piece review screen. See buildStories() in src/lib/stories.js for
-// the consuming shape.
+// Drops heavy columns (`content`, `media_urls`, `notes`, etc.) that the list
+// views don't render — full row is still available via id-fetch or the
+// per-piece review screen. See buildStories() in src/lib/stories.js for the
+// consuming shape.
 const SELECT_CARD = 'id,interview_id,brief_id,workspace_id,platform,status,scheduled_at,published_at,updated_at,provenance,series_id,series_part,series_total,voice_fidelity_score,voice_audit,performed_well'
-
-// Slim shape for the "What's working" top-performers widget. Only needs
-// metrics + display fields — drops content body, media_urls, notes, etc.
-const SELECT_PERFORMERS = 'id,interview_id,topic,platform,status,buffer_metrics,buffer_metrics_fetched_at,updated_at'
 
 // Moments IA ① — the detail read (and the PATCH echo that overwrites the
 // client's detail cache) embed the piece's banked moment via its plan atom, so
@@ -147,7 +143,7 @@ export default async function handler(req, res) {
     const staffId = searchParams.get('staffId')
     const archived    = searchParams.get('archived')    // 'true' | 'only' | 'all' — default excludes archived
     const limit       = Math.min(parseInt(searchParams.get('limit') || '100', 10) || MAX_LIMIT, MAX_LIMIT)
-    const view        = searchParams.get('view')        // 'card' | 'performers' = slim shapes
+    const view        = searchParams.get('view')        // 'card' = slim shape
     const origin      = searchParams.get('origin')      // 'post' = one-off Post/Brief content only
 
     // Validate allowlisted params before interpolating into the PostgREST query.
@@ -162,7 +158,7 @@ export default async function handler(req, res) {
     if (from && !ISO_DATE_RE.test(from)) return err(res, 'Invalid from date', 400)
     if (to && !ISO_DATE_RE.test(to)) return err(res, 'Invalid to date', 400)
 
-    const sel = view === 'card' ? SELECT_CARD : view === 'performers' ? SELECT_PERFORMERS : SELECT
+    const sel = view === 'card' ? SELECT_CARD : SELECT
     let qs = `content_items?${wsFilter}&select=${sel}&order=created_at.desc&limit=${limit}`
     if (status) {
       if (status.includes(',')) {
@@ -355,8 +351,6 @@ export default async function handler(req, res) {
       performed_well:         patch.performedWell,
       archived_at:            patch.archivedAt,
       notes:                  patch.notes,
-      buffer_metrics:         patch.bufferMetrics,
-      buffer_metrics_fetched_at: patch.bufferMetricsFetchedAt,
       updated_at:             new Date().toISOString(),
       aspect_ratio:           patch.aspectRatio,
       // Explicit publish format. format_source is server-stamped, never

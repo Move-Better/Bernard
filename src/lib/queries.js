@@ -760,7 +760,7 @@ export function useDeleteReference() {
 
 // Slim list query — uses ?view=card on both endpoints so the payload only
 // carries columns the Cards / Pipeline / Calendar / Themes views actually
-// read (drops `messages`, `content`, `media_urls`, `buffer_metrics`, etc.).
+// read (drops `messages`, `content`, `media_urls`, `notes`, etc.).
 // staleTime 5min — list rarely changes outside of explicit user actions, and
 // every relevant mutation invalidates queryKeys.stories.all.
 //
