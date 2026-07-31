@@ -39,7 +39,7 @@ export default function FeedbackResolvedBanner() {
       {notices.map((n) => (
         <div
           key={n.id}
-          className="flex items-center gap-3 rounded-lg border border-success/30 bg-success/8 px-4 py-3"
+          className="flex items-center gap-3 rounded-lg border border-success/30 bg-success/[0.08] px-4 py-3"
         >
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success text-success-foreground">
             <CheckCircle2 className="h-4 w-4" />

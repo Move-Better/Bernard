@@ -42,7 +42,7 @@ async function countRows(path) {
 
 async function workspaces(onlySlug) {
   const filter = onlySlug ? `&slug=eq.${encodeURIComponent(onlySlug)}` : ''
-  const r = await sb(`workspaces?select=id,slug,app_name,cadence_policy${filter}`)
+  const r = await sb(`workspaces?status=eq.active&select=id,slug,app_name,cadence_policy${filter}`)
   if (!r.ok) throw new Error(`workspaces fetch failed: ${r.status}`)
   return r.json()
 }
