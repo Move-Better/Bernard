@@ -1,6 +1,6 @@
 // Phase 4: email a workspace owner the moment one of their posts fails to
 // publish. Shared by the bundle webhook (real-time) and the
-// sync-buffer-published cron (hourly backstop) — both call this ONLY on a real
+// sync-published-status cron (hourly backstop) — both call this ONLY on a real
 // transition into status='failed', so the owner gets exactly one alert per
 // failure regardless of which path detects it first.
 //

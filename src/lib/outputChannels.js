@@ -49,10 +49,12 @@ export const PUBLISH_MODES = Object.freeze({
   // PLATFORM_TO_BUNDLE_TYPE in api/_lib/social/bundlePublisher.js, (3) prompt
   // generator in src/lib/prompts.js. No new credential card, no OAuth flow.
   //
-  // The id stays 'buffer' because it is persisted data — it is matched against
-  // workspaces.publish_intent.social and workspace_credentials.service — so it
-  // can only move in a migration, not a rename.
-  BUFFER:    'buffer',
+  // The VALUE stays the string 'buffer' — it is persisted data, matched against
+  // workspaces.publish_intent.social and workspace_credentials.service, so it
+  // can only move in a migration, not a rename. The IDENTIFIER below is just a
+  // JS name and carries no such constraint; it was renamed SOCIAL because
+  // 'buffer' as a mode name reads like the retired provider it no longer is.
+  SOCIAL:    'buffer',
   WEBSITE:   'website',    // Astro+GitHub (animals) or WordPress REST (equine), dispatched in api/publish/website.js
   TDC:       'tdc',        // TrustDrivenCare newsletter — currently a paste-into-template flow, not a true API publish
 })
@@ -76,7 +78,7 @@ export const OUTPUT_CHANNELS = Object.freeze({
     id: 'gbp',
     label: 'Google Business Profile post',
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
-    publishMode: PUBLISH_MODES.BUFFER,
+    publishMode: PUBLISH_MODES.SOCIAL,
   },
   // NOTE: Instagram is split here (post + reel + story) for the settings
   // picker. Post and reel share the `instagram` atom platform key in
@@ -89,73 +91,73 @@ export const OUTPUT_CHANNELS = Object.freeze({
     id: 'instagram_post',
     label: 'Instagram feed post',
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
-    publishMode: PUBLISH_MODES.BUFFER,
+    publishMode: PUBLISH_MODES.SOCIAL,
   },
   instagram_reel: {
     id: 'instagram_reel',
     label: 'Instagram reel',
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
-    publishMode: PUBLISH_MODES.BUFFER,
+    publishMode: PUBLISH_MODES.SOCIAL,
   },
   instagram_story: {
     id: 'instagram_story',
     label: 'Instagram Story',
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
-    publishMode: PUBLISH_MODES.BUFFER,
+    publishMode: PUBLISH_MODES.SOCIAL,
   },
   facebook: {
     id: 'facebook',
     label: 'Facebook post',
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
-    publishMode: PUBLISH_MODES.BUFFER,
+    publishMode: PUBLISH_MODES.SOCIAL,
   },
   linkedin: {
     id: 'linkedin',
     label: 'LinkedIn post',
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
-    publishMode: PUBLISH_MODES.BUFFER,
+    publishMode: PUBLISH_MODES.SOCIAL,
   },
   tiktok: {
     id: 'tiktok',
     label: 'TikTok',
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
-    publishMode: PUBLISH_MODES.BUFFER,
+    publishMode: PUBLISH_MODES.SOCIAL,
   },
   youtube_short: {
     id: 'youtube_short',
     label: 'YouTube Short',
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
-    publishMode: PUBLISH_MODES.BUFFER,
+    publishMode: PUBLISH_MODES.SOCIAL,
   },
   youtube: {
     id: 'youtube',
     label: 'YouTube video',   // long-form, landscape (keep-whole lane)
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
-    publishMode: PUBLISH_MODES.BUFFER,
+    publishMode: PUBLISH_MODES.SOCIAL,
   },
   twitter: {
     id: 'twitter',
     label: 'X / Twitter post',
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
-    publishMode: PUBLISH_MODES.BUFFER,
+    publishMode: PUBLISH_MODES.SOCIAL,
   },
   threads: {
     id: 'threads',
     label: 'Threads post',
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
-    publishMode: PUBLISH_MODES.BUFFER,
+    publishMode: PUBLISH_MODES.SOCIAL,
   },
   bluesky: {
     id: 'bluesky',
     label: 'Bluesky post',
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
-    publishMode: PUBLISH_MODES.BUFFER,
+    publishMode: PUBLISH_MODES.SOCIAL,
   },
   mastodon: {
     id: 'mastodon',
     label: 'Mastodon post',
     exportShape: EXPORT_SHAPES.SOCIAL_COMPOSE,
-    publishMode: PUBLISH_MODES.BUFFER,
+    publishMode: PUBLISH_MODES.SOCIAL,
   },
   google_ads: {
     id: 'google_ads',
@@ -198,7 +200,7 @@ export const OUTPUT_CHANNEL_IDS = Object.freeze(Object.keys(OUTPUT_CHANNELS))
 // the live workspace. Mapping the social mode to socialPublish is what the
 // stored data always meant.
 const MODE_CAPABILITY_KEYS = Object.freeze({
-  [PUBLISH_MODES.BUFFER]: 'socialPublish',
+  [PUBLISH_MODES.SOCIAL]: 'socialPublish',
 })
 
 export function publishCapabilityKey(channelId) {
@@ -249,7 +251,7 @@ const PUBLISH_MODE_SERVICES = Object.freeze({
   // this entry is what makes those workspaces' social channels read as Publish
   // rather than Export. Dropping it is a user-visible downgrade, so it waits on
   // a decision about the rows themselves.
-  [PUBLISH_MODES.BUFFER]:  ['buffer'],
+  [PUBLISH_MODES.SOCIAL]:  ['buffer'],
   [PUBLISH_MODES.WEBSITE]: ['wordpress', 'astro_github', 'website'],
   [PUBLISH_MODES.TDC]:     ['tdc', 'beehiiv'],
 })
@@ -371,7 +373,7 @@ export function channelOneClickReadyForIntent(channelId, intent) {
     // The mode id is still the persisted 'buffer' string, but the integration
     // that upgrades a social channel to one-click is bundle.social — Buffer was
     // retired 2026-07-30 and is no longer a selectable intent.
-    case PUBLISH_MODES.BUFFER:  return intent?.social === 'bundle'
+    case PUBLISH_MODES.SOCIAL:  return intent?.social === 'bundle'
     case PUBLISH_MODES.WEBSITE: return intent?.website === 'wordpress' || intent?.website === 'astro'
     case PUBLISH_MODES.TDC:     return intent?.newsletter === 'beehiiv'
     default:                    return false

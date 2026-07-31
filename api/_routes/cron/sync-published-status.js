@@ -9,10 +9,6 @@ export const config = { runtime: 'nodejs' }
 // This is the slower backstop for the inbound bundle webhook — it covers the
 // deliveries the webhook missed (endpoint not registered, dropped delivery).
 //
-// The route PATH still says "buffer" — the provider is gone (retired 2026-07-30)
-// and the column was collapsed into platform_post_id in migration 202, but the
-// cron path is registered in vercel.json and renaming it is a separate change.
-//
 // Auth: Bearer CRON_SECRET (same as all other crons).
 
 import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
@@ -25,7 +21,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-// Look back at most 30 days to avoid hammering Buffer for very old orphaned rows.
+// Look back at most 30 days to avoid hammering bundle for very old orphaned rows.
 const LOOKBACK_DAYS = 30
 // Cap items processed per run to keep latency predictable.
 const MAX_ITEMS = 100
@@ -45,7 +41,7 @@ function sb(path, init = {}) {
 }
 
 async function fetchOverdueItems(wsFilter) {
-  if (!wsFilter) throw new Error('[sync-buffer-published] wsFilter is required — refusing unscoped query')
+  if (!wsFilter) throw new Error('[sync-published-status] wsFilter is required — refusing unscoped query')
   const cutoff = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString()
   // scheduled_at.lt.now() catches everything past its window;
   // scheduled_at.gte.cutoff avoids touching rows older than 30 days.
@@ -61,7 +57,7 @@ async function fetchOverdueItems(wsFilter) {
     `&limit=${MAX_ITEMS}`
   )
   if (!r.ok) {
-    console.error('[sync-buffer-published] overdue fetch failed:', r.status)
+    console.error('[sync-published-status] overdue fetch failed:', r.status)
     return []
   }
   return (await r.json().catch(() => [])) || []
@@ -110,7 +106,7 @@ async function recordPermalink(id, workspaceId, permalink) {
       body: JSON.stringify({ resolved_url: permalink, updated_at: new Date().toISOString() }),
     })
   } catch (e) {
-    console.warn('[sync-buffer-published] resolved_url write failed for item:', id, e?.message)
+    console.warn('[sync-published-status] resolved_url write failed for item:', id, e?.message)
   }
 }
 
@@ -161,7 +157,7 @@ export default async function handler(req, res) {
 
   const wsRes = await sb('workspaces?status=eq.active&select=id,publish_provider,bundle_team_id')
   if (!wsRes.ok) {
-    console.error('[sync-buffer-published] workspace fetch failed:', wsRes.status)
+    console.error('[sync-published-status] workspace fetch failed:', wsRes.status)
     return res.status(500).json({ error: 'workspace fetch failed' })
   }
   const wsRows = await wsRes.json().catch(() => [])
@@ -169,7 +165,7 @@ export default async function handler(req, res) {
   const activeIds = (Array.isArray(wsRows) ? wsRows : []).map((w) => { wsMap[w.id] = w; return w.id })
   const safeIds = activeIds.filter(id => UUID_RE.test(id))
   if (!safeIds.length) {
-    console.info('[sync-buffer-published] no active workspaces; skipping sync')
+    console.info('[sync-published-status] no active workspaces; skipping sync')
     return res.status(200).json({ checked: 0, promoted: 0, failed: 0, skipped: 0, errors: 0 })
   }
   const wsScope = `&workspace_id=in.(${safeIds.map(id => `"${id}"`).join(',')})`
@@ -186,7 +182,7 @@ export default async function handler(req, res) {
     const wsResult = { workspaceId, promoted: 0, failed: 0, skipped: 0, errors: 0, notFound: 0 }
 
     if (!wsRow.id) {
-      console.warn('[sync-buffer-published] skipping unknown workspace:', workspaceId)
+      console.warn('[sync-published-status] skipping unknown workspace:', workspaceId)
       summary.skipped += wsItems.length
       summary.workspaces.push({ workspaceId, skipped: wsItems.length, reason: 'unknown-workspace' })
       continue
@@ -197,7 +193,7 @@ export default async function handler(req, res) {
     // the teamId getter throw once per item (it throws lazily, not in the
     // constructor, so without this guard N items become N errors).
     if (!wsRow.bundle_team_id) {
-      console.warn('[sync-buffer-published] workspace not onboarded to bundle.social:', workspaceId)
+      console.warn('[sync-published-status] workspace not onboarded to bundle.social:', workspaceId)
       summary.skipped += wsItems.length
       summary.workspaces.push({ workspaceId, skipped: wsItems.length, reason: 'no-bundle-team' })
       continue
@@ -209,7 +205,7 @@ export default async function handler(req, res) {
     try {
       publisher = new BundlePublisher(wsRow)
     } catch (e) {
-      console.warn('[sync-buffer-published] bundle init failed for workspace:', workspaceId, e?.message)
+      console.warn('[sync-published-status] bundle init failed for workspace:', workspaceId, e?.message)
       summary.skipped += wsItems.length
       summary.workspaces.push({ workspaceId, skipped: wsItems.length, reason: 'bundle-init-failed' })
       continue
@@ -258,7 +254,7 @@ export default async function handler(req, res) {
         }
         else { summary.errors++; wsResult.errors++ }
       } catch (e) {
-        console.error('[sync-buffer-published] bundle postGet error for item:', item.id, e?.message)
+        console.error('[sync-published-status] bundle postGet error for item:', item.id, e?.message)
         summary.errors++
         wsResult.errors++
       }
@@ -267,6 +263,6 @@ export default async function handler(req, res) {
     summary.workspaces.push(wsResult)
   }
 
-  console.info('[sync-buffer-published]', JSON.stringify(summary))
+  console.info('[sync-published-status]', JSON.stringify(summary))
   return res.status(200).json(summary)
 }

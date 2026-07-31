@@ -107,7 +107,7 @@ import h101 from './cron/sweep-stuck-segment-renders.js'
 import h102 from './cron/sweep-stuck-seminars.js'
 import h103 from './cron/sweep-stuck-transcodes.js'
 import h104 from './cron/sync-author-corpus.js'
-import h105 from './cron/sync-buffer-published.js'
+import h105 from './cron/sync-published-status.js'
 import h106 from './cron/weekly-plan.js'
 import h107 from './db/briefs.js'
 import h108 from './db/comments.js'
@@ -356,7 +356,7 @@ export const routes = [
   { path: "/api/cron/sweep-stuck-seminars", handler: h102 },
   { path: "/api/cron/sweep-stuck-transcodes", handler: h103 },
   { path: "/api/cron/sync-author-corpus", handler: h104 },
-  { path: "/api/cron/sync-buffer-published", handler: h105 },
+  { path: "/api/cron/sync-published-status", handler: h105 },
   { path: "/api/cron/weekly-plan", handler: h106 },
   { path: "/api/db/briefs", handler: h107 },
   { path: "/api/db/comments", handler: h108 },

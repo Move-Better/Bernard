@@ -51,7 +51,7 @@
     { "path": "/api/cron/engagement-digest", "schedule": "0 13 * * 5" },
     { "path": "/api/cron/auto-publish", "schedule": "*/10 * * * *" },
     { "path": "/api/cron/resume-longform-renders", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/sync-buffer-published", "schedule": "0 * * * *" },
+    { "path": "/api/cron/sync-published-status", "schedule": "0 * * * *" },
     { "path": "/api/cron/campaign-tune", "schedule": "0 6 * * *" },
     { "path": "/api/cron/auto-detect-clips", "schedule": "5-59/10 * * * *" },
     { "path": "/api/cron/sweep-stuck-seminars", "schedule": "*/5 * * * *" },

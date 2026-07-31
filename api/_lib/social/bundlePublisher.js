@@ -443,7 +443,7 @@ export class BundlePublisher extends SocialPublisher {
   }
 
   // Fetch the current publish status of a bundle post by its id. Used by
-  // sync-buffer-published cron to promote scheduled→published without a
+  // sync-published-status cron to promote scheduled→published without a
   // webhook. Note: postGet does NOT use teamId (post ids are globally unique
   // within the org) — this works even before a workspace brand Team is set up.
   async getPostStatus({ postId } = {}) {
