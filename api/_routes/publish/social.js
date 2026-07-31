@@ -242,7 +242,7 @@ async function handleBundlePublish(req, res, workspace) {
     // post URL never landed for exactly the posts a user was watching.
     //
     // scheduled_at MUST carry a real timestamp, never null: the hourly
-    // sync-buffer-published backstop only picks up rows whose scheduled_at is
+    // sync-published-status backstop only picks up rows whose scheduled_at is
     // non-null AND in the past, so a null would strand the row at 'scheduled'
     // forever on any workspace whose webhook delivery failed.
     const committedAt = scheduledAt || result.body?.scheduledAt || new Date().toISOString()
