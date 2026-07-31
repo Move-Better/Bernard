@@ -402,23 +402,13 @@ function LocationFields({ draft, setDraft }) {
           autoComplete="off"
         />
       </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Google Business listing ID</Label>
-        <Input
-          aria-label="Google Business listing ID"
-          value={draft.gbp_location_id}
-          onChange={e => set('gbp_location_id')(e.target.value)}
-          placeholder="e.g. 6612a8c7d4e3f2b1a09f8765"
-          className="text-sm font-mono"
-        />
-        <p className="text-3xs text-muted-foreground">
-          Marks this location as having its own Google Business listing, so Bernard
-          writes a distinct post per location instead of reusing one. Leave blank if
-          this location has no GBP listing. Connecting the listing for publishing is
-          separate — do that under Settings → Integrations → Social publishing, which
-          connects Google Business per location.
-        </p>
-      </div>
+      {/* The "Google Business listing ID" input lived here. It wrote
+          workspace_locations.gbp_location_id, which was a Buffer GBP channel id
+          — Buffer was retired 2026-07-30, nothing reads the value, and no tenant
+          can obtain one any more. Whether a location gets its own Google post is
+          now decided by bundle_team_id, set by connecting the listing under
+          Settings → Integrations → Social publishing. Asking for an unobtainable
+          id that changes nothing is worse than asking for nothing. */}
     </>
   )
 }
