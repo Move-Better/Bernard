@@ -24,7 +24,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 const PATCHABLE = new Set([
   'label', 'city', 'region',
   'location_keyword', 'location_hashtag',
-  'visit_url', 'gbp_location_id',
+  'visit_url',
   'is_primary', 'position', 'status',
 ])
 
@@ -153,7 +153,6 @@ async function handler(req, res) {
       location_keyword: s(body.location_keyword, 100),
       location_hashtag: s(body.location_hashtag, 100),
       visit_url: s(body.visit_url, 500),
-      gbp_location_id: s(body.gbp_location_id, 200),
       is_primary: isPrimary,
       position: Number.isFinite(body.position) ? Math.trunc(body.position) : 0,
     }]

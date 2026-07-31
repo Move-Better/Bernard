@@ -15,9 +15,14 @@ import { fileURLToPath } from 'node:url'
 // generated zero GBP items to date. The live workspace has both markers on both
 // locations, which is why the split never surfaced.
 //
-// gbp_location_id is now vestigial: Buffer was retired 2026-07-30, its value is
-// read by nothing, and no tenant can obtain one. bundle_team_id is the only
-// marker a tenant can populate (via the per-location connect portal).
+// gbp_location_id was a Buffer GBP channel id. Buffer was retired 2026-07-30,
+// nothing read the value, no tenant could obtain one, and the column itself was
+// dropped in migration 204. bundle_team_id is the only marker a tenant can
+// populate (via the per-location connect portal).
+//
+// These assertions outlive the column: they exist to stop the split being
+// reintroduced, which is easy to do by reflex since the old name reads like the
+// obvious one for "this location has Google Business".
 //
 // fileURLToPath, not URL.pathname — the repo lives under "Claude Projects" and
 // .pathname percent-encodes the space, which readFileSync ENOENTs.
@@ -48,5 +53,26 @@ describe('GBP per-location marker', () => {
     // A bound input would mean we are still asking tenants for a value that is
     // unobtainable and that nothing reads.
     expect(settings).not.toMatch(/set\(['"]gbp_location_id['"]\)/)
+  })
+
+  it('the locations API cannot write the dropped column', () => {
+    const route = read('../../api/_routes/workspace/locations.js')
+    // The column no longer exists (migration 204), so accepting it in the PATCH
+    // allowlist or writing it on create would fail the request on an unknown
+    // column — the allowlist is the contract, independent of what callers send.
+    expect(route, 'gbp_location_id is still in PATCHABLE').not.toMatch(/'gbp_location_id'/)
+    expect(route, 'gbp_location_id is still written on create').not.toMatch(/gbp_location_id:/)
+    // Non-vacuity: the file really is the locations route with a live allowlist.
+    expect(route).toContain('const PATCHABLE = new Set([')
+    expect(route).toMatch(/'location_keyword'/)
+  })
+
+  it('the schema snapshot no longer expects the column', () => {
+    const snap = JSON.parse(read('../../supabase/expected-schema.json'))
+    expect(snap.workspace_locations, 'snapshot lost the table').toBeTruthy()
+    expect(snap.workspace_locations).not.toContain('gbp_location_id')
+    // Non-vacuity: the sibling marker is still snapshotted, so an empty or
+    // renamed table entry cannot make this pass by accident.
+    expect(snap.workspace_locations).toContain('bundle_team_id')
   })
 })

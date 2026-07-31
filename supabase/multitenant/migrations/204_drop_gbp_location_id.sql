@@ -1,0 +1,24 @@
+-- 204_drop_gbp_location_id.sql — remove the last Buffer-era column.
+--
+-- workspace_locations.gbp_location_id held a Buffer GBP channel id. Buffer was
+-- retired 2026-07-30 (migrations 197 and 201), its one value-consumer
+-- (resolveGbpChannelIds) was deleted with the Buffer publish path, and #2509
+-- moved every remaining reader — the drafting fan-out and both client location
+-- pickers — onto bundle_team_id, which is the marker the publish paths already
+-- used and the only one a tenant can populate today (via the per-location
+-- connect portal).
+--
+-- The column is inert at this point: nothing reads it, the settings input that
+-- wrote it is gone, and this PR removes the API allowlist entry so nothing can
+-- write it either. Five rows still carry a value; all five are dead Buffer
+-- channel ids that no longer address anything and cannot be reissued.
+--
+-- Ordering is code-first, same as migration 202: the allowlist entry must stop
+-- accepting the field BEFORE the column disappears, or a PATCH carrying it
+-- would fail on an unknown column. Nothing sends it today (the input was
+-- removed in #2509), but the allowlist is the contract, not the current caller.
+--
+-- No index or constraint references the column (checked against prod), so this
+-- is a plain drop.
+
+ALTER TABLE public.workspace_locations DROP COLUMN IF EXISTS gbp_location_id;

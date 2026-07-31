@@ -186,7 +186,7 @@ function emptyLocationDraft() {
   return {
     label: '', city: '', region: '',
     location_keyword: '', location_hashtag: '',
-    visit_url: '', gbp_location_id: '',
+    visit_url: '',
   }
 }
 
@@ -199,7 +199,6 @@ function LocationRow({ location, getToken, onChange, isOnlyLocation }) {
     location_keyword: location.location_keyword || '',
     location_hashtag: location.location_hashtag || '',
     visit_url: location.visit_url || '',
-    gbp_location_id: location.gbp_location_id || '',
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
@@ -213,7 +212,6 @@ function LocationRow({ location, getToken, onChange, isOnlyLocation }) {
       location_keyword: location.location_keyword || '',
       location_hashtag: location.location_hashtag || '',
       visit_url: location.visit_url || '',
-      gbp_location_id: location.gbp_location_id || '',
     })
   }, [location])
 
@@ -402,13 +400,12 @@ function LocationFields({ draft, setDraft }) {
           autoComplete="off"
         />
       </div>
-      {/* The "Google Business listing ID" input lived here. It wrote
-          workspace_locations.gbp_location_id, which was a Buffer GBP channel id
-          — Buffer was retired 2026-07-30, nothing reads the value, and no tenant
-          can obtain one any more. Whether a location gets its own Google post is
-          now decided by bundle_team_id, set by connecting the listing under
-          Settings → Integrations → Social publishing. Asking for an unobtainable
-          id that changes nothing is worse than asking for nothing. */}
+      {/* A "Google Business listing ID" input lived here, writing the
+          gbp_location_id column — a Buffer GBP channel id. Buffer was retired
+          2026-07-30 and the column was dropped in migration 204. Whether a
+          location gets its own Google post is decided by bundle_team_id, set by
+          connecting the listing under Settings → Integrations → Social
+          publishing. */}
     </>
   )
 }
