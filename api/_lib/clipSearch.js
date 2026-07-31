@@ -8,9 +8,8 @@
 
 import { embedTexts } from './embeddings.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 // ── Freshness ranking ────────────────────────────────────────────────────────
 //
 // Similarity alone makes the picker deterministic in the worst way: the single
@@ -42,18 +41,8 @@ export function freshnessMultiplier(usage) {
   return 1 - Math.min(weighted * PENALTY_PER_USE, MAX_PENALTY)
 }
 
-async function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 /**
  * Search the workspace's visual memory for clips relevant to a topic.

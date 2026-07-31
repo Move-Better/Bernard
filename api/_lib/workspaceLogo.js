@@ -6,14 +6,11 @@
 // that only assigned one logo role still gets *something* rather than a
 // silently-missing mark.
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest } from './supabaseRest.js'
 
-function sb(path) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  })
-}
+
+const sb = (path, init = {}) => supabaseRest(path, init)
+
 
 const DARK_SURFACE_ROLE_PREFERENCE = ['logo_on_dark', 'mark_only', 'logo_on_light', 'primary_logo']
 

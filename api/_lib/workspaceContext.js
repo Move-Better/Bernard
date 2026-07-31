@@ -20,6 +20,8 @@
 // A Runtime Cache layer can wrap this in a later phase to avoid one DB
 // hit per request.
 
+import { supabaseRest, SUPABASE_URL, SUPABASE_KEY } from './supabaseRest.js'
+
 const APEX_HOSTS = new Set(['withbernard.ai', 'www.withbernard.ai'])
 
 // In-process workspace cache. Fluid Compute reuses warm instances across
@@ -98,21 +100,13 @@ function extractSlugFromQuery(req) {
 // channel (token payload, cron arg). Returns the full row or null.
 export async function workspaceById(id) {
   if (!id) return null
-  const supabaseUrl = process.env.SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_SERVICE_KEY
-  if (!supabaseUrl || !supabaseKey) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.error('[workspaceById] Supabase env not configured')
     return null
   }
-  const url = `${supabaseUrl}/rest/v1/workspaces?id=eq.${encodeURIComponent(id)}&select=*&limit=1`
   let r
   try {
-    r = await fetch(url, {
-      headers: {
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-      },
-    })
+    r = await supabaseRest(`workspaces?id=eq.${encodeURIComponent(id)}&select=*&limit=1`)
   } catch (e) {
     console.error('[workspaceById] network error:', e?.message)
     return null
@@ -144,23 +138,18 @@ export async function workspaceContext(req) {
   const cached = getCached(slug)
   if (cached) { attachWorkspaceToReq(req, cached); return cached }
 
-  const supabaseUrl = process.env.SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_SERVICE_KEY
-  if (!supabaseUrl || !supabaseKey) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.error('[workspaceContext] Supabase env not configured')
     return null
   }
 
-  const url = `${supabaseUrl}/rest/v1/workspaces?slug=eq.${encodeURIComponent(slug)}&select=*&limit=1`
   let r
   try {
-    r = await fetch(url, {
-      signal: AbortSignal.timeout(10_000),
-      headers: {
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-      },
-    })
+    r = await supabaseRest(
+      `workspaces?slug=eq.${encodeURIComponent(slug)}&select=*&limit=1`,
+      {},
+      { timeoutMs: 10_000 }
+    )
   } catch (e) {
     console.error('[workspaceContext] network error:', e?.message)
     return null

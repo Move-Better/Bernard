@@ -25,27 +25,16 @@
 
 import { clipToMediaEntry } from '../../src/lib/mediaEntry.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 // IG's hard caption ceiling. Clamped here so a long generated caption becomes a
 // short draft rather than a late publish-time hard failure (staff report,
 // 2026-07-13: "auto-caption over character limit"). The publish path's own caps
 // are T1's territory; this is the upstream stop.
 const CAPTION_MAX = 2200
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 /**
  * Insert a draft content_item for a rendered clip.

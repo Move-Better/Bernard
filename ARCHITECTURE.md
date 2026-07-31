@@ -289,22 +289,30 @@ Google OAuth, OpenAI Whisper, Buffer, Resend, Stripe, etc.), or any other networ
 **must** carry `AbortSignal.timeout(N)`. Without it, a slow or unresponsive upstream holds the
 Vercel function slot open until the 300s wall — burning a slot that could serve other requests.
 
-**Canonical `sb()` pattern** (copy-paste for any new Supabase REST helper):
+**Canonical `sb()` pattern** — use the shared `api/_lib/supabaseRest.js` helper, don't
+hand-roll `fetch(`${SUPABASE_URL}/rest/v1/...`)` in a new file. Until 2026-07-31, every one of
+~290 call sites across `api/**/*.js` independently defined the identical local `sb(path, init)`
+helper below (a Vigil/Gemini architecture audit flagged the duplication) — the fix migrated the
+highest-duplication/highest-risk batch (`api/_lib/**`, `api/_routes/db/**`, plus
+`workspaceContext.js`/`auth.js` by hand — 71 files) onto one shared implementation; the
+remaining ~220 route handlers (`api/_routes/{cron,editorial,producer,content-plan,
+content-items,...}`) still use the pre-migration local-helper pattern and are open follow-up
+work — migrate opportunistically when touching one of those files, following the same shape:
+
 ```js
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    signal: AbortSignal.timeout(8_000),
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+import { supabaseRest } from '../_lib/supabaseRest.js'  // relative path varies by file location
+
+const sb = (path, init = {}) => supabaseRest(path, init, {
+  timeoutMs: 8_000,
+  contentType: 'application/json',
+  prefer: 'return=representation',
+})
 ```
+
+`supabaseRest(path, init, opts)` owns the URL templating + `apikey`/`Authorization` header
+construction only — it does not parse responses or normalize errors; callers keep doing that
+exactly as before (some throw, some return `null` on `!r.ok`, some use `dbErr()`). See the
+file's own header comment for the full `opts` contract (`timeoutMs`, `contentType`, `prefer`).
 
 **Timeout budgets by call type:**
 - Supabase REST reads/writes: 8s (fast, same region)

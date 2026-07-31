@@ -12,9 +12,8 @@ import { sendEmail } from './notifyAdmin.js'
 import { recordAgentAction } from './agentActions.js'
 import { ownerEmail } from './workspaceOwner.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 // Exported so sibling notifiers (approvalEscalationEmail.js) share ONE label
 // map instead of drifting copies — the failure mode this repo has hit before
 // with Buffer/bundle publish paths and the two fidelity rubrics.
@@ -34,11 +33,8 @@ function escapeHtml(s) {
 // Background notifier: workspace_id is passed in by the caller and every query
 // here is filtered by it. (The require-workspace-scope rule only runs on
 // api/_routes/** handlers, not _lib helpers, so no disable directive is needed.)
-function sb(path) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init)
+
 
 /**
  * @param {{ workspaceId: string, item: { id: string, platform?: string, topic?: string, content?: string }, reason?: string }} args

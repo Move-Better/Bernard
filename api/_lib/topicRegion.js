@@ -1,6 +1,7 @@
 import { generateObject } from 'ai'
 import { z } from 'zod'
 
+import { supabaseRest } from './supabaseRest.js'
 // Body-region / theme taxonomy for the topic-balance engine.
 //
 // Every content piece inherits a PRIMARY `region` (one of these 12 buckets)
@@ -100,21 +101,9 @@ export async function classifyTopicRegion(topic) {
 // rather than throwing (region is advisory; the balance engine treats null as
 // exempt), so it can never break the interview-complete cascade.
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=minimal',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=minimal' })
+
 
 export async function classifyAndStoreInterviewRegion({ interviewId, workspaceId, topic }) {
   if (!interviewId || !workspaceId) return null

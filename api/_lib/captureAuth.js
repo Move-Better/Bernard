@@ -2,18 +2,11 @@
 // Authenticates a Bearer capture upload token (cct_ prefix) from the staff table.
 // Returns { staffMember, workspace } or null on any auth/expiry/gate failure.
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest } from './supabaseRest.js'
 
-async function sb(path) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-    },
-  })
-}
+
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 export async function authByCaptureToken(token) {
   if (!token || !token.startsWith('cct_')) return null

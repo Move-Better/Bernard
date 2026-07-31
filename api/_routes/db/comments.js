@@ -7,21 +7,10 @@ import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { requireRole } from '../../_lib/auth.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+import { supabaseRest } from '../../_lib/supabaseRest.js'
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 let _clerk = null
 function clerkClient() {

@@ -32,6 +32,7 @@ import { classifySegmentVoices } from './speakerVoice.js'
 import { visualScoreSegments } from './scoreMomentsVisual.js'
 import { nominateVisualWindows } from './visualNominate.js'
 
+import { supabaseRest } from './supabaseRest.js'
 // F13 visual-scoring budget: how long the visual pass may run inside the shared
 // 300s detection window. Runs LAST (segments are already inserted + 'ready'), so
 // hitting this deadline just leaves later windows visual-unscored — they rank on
@@ -48,8 +49,6 @@ function visualNominateEnabled(ws) {
   return NOMINATE_WORKSPACES.has(ws?.slug)
 }
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const MODEL = 'anthropic/claude-sonnet-4-6'
 
@@ -72,19 +71,8 @@ const CHUNK_BYTES = 20 * 1024 * 1024
 // the per-file Whisper limit).
 const CHUNK_SECONDS = 20 * 60
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    signal: AbortSignal.timeout(8_000),
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { timeoutMs: 8_000, contentType: 'application/json', prefer: 'return=representation' })
+
 
 /** Run ffmpeg, resolving on exit-0 and rejecting with the stderr tail otherwise. */
 function runFfmpeg(args) {

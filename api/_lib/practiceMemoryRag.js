@@ -18,9 +18,8 @@
 import { generateText } from 'ai'
 import { embedTexts } from './embeddings.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 // Chunking targets — tuned for blog-post-shaped content. text-embedding-3
 // handles up to 8192 tokens per input, but smaller chunks give sharper
 // retrieval. Char ≈ token/4 heuristic for English.
@@ -28,17 +27,8 @@ const CHUNK_TARGET_CHARS = 1600   // ~400 tokens
 const CHUNK_MAX_CHARS    = 2400   // ~600 tokens
 const CHUNK_MIN_CHARS    = 400    // ~100 tokens — anything smaller gets merged
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 function approxTokens(text) {
   return Math.ceil(String(text || '').length / 4)

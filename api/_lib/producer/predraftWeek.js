@@ -29,9 +29,8 @@ import { draftAtom, buildGbpLocationVariants } from './draftAtom.js'
 import { bumpMomentUsage } from '../momentPlan.js'
 import { recordAgentAction } from '../agentActions.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from '../supabaseRest.js'
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 const DAY_MS = 24 * 60 * 60 * 1000
 // Default per-invocation drafting cap: a 6-slot week drains over ~3 ticks,
@@ -49,19 +48,8 @@ const MAX_PREDRAFT_ATTEMPTS = 2
 
 // Background/lib reads; workspace_id is always supplied by the caller's ws and
 // every query below is scoped by it. (require-workspace-scope only lints _routes.)
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    signal: AbortSignal.timeout(15_000),
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer:        'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { timeoutMs: 15_000, contentType: 'application/json', prefer: 'return=representation' })
+
 
 /**
  * Draft one atom end-to-end into a content_items row (status='draft'). Mirrors the

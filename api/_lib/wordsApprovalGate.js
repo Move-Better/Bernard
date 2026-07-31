@@ -18,15 +18,12 @@
 // internal-staff-only tool. Once a contentItemId IS present, the gate is
 // strict — no bypass for a request that has the field but fails the check.
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest, SUPABASE_URL, SUPABASE_KEY } from './supabaseRest.js'
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-function sb(path) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init)
+
 
 /**
  * @param {string|undefined} contentItemId

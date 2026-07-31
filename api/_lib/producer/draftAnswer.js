@@ -12,21 +12,11 @@ import { generateText } from 'ai'
 import { buildTopicScopedHistoryBlock } from '../practiceMemory.js'
 import { scoreAnswerFidelity } from '../scoreAnswerFidelity.js'
 
+import { supabaseRest } from '../supabaseRest.js'
 const MODEL = 'anthropic/claude-sonnet-4-6'
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 const SYSTEM = `You draft public patient-facing answers for the Move Better answer library — short, straight answers to what patients Google, each carrying a specific clinician's name as their own words. Move Better is a movement-based chiropractic + rehab practice (Portland OR & Vancouver WA).
 

@@ -31,10 +31,9 @@ import { checkWordsApproved } from './wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from './dispatchClaim.js'
 import { clampToCap, platformCap } from './socialLengthTargets.js'
 
+import { supabaseRest } from './supabaseRest.js'
 const GBP_CAP = platformCap('gbp')
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 // Platforms bundle.social can post (matches PLATFORM_TO_BUNDLE_TYPE in
 // social/bundlePublisher.js). Anything else (e.g. blog) falls back to the client.
@@ -43,18 +42,8 @@ const BUNDLE_PLATFORMS = new Set([
   'youtube_short', 'youtube', 'twitter', 'threads', 'bluesky', 'mastodon', 'gbp',
 ])
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    signal: AbortSignal.timeout(15_000),
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { timeoutMs: 15_000, contentType: 'application/json' })
+
 
 // Platforms that render slide carousels — only these defer to a client bake when
 // slides are present. GBP/text platforms never carousel, so a stray `slides`

@@ -21,21 +21,11 @@
 import { generateText } from 'ai'
 import { buildFidelityPrompt, parseFidelity } from './captionFidelityRubric.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest } from './supabaseRest.js'
 const EVAL_MODEL   = 'anthropic/claude-haiku-4-5'
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 /**
  * Score one story package's caption + topic and persist score + breakdown.

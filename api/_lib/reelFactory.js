@@ -60,9 +60,8 @@ import { ATOM_FORMATS } from './atomPlan.js'
 import { classifySegmentVoices, SPEAKER_VOICES } from './speakerVoice.js'
 import { mergeSlotsIntoCadence, slotsByPlatformFromCadence } from './cadenceSlots.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 // Mirrors render-segments.js — the AI path and the manual workshop must produce
 // the same shape.
 const CLIP_CHANNEL = 'instagram_reel'
@@ -106,18 +105,8 @@ function openDaySlots(weekMonday, quietDays, timezone) {
   return out.sort((a, b) => a - b)
 }
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 /**
  * How many of this workspace's weekly Instagram posts should be Reels.

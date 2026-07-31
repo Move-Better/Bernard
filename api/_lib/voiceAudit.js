@@ -19,22 +19,11 @@ import { z } from 'zod'
 import { getVoiceAuditSystemPrompt } from '../../src/lib/prompts.js'
 import { resolveOwnHistoryBlock, buildRagQuery } from './practiceMemory.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest } from './supabaseRest.js'
 const MODEL = 'anthropic/claude-sonnet-4-6'
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer:        'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 const flagSchema = z.object({
   type: z.enum([

@@ -27,26 +27,16 @@
 
 import { scoreAnswerFidelity, ANSWER_GATE } from './scoreAnswerFidelity.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 export const RECHECK_DAYS = 90
 // How far below an ACCEPTED score the answer must fall before we re-raise a flag
 // the clinician already stood behind. Judge scores move ±0.33 between runs on
 // identical input, so anything smaller would re-queue on sampling noise alone.
 export const MATERIAL_DROP = 0.5
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 /**
  * The score this clinician has already seen and accepted for this answer, on the

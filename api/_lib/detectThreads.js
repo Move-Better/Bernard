@@ -24,8 +24,7 @@ import { generateObject } from 'ai'
 import { z } from 'zod'
 import { getThreadDetectionSystemPrompt } from '../../src/lib/prompts.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest } from './supabaseRest.js'
 const MODEL = 'anthropic/claude-sonnet-4-6'
 
 // Below this many clinician-spoken words, an interview can't sustain two full
@@ -37,17 +36,8 @@ const MIN_WORDS_FOR_SPLIT = 700
 // Hard ceiling — the split pipeline only supports 2|3|4 parts.
 const MAX_PARTS = 4
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 const detectionSchema = z.object({
   recommended_parts: z.number().int().min(1).max(MAX_PARTS)

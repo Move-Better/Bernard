@@ -20,9 +20,8 @@ import { resolveOwnHistoryBlock, buildRagQuery } from '../practiceMemory.js'
 import { buildFidelityPrompt, parseFidelity } from '../captionFidelityRubric.js'
 import { recordAgentAction } from '../agentActions.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from '../supabaseRest.js'
 const REGEN_MODEL = 'anthropic/claude-sonnet-4-6'
 const JUDGE_MODEL = 'anthropic/claude-haiku-4-5'
 const GATE = 6.5
@@ -31,18 +30,8 @@ const TRANSCRIPT_MAX = 24_000
 const PRODUCER_USER_ID = 'bernard-producer'
 const PRODUCER_EMAIL   = 'producer@withbernard.ai'
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    signal: AbortSignal.timeout(15_000),
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { timeoutMs: 15_000, contentType: 'application/json' })
+
 
 async function postProducerComment(wsId, contentItemId, body) {
   await sb('content_item_comments', {

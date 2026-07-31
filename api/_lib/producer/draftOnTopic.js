@@ -20,9 +20,8 @@
 import { draftAtom, buildGbpLocationVariants } from './draftAtom.js'
 import { recordAgentAction } from '../agentActions.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from '../supabaseRest.js'
 // Platforms the box offers. draftAtom (via getAtomSystemPrompt) has a prompt for
 // each of these; any other platform has no atom prompt and would throw. Keep in
 // sync with the client dropdown AND the request route's allowlist.
@@ -44,19 +43,8 @@ const DEFAULT_ANGLE = {
 
 // Background/lib reads; workspace_id is always supplied by the caller's ws and
 // every query below is scoped by it. (require-workspace-scope only lints _routes.)
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    signal: AbortSignal.timeout(15_000),
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer:        'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { timeoutMs: 15_000, contentType: 'application/json', prefer: 'return=representation' })
+
 
 // Pull the most specific keyword from the requested topic (longest word ≥4 chars),
 // the same heuristic authorAnswers.pickClinician uses — a generic short word

@@ -21,9 +21,8 @@ import { indexInterviewTranscriptFull } from '../../_lib/practiceMemoryRag.js'
 import { extractAndBankMoments } from '../../_lib/momentExtract.js'
 import { waitUntil } from '@vercel/functions'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from '../../_lib/supabaseRest.js'
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const VALID_INTERVIEW_STATUSES = new Set(['in_progress', 'completed', 'abandoned'])
 // Mirrors the live interviews_capture_mode_check constraint exactly (read from
@@ -63,18 +62,8 @@ export function sanitizeTurnTimings(windows) {
     .filter((w) => Number.isFinite(w.startedAt) && Number.isFinite(w.endedAt) && w.endedAt >= w.startedAt)
 }
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 const ok  = (res, data, status = 200) => res.status(status).json(data)
 const err = (res, msg, status = 400)  => res.status(status).json({ error: msg })

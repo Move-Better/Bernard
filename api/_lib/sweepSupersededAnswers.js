@@ -15,26 +15,16 @@
 import { embedText } from './embeddings.js'
 import { draftAnswer } from './producer/draftAnswer.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 // Below this cosine, the answer isn't "on the topic that changed" — leave it live.
 // Answer prose vs a memory chunk is a cross-genre comparison, so the bar sits a
 // little under the chunk-to-chunk detector threshold (0.6 in supersessionDetect).
 const AFFECTED_SIM = 0.55
 const MAX_ANSWERS = 12 // safety cap on re-draft calls per confirmed supersession
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 function parseEmbedding(raw) {
   if (Array.isArray(raw)) return raw

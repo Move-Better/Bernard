@@ -9,20 +9,12 @@
 // status dump. Same engine for every tenant.
 import { generateText } from 'ai'
 
+import { supabaseRest } from '../supabaseRest.js'
 const MODEL = 'anthropic/claude-sonnet-4-6'
 const DAY_MS = 24 * 60 * 60 * 1000
 
-function sb(path, init = {}) {
-  return fetch(`${process.env.SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: process.env.SUPABASE_SERVICE_KEY,
-      Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 function mondayOf(d = new Date()) {
   const day = (d.getUTCDay() + 6) % 7

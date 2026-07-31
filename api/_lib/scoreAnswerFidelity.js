@@ -19,8 +19,7 @@ import { generateText } from 'ai'
 import { buildAnswerFidelityPrompt, parseAnswerFidelity } from './answerFidelityRubric.js'
 import { buildTopicScopedHistoryBlock } from './practiceMemory.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest } from './supabaseRest.js'
 const EVAL_MODEL   = 'anthropic/claude-haiku-4-5'
 
 // The HARD publish bar (1–10 overall). Below this a public answer is 'held' and
@@ -29,17 +28,8 @@ const EVAL_MODEL   = 'anthropic/claude-haiku-4-5'
 // of 6.5) for name-on-it public medical content. See F16 design interview.
 export const ANSWER_GATE = 7.5
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 // Resolve the grounding the judge scores against: the clinician's name + voice
 // notes + top phrases, and their own captured thinking on this topic. Mirrors

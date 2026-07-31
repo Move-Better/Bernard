@@ -23,26 +23,15 @@ import { probeDurationSec } from './ffprobeDuration.js'
 import { planChunks, SINGLE_PASS_MAX_SECONDS } from './renderChunkPlan.js'
 import { runChunkPass } from './longformEngine.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
+import { supabaseRest } from './supabaseRest.js'
 // Long-form landscape channels. All 16:9, fit:'contain' (keep whole frame),
 // longform:true (120s budget). website_embed excluded until the website-publish
 // path supports rendered video output — see render-longform.js comments.
 const LONGFORM_CHANNELS = ['youtube', 'linkedin_native']
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
+
 
 // Turn a source filename into a readable topic when no visual_narrative exists.
 export function cleanFilename(filename) {

@@ -17,26 +17,16 @@
 // already used this pattern inline; it (and the two other publish paths) now
 // share this code so the claim semantics can never drift between them.
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { supabaseRest } from './supabaseRest.js'
+
 
 // A dispatch shouldn't outlive the function's max duration; a claim older than
 // this is treated as abandoned (crashed request) and is reclaimable. Kept in
 // one place so every path uses the same abandonment window.
 export const CLAIM_STALE_MS = 5 * 60 * 1000
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    signal: AbortSignal.timeout(15_000),
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { timeoutMs: 15_000, contentType: 'application/json' })
+
 
 /**
  * Atomically claim a content_items row for dispatch.

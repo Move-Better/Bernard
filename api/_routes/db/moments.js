@@ -52,13 +52,12 @@ import { enforceLimit } from '../../_lib/ratelimit.js'
 import { MOMENT_RETIRE_REASON_KEYS, MOMENT_RETIRE_NOTE_MAX } from '../../../src/lib/momentRetire.js'
 import { MOMENT_SEND_BACK_NOTE_MAX } from '../../../src/lib/momentSendBack.js'
 
+import { supabaseRest } from '../../_lib/supabaseRest.js'
 // Upper bound on a repaired excerpt. Generous — the longest banked excerpt is
 // a seminar-length turn — but bounded so a PATCH can't write an essay into a
 // column the planner injects into a prompt.
 const EXCERPT_MAX = 4000
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -70,17 +69,8 @@ const BANK_LIMIT = 1000
 const MOMENT_FIELDS =
   'id,excerpt,hook,moment_type,topic,region,tags,score,cluster_id,is_exemplar,status,usage_count,last_used_at,clip_asset_id,staff_id,interview_id,reviewed_at,reviewed_by,retire_reasons,retire_note,sent_back_at,sent_back_by,sent_back_note,created_at'
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 export default async function handler(req, res) {
   const ws = await workspaceContext(req)

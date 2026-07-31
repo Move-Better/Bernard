@@ -10,14 +10,10 @@
 
 import { getCredential } from './getCredential.js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-function sb(path) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  })
-}
+import { supabaseRest } from './supabaseRest.js'
+const sb = (path, init = {}) => supabaseRest(path, init)
+
 
 // "Dr. Q" / "Zach Cullen" / "Whitney Phillips" → { display:'Dr. Zach', slug:'zach' }.
 // slug matches the movebetter.co /team/<slug> so the byline links; a mismatch just

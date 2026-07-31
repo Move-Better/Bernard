@@ -11,6 +11,7 @@
 import { buildOwnHistoryBlock, pickPriorInterviews } from '../../src/lib/practiceMemory.js'
 import { searchPracticeMemory } from './practiceMemoryRag.js'
 
+import { supabaseRest } from './supabaseRest.js'
 // Cap the query text sent to the embedding API. A 90-minute transcript is
 // far more than the semantic signal we need; topic + leading turns are enough.
 const QUERY_MAX_CHARS = 1500
@@ -34,20 +35,9 @@ export function buildRagQuery(interview) {
   return [topic, turns].filter(Boolean).join('\n\n').slice(0, QUERY_MAX_CHARS)
 }
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-function sb(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey:        SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-  })
-}
+const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json' })
+
 
 // Mirror src/lib/api.js → fetchStaffMember shape. Pulls the embedded
 // interview list with summary_text so the builder can prefer summaries
