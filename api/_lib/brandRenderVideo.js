@@ -179,6 +179,17 @@ export const VIDEO_CHANNEL_SPECS = {
   youtube_short:   channelSpec('youtube_short',   { captionPos: 'top' }),
   blog_hero_video: channelSpec('blog_hero_video', { captionPos: 'bottom' }),
   facebook_video:  channelSpec('facebook_video',  { captionPos: 'top' }),
+  // Google Business video. 4:3 because Google clips both portrait and 16:9 in
+  // the Maps carousel and the Search preview card — the same reason the GBP
+  // PHOTO lane is 4:3.
+  //
+  // ponytail: captionPos 'top' matches every other social video lane, but GBP
+  // also trims ~12% off the top and bottom of what it shows (SAFE_INSETS.gbp),
+  // and this renderer — unlike the photo one — never threads safeInsetBottom
+  // through. So a headline band on a GBP clip can sit in Google's trimmed zone.
+  // Threading insets into the video overlay geometry is its own change; until
+  // then, prefer no headline on GBP clips over one that may be clipped.
+  gbp_video:       channelSpec('gbp_video',       { captionPos: 'top' }),
   // 4:5 carousel-slot re-bake of a clip (see CHANNEL_DESTINATIONS). captionPos
   // 'top' matches the reel lane so a clip re-baked for a carousel keeps the
   // caption in the same place relative to the speaker.

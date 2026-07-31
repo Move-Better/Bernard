@@ -31,8 +31,9 @@ export const POST_FRAMES = {
   facebook:     { post: '4:5',  reel: '9:16', story: '9:16' },
 
   // Google clips portrait AND 16:9 in Maps/Search previews; 4:3 is the only
-  // ratio that survives both. Also see GBP_SAFE_ZONE.
-  gbp:          { post: '4:3' },
+  // ratio that survives both. Also see GBP_SAFE_ZONE. `video` shares the photo
+  // frame — the cropping surfaces are the same ones.
+  gbp:          { post: '4:3', video: '4:3' },
 
   linkedin:     { post: '4:5',  video: '4:5', longform: '16:9' },
 
@@ -103,6 +104,7 @@ export const CHANNEL_DESTINATIONS = {
   // Video channels (VIDEO_CHANNEL_SPECS)
   linkedin_video:       { platform: 'linkedin',  format: 'video' },
   instagram_reel:       { platform: 'instagram', format: 'reel' },
+  gbp_video:            { platform: 'gbp',       format: 'video' },
   tiktok:               { platform: 'tiktok',    format: 'video' },
   youtube_short:        { platform: 'youtube',   format: 'short' },
   blog_hero_video:      { platform: 'blog',      format: 'hero' },

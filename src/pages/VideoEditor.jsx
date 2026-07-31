@@ -34,17 +34,13 @@ import { useUndoRedoShortcut } from '@/lib/useUndoRedoShortcut'
 import { useVideoShortcuts } from '@/lib/useVideoShortcuts'
 import { useAutosave } from '@/lib/useAutosave'
 import { detectFaceCenterX } from '@/lib/faceReframe'
+import { FORMATS, FORMAT_KEYS, channelFor, defaultFormatFor, normalizeFormat } from '@/lib/videoFormats'
 import { listRevisions, saveRevision } from '@/lib/editorRevisions'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-// Output format → render channel (the renderer's VIDEO_CHANNEL_SPECS already
-// defines each aspect) + the canvas aspect-ratio. One clip, any shape.
-const FORMATS = {
-  reel:     { channel: 'instagram_reel', css: '9 / 16', label: 'Reel', dim: '9:16' },
-  square:   { channel: 'linkedin_video', css: '1 / 1',  label: 'Square', dim: '1:1' },
-  portrait: { channel: 'facebook_video', css: '4 / 5',  label: 'Portrait', dim: '4:5' },
-}
-const FORMAT_KEYS = ['reel', 'square', 'portrait']
+// Output shape (Reel / Feed / Wide), the channel each bakes through, and the
+// per-platform default — all in src/lib/videoFormats.js so the preview==bake
+// invariant is testable without this file's module graph.
 const fmt = (s) => {
   if (!isFinite(s)) return '0:00'
   const m = Math.floor(s / 60); const ss = Math.floor(s % 60)
@@ -1103,7 +1099,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   const [startSec, setStartSec] = useState(0)
   const [endSec, setEndSec] = useState(30)
   const [grade, setGrade] = useState({ ...NEUTRAL_GRADE })
-  const [format, setFormat] = useState('reel')
+  const [format, setFormat] = useState(() => defaultFormatFor(piece?.platform))
   const [reframe, setReframe] = useState({ zoom: 100, x: 50, y: 50 })
   const [kenBurns, setKenBurnsState] = useState({ motion: 'none', intensity: 50 })
   const [speed, setSpeedState] = useState(1)
@@ -1180,7 +1176,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
       const d = (server && typeof server === 'object') ? server : local
       if (d && typeof d === 'object') {
         if (d.grade) setGrade(d.grade)
-        if (FORMAT_KEYS.includes(d.format)) setFormat(d.format)
+        if (FORMAT_KEYS.includes(normalizeFormat(d.format))) setFormat(normalizeFormat(d.format))
         if (d.reframe) setReframe(d.reframe)
         if (d.kenBurns) setKenBurnsState((s) => ({ ...s, ...d.kenBurns }))
         if (Array.isArray(d.overlays)) setOverlays(d.overlays)
@@ -1242,7 +1238,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   // until the server/localStorage draft has hydrated, so the initial restore
   // doesn't itself become an undoable step.
   const { undo, redo, canUndo, canRedo } = useUndoHistory(draftDoc, (snap) => {
-    setFormat(snap.format)
+    setFormat(normalizeFormat(snap.format))
     setGrade(snap.grade)
     setReframe(snap.reframe)
     setKenBurnsState(snap.kenBurns)
@@ -1264,7 +1260,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   const applyDoc = useCallback((d) => {
     if (!d || typeof d !== 'object') return
     if (d.grade) setGrade(d.grade)
-    if (FORMAT_KEYS.includes(d.format)) setFormat(d.format)
+    if (FORMAT_KEYS.includes(normalizeFormat(d.format))) setFormat(normalizeFormat(d.format))
     if (d.reframe) setReframe(d.reframe)
     if (d.kenBurns) setKenBurnsState((s) => ({ ...s, ...d.kenBurns }))
     if (Array.isArray(d.overlays)) setOverlays(d.overlays)
@@ -1587,7 +1583,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   })
   const captionSummary = () => lines.map((l) => l.text).join(' ').slice(0, 500)
   const renderBody = () => ({
-    assetId, channels: [(FORMATS[format] || FORMATS.reel).channel], startSec, durationSec, subtitles: caption.preset !== 'off',
+    assetId, channels: [channelFor(format, piece?.platform)], startSec, durationSec, subtitles: caption.preset !== 'off',
     overlayPosition: caption.position, overlaySize: caption.size, captionAccent: caption.accent,
     captionAnim: caption.anim, captionStyle: caption.style,
     grade, reframe, speed, cuts,
