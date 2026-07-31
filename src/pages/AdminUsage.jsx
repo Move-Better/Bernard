@@ -23,7 +23,7 @@ function relTime(iso) {
 const STATUS = {
   active:    { cls: 'bg-success/15 text-success',         dot: 'bg-success' },
   'at-risk': { cls: 'bg-warning/15 text-warning', dot: 'bg-warning' },
-  idle:      { cls: 'bg-destructive/12 text-destructive',  dot: 'bg-destructive' },
+  idle:      { cls: 'bg-destructive/[0.12] text-destructive',  dot: 'bg-destructive' },
 }
 
 function StatusPill({ status }) {
@@ -96,7 +96,7 @@ export default function AdminUsage() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">Platform-wide adoption across every workspace</p>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/12 px-2.5 py-1 text-2xs font-semibold text-destructive">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/[0.12] px-2.5 py-1 text-2xs font-semibold text-destructive">
           <Lock className="h-3 w-3" aria-hidden="true" />Super-admin only
         </span>
       </div>

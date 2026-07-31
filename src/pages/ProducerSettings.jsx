@@ -36,7 +36,7 @@ function LaneRow({ lane, checked, disabled, onToggle }) {
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">{lane.description}</p>
       </div>
-      <span className={`shrink-0 rounded-full px-2 py-0.5 text-3xs font-bold ${soon ? 'bg-muted text-muted-foreground' : checked ? 'bg-success/12 text-success' : 'bg-muted text-muted-foreground'}`}>
+      <span className={`shrink-0 rounded-full px-2 py-0.5 text-3xs font-bold ${soon ? 'bg-muted text-muted-foreground' : checked ? 'bg-success/[0.12] text-success' : 'bg-muted text-muted-foreground'}`}>
         {soon ? 'Coming soon' : checked ? 'On' : 'Off'}
       </span>
     </div>

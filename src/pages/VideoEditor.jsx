@@ -328,7 +328,7 @@ function Canvas({ ctx }) {
 function InspectorShell({ icon: Icon, title, right, children }) {
   return (
     <>
-      <div className="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5 bg-primary/8">
+      <div className="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5 bg-primary/[0.08]">
         <Icon className="h-4 w-4 text-primary" />
         <span className="text-xs font-semibold text-primary">{title}</span>
         {right ? <span className="ml-auto text-3xs text-muted-foreground">{right}</span> : null}
@@ -431,7 +431,7 @@ function GradeInspector({ ctx }) {
           onClick={() => brandGrade && applyVibe(brandGrade)}
           disabled={!brandGrade}
           title={brandGrade ? 'Your saved brand look' : 'Dial in a grade, then "Save as Brand look" below'}
-          className="rounded-full border border-action px-2.5 py-1 text-2xs font-medium text-action bg-action/8 disabled:opacity-50"
+          className="rounded-full border border-action px-2.5 py-1 text-2xs font-medium text-action bg-action/[0.08] disabled:opacity-50"
         >★ Brand</button>
         {GRADE_VIBES.map((v) => (
           <button key={v.id} onClick={() => applyVibe(v.params)} className="rounded-full border border-border px-2.5 py-1 text-2xs text-muted-foreground">{v.label}</button>
@@ -444,7 +444,7 @@ function GradeInspector({ ctx }) {
           <input aria-label={s.label} type="range" min={-50} max={50} value={grade[s.key] || 0} onChange={(e) => setGradeKey(s.key, +e.target.value)} className="w-full" />
         </div>
       ))}
-      <button onClick={saveBrandGrade} disabled={savingBrand} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-action py-2 text-2xs text-action bg-action/6 disabled:opacity-60">
+      <button onClick={saveBrandGrade} disabled={savingBrand} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-action py-2 text-2xs text-action bg-action/[0.06] disabled:opacity-60">
         {savingBrand ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span>★</span>}Save as Brand look
       </button>
       <button onClick={resetGrade} className="mt-1 w-full rounded-md py-1.5 text-2xs text-muted-foreground">Reset adjustments</button>
@@ -560,7 +560,7 @@ function OverlayInspector({ ctx }) {
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><rect x="5" y="2" width="4" height="10" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
         </button>
         <button type="button" onClick={() => alignOverlay(true, true)} title="Center on frame" aria-label="Center on frame"
-          className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold border-primary/35 bg-primary/6 text-primary`}>
+          className={`${alignBtnCls} gap-1 px-2 text-2xs font-semibold border-primary/35 bg-primary/[0.06] text-primary`}>
           <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><line x1="0" y1="6" x2="12" y2="6" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5"/><circle cx="6" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/></svg>
           Center
         </button>
@@ -719,7 +719,7 @@ function MomentsInspector({ ctx }) {
             const on = s.id === selectedSegmentId
             const dur = Math.max(0, (Number(s.end_sec) || 0) - (Number(s.start_sec) || 0))
             return (
-              <div key={s.id} className={`mb-1.5 rounded-md border p-2 ${on ? 'border-primary bg-primary/6' : ''}`}>
+              <div key={s.id} className={`mb-1.5 rounded-md border p-2 ${on ? 'border-primary bg-primary/[0.06]' : ''}`}>
                 <button onClick={() => applySegment(s)} className="block w-full text-left">
                   <span className={`block text-2xs font-medium ${on ? 'text-primary' : ''}`}>{s.hook || 'Moment'}</span>
                   <span className="block text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(Number(s.start_sec) || 0)} · {Math.round(dur)}s</span>
