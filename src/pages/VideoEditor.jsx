@@ -483,7 +483,16 @@ function PostCaptionInspector({ ctx }) {
 }
 
 function CaptionInspector({ ctx }) {
-  const { caption, setCaption, lines, genCaptions, genCaptionsPending, captionsEdited, resetCaptions, openSaveTemplate } = ctx
+  const { asset, caption, setCaption, lines, genCaptions, genCaptionsPending, captionsEdited, resetCaptions, openSaveTemplate } = ctx
+  // The workspace's own brand primary — the SAME value the hydration effect
+  // (workspaceCaptionAccent(asset.workspace), above) already seeds caption.accent
+  // with, and what the server bake falls back to when no explicit accent is
+  // sent. The swatch row used to offer Bernard's own product colors (this
+  // app's teal + amber) instead, so a workspace whose brand differs from
+  // Bernard's UI had no swatch for its own already-selected default — only the
+  // custom color wheel could get back to it. Leading with it here makes the
+  // picker match what it's actually picking.
+  const wsPrimary = workspaceCaptionAccent(asset?.workspace) || WORKSPACE_DEFAULT_ACCENT
   const seg = (label, opts, key) => (
     <div className="mb-3">
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -521,13 +530,13 @@ function CaptionInspector({ ctx }) {
         <div className="mb-3">
           <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Highlight colour</p>
           <div className="flex items-center gap-1.5">
-            {['#ffffff', BERNARD_PRIMARY, BERNARD_ACTION].map((c) => {
+            {[wsPrimary, '#ffffff', BERNARD_ACTION].map((c, i) => {
               const on = (caption.accent || '').toLowerCase() === c.toLowerCase()
-              return <button key={c} type="button" onClick={() => setCaption('accent', c)} aria-label={`Caption colour ${c}`} className="h-6 w-6 rounded-full border" style={{ background: c, borderColor: on ? 'hsl(var(--primary))' : 'hsl(var(--border))', boxShadow: on ? '0 0 0 1.5px hsl(var(--primary))' : undefined }} />
+              return <button key={c} type="button" onClick={() => setCaption('accent', c)} aria-label={i === 0 ? `Your brand colour ${c}` : `Caption colour ${c}`} title={i === 0 ? 'Your brand colour (default)' : undefined} className="h-6 w-6 rounded-full border" style={{ background: c, borderColor: on ? 'hsl(var(--primary))' : 'hsl(var(--border))', boxShadow: on ? '0 0 0 1.5px hsl(var(--primary))' : undefined }} />
             })}
             <label className="relative h-6 w-6 cursor-pointer overflow-hidden rounded-full border" style={{ borderColor: 'hsl(var(--border))' }} title="Custom colour">
               <span className="absolute inset-0" style={{ background: 'conic-gradient(from 90deg, #f44, #fd4, #4d4, #4dd, #44f, #f4f, #f44)' }} aria-hidden="true" />
-              <input type="color" value={HEX6_RE.test(caption.accent || '') ? caption.accent : BERNARD_ACTION} onChange={(e) => setCaption('accent', e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Custom caption colour" />
+              <input type="color" value={HEX6_RE.test(caption.accent || '') ? caption.accent : wsPrimary} onChange={(e) => setCaption('accent', e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Custom caption colour" />
             </label>
           </div>
         </div>
