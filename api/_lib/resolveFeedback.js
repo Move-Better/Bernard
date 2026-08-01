@@ -1,3 +1,4 @@
+// @ts-check
 // Shared feedback-resolution logic: mark a feedback row fixed and best-effort
 // email the reporter that it's safe to rely on the feature again.
 //
@@ -15,14 +16,20 @@
 import { sendEmail } from './notifyAdmin.js'
 
 import { supabaseRest } from './supabaseRest.js'
+
+/** @typedef {import('./supabase.types').Database['public']['Tables']['feedback']['Row']} FeedbackRow */
+/** @typedef {import('./supabase.types').Database['public']['Tables']['feedback']['Update']} FeedbackUpdate */
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 
 // Scoped by the caller: the Clerk endpoint passes workspaceId, the system
 // trigger keys on the unguessable feedback PK (id) alone.
+/** @param {string} path @param {RequestInit} [init] */
 const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
 
 
+/** @param {string} str */
 function escHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -33,6 +40,7 @@ function escHtml(str) {
 }
 
 // Build the reporter-facing "your bug is fixed" email for a feedback row.
+/** @param {FeedbackRow} row @param {string | null} resolvedNote */
 export function buildResolutionEmail(row, resolvedNote) {
   const html = `
 <table style="font-family:sans-serif;font-size:14px;color:#1e293b;border-collapse:collapse;width:100%;max-width:600px">
@@ -53,6 +61,7 @@ export function buildResolutionEmail(row, resolvedNote) {
 //
 // Returns { status, id?, notified, alreadyResolved }:
 //   status: 'ok' | 'invalid_id' | 'not_found' | 'lookup_failed' | 'update_failed'
+/** @param {{ id?: string, note?: string, workspaceId?: string | null }} args */
 export async function resolveFeedbackRow({ id, note, workspaceId = null }) {
   if (!UUID_RE.test(id || '')) return { status: 'invalid_id' }
   const scope = workspaceId ? `&workspace_id=eq.${workspaceId}` : ''
@@ -62,12 +71,13 @@ export async function resolveFeedbackRow({ id, note, workspaceId = null }) {
     console.error('[resolveFeedback] lookup failed', getR.status)
     return { status: 'lookup_failed' }
   }
-  const [row] = await getR.json()
+  const [row] = /** @type {FeedbackRow[]} */ (await getR.json())
   if (!row) return { status: 'not_found' }
   // Idempotent: a row already resolved is a no-op — never re-send the email.
   if (row.resolved_at) return { status: 'ok', id: row.id, notified: !!row.resolved_notified_at, alreadyResolved: true }
 
   const resolvedNote = note?.trim() || null
+  /** @type {FeedbackUpdate} */
   const patch = { resolved_at: new Date().toISOString(), resolved_note: resolvedNote }
 
   let notified = false
@@ -84,6 +94,6 @@ export async function resolveFeedbackRow({ id, note, workspaceId = null }) {
     console.error('[resolveFeedback] update failed', patchR.status, body.slice(0, 500))
     return { status: 'update_failed' }
   }
-  const [saved] = await patchR.json()
+  const [saved] = /** @type {FeedbackRow[]} */ (await patchR.json())
   return { status: 'ok', id: saved?.id ?? id, notified, alreadyResolved: false }
 }

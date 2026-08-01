@@ -20,6 +20,10 @@
     "src/lib/queries.js",
     "src/lib/publish.js",
     "src/lib/contentPlan.js",
-    "src/lib/topicBacklog.js"
+    "src/lib/topicBacklog.js",
+    "api/_lib/supabase.types.d.ts",
+    "api/_lib/workspaceContext.js",
+    "api/_lib/resolveFeedback.js",
+    "api/_routes/db/briefs.js"
   ]
 }

@@ -1,3 +1,4 @@
+// @ts-check
 // Resolve the active workspace for an inbound request.
 //
 // Phase 1A took two passes at this. The first version had Vercel Routing
@@ -22,14 +23,18 @@
 
 import { supabaseRest, SUPABASE_URL, SUPABASE_KEY } from './supabaseRest.js'
 
+/** @typedef {import('./supabase.types').Database['public']['Tables']['workspaces']['Row']} WorkspaceRow */
+
 const APEX_HOSTS = new Set(['withbernard.ai', 'www.withbernard.ai'])
 
 // In-process workspace cache. Fluid Compute reuses warm instances across
 // concurrent requests so hit rate is high. TTL 60s — workspace config
 // changes are rare and a brief lag is acceptable.
+/** @type {Map<string, { row: WorkspaceRow, expiresAt: number }>} */
 const _wsCache = new Map() // slug → { row, expiresAt }
 const WS_TTL_MS = 60_000
 
+/** @param {string} slug @returns {WorkspaceRow | null} */
 function getCached(slug) {
   const entry = _wsCache.get(slug)
   if (!entry) return null
@@ -37,6 +42,7 @@ function getCached(slug) {
   return entry.row
 }
 
+/** @param {string} slug @param {WorkspaceRow} row */
 function setCached(slug, row) {
   _wsCache.set(slug, { row, expiresAt: Date.now() + WS_TTL_MS })
 }
@@ -47,11 +53,13 @@ function setCached(slug, row) {
 // the caller sees their write. The cache is per-instance — other warm
 // instances still expire on the 60s TTL — but in practice the same instance
 // usually serves the immediate follow-up read.
+/** @param {string} [slug] */
 export function invalidateWorkspaceCacheBySlug(slug) {
   if (!slug) return
   _wsCache.delete(slug)
 }
 
+/** @param {string} [id] */
 export function invalidateWorkspaceCacheById(id) {
   if (!id) return
   for (const [slug, entry] of _wsCache.entries()) {
@@ -59,6 +67,7 @@ export function invalidateWorkspaceCacheById(id) {
   }
 }
 
+/** @param {string | null} [host] @returns {string | null} */
 function extractSlug(host) {
   if (!host) return null
   const h = host.split(':')[0].toLowerCase()
@@ -69,6 +78,7 @@ function extractSlug(host) {
   return null
 }
 
+/** @param {any} req @returns {string | null} */
 function readHostHeader(req) {
   const headers = req?.headers
   if (!headers) return null
@@ -80,6 +90,7 @@ function readHostHeader(req) {
 // URLs (bernard-git-*.vercel.app) have no .withbernard.ai subdomain to
 // resolve, so we accept ?workspace=<slug> as an explicit override.
 // Production runs short-circuit before this is read.
+/** @param {any} req @returns {string | null} */
 function extractSlugFromQuery(req) {
   if (process.env.VERCEL_ENV === 'production') return null
   const raw = req?.url
@@ -98,6 +109,7 @@ function extractSlugFromQuery(req) {
 // Vercel Blob upload-completion webhook) that don't have a request host to
 // resolve from but do have a workspace_id round-tripped through some other
 // channel (token payload, cron arg). Returns the full row or null.
+/** @param {string} [id] @returns {Promise<WorkspaceRow | null>} */
 export async function workspaceById(id) {
   if (!id) return null
   if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -115,7 +127,9 @@ export async function workspaceById(id) {
     console.error(`[workspaceById] lookup failed: ${r.status}`)
     return null
   }
-  const rows = await r.json().catch(() => null)
+  let body = null
+  try { body = await r.json() } catch { body = null }
+  const rows = /** @type {WorkspaceRow[] | null} */ (body)
   if (!Array.isArray(rows) || rows.length === 0) return null
   const row = rows[0]
   if (row.status !== 'active') return null
@@ -125,11 +139,13 @@ export async function workspaceById(id) {
 // Best-effort: stash the resolved workspace on req so the shared Sentry
 // wrapper (api/_lib/sentry.js) can tag captured errors with workspace
 // slug/id without each handler needing to wire that up.
+/** @param {any} req @param {WorkspaceRow} [row] */
 function attachWorkspaceToReq(req, row) {
   if (!req || !row) return
   try { req.workspace = row } catch { /* frozen req, ignore */ }
 }
 
+/** @param {any} req @returns {Promise<WorkspaceRow | null>} */
 export async function workspaceContext(req) {
   const host = readHostHeader(req)
   const slug = extractSlug(host) || extractSlugFromQuery(req)
@@ -158,7 +174,9 @@ export async function workspaceContext(req) {
     console.error(`[workspaceContext] lookup failed: ${r.status}`)
     return null
   }
-  const rows = await r.json().catch(() => null)
+  let body = null
+  try { body = await r.json() } catch { body = null }
+  const rows = /** @type {WorkspaceRow[] | null} */ (body)
   if (!Array.isArray(rows) || rows.length === 0) return null
   const row = rows[0]
   if (row.status !== 'active') return null

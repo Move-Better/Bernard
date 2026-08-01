@@ -1068,6 +1068,68 @@ Never mix the two in one file — the import path alone should tell you which ki
 at. A `requestSchemas/` file should never import `generateObject`; an LLM-schema file should never
 be imported by a route handler for request validation.
 
+## Generated DB types (`api/_lib/supabase.types.d.ts`)
+
+The third leg of the same table as the two `zod` kinds above: `requestSchemas/` validates what
+the **client sends**, at runtime; generated types validate what **Supabase returns/stores**, at
+compile time. Added 2026-07-31/08-01, same architecture-audit lineage as `api/_lib/supabaseRest.js`
+(#2516) and `requestSchemas/` (#2517/#2518), same adoption cadence: a small proof batch, not a
+sweep — 447 handlers still opt in opportunistically.
+
+**What it catches:** a JS handler assuming a DB column that doesn't exist — a typo, a renamed
+column, or (the costliest real instance) a migration that shipped but was never applied to prod
+(`094_engagement_digest.sql` shipped 2026-05-28, never ran; three crons 400'd for two months
+before anyone noticed, because `schema:verify` diffs a snapshot *of prod* against prod and is
+structurally blind to a migration that never touched prod at all). Generated types are pulled
+from live `information_schema` — the same source `schema:verify` uses — so a never-applied
+migration's columns are simply absent, and code assuming them fails `tsc` instead of 400ing in
+prod weeks later.
+
+**What it does NOT catch (read this before assuming blanket coverage):**
+- **The SELECT/PATCH column-list mismatch that caused #2467/#2468** (a PATCH allowlist wrote
+  `content_items.format`, the SELECT list omitted it, the column round-tripped as `undefined`).
+  Casting a response to the full generated `Row` type doesn't help here — TS has no visibility
+  into which columns an explicit `select=a,b,c` string actually asked for, so reading an
+  unselected column still compiles clean. This affects the ~447 call sites using an explicit
+  column list; only the ~26 `select=*` call sites get the full, correct guarantee from `Row` as-is.
+  Closing this for explicit-select sites is deferred future work (preferred approach: a
+  template-literal type deriving the column union from the existing `SELECT` string, so there's
+  still one hand-maintained list, not two that can drift apart the way #2467 did).
+- **Per-file, not repo-wide.** Only files with `// @ts-check` as their first line AND an entry in
+  `tsconfig.json`'s `include` are protected — `npm run typecheck` does not walk `api/**`
+  unconditionally. Unlike `schema:verify` (an unconditional CI gate), this is opt-in coverage.
+- **Free-form JSONB columns are invisible.** `content_items.media_urls`, `dispatch_state`,
+  `photo_treatment`, `provenance`, etc. all generate as bare `Json` — zero shape checking. The
+  documented `{url, type, mediaAssetId, kind, ...}` shape (`src/lib/mediaEntry.js`) gets no
+  protection from this layer. A hand-written narrowing supplement (same house style as
+  `src/lib/clerk-types.d.ts`) is deferred future work, not yet built.
+- **A stale file is worse than none.** If a migration drops a column and nobody regenerates
+  `supabase.types.d.ts`, `tsc` stays green on opted-in files while prod 400s — it *looks* like a
+  guarantee and isn't one. Regenerate in the same commit as `npm run schema:snapshot`, every time.
+
+**Consumption pattern** — per-file opt-in, using the exact mechanism `src/lib/api.js` already
+proved (`// @ts-check` as line 1 + a `tsconfig.json` `include` entry), extended into `api/**` for
+the first time:
+```js
+// @ts-check
+/** @typedef {import('../../_lib/supabase.types').Database['public']['Tables']['briefs']['Row']} BriefRow */
+
+const rows = /** @type {BriefRow[]} */ (await r.json())
+```
+Also type outbound PATCH/POST body objects against the generated `Update`/`Insert` types — same
+mechanism, catches a typo'd or nonexistent column name in a write allowlist at compile time
+(the write half of the #2467 class). Seed files: `api/_lib/workspaceContext.js`,
+`api/_lib/resolveFeedback.js`, `api/_routes/db/briefs.js` — all `select=*`, so the plain `Row`
+type is exactly correct with none of the explicit-select caveats above.
+
+**Regeneration — `npm run schema:types -- --from-file <path>`.** No unattended path exists: there
+is no `@supabase/supabase-js`, no `SUPABASE_ACCESS_TOKEN` for the `supabase gen types` CLI, and
+`MULTITENANT_DATABASE_URL` is a Sensitive var `vercel env pull` redacts locally. Regeneration
+means running the Supabase MCP `generate_typescript_types` tool in an agent session, saving its
+raw result to a scratch file, and running the script above — same constraint that produced
+`scripts/verify-schema-drift.mjs --from-json`, and the same one to run right alongside
+`npm run schema:snapshot` after every applied migration.
+
 ## LLM-generated structured data — never trust echoed ids/values
 
 When an LLM call returns structured output (`generateText`/`generateObject`) whose fields you
