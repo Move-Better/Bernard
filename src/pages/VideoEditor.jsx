@@ -6,7 +6,7 @@ import {
   Play, Pause, Film, Sparkles, Captions, Type,
   Plus, Trash2, Check, Loader2, AlertCircle, Move,
   FolderOpen, Megaphone, ChevronDown, Scissors, ChevronLeft, ChevronRight, FileText, History,
-  Music, Volume2, LayoutTemplate, ThumbsDown,
+  Music, Volume2, LayoutTemplate, ThumbsDown, MessageSquareText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
@@ -22,6 +22,7 @@ import AdVideoExportModal from '@/components/AdVideoExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
 import EditorIconRail from '@/components/editor/IconRail'
+import PostCaptionField from '@/components/editor/PostCaptionField'
 import { useContentItem, useUpdateContentItem, useUpdateContentItemStatus } from '@/lib/queries'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '@/lib/gradeParams'
 import { toast } from '@/lib/toast'
@@ -452,6 +453,35 @@ function GradeInspector({ ctx }) {
   )
 }
 
+// Post caption — the text that publishes BELOW the video (content_items.content),
+// as opposed to the Karaoke inspector's on-screen words burned into the frame.
+// The two were indistinguishable before: the reel editor had no post-caption
+// field at all, so a reel's caption was frozen at draft time (feedback: "not
+// seeing a place to edit the actual caption… it just put the script in the
+// caption"). Shares PostCaptionField with UnifiedEditor's WordsPanel so the two
+// caption surfaces can't drift. Only rendered when a post exists (ctx.captionPiece).
+function PostCaptionInspector({ ctx }) {
+  const { captionPiece, updateItem } = ctx
+  if (!captionPiece) return null
+  return (
+    <InspectorShell icon={MessageSquareText} title="Post caption" right="below the video">
+      <p className="mb-2 rounded-md px-2 py-1 text-3xs bg-muted text-muted-foreground">
+        The text that publishes below your video — <span className="font-semibold text-foreground">not</span> the on-screen words. Those live under <span className="font-semibold text-foreground">Karaoke</span>.
+      </p>
+      <div className="flex min-h-0 flex-col gap-2">
+        <PostCaptionField
+          piece={captionPiece}
+          updateItem={updateItem}
+          ariaLabel="Post caption"
+          placeholder="Caption visible to followers…"
+          hint="Saves when you click away."
+          minHeightClass="min-h-[200px]"
+        />
+      </div>
+    </InspectorShell>
+  )
+}
+
 function CaptionInspector({ ctx }) {
   const { caption, setCaption, lines, genCaptions, genCaptionsPending, captionsEdited, resetCaptions, openSaveTemplate } = ctx
   const seg = (label, opts, key) => (
@@ -463,8 +493,8 @@ function CaptionInspector({ ctx }) {
     </div>
   )
   return (
-    <InspectorShell icon={Captions} title="Captions" right="auto · from transcript">
-      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Captions</p>
+    <InspectorShell icon={Captions} title="Karaoke captions" right="on-screen · from transcript">
+      <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>On-screen words</p>
       <div className="mb-3 flex gap-1.5">
         {['karaoke', 'off'].map((p) => <button key={p} onClick={() => setCaption('preset', p)} className="flex-1 rounded-md border py-1.5 text-3xs" style={segBtn(caption.preset === p)}>{p === 'karaoke' ? 'On' : 'Off'}</button>)}
       </div>
@@ -858,15 +888,21 @@ function TranscriptInspector({ ctx }) {
 }
 
 function IconRail({ ctx }) {
-  const { sel, selectKey, overlays, addOverlay } = ctx
+  const { sel, selectKey, overlays, addOverlay, captionPiece } = ctx
   const selKey = isOverlaySel(sel) ? 'overlay' : sel
   // 'overlay' selection lights the 'text' tool (overlays ARE the text layer).
   const active = selKey === 'overlay' ? 'text' : selKey
   const items = [
+    // Post caption first when this clip belongs to a post — it's the text that
+    // publishes below the video, and the thing users came here to review. Absent
+    // in standalone clip editing (Moment Miner) where no post exists yet.
+    ...(captionPiece ? [{ key: 'postcaption', icon: MessageSquareText, label: 'Caption' }] : []),
     { key: 'moments', icon: Scissors, label: 'Clips' },
     { key: 'clip', icon: Film, label: 'Clip' },
     { key: 'grade', icon: Sparkles, label: 'Grade' },
-    { key: 'caption', icon: Captions, label: 'Caps' },
+    // On-screen karaoke words burned into the frame — distinct from the post
+    // caption above (labeled to avoid the collision that lost users the caption).
+    { key: 'caption', icon: Captions, label: 'Karaoke' },
     { key: 'music', icon: Music, label: 'Music' },
     { key: 'transcript', icon: FileText, label: 'Script' },
     { key: 'text', icon: Type, label: 'Text' },
@@ -1093,7 +1129,10 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   const { data: asset, isLoading, error } = useQuery({ queryKey: ['media-asset', assetId], queryFn: () => getMediaAsset(assetId), enabled: !!assetId, retry: 1 })
   const { data: segData } = useQuery({ queryKey: ['video-segments', assetId], queryFn: () => getSegments(assetId), enabled: !!assetId, staleTime: 30_000 })
 
-  const [sel, setSel] = useState('clip')
+  // Embedded from a post (the publish flow) opens on the post caption — the
+  // text that publishes below the video, and what users came here to review.
+  // Standalone clip editing (Moment Miner) opens on Clip as before.
+  const [sel, setSel] = useState(() => (embedded && piece?.id ? 'postcaption' : 'clip'))
   const [railMode, setRailMode] = useState('layers')
   const [playing, setPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -1881,6 +1920,9 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     alignGuidesOn, flashAlignGuides,
     proposals, selectedSegmentId, applySegment, discardSegment,
     findMoments: () => findMomentsMutation.mutate(), findingMoments: findMomentsMutation.isPending, segDetecting: segData?.status === 'detecting',
+    // Post caption: prefer the live-refetched content item, fall back to the
+    // prop so the field is editable immediately (embedded) before `post` loads.
+    captionPiece: post || piece || null, updateItem,
   }
 
   if (isLoading) return <div role="status" className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" /><span className="sr-only">Loading video…</span></div>
@@ -2091,6 +2133,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
           <IconRail ctx={ctx} />
           <aside className="flex w-[272px] shrink-0 flex-col border-r bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
             <div className="min-h-0 flex-1 overflow-auto p-3">
+              {sel === 'postcaption' && <PostCaptionInspector ctx={ctx} />}
               {sel === 'moments' && <MomentsInspector ctx={ctx} />}
               {sel === 'clip' && <ClipInspector ctx={ctx} />}
               {sel === 'grade' && <GradeInspector ctx={ctx} />}

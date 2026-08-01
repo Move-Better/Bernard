@@ -18,6 +18,7 @@ import { useUpdateContentItem, useMediaSuggestions, useInterview, queryKeys } fr
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { resolveGbpLocationIds } from '@/lib/gbpLocations'
 import { BlogStyleSwitcher, BlogGenerationActions } from '@/components/editor/BlogWordsExtras'
+import PostCaptionField from '@/components/editor/PostCaptionField'
 import RegenerateCaptionButton, { canRegenerateCaption } from '@/components/editor/RegenerateCaptionButton'
 import { apiFetch } from '@/lib/api'
 import { clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey, photoSourceUrl, isVideoEntry } from '@/lib/mediaEntry'
@@ -66,38 +67,17 @@ const EMAIL_SECTION_TEMPLATE = [
 // also carries the generation controls that had no home after the
 // pre-#2107 AssetsPane console was retired — see BlogWordsExtras.jsx.
 function WordsPanel({ piece, updateItem }) {
-  const [draft, setDraft] = useState(() => (typeof piece?.content === 'string' ? piece.content : ''))
-  const savedRef = useRef(draft)
   const isBlog = piece?.platform === 'blog'
   const isEmail = piece?.platform === 'email'
   const { data: interview } = useInterview(isBlog ? piece?.interview_id : null)
-
-  // Re-seed the textarea on piece switch AND when the persisted content changes
-  // underneath us — e.g. Regenerate replaces content in place (same id). The
-  // savedRef guard means unsaved local edits (which differ from savedRef while
-  // the incoming prop still equals it) are never clobbered.
-  useEffect(() => {
-    const next = typeof piece?.content === 'string' ? piece.content : ''
-    if (next !== savedRef.current) {
-      setDraft(next)
-      savedRef.current = next
-    }
-  }, [piece?.id, piece?.content])
-
-  async function handleBlur() {
-    if (draft === savedRef.current) return
-    try {
-      await updateItem.mutateAsync({ id: piece.id, patch: { content: draft } })
-      savedRef.current = draft
-    } catch (e) {
-      toast.error('Caption save failed', { description: e.message })
-    }
-  }
 
   const label = isBlog ? 'Words' : isEmail ? 'Email' : 'Caption'
   const placeholder = isBlog
     ? 'Write the blog post…'
     : isEmail ? EMAIL_SECTION_TEMPLATE : 'Caption visible to followers…'
+  const hint = isEmail
+    ? 'Each section needs its own ---SECTION---  marker on its own line (SUBJECT LINE, PREVIEW TEXT, HEADLINE, PULL QUOTE, BODY PARAGRAPH 1-3, CTA TEXT, CTA URL, PS). Saves when you click away.'
+    : 'Saves when you click away. The live preview updates as you type.'
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -106,21 +86,14 @@ function WordsPanel({ piece, updateItem }) {
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
         {isBlog && <BlogStyleSwitcher piece={piece} interview={interview} />}
-        <textarea
-          aria-label={label}
-          spellCheck
-          lang="en"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={handleBlur}
+        <PostCaptionField
+          piece={piece}
+          updateItem={updateItem}
+          ariaLabel={label}
           placeholder={placeholder}
-          className={`${isBlog || isEmail ? 'min-h-[240px]' : 'min-h-[200px]'} flex-1 w-full resize-none rounded-md border bg-muted/40 px-2 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:border-primary focus:outline-none`}
+          hint={hint}
+          minHeightClass={isBlog || isEmail ? 'min-h-[240px]' : 'min-h-[200px]'}
         />
-        <p className="shrink-0 text-3xs text-muted-foreground/70">
-          {isEmail
-            ? 'Each section needs its own ---SECTION---  marker on its own line (SUBJECT LINE, PREVIEW TEXT, HEADLINE, PULL QUOTE, BODY PARAGRAPH 1-3, CTA TEXT, CTA URL, PS). Saves when you click away.'
-            : 'Saves when you click away. The live preview updates as you type.'}
-        </p>
         {isBlog && <BlogGenerationActions piece={piece} interview={interview} />}
         {canRegenerateCaption(piece) && (
           <div className="shrink-0 border-t pt-3">
