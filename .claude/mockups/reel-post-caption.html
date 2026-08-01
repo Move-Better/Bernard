@@ -1,0 +1,215 @@
+<title>Reel editor — post caption fix</title>
+<style>
+  :root {
+    --bg: #f4f6f6;
+    --panel: #ffffff;
+    --card: #ffffff;
+    --ink: #0b111e;
+    --muted: #5b6672;
+    --faint: #8b96a2;
+    --line: #e2e7e9;
+    --line-soft: #eef1f2;
+    --primary: #0c7580;
+    --primary-soft: rgba(12,117,128,0.08);
+    --primary-line: rgba(12,117,128,0.30);
+    --action: #b26a00;
+    --action-soft: rgba(214,138,0,0.10);
+    --shadow: 0 1px 2px rgba(11,17,30,0.06), 0 8px 24px rgba(11,17,30,0.06);
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1017; --panel: #131b25; --card: #161f2b; --ink: #e9eef2;
+      --muted: #9aa6b2; --faint: #6c7885; --line: #263140; --line-soft: #1c2531;
+      --primary: #4fc3cf; --primary-soft: rgba(79,195,207,0.12); --primary-line: rgba(79,195,207,0.34);
+      --action: #e0a021; --action-soft: rgba(224,160,33,0.12);
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 30px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b1017; --panel: #131b25; --card: #161f2b; --ink: #e9eef2;
+    --muted: #9aa6b2; --faint: #6c7885; --line: #263140; --line-soft: #1c2531;
+    --primary: #4fc3cf; --primary-soft: rgba(79,195,207,0.12); --primary-line: rgba(79,195,207,0.34);
+    --action: #e0a021; --action-soft: rgba(224,160,33,0.12);
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 30px rgba(0,0,0,0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6f6; --panel: #ffffff; --card: #ffffff; --ink: #0b111e;
+    --muted: #5b6672; --faint: #8b96a2; --line: #e2e7e9; --line-soft: #eef1f2;
+    --primary: #0c7580; --primary-soft: rgba(12,117,128,0.08); --primary-line: rgba(12,117,128,0.30);
+    --action: #b26a00; --action-soft: rgba(214,138,0,0.10);
+    --shadow: 0 1px 2px rgba(11,17,30,0.06), 0 8px 24px rgba(11,17,30,0.06);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; line-height: 1.5;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 72px; }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--primary); margin: 0 0 8px; }
+  h1 { font-size: 26px; line-height: 1.2; margin: 0 0 10px; text-wrap: balance; letter-spacing: -0.01em; }
+  .lede { font-size: 15px; color: var(--muted); max-width: 62ch; margin: 0 0 8px; }
+  .verbatim { font-size: 13.5px; color: var(--muted); max-width: 66ch; margin: 4px 0 0; padding: 10px 14px; border-left: 3px solid var(--primary-line); background: var(--primary-soft); border-radius: 0 8px 8px 0; }
+  .verbatim b { color: var(--ink); font-weight: 600; }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 30px; }
+  @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+
+  .col-head { display: flex; align-items: center; gap: 9px; margin: 0 0 12px; }
+  .tag { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; }
+  .tag.today { color: var(--muted); background: var(--line-soft); border: 1px solid var(--line); }
+  .tag.change { color: var(--primary); background: var(--primary-soft); border: 1px solid var(--primary-line); }
+  .col-head p { margin: 0; font-size: 13px; color: var(--faint); }
+
+  /* editor frame */
+  .editor { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .chrome { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--card); }
+  .chrome .back { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); font-size: 13px; }
+  .chrome .title { font-size: 12.5px; font-weight: 600; }
+  .chrome .title span { color: var(--faint); font-weight: 400; }
+  .chrome .spacer { flex: 1; }
+  .chrome .btn { font-size: 11.5px; font-weight: 600; padding: 5px 10px; border-radius: 7px; border: 1px solid var(--line); color: var(--muted); }
+  .chrome .btn.primary { color: #fff; background: var(--primary); border-color: var(--primary); }
+
+  .body { display: flex; min-height: 372px; }
+  .rail { width: 82px; shrink: 0; border-right: 1px solid var(--line); background: var(--card); padding: 4px 0; }
+  .rail .item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 9px 0; border-left: 2px solid transparent; color: var(--faint); cursor: default; }
+  .rail .item .ic { width: 18px; height: 18px; }
+  .rail .item .lb { font-size: 10.5px; }
+  .rail .item.on { border-left-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+  .rail .item.new { position: relative; }
+  .rail .item.new::after { content: "NEW"; position: absolute; top: 4px; right: 6px; font-size: 7px; font-weight: 800; letter-spacing: 0.04em; color: var(--action); background: var(--action-soft); padding: 1px 3px; border-radius: 4px; }
+  .rail .item.renamed .lb { color: var(--primary); font-weight: 600; }
+
+  .inspector { flex: 1; padding: 14px; min-width: 0; background: var(--panel); }
+  .insp-head { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 8px; background: var(--primary-soft); margin-bottom: 12px; }
+  .insp-head .ic { width: 16px; height: 16px; color: var(--primary); }
+  .insp-head .t { font-size: 12.5px; font-weight: 700; color: var(--primary); }
+  .insp-head .r { margin-left: auto; font-size: 10.5px; color: var(--muted); }
+
+  .field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+  .textarea { border: 1px solid var(--line); background: color-mix(in srgb, var(--card) 70%, var(--bg)); border-radius: 9px; padding: 9px 11px; font-size: 12.5px; color: var(--ink); line-height: 1.55; min-height: 128px; }
+  .textarea.focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); background: var(--card); }
+  .hint { font-size: 10.5px; color: var(--faint); margin: 7px 0 0; }
+
+  .empty { display: grid; place-items: center; text-align: center; height: 100%; padding: 24px; }
+  .empty .ic { font-size: 26px; color: var(--faint); opacity: 0.7; margin-bottom: 8px; }
+  .empty p { font-size: 12.5px; color: var(--muted); margin: 0; max-width: 26ch; }
+  .empty .sub { font-size: 11px; color: var(--faint); margin-top: 6px; }
+
+  .callout { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; padding: 9px 11px; border-radius: 8px; background: var(--action-soft); border: 1px solid color-mix(in srgb, var(--action) 26%, transparent); }
+  .callout .ic { color: var(--action); font-size: 13px; line-height: 1.35; }
+  .callout p { margin: 0; font-size: 11.5px; color: var(--ink); }
+  .callout b { font-weight: 700; }
+
+  .legend { margin-top: 34px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 26px; }
+  @media (max-width: 860px) { .legend { grid-template-columns: 1fr; } }
+  .legend h3 { font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--primary); margin: 0 0 6px; }
+  .legend ul { margin: 0; padding-left: 18px; }
+  .legend li { font-size: 13px; color: var(--muted); margin: 5px 0; }
+  .legend li b { color: var(--ink); font-weight: 600; }
+  .k { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; background: var(--line-soft); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; color: var(--ink); }
+
+  .footnote { margin-top: 26px; font-size: 12.5px; color: var(--faint); max-width: 70ch; }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Feedback fix · reel &amp; video publish editor</p>
+  <h1>A place to edit the caption that publishes below the video</h1>
+  <p class="lede">Philip couldn&rsquo;t find where to edit the post caption on a reel — the editor only offers &ldquo;Caps,&rdquo; which are the on-screen karaoke words burned into the video, not the text that publishes below it. So the caption was frozen at whatever it was drafted as, with no way to fix it.</p>
+  <p class="verbatim">&ldquo;Not seeing a place to edit the actual caption (the text that will read below the video)&hellip; I posted one of the reels before and it just put the <b>script (the words on the screen)</b> in the caption portion of Instagram.&rdquo;</p>
+
+  <div class="cols">
+    <!-- TODAY -->
+    <div>
+      <div class="col-head"><span class="tag today">Today</span><p>No editor for the post caption</p></div>
+      <div class="editor">
+        <div class="chrome">
+          <div class="back">&larr;</div>
+          <div class="title">Reel <span>· 9:16 · 1080&times;1920</span></div>
+          <div class="spacer"></div>
+          <div class="btn">Save video</div>
+          <div class="btn primary">Schedule</div>
+        </div>
+        <div class="body">
+          <div class="rail">
+            <div class="item"><div class="ic">&#9986;</div><div class="lb">Clips</div></div>
+            <div class="item on"><div class="ic">&#127909;</div><div class="lb">Clip</div></div>
+            <div class="item"><div class="ic">&#10024;</div><div class="lb">Grade</div></div>
+            <div class="item"><div class="ic">&#128488;</div><div class="lb">Caps</div></div>
+            <div class="item"><div class="ic">&#127925;</div><div class="lb">Music</div></div>
+            <div class="item"><div class="ic">&#128441;</div><div class="lb">Script</div></div>
+            <div class="item"><div class="ic">T</div><div class="lb">Text</div></div>
+          </div>
+          <div class="inspector">
+            <div class="insp-head"><div class="ic">&#127909;</div><div class="t">Clip &amp; reframe</div><div class="r">9:16</div></div>
+            <div class="empty">
+              <div class="ic">&#128533;</div>
+              <p>Nowhere here edits the caption that publishes below the video.</p>
+              <p class="sub">&ldquo;Caps&rdquo; only edits the words shown on-screen in the clip.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROPOSED -->
+    <div>
+      <div class="col-head"><span class="tag change">Proposed</span><p>A clearly-labeled &ldquo;Caption&rdquo; tab, opened first when publishing</p></div>
+      <div class="editor">
+        <div class="chrome">
+          <div class="back">&larr;</div>
+          <div class="title">Reel <span>· 9:16 · 1080&times;1920</span></div>
+          <div class="spacer"></div>
+          <div class="btn">Save video</div>
+          <div class="btn primary">Schedule</div>
+        </div>
+        <div class="body">
+          <div class="rail">
+            <div class="item on new"><div class="ic">&#128172;</div><div class="lb">Caption</div></div>
+            <div class="item"><div class="ic">&#9986;</div><div class="lb">Clips</div></div>
+            <div class="item"><div class="ic">&#127909;</div><div class="lb">Clip</div></div>
+            <div class="item"><div class="ic">&#10024;</div><div class="lb">Grade</div></div>
+            <div class="item renamed"><div class="ic">&#128488;</div><div class="lb">Karaoke</div></div>
+            <div class="item"><div class="ic">&#127925;</div><div class="lb">Music</div></div>
+            <div class="item"><div class="ic">&#128441;</div><div class="lb">Script</div></div>
+            <div class="item"><div class="ic">T</div><div class="lb">Text</div></div>
+          </div>
+          <div class="inspector">
+            <div class="insp-head"><div class="ic">&#128172;</div><div class="t">Post caption</div><div class="r">text below the video</div></div>
+            <p class="field-label">Caption &mdash; publishes on LinkedIn</p>
+            <div class="textarea focus">Most back pain isn&rsquo;t a disc problem &mdash; it&rsquo;s a movement problem. When the hips stop sharing the load, the low back takes the hit every rep&hellip;<br><br>Here&rsquo;s the 30&#8209;second check we run with every new patient.</div>
+            <p class="hint">Saves when you click away. The live preview updates as you type.</p>
+            <div class="callout">
+              <div class="ic">&#9432;</div>
+              <p><b>This is not the on&#8209;screen text.</b> The words burned into the video live under <b>Karaoke</b> (formerly &ldquo;Caps&rdquo;). This field is the caption that publishes below the post.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div>
+      <h3>What changes</h3>
+      <ul>
+        <li><b>New &ldquo;Caption&rdquo; tab</b> in the reel/video editor, bound to the post caption (<span class="k">content_items.content</span>) &mdash; the same save-on-blur textarea text posts already use, so the two can&rsquo;t drift.</li>
+        <li><b>&ldquo;Caps&rdquo; &rarr; &ldquo;Karaoke&rdquo;</b> so the burned-in on-screen words read as distinct from the post caption.</li>
+        <li><b>Opens on Caption first</b> when a reel is opened from Publish, so it&rsquo;s the first thing you see.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>What stays the same</h3>
+      <ul>
+        <li>Every existing tool &mdash; Clip, Grade, on-screen captions, Music, Script, Text &mdash; is untouched.</li>
+        <li>The auto-drafted caption is already a real social caption (not the script); this just makes it <b>visible and editable</b> before you publish.</li>
+        <li>Standalone clip editing (Moment Miner, before a post exists) shows no Caption tab &mdash; there&rsquo;s no post to caption yet.</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="footnote">Mockup mirrors the real reel editor chrome (Blue Spruce primary, the app&rsquo;s own rail + inspector). Emoji here stand in for the real Lucide icons. Caption copy is illustrative.</p>
+</div>
