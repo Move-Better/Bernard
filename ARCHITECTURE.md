@@ -1122,6 +1122,18 @@ mechanism, catches a typo'd or nonexistent column name in a write allowlist at c
 `api/_lib/resolveFeedback.js`, `api/_routes/db/briefs.js` — all `select=*`, so the plain `Row`
 type is exactly correct with none of the explicit-select caveats above.
 
+**Footgun the first file to opt in will hit:** `r.json().catch(() => null)` — a very common
+shape in this codebase's `sb()` call sites — throws `TS7011: Function expression ... implicitly
+has an 'any' return type` once `checkJs` (via `// @ts-check`) is on, because `Response.json()`
+returns `Promise<any>` and TS can't infer the `.catch()` callback's return type through it.
+`.text().catch(() => '')` does NOT have this problem (concrete `Promise<string>`). Fix — rewrite
+to a plain try/catch, behaviorally identical:
+```js
+let body = null
+try { body = await r.json() } catch { body = null }
+const rows = /** @type {BriefRow[]} */ (body)
+```
+
 **Regeneration — `npm run schema:types -- --from-file <path>`.** No unattended path exists: there
 is no `@supabase/supabase-js`, no `SUPABASE_ACCESS_TOKEN` for the `supabase gen types` CLI, and
 `MULTITENANT_DATABASE_URL` is a Sensitive var `vercel env pull` redacts locally. Regeneration
