@@ -73,6 +73,27 @@ const CADENCE_PLATFORM_META = [
   { id: 'mastodon',        label: 'Mastodon' },
 ].map((row) => ({ ...row, Icon: PLATFORM_META[row.id]?.icon ?? Radio }))
 
+// True when the weekly planner can never schedule this channel, because it maps
+// to no cadence-bearing atom platform at all (blog, email, youtube,
+// youtube_short, the ads channels, landing_page). Enabling one of these puts it
+// in the interview picker and the publish paths, but the Strategist allocates
+// only against CADENCE_PLATFORM_META — so nothing lands on /week for it.
+//
+// DERIVED, deliberately, rather than a hardcoded exclusion list: the moment a
+// channel gains atoms + a CADENCE_PLATFORM_META row, it starts being planned and
+// this label disappears on its own. A hand-maintained list would keep claiming
+// "not auto-planned" after the lane shipped. See the 2026-08-01 review — blog,
+// email and youtube were all enabled here while the planner ignored them, which
+// read as three working channels going quietly silent.
+const CADENCE_BEARING_PLATFORMS = new Set(CADENCE_PLATFORM_META.map((m) => m.id))
+
+export function isAutoPlannedChannel(channelId) {
+  for (const p of atomPlatformsOf([channelId])) {
+    if (CADENCE_BEARING_PLATFORMS.has(p)) return true
+  }
+  return false
+}
+
 // enabled_outputs (registry ids) → atom-platform set. MUST stay in sync with
 // atomPlatformsFromEnabledOutputs in api/_lib/atomPlan.js: instagram_post and
 // instagram_reel share the `instagram` bucket; instagram_story is standalone.
@@ -823,6 +844,7 @@ export default function ChannelsSettings() {
 function ChannelTile({ channel, checked, onToggle }) {
   const Icon = CHANNEL_ICONS[channel.id] || Radio
   const badge = SHAPE_LABEL[channel.exportShape] || 'Export'
+  const autoPlanned = isAutoPlannedChannel(channel.id)
   return (
     <label
       className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
@@ -845,6 +867,11 @@ function ChannelTile({ channel, checked, onToggle }) {
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium leading-tight truncate">{channel.label}</div>
         <div className="text-2xs text-muted-foreground mt-0.5 truncate">{badge}</div>
+        {!autoPlanned && (
+          <div className="text-3xs text-muted-foreground/80 mt-1 leading-snug">
+            Manual — the weekly plan won&apos;t schedule this
+          </div>
+        )}
       </div>
     </label>
   )
