@@ -1325,8 +1325,16 @@ export default function YourWeek() {
   }
 
   // Clinician "yours to review" — blog content_items in in_review (2d).
-  // Only rendered for non-editors (clinicians). Editors see the full calendar.
-  const YourReviewSlice = !isEditor && data?.yourReview?.length ? (
+  //
+  // Gated on AUTHORSHIP, not role: the server's fetchYourReview already filters
+  // `staff_id = eq.<the caller's own staff row>`, so these are by definition the
+  // signed-in user's own drafts and nobody else's. This used to also require
+  // `!isEditor`, which made the strip dead for every user at Move Better —
+  // `plan: 'internal'` grants ROLE_ADMIN to every org member (useUserRole.js), so
+  // isEditor is unconditionally true there and this always evaluated to null.
+  // Reviewing your own words is a thing you do as the author; whether you can
+  // also publish other people's is a separate question and a separate gate.
+  const YourReviewSlice = data?.yourReview?.length ? (
     <div className="rounded-xl border border-border bg-muted/40 p-3.5">
       <div className="mb-2 flex items-center gap-2">
         <BookOpen className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -1350,6 +1358,69 @@ export default function YourWeek() {
             {/* Provenance (Moments IA ①) — "from your words" builds trust right
                 where the clinician decides whether to open the review. */}
             {item.moment && <MomentProvenance moment={item.moment} compact className="mt-1.5" />}
+          </Link>
+        ))}
+      </div>
+    </div>
+  ) : null
+
+  // Producer "blogs ready to publish" — the sibling of the clinician slice above
+  // and the other half of the blog loop: a clinician approves their words here,
+  // a producer gives it a hero image and ships it.
+  //
+  // A blog carries no content_plan_atoms row, so it can never appear on the
+  // atom-driven board below; without this strip an approved blog had literally
+  // nowhere to show up, and five of them sat finished-but-unpublished for 3-8
+  // weeks. Deliberately NOT role-gated on the client — week-summary already
+  // returns [] to non-editors, and a second client-side gate is precisely what
+  // made the clinician slice above dead for every user at Move Better.
+  //
+  // Every row's next step is the same (attach a hero), so the trailing element
+  // names the action instead of reporting status: an amber "needs hero" chip
+  // would light on effectively every row and stop carrying signal. Colour marks
+  // readiness, the label says what happens. It's a plain span, not a nested
+  // button — the whole row is one link into the editor where the media rail and
+  // the Publish control already live, so there's no dead click to hit.
+  const ApprovedBlogsSlice = data?.approvedBlogs?.length ? (
+    <div className="rounded-xl border border-border bg-muted/40 p-3.5">
+      <div className="mb-2 flex items-center gap-2">
+        <Send className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        <span className="text-sm font-bold">Blogs ready to publish</span>
+        <span className="ml-auto inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-2xs font-semibold text-muted-foreground">
+          {data.approvedBlogs.length}
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        {data.approvedBlogs.map((blog) => (
+          <Link
+            key={blog.id}
+            to={`/publish/${blog.id}`}
+            className="flex items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-foreground hover:border-primary/50"
+          >
+            <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-2xs font-medium">{blog.topic || 'Blog post'}</span>
+              <span className="block text-3xs text-muted-foreground">
+                {[
+                  blog.staffName,
+                  blog.approvedAt
+                    ? `approved ${new Date(blog.approvedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: tz })}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+            </span>
+            {blog.needsHero ? (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-3xs font-bold text-primary">
+                <ImagePlus className="h-3 w-3" aria-hidden="true" /> Add hero
+              </span>
+            ) : (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-3xs font-bold text-success">
+                Ready to publish
+              </span>
+            )}
+            <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
           </Link>
         ))}
       </div>
@@ -1535,6 +1606,9 @@ export default function YourWeek() {
 
       {/* Clinician review slice (2d) */}
       {YourReviewSlice}
+
+      {/* Producer publish slice — the other end of the same blog loop */}
+      {ApprovedBlogsSlice}
 
       {/* T3 — Month overview bypasses the rest of the Week/Day tree entirely
           (mode banner, cadence strip, board, backlog rail all belong to a

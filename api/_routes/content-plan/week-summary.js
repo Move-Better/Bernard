@@ -11,6 +11,8 @@ import { mondayOf } from '../../_lib/strategist.js'
 import { mergeSlotsIntoCadence } from '../../_lib/cadenceSlots.js'
 import { isInstagramReel } from '../../../src/lib/mediaEntry.js'
 import { isTextOnlyPlatform } from '../../../src/lib/platformMediaKind.js'
+import { shapeApprovedBlog } from '../../_lib/approvedBlogs.js'
+import { isEditor } from '../../../src/lib/roles.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -164,10 +166,37 @@ export default async function handler(req, res) {
     }))
   }
 
-  const [{ scheduled, itemStatusMap }, heldAtoms, yourReview] = await Promise.all([
+  // Producer "blogs ready to publish" — the missing half of the blog loop.
+  //
+  // A blog is the one channel with no content_plan_atoms row (verified: 0 of 16
+  // on movebetter), so it can never appear on the atom-driven board. That left
+  // an approved blog with nowhere to surface: Home counted it under "N to
+  // publish" and linked to /week, which structurally could not show it. Five
+  // finished, words-approved posts sat unpublished for 3-8 weeks that way.
+  //
+  // Role-gated, unlike fetchYourReview above — this is everyone's approved work,
+  // not your own, so seeing it is a publisher capability rather than authorship.
+  // (requireRole's `role` already folds in the org-admin / internal-plan bypass,
+  // so this matches useUserRole on the client exactly.)
+  async function fetchApprovedBlogs() {
+    if (!isEditor(auth.role)) return []
+    const r = await sb(
+      `content_items?workspace_id=eq.${ws.id}&platform=eq.blog&status=eq.approved&select=id,topic,staff_name,media_urls,approved_at,created_at&order=approved_at.desc.nullslast,created_at.desc`,
+    )
+    if (!r.ok) {
+      console.error('[week-summary] approved blogs query failed:', r.status, (await r.text().catch(() => '')).slice(0, 300))
+      return []
+    }
+    const rows = await r.json()
+    if (!Array.isArray(rows)) return []
+    return rows.map(shapeApprovedBlog)
+  }
+
+  const [{ scheduled, itemStatusMap }, heldAtoms, yourReview, approvedBlogs] = await Promise.all([
     fetchAtomsAndDraftedItems(),
     fetchHeldAtoms(),
     fetchYourReview(),
+    fetchApprovedBlogs(),
   ])
 
   const byPlatform = {}
@@ -347,5 +376,6 @@ export default async function handler(req, res) {
     held: heldShaped,
     digest: digest ? { label: digest.label, frequency: digest.frequency, next_send: digest.next_send || null } : null,
     yourReview,
+    approvedBlogs,
   })
 }
