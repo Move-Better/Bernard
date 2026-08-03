@@ -4,6 +4,34 @@ import { blockFraction, WHOOP_CONTENT } from './shared'
 import RichTextEditOverlay from './RichTextEditOverlay'
 import FloatingTextToolbar from './FloatingTextToolbar'
 
+// Approximate the canvas font metrics (overlayTemplates.roleTypography) closely
+// enough to size the invisible hit-box mirror below. This drives the CLICK
+// TARGET only — never a rendered or published pixel — so a small drift just
+// makes the box marginally taller/shorter, never produces wrong output. Font
+// SIZE is px on the 1080-wide canvas; the mirror emits it as `cqw` against the
+// stage container so the box scales with the preview at any aspect/zoom.
+const ROLE_SIZE = { hook: 84, body: 44, caption: 36, cta: 42, attribution: 30, page: 28 }
+const ROLE_WEIGHT = { hook: 800, body: 600, caption: 500, cta: 700, attribution: 500, page: 600 }
+const THEME_SIZE_PX = { xs: 28, sm: 36, base: 44, lg: 56, xl: 72, '2xl': 84, '3xl': 100 }
+function hitBoxTextStyle(block, theme) {
+  const role = ROLE_SIZE[block.role] != null ? block.role : 'body'
+  const themeBlock = theme?.blocks?.[role] ?? null
+  let size = ROLE_SIZE[role]
+  let upper = role === 'hook'
+  if (themeBlock) {
+    size = THEME_SIZE_PX[themeBlock.fontSize] ?? (role === 'cta' ? 42 : 44)
+    if (typeof themeBlock.uppercase === 'boolean') upper = themeBlock.uppercase
+  }
+  if (Number.isFinite(block.fontScale) && block.fontScale > 0 && block.fontScale !== 1) size *= block.fontScale
+  if (typeof block.uppercase === 'boolean') upper = block.uppercase
+  return {
+    fontSize: `${(size / 1080) * 100}cqw`,
+    lineHeight: 1.18,
+    fontWeight: block.fontWeight || ROLE_WEIGHT[role],
+    textTransform: upper ? 'uppercase' : 'none',
+  }
+}
+
 // On-canvas text layer: each block is a box you click to select, drag to place,
 // and DOUBLE-CLICK to edit inline (a contentEditable over the block; the canvas
 // skips that block's text while editing so there's no double-vision). When a
@@ -56,7 +84,7 @@ export default function TextDragLayer({ slide, theme, selection, onSelectBlock, 
   ).length
   const skipZone = theme?.layout === 'photo' && contentCount > 1
   return (
-    <div ref={rootRef} className="pointer-events-none absolute inset-0 rounded-xl">
+    <div ref={rootRef} className="pointer-events-none absolute inset-0 rounded-xl" style={{ containerType: 'inline-size' }}>
       {(slide.blocks || []).map((b, idx) => {
         const editing = editingIdx === idx
         if (!(b.text || '').trim() && !editing) return null
@@ -75,6 +103,21 @@ export default function TextDragLayer({ slide, theme, selection, onSelectBlock, 
             }`}
             style={{ left: `${f.x * 100}%`, top: `${f.y * 100}%`, width: `${w * 100}%`, minHeight: '8%' }}
           >
+            {/* Invisible text mirror: grows the hit box to the block's real
+                rendered height so the WHOLE headline is clickable, not just the
+                central band. color:transparent + pointer-events-none means it
+                never shows and never steals a click — the canvas below stays the
+                true render. Absent while editing (the contentEditable sizes the
+                box then) so there's no double text. */}
+            {!editing && (b.text || '').trim() && (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none block w-full select-none whitespace-pre-wrap break-words text-center"
+                style={{ color: 'transparent', ...hitBoxTextStyle(b, theme) }}
+              >
+                {b.text}
+              </span>
+            )}
             {editing ? (
               // Mirror the block's own style so editing stays WYSIWYG — the canvas
               // suppresses this block's text while editing, so this overlay is the
