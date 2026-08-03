@@ -23,6 +23,7 @@ import EditorChrome from '@/components/editor/EditorChrome'
 import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
 import EditorIconRail from '@/components/editor/IconRail'
 import PostCaptionField from '@/components/editor/PostCaptionField'
+import RegenerateCaptionButton, { canRegenerateCaption } from '@/components/editor/RegenerateCaptionButton'
 import { useContentItem, useUpdateContentItem, useUpdateContentItemStatus } from '@/lib/queries'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '@/lib/gradeParams'
 import { toast } from '@/lib/toast'
@@ -477,6 +478,11 @@ function PostCaptionInspector({ ctx }) {
           hint="Saves when you click away."
           minHeightClass="min-h-[200px]"
         />
+        {canRegenerateCaption(captionPiece) && (
+          <div className="shrink-0 border-t pt-3">
+            <RegenerateCaptionButton piece={captionPiece} />
+          </div>
+        )}
       </div>
     </InspectorShell>
   )
