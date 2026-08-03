@@ -193,11 +193,23 @@ export default function Home({ embedded = false }) {
     }).length
   }, [staff])
 
-  // Blog review nudge — clinicians who opted in and have posts awaiting their read
+  // Blog review nudge — clinicians who opted in and have posts awaiting their read.
+  //
+  // NOT gated on isEditor, for the same reason the answer-review queue below
+  // isn't: authorship and role are different things, and an editor who is also
+  // a clinician owns blog drafts and must see their own queue. The gate used to
+  // be `enabled: !isEditor`, which made this dead for every user at Move Better
+  // — `plan: 'internal'` grants ROLE_ADMIN to every org member (useUserRole.js),
+  // so isEditor is unconditionally true there and the query never ran. Q is the
+  // workspace's most prolific blog author and could not see his own drafts.
+  //
+  // Dropping the gate does not widen what anyone can see: week-summary's
+  // fetchYourReview already filters `staff_id = eq.<the caller's own staff row>`,
+  // so authorship was always enforced server-side and the client was simply
+  // discarding the result.
   const { data: weekData } = useQuery({
     queryKey: ['week-summary'],
     queryFn: () => apiFetch('/api/content-plan/week-summary'),
-    enabled: !isEditor,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   })
