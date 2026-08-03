@@ -58,7 +58,12 @@ export default function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, at
     }
   }
   function removePhoto() {
-    const s = { ...slide }; s.photo_idx = null; onChange(s)
+    // Clear BOTH bindings. Writers set photo_idx (filtered index) AND media_idx
+    // (raw index), and slideMediaEntry gives media_idx precedence — so nulling
+    // photo_idx alone leaves media_idx resolving the same entry and the canvas
+    // redraws the identical photo (a visual no-op). saveDraft's whitelist omits
+    // media_idx when it isn't a number, so deleting it here persists the removal.
+    const s = { ...slide }; s.photo_idx = null; delete s.media_idx; onChange(s)
   }
   async function proposeFromText() {
     const prompt = vibePrompt.trim()
