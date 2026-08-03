@@ -12,6 +12,7 @@ import { mergeSlotsIntoCadence } from '../../_lib/cadenceSlots.js'
 import { isInstagramReel } from '../../../src/lib/mediaEntry.js'
 import { isTextOnlyPlatform } from '../../../src/lib/platformMediaKind.js'
 import { shapeApprovedBlog } from '../../_lib/approvedBlogs.js'
+import { blogTargetFor, monthKey, progressFor } from '../../_lib/blogTarget.js'
 import { isEditor } from '../../../src/lib/roles.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -166,6 +167,41 @@ export default async function handler(req, res) {
     }))
   }
 
+  // The signed-in clinician's own progress against the 1-blog-per-month target.
+  //
+  // Strictly their own number and shown only on their own strip — this is a
+  // prompt to the person who can act on it, never a producer-facing scoreboard
+  // of who is behind (Q, 2026-08-01). Counted on created_at, i.e. the month the
+  // clinician did the interview; see blogTarget.js for why not published_at.
+  async function fetchMyBlogProgress() {
+    if (!clerkUserId) return null
+    const target = blogTargetFor(ws)
+    if (!target.enabled) return null
+    const staffRes = await sb(
+      `staff?workspace_id=eq.${ws.id}&user_id=eq.${encodeURIComponent(clerkUserId)}&select=id,blog_review_enabled&limit=1`,
+    )
+    if (!staffRes.ok) return null
+    const sf = (await staffRes.json().catch(() => []))[0]
+    if (!sf?.blog_review_enabled) return null
+
+    const tz = ws.cadence_policy?.timezone || 'America/Los_Angeles'
+    const month = monthKey(new Date(), tz)
+    // Fetch this staffer's blogs and count in memory rather than filtering by a
+    // month range in the query: the month boundary is a WORKSPACE-timezone
+    // question and PostgREST would apply it in UTC, mis-crediting a blog written
+    // late on the last evening of a month to the next one.
+    const r = await sb(
+      `content_items?workspace_id=eq.${ws.id}&staff_id=eq.${sf.id}&platform=eq.blog&select=id,platform,status,created_at&order=created_at.desc&limit=200`,
+    )
+    if (!r.ok) {
+      console.error('[week-summary] blog target count failed:', r.status)
+      return null
+    }
+    const rows = await r.json().catch(() => [])
+    const p = progressFor(rows, month, target.perClinicianPerMonth, tz)
+    return { ...p, month }
+  }
+
   // Producer "blogs ready to publish" — the missing half of the blog loop.
   //
   // A blog is the one channel with no content_plan_atoms row (verified: 0 of 16
@@ -192,11 +228,12 @@ export default async function handler(req, res) {
     return rows.map(shapeApprovedBlog)
   }
 
-  const [{ scheduled, itemStatusMap }, heldAtoms, yourReview, approvedBlogs] = await Promise.all([
+  const [{ scheduled, itemStatusMap }, heldAtoms, yourReview, approvedBlogs, myBlogTarget] = await Promise.all([
     fetchAtomsAndDraftedItems(),
     fetchHeldAtoms(),
     fetchYourReview(),
     fetchApprovedBlogs(),
+    fetchMyBlogProgress(),
   ])
 
   const byPlatform = {}
@@ -377,5 +414,6 @@ export default async function handler(req, res) {
     digest: digest ? { label: digest.label, frequency: digest.frequency, next_send: digest.next_send || null } : null,
     yourReview,
     approvedBlogs,
+    myBlogTarget,
   })
 }
