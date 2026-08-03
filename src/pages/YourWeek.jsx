@@ -1348,7 +1348,7 @@ export default function YourWeek() {
           <Link
             key={item.id}
             to={`/publish/${item.id}`}
-            className="block rounded-lg border bg-card px-2.5 py-2 hover:border-primary/50"
+            className="block rounded-lg border bg-card px-2.5 py-2 text-foreground hover:border-primary/50"
           >
             <span className="flex items-center gap-2">
               <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -1361,6 +1361,41 @@ export default function YourWeek() {
           </Link>
         ))}
       </div>
+    </div>
+  ) : null
+
+  // The signed-in clinician's own progress against the 1-blog-per-month target.
+  //
+  // Deliberately its OWN element rather than a line inside the review strip
+  // above: that strip renders only when there is something to review, and the
+  // clinician who most needs this prompt is precisely the one with an empty
+  // queue and nothing captured this month. Nesting it there would hide it from
+  // exactly the person it is for.
+  //
+  // Strictly your own number — the server only ever returns yours. This is a
+  // prompt to the person who can act on it, never a leaderboard of who is
+  // behind, so it renders no one else's progress and no comparison.
+  const BlogTargetSlice = data?.myBlogTarget ? (
+    <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5">
+      {data.myBlogTarget.met ? (
+        <Check className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+      ) : (
+        <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      )}
+      <span className="text-2xs font-semibold">
+        Your blog this month
+        <span className="ml-1.5 font-bold tabular-nums text-muted-foreground">
+          {data.myBlogTarget.count} of {data.myBlogTarget.target}
+        </span>
+      </span>
+      {!data.myBlogTarget.met && (
+        <Link
+          to="/new"
+          className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-3xs font-bold text-primary hover:bg-primary/15"
+        >
+          <Plus className="h-3 w-3" aria-hidden="true" /> Start one
+        </Link>
+      )}
     </div>
   ) : null
 
@@ -1606,6 +1641,9 @@ export default function YourWeek() {
 
       {/* Clinician review slice (2d) */}
       {YourReviewSlice}
+
+      {/* Your own monthly blog target — renders with or without a review queue */}
+      {BlogTargetSlice}
 
       {/* Producer publish slice — the other end of the same blog loop */}
       {ApprovedBlogsSlice}
