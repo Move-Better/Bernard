@@ -17,6 +17,7 @@ import {
 import TrendStrip from '@/components/insights/TrendStrip'
 import LearningPanel from '@/components/producer/LearningPanel'
 import CheckInCard from '@/components/producer/CheckInCard'
+import AppleBusinessInsightsCard from '@/components/AppleBusinessInsightsCard'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { deriveInsights } from '@/lib/insightsReads'
@@ -555,7 +556,7 @@ function AppleStat({ label, value }) {
   )
 }
 
-function AppleInsightsRead({ data }) {
+function AppleInsightsRead({ data, disabled }) {
   const rows = data?.rows || []
   const locs = []
   const seen = new Set()
@@ -567,11 +568,13 @@ function AppleInsightsRead({ data }) {
 
   if (!data?.connected || rows.length === 0) {
     return (
-      <PendingRead icon={MapPin} badge="Unlocks when you upload your first Apple recap">
-        <span className="font-semibold text-foreground">Coming:</span>{' '}
-        place-card views, search taps, and interactions from Apple Maps — upload the monthly recap in{' '}
-        <Link to="/settings/integrations" className="underline">Settings → Integrations</Link>.
-      </PendingRead>
+      <div className="space-y-3">
+        <PendingRead icon={MapPin} badge="Unlocks when you upload your first Apple recap">
+          <span className="font-semibold text-foreground">Coming:</span>{' '}
+          place-card views, search taps, and interactions from Apple Maps — upload the monthly recap below.
+        </PendingRead>
+        <AppleBusinessInsightsCard disabled={disabled} />
+      </div>
     )
   }
 
@@ -583,7 +586,8 @@ function AppleInsightsRead({ data }) {
   const multiLoc = locs.length > 1
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-border bg-card p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <AppleMark className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -646,6 +650,9 @@ function AppleInsightsRead({ data }) {
       ) : (
         <p className="text-xs text-muted-foreground mt-4">Upload next month&rsquo;s recap to start a month-over-month trend.</p>
       )}
+      </div>
+
+      <AppleBusinessInsightsCard disabled={disabled} />
     </div>
   )
 }
@@ -1145,7 +1152,7 @@ function DefinitionsModal({ onClose }) {
 export default function Analytics() {
   useDocumentTitle('Insights')
   const ws = useWorkspace()
-  const { isEditor, isLoading: roleLoading } = useUserRole()
+  const { isEditor, role, isLoading: roleLoading } = useUserRole()
   const { data: stories = [], isLoading: storiesLoading } = useStories()
   const { data: performers = [] } = useTopPerformers()
   const { data: recap } = useWorkspaceRecap()
@@ -1358,7 +1365,7 @@ export default function Analytics() {
       {activeTab === 'apple' && (
         <div>
           <ChannelNotScopedNotice>Monthly recap (uploaded PDF) — not week-scoped.</ChannelNotScopedNotice>
-          <AppleInsightsRead data={appleData} />
+          <AppleInsightsRead data={appleData} disabled={role !== 'admin'} />
         </div>
       )}
 
