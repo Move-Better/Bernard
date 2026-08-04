@@ -70,6 +70,7 @@ function WordsPanel({ piece, updateItem }) {
   const isBlog = piece?.platform === 'blog'
   const isEmail = piece?.platform === 'email'
   const { data: interview } = useInterview(isBlog ? piece?.interview_id : null)
+  const textareaRef = useRef(null)
 
   const label = isBlog ? 'Words' : isEmail ? 'Email' : 'Caption'
   const placeholder = isBlog
@@ -79,14 +80,30 @@ function WordsPanel({ piece, updateItem }) {
     ? 'Each section needs its own ---SECTION---  marker on its own line (SUBJECT LINE, PREVIEW TEXT, HEADLINE, PULL QUOTE, BODY PARAGRAPH 1-3, CTA TEXT, CTA URL, PS). Saves when you click away.'
     : 'Saves when you click away. The live preview updates as you type.'
 
+  // The header label is clicked expecting it to do something (dead-click hotspot
+  // in the 2026-08-03 UX pain check, 19 clicks on /publish/*). Focus the field
+  // it labels, same as a native <label for>.
+  function focusField() {
+    textareaRef.current?.focus()
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="shrink-0 border-b px-3 py-2">
-        <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={focusField}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); focusField() } }}
+          className="cursor-text text-3xs font-semibold uppercase tracking-wide text-muted-foreground"
+        >
+          {label}
+        </span>
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
         {isBlog && <BlogStyleSwitcher piece={piece} interview={interview} />}
         <PostCaptionField
+          ref={textareaRef}
           piece={piece}
           updateItem={updateItem}
           ariaLabel={label}
