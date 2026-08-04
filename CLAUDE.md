@@ -352,6 +352,28 @@ Real failures from this list: the Size control previewing identically for Medium
 1.0× vs 1.35× (`vh` with a 40px clamp vs a frame-relative bake); `glow` previewing an accent halo for a
 commit after the bake moved to a dark one.
 
+**A per-platform DISPATCH is a mirror pair too, and it's the harder one to audit — a value mismatch is
+visible in a diff, a missing platform is invisible until someone opens that specific post.**
+`publishPiece.js` bakes slides (photo + text blocks) for EVERY platform except an Instagram Reel with
+video — but `PostPreview.jsx`'s `switch (platform)` dispatch only passed `slides` to two of thirteen
+cases. `InstagramPreview` was wired correctly and even carries its own comment warning about "the
+preview lying about the published artifact" — and nobody generalised that warning to the other cases
+when they were added. Found 2026-08-03 across three PRs: Facebook rendered the raw photo with no
+on-photo text (a post whose Facebook copy carried a real headline and footer showed neither); LinkedIn
+and GBP rendered NO image at all despite 14 and 7 already-baked posts live in prod. Each gap was
+individually invisible — the preview just showed *something* plausible, never an error.
+
+**Rule: when one dispatch/switch statement fans out to N per-platform (or per-type) handlers and only
+SOME of them wire a given prop, treat that as exactly as suspect as a hardcoded value that only some
+copies of a mirror pair updated.** Audit by counting real data, not by reading the dispatch and trusting
+it looks complete: `select platform, count(*) filter (where <the feature's precondition>) from <table>
+group by platform` finds which cases are silently missing the wiring and how many live rows it actually
+affects — a code read alone can't tell you severity. `tests/lib/previewSlidesCoverage.test.js` now
+enumerates every case and asserts each slide-bearing platform gets `slides`, with the platforms
+deliberately left out pinned as a recorded decision (`instagram_story` uses `overlayText`/`textCard`
+instead; `blog`/`landing_page`/`email` publish off the social path; `tiktok`/`youtube` are video-first)
+so the next platform added has to actively decide which side of the line it's on.
+
 ## Caption style invariants (`karaokeCaptions.js` `CAPTION_STYLES`)
 
 Two rules, both pinned by `tests/lib/captionStyleContrast.test.js`, both violated in shipped styles:
