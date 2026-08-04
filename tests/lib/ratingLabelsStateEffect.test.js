@@ -48,6 +48,37 @@ describe('the two ratings say which one they are', () => {
     expect(receipt).toMatch(/isPublished\s*&&\s*\([\s\S]{0,200}<WinnerToggle/)
   })
 
+  // --action is amber-600, documented in index.css as the act-now/caution
+  // signal. A positive judgment is not a caution, and colouring it amber made
+  // the pair read as a warning.
+  it('uses no caution colour on either rating control', () => {
+    for (const src of [keeper, winner]) {
+      expect(src).not.toMatch(/bg-action|text-action|border-action/)
+    }
+  })
+
+  // Muted text on a muted fill read as "unavailable" rather than "not chosen".
+  it('does not render the unset audience signal as disabled-looking grey', () => {
+    expect(winner).not.toContain('bg-muted/50 text-muted-foreground')
+    expect(winner).toContain('text-foreground')
+  })
+
+  it('turns emerald only once actually set', () => {
+    expect(winner).toContain('bg-success/10 text-success')
+    expect(keeper).toContain('bg-success/10')
+  })
+
+  // A full-width bar beside a pill read as a truncated, half-broken control.
+  it('gives the two controls the same shape in the receipt', () => {
+    expect(receipt).toContain('variant="row"')
+    expect(winner).toContain("variant = 'chip'")
+    expect(winner).toMatch(/isRow[\s\S]{0,300}w-full/)
+  })
+
+  it('leaves the compact chip variant intact for the Stories row', () => {
+    expect(winner).toContain('rounded-full')
+  })
+
   it('leaves the craft half available on a scheduled post too', () => {
     const winnerAt = receipt.indexOf('<WinnerToggle')
     const keeperAt = receipt.indexOf('<ModelPostRating')

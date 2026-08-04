@@ -182,7 +182,7 @@ export default function PublishedReceipt({ piece, title, nextPiece, nextTitle, n
 
             {isPublished && (
               <div className="space-y-1">
-                <WinnerToggle piece={piece} />
+                <WinnerToggle piece={piece} variant="row" />
                 <p className="pl-1 text-2xs text-muted-foreground">
                   Brings this topic back sooner in the plan.
                 </p>

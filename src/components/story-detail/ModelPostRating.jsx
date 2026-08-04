@@ -43,7 +43,7 @@ export default function ModelPostRating({ piece }) {
   if (isModel) {
     const savedReasons = Array.isArray(piece.model_reasons) ? piece.model_reasons : []
     return (
-      <div className="flex items-center justify-between gap-2 rounded-lg border border-success/30 bg-success/10 px-2.5 py-1.5">
+      <div className="flex items-center justify-between gap-2 rounded-lg border border-success/40 bg-success/10 px-2.5 py-2">
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-success">
           <Sparkles className="h-3.5 w-3.5 fill-success" />
           The post came together
@@ -69,15 +69,20 @@ export default function ModelPostRating({ piece }) {
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setReasons([]); setNote('') } }}>
       <PopoverTrigger asChild>
+        {/* Not amber: --action is the act-now/caution signal, which is the wrong
+            family for a positive judgment. Unmarked is deliberately uncoloured
+            (foreground label, not muted — muted read as disabled) and only
+            turns emerald once it is actually set. Same row shape as
+            WinnerToggle's row variant so the pair reads as one list. */}
         <button
           type="button"
-          className="flex w-full items-center justify-between gap-2 rounded-lg border border-dashed border-action/40 bg-action/10 px-2.5 py-2 text-left transition-colors hover:bg-action/20"
+          className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-left transition-colors hover:border-success/50 hover:bg-success/5"
         >
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-action">
-            <Sparkles className="h-3.5 w-3.5" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
+            <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
             The post came together
           </span>
-          <span className="text-2xs font-medium text-action">Mark it</span>
+          <span className="text-2xs font-semibold text-primary">Mark it</span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 space-y-3">
@@ -116,7 +121,7 @@ export default function ModelPostRating({ piece }) {
           type="button"
           onClick={save}
           disabled={updateItem.isPending}
-          className="flex w-full items-center justify-center gap-1.5 rounded-md bg-action px-3 py-2 text-xs font-semibold text-action-foreground hover:bg-action/90 disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-1.5 rounded-md bg-success px-3 py-2 text-xs font-semibold text-success-foreground hover:bg-success/90 disabled:opacity-50"
         >
           <Sparkles className="h-3.5 w-3.5" />
           Use as a model
