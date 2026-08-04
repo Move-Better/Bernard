@@ -16,6 +16,7 @@ import { workspaceScope } from '../../_lib/workspaceScope.js'
 import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { BundlePublisher } from '../../_lib/social/index.js'
+import { YOUTUBE_PRIVACIES } from '../../_lib/social/bundlePublisher.js'
 import { resolveBundleGbpTargets } from '../../_lib/social/gbpTargets.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
@@ -33,7 +34,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // (api/_routes/producer/retry-publish.js) can re-run the identical
 // channel-resolution + fan-out logic against a content_items row's own stored
 // fields, instead of duplicating the sequence.
-export async function runBundlePublish(workspace, { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents, format = null }) {
+export async function runBundlePublish(workspace, { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents, format = null, title = null, description = null, privacy = null }) {
   let publisher
   try {
     publisher = new BundlePublisher(workspace)
@@ -80,7 +81,7 @@ export async function runBundlePublish(workspace, { platform, content, mediaUrls
   }
 
   try {
-    const result = await publisher.publish({ platform, content, mediaUrls, scheduledAt, format })
+    const result = await publisher.publish({ platform, content, mediaUrls, scheduledAt, format, title, description, privacy })
     return {
       status: 200,
       body: {
@@ -179,6 +180,16 @@ async function handleBundlePublish(req, res, workspace) {
   const body = (typeof req.body === 'object' && req.body) ? req.body : {}
   const { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents, contentItemId, format } = body
   if (!platform || !content) return res.status(400).json({ error: 'Missing platform or content' })
+
+  // YouTube-only extras: the video title and description are two separate fields
+  // there (every other network has one caption), plus bundle's privacy enum.
+  // Ignored for other platforms — buildDataBlock only reads them under YOUTUBE.
+  const ytTitle = typeof body.title === 'string' ? body.title.trim() : null
+  const ytDescription = typeof body.description === 'string' ? body.description : null
+  const ytPrivacy = typeof body.privacy === 'string' ? body.privacy.toUpperCase() : null
+  if (ytPrivacy && !YOUTUBE_PRIVACIES.has(ytPrivacy)) {
+    return res.status(400).json({ error: 'invalid_privacy' })
+  }
   // Explicit format is optional; when present it must be from the shared
   // vocabulary (src/lib/platformFormats.js). Media-vs-format fit is validated
   // deeper, in BundlePublisher.publish, where the media entries are in hand.
@@ -220,7 +231,11 @@ async function handleBundlePublish(req, res, workspace) {
 
   let result
   try {
-    result = await runBundlePublish(workspace, { platform, content, mediaUrls, scheduledAt, locationIds, locationContents, format: format || null })
+    result = await runBundlePublish(workspace, {
+      platform, content, mediaUrls, scheduledAt, locationIds, locationContents,
+      format: format || null,
+      title: ytTitle, description: ytDescription, privacy: ytPrivacy,
+    })
   } catch (e) {
     // runBundlePublish catches internally today; this is belt-and-suspenders so
     // an unexpected throw can never strand the claim (released below).

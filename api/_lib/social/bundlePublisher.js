@@ -47,6 +47,13 @@ const ACCOUNT_ANALYTICS_TYPES = new Set([
 // text-only either). Facebook/X/LinkedIn/Threads/Bluesky/Mastodon accept text-only.
 const MEDIA_REQUIRED_TYPES = new Set(['INSTAGRAM', 'GOOGLE_BUSINESS', 'TIKTOK', 'YOUTUBE'])
 
+// YouTube's own field limits, and bundle's `privacy` enum. Clamped rather than
+// rejected: a title that overruns is a copy problem, not a reason to fail a
+// publish the user already confirmed at the dialog.
+export const YOUTUBE_TITLE_MAX = 100
+export const YOUTUBE_DESCRIPTION_MAX = 5000
+export const YOUTUBE_PRIVACIES = new Set(['PUBLIC', 'UNLISTED', 'PRIVATE'])
+
 // Default networks the brand connect portal lets a clinic link — the full set
 // that connects AND posts end-to-end through this adapter (Buffer parity, Q's
 // 2026-06-20 call). Each was checked against the SDK PostCreateData type defs:
@@ -206,7 +213,10 @@ export function isReelPayload(uploads) {
 // validity (a reel with a photo in it, a mixed Facebook album) is enforced
 // upstream in publish() via validateFormatMedia — by the time we're here the
 // combination is legal, so this stays a pure shape-builder.
-export function buildDataBlock({ platform, type, text, uploads = [], coverUrl = null, format = null }) {
+export function buildDataBlock({
+  platform, type, text, uploads = [], coverUrl = null, format = null,
+  title = null, description = null, privacy = null,
+}) {
   const uploadIds = uploads.map((u) => u?.id).filter(Boolean)
   const media = uploadIds.length ? { uploadIds } : {}
   // bundle's `thumbnail` is "the URL to an image uploaded on bundle.social" —
@@ -247,7 +257,26 @@ export function buildDataBlock({ platform, type, text, uploads = [], coverUrl = 
   if (type === 'YOUTUBE') {
     // Bernard distinguishes long-form (youtube) from Shorts (youtube_short);
     // both require a video upload (guarded by MEDIA_REQUIRED_TYPES).
-    return { type: platform === 'youtube_short' ? 'SHORT' : 'VIDEO', text, ...media }
+    //
+    // YouTube is the ONE network whose block splits the words in two: `text` is
+    // the video TITLE (YouTube caps it at 100 chars), `description` is the body.
+    // Every other platform here has a single caption, so the shared `content`
+    // argument maps to `text` — which meant a long-form caption used to publish
+    // as a wall-of-text title with an empty description. When the caller supplies
+    // an explicit title/description pair (the Library's "publish it whole" lane)
+    // we honour it; otherwise fall back to the legacy single-caption behaviour so
+    // nothing that publishes a Short today changes shape.
+    const ytType = platform === 'youtube_short' ? 'SHORT' : 'VIDEO'
+    const base = { type: ytType, ...media }
+    if (title || description) {
+      return {
+        ...base,
+        text: (title || text || '').slice(0, YOUTUBE_TITLE_MAX),
+        ...(description ? { description: description.slice(0, YOUTUBE_DESCRIPTION_MAX) } : {}),
+        privacy: YOUTUBE_PRIVACIES.has(privacy) ? privacy : 'PUBLIC',
+      }
+    }
+    return { ...base, text }
   }
   // X/Twitter, Threads, LinkedIn, TikTok, Bluesky, Mastodon: a generic
   // text(+media) block. Verified against the SDK PostCreateData type defs
@@ -353,7 +382,10 @@ export class BundlePublisher extends SocialPublisher {
     return { url: res?.url }
   }
 
-  async publish({ platform, content, mediaUrls = [], scheduledAt = null, format = null } = {}) {
+  async publish({
+    platform, content, mediaUrls = [], scheduledAt = null, format = null,
+    title = null, description = null, privacy = null,
+  } = {}) {
     if (!platform) throw publishError('publish requires a platform', 400)
     const type = this._bundleType(platform)
 
@@ -395,11 +427,15 @@ export class BundlePublisher extends SocialPublisher {
     const res = await this.sdk.post.postCreate({
       requestBody: {
         teamId: this.teamId,
-        title: this._title(content),
+        title: this._title(title || content),
         postDate,
         status: 'SCHEDULED',
         socialAccountTypes: [type],
-        data: { [type]: this._dataBlock(platform, type, content || '', uploads, coverUrl, format) },
+        data: {
+          [type]: this._dataBlock(platform, type, content || '', uploads, coverUrl, format, {
+            title, description, privacy,
+          }),
+        },
       },
     })
     return {
@@ -575,8 +611,13 @@ export class BundlePublisher extends SocialPublisher {
     }
   }
 
-  _dataBlock(platform, type, text, uploads, coverUrl, format = null) {
-    return buildDataBlock({ platform, type, text, uploads, coverUrl, format })
+  _dataBlock(platform, type, text, uploads, coverUrl, format = null, yt = {}) {
+    return buildDataBlock({
+      platform, type, text, uploads, coverUrl, format,
+      title: yt.title ?? null,
+      description: yt.description ?? null,
+      privacy: yt.privacy ?? null,
+    })
   }
 }
 
