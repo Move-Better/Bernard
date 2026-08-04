@@ -227,7 +227,7 @@ export function useContentWorkflow(piece) {
         // the single source of truth for the Buffer path (incl. carousel
         // slide-baking). The helper dispatches + PATCHes status; we own the
         // toast, the baked-slide persist, and the approver audit.
-        const { scheduling, scheduledAt: finalScheduledAt, renderedSlides } = await runWithToast(
+        const { scheduling, renderedSlides } = await runWithToast(
           publishPieceToSocial(piece, {
             scheduledAt: effectiveScheduledAt,
             useQueue: usingQueue,
@@ -251,19 +251,14 @@ export function useContentWorkflow(piece) {
             await updateItem.mutateAsync({ id: piece.id, patch: { slides: renderedSlides } })
           } catch { /* non-fatal: publish already used the rendered URLs */ }
         }
-        // publishAndTrack already set status + publishedAt; this pass persists
-        // (for scheduled posts) the chosen scheduled_at so the calendar/header
-        // reflect the new time. approvedBy/approvedAt below are inert — the
-        // server derives approver identity from auth.userId on the 'approved'
-        // transition only (api/_routes/db/content.js), never from the client.
-        await updateStatus.mutateAsync({
-          id: piece.id,
-          status: scheduling ? 'scheduled' : 'published',
-          approvedBy: userEmail,
-          approvedAt: new Date().toISOString(),
-          publishedAt: scheduling ? null : new Date().toISOString(),
-          scheduledAt: scheduling ? finalScheduledAt : null,
-        })
+        // The publish route already committed status + scheduled_at (and the
+        // post id) server-side, bypassing the publish lock. We must NOT echo them
+        // back through updateStatus: that PATCH hits the lock's route
+        // (/api/db/content) and 409s on the now-'scheduled'/'published' row — the
+        // false "Post failed" / locked_scheduled bug. Just refetch so the
+        // calendar and header reflect the server-committed state.
+        qc.invalidateQueries({ queryKey: queryKeys.contentItems.all })
+        qc.invalidateQueries({ queryKey: queryKeys.stories.all })
         posthogCapture(scheduling ? 'publish_scheduled' : 'published', { platform: piece.platform, pieceId: piece.id })
         qc.invalidateQueries({ queryKey: queryKeys.stories.detail(piece.interview_id) })
       }

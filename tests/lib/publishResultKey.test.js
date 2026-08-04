@@ -52,28 +52,36 @@ describe('publishItem — the results key the readers depend on', () => {
   })
 })
 
-describe('publishAndTrack — reads back what publishItem wrote', () => {
-  it('persists the post id onto the row instead of undefined', async () => {
+// publishAndTrack used to PATCH the row's status, scheduled_at and post id back
+// to /api/db/content after dispatch. That route is the publish lock's route, and
+// by the time this runs the publish endpoint has already committed the row to
+// 'scheduled' server-side — so the echo 409'd and EVERY publish/schedule showed a
+// false "Post failed" / locked_scheduled toast (feedback 2026-08-04). The server
+// now owns that write (dispatchCommitFields in api/_routes/publish/social.js), so
+// publishAndTrack must make NO lock-tripping PATCH of its own.
+describe('publishAndTrack — must not re-commit past the publish lock', () => {
+  it('makes no PATCH to the lock-guarded content route (server owns the commit)', async () => {
     await publishAndTrack(ITEM, 'someone@movebetter.co')
 
-    const patch = apiFetch.mock.calls.find(([p, o]) => p.startsWith('/api/db/content') && o?.method === 'PATCH')
-    expect(patch, 'expected a PATCH to /api/db/content').toBeTruthy()
-    const body = JSON.parse(patch[1].body)
+    // Non-vacuity: the dispatch itself must have fired, so an empty mock can't
+    // make the assertion below pass by accident.
+    expect(apiFetch).toHaveBeenCalledWith('/api/publish/social', expect.objectContaining({ method: 'POST' }))
 
-    // The regression: a key mismatch makes this undefined, so the published row
-    // keeps a null post id and nothing downstream can find it. Before migration
-    // 202 this asserted on bufferUpdateId too — the two columns held the same
-    // value, and platform_post_id is the one that survived.
-    expect(body.platformPostId).toBe('bundle-post-123')
-    expect(body.bufferUpdateId).toBeUndefined()
+    const patch = apiFetch.mock.calls.find(([p, o]) => p.startsWith('/api/db/content') && o?.method === 'PATCH')
+    expect(patch, 'publishAndTrack must not PATCH the locked content route').toBeUndefined()
   })
 
-  it('echoes the provider-assigned slot back in queue mode', async () => {
+  it('makes no lock-tripping PATCH even in queue mode', async () => {
     await publishAndTrack({ ...ITEM, useQueue: true }, 'someone@movebetter.co')
-
     const patch = apiFetch.mock.calls.find(([p, o]) => p.startsWith('/api/db/content') && o?.method === 'PATCH')
-    const body = JSON.parse(patch[1].body)
-    expect(body.scheduledAt).toBe(PUBLISH_RESPONSE.scheduledAt)
+    expect(patch).toBeUndefined()
+  })
+
+  it('still returns the bundle post id under the results key for the readers', async () => {
+    // The readers (publishPieceToSocial) and the server-side commit both rely on
+    // the post id surviving the round trip under this key.
+    const result = await publishAndTrack(ITEM, 'someone@movebetter.co')
+    expect(result.social?.postId).toBe('bundle-post-123')
   })
 })
 

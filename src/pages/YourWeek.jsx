@@ -15,7 +15,7 @@ import { instagramFeedFrame } from '@/lib/instagramFrame'
 import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
-import { useUpdateContentItemStatus, useUpdateContentItem, useCarouselThemes, queryKeys } from '@/lib/queries'
+import { useUpdateContentItem, useCarouselThemes, queryKeys } from '@/lib/queries'
 import { SOCIAL_DISPATCH_PLATFORMS } from '@/lib/publish'
 import { publishPieceToSocial } from '@/lib/publishPiece'
 import { adHocSlotOptions, computeEmptySlots, localSlotParts } from '@/lib/postingSlots'
@@ -945,7 +945,6 @@ export default function YourWeek() {
   const wsTz = workspace?.cadence_policy?.timezone || 'America/Los_Angeles'
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const updateStatus = useUpdateContentItemStatus()
   const updateItem = useUpdateContentItem()
   const { data: allThemes = [] } = useCarouselThemes()
 
@@ -1039,7 +1038,7 @@ export default function YourWeek() {
         // Server approved it but can't dispatch (carousel bake / Buffer provider)
         // — finish on the client via the proven publish path.
         const piece = await apiFetch(`/api/db/content?id=${encodeURIComponent(item.contentPieceId)}`)
-        const { scheduledAt, renderedSlides } = await publishPieceToSocial(piece, {
+        const { renderedSlides } = await publishPieceToSocial(piece, {
           scheduledAt: item.scheduled_at || null,
           useQueue: !item.scheduled_at,
           userEmail,
@@ -1049,10 +1048,10 @@ export default function YourWeek() {
         if (renderedSlides) {
           try { await updateItem.mutateAsync({ id: piece.id, patch: { slides: renderedSlides } }) } catch { /* non-fatal */ }
         }
-        await updateStatus.mutateAsync({
-          id: piece.id, status: 'scheduled', approvedBy: userEmail,
-          approvedAt: new Date().toISOString(), scheduledAt,
-        })
+        // The publish route committed status + scheduled_at server-side (past the
+        // publish lock). Echoing them back here would 409 on the now-'scheduled'
+        // row — the false "scheduling failed" bug. The week refetch below shows
+        // the server-committed state.
         toast.success('Approved & scheduled')
       } else if (resp?.reason === 'in_progress') {
         // Another approve (another tab/teammate) is already dispatching this piece.
@@ -1283,7 +1282,7 @@ export default function YourWeek() {
         try {
           // Fetch full piece data (needed for slide-baking, media_urls, etc.)
           const piece = await apiFetch(`/api/db/content?id=${encodeURIComponent(item.contentPieceId)}`)
-          const { scheduledAt, renderedSlides } = await publishPieceToSocial(piece, {
+          const { renderedSlides } = await publishPieceToSocial(piece, {
             scheduledAt: item.scheduled_at || null,
             useQueue: !item.scheduled_at,
             userEmail,
@@ -1293,13 +1292,11 @@ export default function YourWeek() {
           if (renderedSlides) {
             try { await updateItem.mutateAsync({ id: piece.id, patch: { slides: renderedSlides } }) } catch { /* non-fatal */ }
           }
-          await updateStatus.mutateAsync({
-            id: piece.id,
-            status: 'scheduled',
-            approvedBy: userEmail,
-            approvedAt: new Date().toISOString(),
-            scheduledAt,
-          })
+          // The publish route already committed status + scheduled_at server-side
+          // (past the publish lock). This used to echo them back via updateStatus,
+          // which 409'd on the now-'scheduled' row and got counted as failCount++
+          // below — reporting a genuinely scheduled post as "failed". The row is
+          // committed by the server; count it and let the week refetch reflect it.
           okCount++
         } catch (e) {
           if (e?.payload?.error === 'words_not_approved') wordsBlockedCount++
