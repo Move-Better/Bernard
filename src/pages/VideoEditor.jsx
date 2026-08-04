@@ -942,6 +942,14 @@ function HorizontalTimeline({ ctx }) {
   const trackRef = useRef(null)
   const scrollRef = useRef(null)
   const [zoom, setZoom] = useState(1)
+  // Timeline zoom: 1 = fit (the whole source fills the width). Below 1 shrinks
+  // the clip into empty space (CapCut-style zoom-out); above 1 makes the track
+  // wider than the viewport so it scrolls. The zoom slider is perceptual (log)
+  // so the zoom-OUT range gets real slider travel instead of being squished
+  // into the far left — that's the "easier control" people asked for.
+  const MIN_ZOOM = 0.35, MAX_ZOOM = 12
+  const zoomToSlider = (z) => Math.round(1000 * Math.log(z / MIN_ZOOM) / Math.log(MAX_ZOOM / MIN_ZOOM))
+  const sliderToZoom = (v) => +(MIN_ZOOM * Math.pow(MAX_ZOOM / MIN_ZOOM, v / 1000)).toFixed(3)
   const f = (s) => clamp(s / span, 0, 1) * 100
   const SNAP_PX = 8
   const trim = (which) => (e) => {
@@ -997,24 +1005,26 @@ function HorizontalTimeline({ ctx }) {
     const onWheel = (e) => {
       if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
       e.preventDefault()
-      setZoom((z) => clamp(+(z * (e.deltaY < 0 ? 1.15 : 1 / 1.15)).toFixed(3), 1, 12))
+      setZoom((z) => clamp(+(z * (e.deltaY < 0 ? 1.15 : 1 / 1.15)).toFixed(3), MIN_ZOOM, MAX_ZOOM))
     }
     sc.addEventListener('wheel', onWheel, { passive: false })
     return () => sc.removeEventListener('wheel', onWheel)
   }, [])
-  // On first open, zoom so the trimmed clip roughly fills the timeline viewport
-  // instead of being crammed into a fraction of the whole-source view — this makes
-  // the caption boxes readable on arrival (CapCut-style) rather than truncated to a
-  // character each. Fires once, only after the real duration is known; the 100%
-  // button still fits the whole source, and the playhead-in-view effect below
-  // scrolls the clip start into view right after.
+  // On first open, zoom so the trimmed clip comfortably fills the timeline
+  // viewport instead of being crammed into a fraction of the whole-source view —
+  // this makes the caption boxes readable on arrival rather than truncated to a
+  // character each. The 0.72 factor keeps it from opening TOO zoomed-in (a
+  // reported "feels crowded" complaint); Fit still shows the whole source and
+  // the slider zooms out further. Fires once, only after the real duration is
+  // known; the floor is 1 (fit) so it never opens pre-shrunk. The playhead-in-
+  // view effect below scrolls the clip start into view right after.
   const didAutoZoom = useRef(false)
   useEffect(() => {
     if (didAutoZoom.current) return
     const clipLen = endSec - startSec
     if (videoDuration <= 0 || span <= 0 || clipLen <= 0) return
     didAutoZoom.current = true
-    setZoom(clamp(+(span / clipLen * 0.92).toFixed(2), 1, 12))
+    setZoom(clamp(+(span / clipLen * 0.72).toFixed(2), 1, MAX_ZOOM))
   }, [videoDuration, span, endSec, startSec])
   // Keep the playhead in view as it moves or the zoom changes.
   useEffect(() => {
@@ -1025,19 +1035,34 @@ function HorizontalTimeline({ ctx }) {
     else if (phX > sc.scrollLeft + sc.clientWidth - m) sc.scrollLeft = phX - sc.clientWidth + m
   }, [displayClipT, zoom, startSec, span])
   const zoomBtn = 'flex h-6 items-center justify-center rounded border px-1.5 text-3xs hover:border-primary'
+  const atFit = Math.abs(zoom - 1) < 0.02
   return (
     <div className="flex h-[172px] shrink-0 flex-col border-t bg-card" style={{ borderColor: 'hsl(var(--border))' }}>
       <div className="flex items-center justify-between px-3 pt-2 text-3xs font-semibold uppercase" style={{ color: 'hsl(var(--muted-foreground))' }}>
         <span>Timeline</span>
-        <div className="flex items-center gap-1.5 normal-case">
-          <button onClick={() => setZoom((z) => clamp(+(z / 1.5).toFixed(3), 1, 12))} aria-label="Zoom out" className={zoomBtn} style={{ borderColor: 'hsl(var(--border))' }}>–</button>
-          <button onClick={() => setZoom(1)} aria-label="Fit timeline" className={zoomBtn} style={{ borderColor: 'hsl(var(--border))', minWidth: 42 }}>{Math.round(zoom * 100)}%</button>
-          <button onClick={() => setZoom((z) => clamp(+(z * 1.5).toFixed(3), 1, 12))} aria-label="Zoom in" className={zoomBtn} style={{ borderColor: 'hsl(var(--border))' }}>+</button>
+        <div className="flex items-center gap-2 normal-case">
+          <input
+            type="range"
+            aria-label="Timeline zoom"
+            min={0}
+            max={1000}
+            value={zoomToSlider(zoom)}
+            onChange={(e) => setZoom(clamp(sliderToZoom(+e.target.value), MIN_ZOOM, MAX_ZOOM))}
+            className="w-28 cursor-pointer"
+            style={{ accentColor: 'hsl(var(--primary))' }}
+          />
+          <button
+            onClick={() => setZoom(1)}
+            aria-label="Fit timeline"
+            className={zoomBtn}
+            style={{ borderColor: atFit ? 'hsl(var(--primary))' : 'hsl(var(--border))', color: atFit ? 'hsl(var(--primary))' : undefined }}
+          >Fit</button>
+          <span className="w-9 text-right tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{Math.round(zoom * 100)}%</span>
           <button onClick={addOverlay} className="ml-1 flex items-center gap-0.5 text-primary"><Plus className="h-3 w-3" />Text</button>
         </div>
       </div>
       <div ref={scrollRef} className="mx-3 mb-3 mt-2 flex-1 overflow-x-auto overflow-y-hidden">
-      <div ref={trackRef} onMouseDown={scrub} className="relative flex h-full cursor-pointer flex-col gap-1.5" style={{ width: `${zoom * 100}%`, minWidth: '100%' }}>
+      <div ref={trackRef} onMouseDown={scrub} className="relative flex h-full cursor-pointer flex-col gap-1.5" style={{ width: `${zoom * 100}%`, minWidth: 0 }}>
         <div className="relative flex-1 rounded-md" style={{ background: 'hsl(var(--muted))' }}>
           <div onClick={() => selectKey('clip')} className="absolute inset-y-0 cursor-pointer rounded-md" style={{ left: `${f(startSec)}%`, width: `${Math.max(0, f(endSec) - f(startSec))}%`, background: 'linear-gradient(90deg,hsl(var(--primary)/.85),hsl(var(--primary)/.6))', boxShadow: sel === 'clip' ? '0 0 0 2px hsl(var(--primary))' : undefined }} />
           <div
