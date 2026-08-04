@@ -24,6 +24,7 @@ import { enforceLimit } from '../../_lib/ratelimit.js'
 import { ALL_KNOWN_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { saveBroll } from '../../_lib/saveBroll.js'
+import { groupRendersByPlatform } from '../../_lib/packageChannelPlatform.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -43,27 +44,12 @@ function sb(path, init = {}) {
   })
 }
 
-// Map render channel IDs → the platform string used in content_items.
-const CHANNEL_TO_PLATFORM = {
-  linkedin_feed:         'linkedin',
-  linkedin_video:        'linkedin',
-  linkedin_native:       'linkedin',   // keep-whole long-form (16:9 landscape video)
-  instagram_reel_still:  'instagram',
-  instagram_reel:        'instagram',
-  instagram_feed:        'instagram',
-  blog_hero:             'blog',
-  blog_hero_video:       'blog',
-  tiktok_still:          'tiktok',
-  tiktok:                'tiktok',
-  youtube_short:         'youtube',
-  youtube:               'youtube',     // keep-whole long-form (16:9 landscape video)
-  facebook_feed:         'facebook',
-  facebook_video:        'facebook',
-  gbp_post:              'gbp',
-  // NOTE: 'website_embed' is intentionally unmapped — the long-form website
-  // version is a download-only render (no auto-publish target). Routing it to
-  // the website/blog path is a deferred follow-up.
-}
+// The channel → platform mapping (and the deliberate exclusion of
+// blog_hero / blog_hero_video / website_embed) lives in packageChannelPlatform.js
+// — see that file for why. destination:'library' below is unaffected by the
+// exclusion: it saves every render in `renders` directly, not the grouped
+// platforms, so a blog-hero clip approved to Library still lands there as
+// reusable broll.
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -129,15 +115,9 @@ export default async function handler(req, res) {
 
   // --- Group renders by platform ---
   const renders = Array.isArray(pkg.renders) ? pkg.renders : []
-  const byPlatform = {}
-  for (const render of renders) {
-    const platform = CHANNEL_TO_PLATFORM[render.channel]
-    if (!platform) {
-      console.warn('[approve-package] skipping render with unmapped channel:', render.channel)
-      continue
-    }
-    if (!byPlatform[platform]) byPlatform[platform] = { platform, renders: [] }
-    byPlatform[platform].renders.push(render)
+  const { byPlatform, skipped } = groupRendersByPlatform(renders)
+  if (skipped.length) {
+    console.warn('[approve-package] skipping renders with unmapped channel:', skipped.join(', '))
   }
 
   if (renders.length === 0) {
