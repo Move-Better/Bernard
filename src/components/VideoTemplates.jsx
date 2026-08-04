@@ -1,6 +1,6 @@
-// Reel template library — browse, rename, delete, and choose which look new
-// reels use. Deliberately NOT a second editor: templates are authored by
-// dialling a look in on a real clip and hitting "Save as reel template" in the
+// Video template library — browse, rename, delete, and choose which look new
+// video posts use. Deliberately NOT a second editor: templates are authored by
+// dialling a look in on a real clip and hitting "Save as video template" in the
 // video editor, which is what keeps what-you-approved identical to what bakes.
 // This page manages the set; it never restyles one.
 //
@@ -117,7 +117,7 @@ export default function VideoTemplates() {
           <Film className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
             To make a new one, open a clip, set the captions and headline how you want them,
-            then choose <strong className="text-foreground">Save as reel template</strong> in the Captions panel.
+            then choose <strong className="text-foreground">Save as video template</strong> in the Captions panel.
             You design it on a real video, so what you approve is what gets rendered.
           </span>
         </p>
