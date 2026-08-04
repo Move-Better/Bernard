@@ -490,11 +490,12 @@ function FacebookPreview({ content, mediaUrls = [], slides = null, photoTemplate
 }
 
 // ── LinkedIn ─────────────────────────────────────────────────────────────────
-function LinkedInPreview({ content }) {
+function LinkedInPreview({ content, mediaUrls = [], slides = null, photoTemplateId = null, aspectRatio = '4:5' }) {
   const [showFull, setShowFull] = React.useState(false)
   const lines = (content || '').split('\n')
   const preview = lines.slice(0, 5).join('\n')
   const hasMore = lines.length > 5
+  const hasSlides = Array.isArray(slides) && slides.length > 0
 
   return (
     // LI uses #f3f2ef grey app background
@@ -521,6 +522,18 @@ function LinkedInPreview({ content }) {
         </p>
       </div>
 
+      {/* LinkedIn publishes media like any other social channel — publishPiece
+          bakes slides for EVERY platform, not just Meta — but this preview took
+          no media prop at all, so a post that ships a baked image previewed as
+          text only. 22 of 33 LinkedIn rows carry slides; 14 are already baked. */}
+      {(hasSlides || mediaUrls.length > 0) && (
+        <div className="bg-white border-t border-slate-200">
+          {hasSlides
+            ? <SlidesCarousel slides={slides} mediaUrls={mediaUrls} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} />
+            : <MediaCarousel mediaUrls={mediaUrls} aspectClass="aspect-[4/5]" trueFrame platformLabel="LinkedIn" />}
+        </div>
+      )}
+
       <div className="bg-white px-4 py-1.5 flex items-center text-xs text-slate-500 font-semibold">
         <button className="flex items-center gap-1.5 hover:bg-slate-100 rounded px-2 py-2 flex-1 justify-center">
           <ThumbsUp className="h-4 w-4" /> Like
@@ -540,11 +553,12 @@ function LinkedInPreview({ content }) {
 }
 
 // ── Google Business Profile ───────────────────────────────────────────────────
-function GBPPreview({ content, locationOverrides }) {
+function GBPPreview({ content, locationOverrides, mediaUrls = [], slides = null, photoTemplateId = null, aspectRatio = '4:3' }) {
   const overrideEntries = locationOverrides
     ? Object.entries(locationOverrides).filter(([, v]) => v?.content)
     : []
   const hasMultiple = overrideEntries.length > 0
+  const hasSlides = Array.isArray(slides) && slides.length > 0
   const defaultTab = hasMultiple ? overrideEntries[0][0] : '__canonical__'
   const [activeTab, setActiveTab] = React.useState(defaultTab)
 
@@ -599,6 +613,17 @@ function GBPPreview({ content, locationOverrides }) {
         </div>
         <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{displayContent}</p>
       </div>
+      {/* GBP posts carry media too — publishPiece bakes slides for every
+          platform — and this preview took no media prop, so a post that ships
+          an image previewed as text only. 12 of 20 GBP rows carry slides.
+          Google's own frame is 4:3 (postFrames), not the Meta 4:5. */}
+      {(hasSlides || mediaUrls.length > 0) && (
+        <div className="border-t">
+          {hasSlides
+            ? <SlidesCarousel slides={slides} mediaUrls={mediaUrls} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} />
+            : <MediaCarousel mediaUrls={mediaUrls} aspectClass="aspect-[4/3]" />}
+        </div>
+      )}
       <div className="px-4 py-3 border-t bg-muted">
         <button className="text-xs text-info font-medium">Book appointment →</button>
       </div>
@@ -790,7 +815,8 @@ function PlainPreview({ content }) {
 }
 
 // ── X / Twitter ───────────────────────────────────────────────────────────────
-function XPreview({ content, mediaUrls = [] }) {
+function XPreview({ content, mediaUrls = [], slides = null, photoTemplateId = null, aspectRatio = '4:5' }) {
+  const hasSlides = Array.isArray(slides) && slides.length > 0
   const media = Array.isArray(mediaUrls) ? mediaUrls : []
   return (
     <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
@@ -805,7 +831,7 @@ function XPreview({ content, mediaUrls = [] }) {
               <span className="text-3xs text-slate-500">{MB_HANDLE} · 2h</span>
             </div>
             <p className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap"><SocialText text={content} /></p>
-            {media.length > 0 && <div className="mt-2 rounded-xl overflow-hidden border border-slate-200"><MediaCarousel mediaUrls={media} aspectClass="aspect-video" /></div>}
+            {(hasSlides || media.length > 0) && <div className="mt-2 rounded-xl overflow-hidden border border-slate-200">{hasSlides ? <SlidesCarousel slides={slides} mediaUrls={media} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} /> : <MediaCarousel mediaUrls={media} aspectClass="aspect-video" />}</div>}
             {/* X action row */}
             <div className="mt-3 flex items-center justify-between text-slate-500">
               <button className="flex items-center gap-1 text-2xs hover:text-[#1d9bf0]"><MessageCircle className="h-4 w-4" /> 42</button>
@@ -821,7 +847,8 @@ function XPreview({ content, mediaUrls = [] }) {
 }
 
 // ── Threads ───────────────────────────────────────────────────────────────────
-function ThreadsPreview({ content, mediaUrls = [] }) {
+function ThreadsPreview({ content, mediaUrls = [], slides = null, photoTemplateId = null, aspectRatio = '4:5' }) {
+  const hasSlides = Array.isArray(slides) && slides.length > 0
   const media = Array.isArray(mediaUrls) ? mediaUrls : []
   return (
     <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
@@ -837,7 +864,7 @@ function ThreadsPreview({ content, mediaUrls = [] }) {
               <span className="text-3xs text-slate-400">· 3h</span>
             </div>
             <p className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap"><SocialText text={content} /></p>
-            {media.length > 0 && <div className="mt-2 rounded-xl overflow-hidden border border-slate-200"><MediaCarousel mediaUrls={media} aspectClass="aspect-video" /></div>}
+            {(hasSlides || media.length > 0) && <div className="mt-2 rounded-xl overflow-hidden border border-slate-200">{hasSlides ? <SlidesCarousel slides={slides} mediaUrls={media} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} /> : <MediaCarousel mediaUrls={media} aspectClass="aspect-video" />}</div>}
             <div className="mt-3 flex items-center gap-4 text-slate-500">
               <button className="hover:text-slate-900"><Heart className="h-4.5 w-4.5" /></button>
               <button className="hover:text-slate-900"><MessageCircle className="h-4.5 w-4.5" /></button>
@@ -860,7 +887,8 @@ function ThreadsPreview({ content, mediaUrls = [] }) {
 }
 
 // ── Bluesky ───────────────────────────────────────────────────────────────────
-function BlueskyPreview({ content, mediaUrls = [] }) {
+function BlueskyPreview({ content, mediaUrls = [], slides = null, photoTemplateId = null, aspectRatio = '4:5' }) {
+  const hasSlides = Array.isArray(slides) && slides.length > 0
   const media = Array.isArray(mediaUrls) ? mediaUrls : []
   return (
     <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
@@ -880,7 +908,7 @@ function BlueskyPreview({ content, mediaUrls = [] }) {
               <span className="text-3xs text-slate-400">{MB_HANDLE} · 2h</span>
             </div>
             <p className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap"><SocialText text={content} /></p>
-            {media.length > 0 && <div className="mt-2 rounded-xl overflow-hidden border border-slate-200"><MediaCarousel mediaUrls={media} aspectClass="aspect-video" /></div>}
+            {(hasSlides || media.length > 0) && <div className="mt-2 rounded-xl overflow-hidden border border-slate-200">{hasSlides ? <SlidesCarousel slides={slides} mediaUrls={media} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} /> : <MediaCarousel mediaUrls={media} aspectClass="aspect-video" />}</div>}
             <div className="mt-3 flex items-center gap-5 text-slate-500">
               <button className="flex items-center gap-1 text-2xs hover:text-[#0085ff]"><MessageCircle className="h-4 w-4" /> 42</button>
               <button className="flex items-center gap-1 text-2xs hover:text-[#00ba7c]"><Repeat2 className="h-4 w-4" /> 8</button>
@@ -894,7 +922,8 @@ function BlueskyPreview({ content, mediaUrls = [] }) {
 }
 
 // ── Mastodon ──────────────────────────────────────────────────────────────────
-function MastodonPreview({ content, mediaUrls = [] }) {
+function MastodonPreview({ content, mediaUrls = [], slides = null, photoTemplateId = null, aspectRatio = '4:5' }) {
+  const hasSlides = Array.isArray(slides) && slides.length > 0
   const media = Array.isArray(mediaUrls) ? mediaUrls : []
   return (
     <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
@@ -914,7 +943,7 @@ function MastodonPreview({ content, mediaUrls = [] }) {
               <span className="text-3xs text-slate-400">{MB_HANDLE}@mastodon.social · 2h</span>
             </div>
             <p className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap"><SocialText text={content} /></p>
-            {media.length > 0 && <div className="mt-2 rounded-xl overflow-hidden border border-slate-200"><MediaCarousel mediaUrls={media} aspectClass="aspect-video" /></div>}
+            {(hasSlides || media.length > 0) && <div className="mt-2 rounded-xl overflow-hidden border border-slate-200">{hasSlides ? <SlidesCarousel slides={slides} mediaUrls={media} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} /> : <MediaCarousel mediaUrls={media} aspectClass="aspect-video" />}</div>}
             <div className="mt-3 flex items-center gap-5 text-slate-500">
               <button className="flex items-center gap-1 text-2xs hover:text-[#563acc]"><MessageCircle className="h-4 w-4" /> 12</button>
               <button className="flex items-center gap-1 text-2xs hover:text-[#00ba7c]"><Repeat2 className="h-4 w-4" /> 5</button>
@@ -1311,17 +1340,17 @@ export default function PostPreview({ platform, content, mediaUrls = [], slides 
     case 'instagram':   return <InstagramPreview content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} format={format} />
     case 'instagram_story': return <InstagramStoryPreview content={content} mediaUrls={mediaUrls} overlayText={overlayText} textCard={textCard} />
     case 'facebook':    return <FacebookPreview  content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} />
-    case 'linkedin':    return <LinkedInPreview  content={content} />
-    case 'gbp':         return <GBPPreview       content={content} locationOverrides={locationOverrides} />
+    case 'linkedin':    return <LinkedInPreview  content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} />
+    case 'gbp':         return <GBPPreview       content={content} locationOverrides={locationOverrides} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} />
     case 'blog':        return <BlogPreview      content={content} mediaUrls={mediaUrls} />
     case 'landing_page': return <BlogPreview     content={content} mediaUrls={mediaUrls} />
     case 'email':       return <EmailPreview     content={content} mediaUrls={mediaUrls} />
     case 'instagram_ads': return <InstagramAdsPreview content={content} mediaUrls={mediaUrls} />
     case 'google_ads':  return <TextAdPreview    content={content} />
-    case 'twitter':     return <XPreview        content={content} mediaUrls={mediaUrls} />
-    case 'threads':     return <ThreadsPreview  content={content} mediaUrls={mediaUrls} />
-    case 'bluesky':     return <BlueskyPreview  content={content} mediaUrls={mediaUrls} />
-    case 'mastodon':    return <MastodonPreview content={content} mediaUrls={mediaUrls} />
+    case 'twitter':     return <XPreview        content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} />
+    case 'threads':     return <ThreadsPreview  content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} />
+    case 'bluesky':     return <BlueskyPreview  content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} />
+    case 'mastodon':    return <MastodonPreview content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} />
     case 'tiktok':      return <TikTokPreview   content={content} mediaUrls={mediaUrls} />
     case 'youtube':     return <YouTubePreview  content={content} mediaUrls={mediaUrls} />
     case 'youtube_short': return <YouTubePreview content={content} mediaUrls={mediaUrls} short={true} />
