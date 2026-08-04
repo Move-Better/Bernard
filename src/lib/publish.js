@@ -282,35 +282,17 @@ export async function dispatchBrief({
 // The resulting content_items row is marked `scheduled` even though we don't
 // know the exact dueAt up-front — the provider returns one in the webhook
 // payload and downstream sync fills it in.
-export async function publishAndTrack(item, userId) {
-  const result = await publishItem(item, { scheduledAt: item.scheduledAt, useQueue: item.useQueue })
-  const postId = result.social?.postId
-  const dueAt = result.social?.scheduledAt || null
-  const willBeScheduled = !!item.scheduledAt || !!item.useQueue
-
-  // The bundle path commits the row's status server-side, inside the same
-  // dispatch claim that prevents a double-post, and reports it back here.
-  // Honor it rather than overwriting: bundle has only ACCEPTED the post at this
-  // point (it goes live ~a minute later and confirms by webhook), so writing
-  // 'published' would be a claim we can't back — and it would block the
-  // post.published webhook from ever promoting the row, since that promote is
-  // guarded on status='scheduled'.
-  const committedStatus = result.social?.committedStatus
-
-  await updateContentItem(item.id, {
-    ...(committedStatus
-      ? { status: committedStatus, ...(dueAt ? { scheduledAt: dueAt } : {}) }
-      : {
-          status: willBeScheduled ? 'scheduled' : 'published',
-          publishedAt: willBeScheduled ? null : new Date().toISOString(),
-          // When the provider assigned the slot (queue mode), echo it back to
-          // the row so the calendar shows the right time without a webhook
-          // round-trip.
-          ...(item.useQueue && dueAt ? { scheduledAt: dueAt } : {}),
-        }),
-    platformPostId: postId,
-    approvedBy: userId,
-  })
-
-  return result
+// `_userId` is retained in the signature (callers pass it) but intentionally
+// unused: the publish route derives the approver from auth server-side, and the
+// client's approvedBy was already inert.
+export async function publishAndTrack(item, _userId) {
+  // The publish route (api/_routes/publish/social.js → dispatchCommitFields)
+  // commits the row's terminal status, scheduled_at AND platform_post_id
+  // server-side — sb-direct, in the same write that releases the dispatch claim,
+  // so it bypasses the publish lock. We deliberately do NOT echo any of those
+  // back through updateContentItem: that is the lock's route (/api/db/content),
+  // the row is already 'scheduled' by this point, and the echo 409s — the false
+  // "Post failed" / locked_scheduled bug. The server is the single source of
+  // truth for what shipped; callers refetch to see it.
+  return publishItem(item, { scheduledAt: item.scheduledAt, useQueue: item.useQueue })
 }

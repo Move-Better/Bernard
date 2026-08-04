@@ -34,6 +34,26 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // (api/_routes/producer/retry-publish.js) can re-run the identical
 // channel-resolution + fan-out logic against a content_items row's own stored
 // fields, instead of duplicating the sequence.
+// The columns the publish route commits to the content_items row in the SAME
+// sb-direct write that releases the dispatch claim — status, the schedule time,
+// AND the bundle post id. All three are written HERE, server-side, on purpose:
+// /api/db/content is the publish lock's route, and by the time the client could
+// echo these the row is already 'scheduled', so a client PATCH carrying status
+// or scheduled_at 409s (the false "Post failed" / locked_scheduled bug). The
+// client therefore no longer echoes any of them. platform_post_id in particular
+// used to ride the client echo and so NEVER landed once the lock shipped (the
+// echo 409'd first) — breaking the post.published webhook, whose promote matches
+// on it. postId is omitted when the provider returned none, so an existing id is
+// never nulled. Exported so the invariant is unit-tested rather than inlined.
+export function dispatchCommitFields(resultBody, scheduledAt, nowIso) {
+  const committed = {
+    status: 'scheduled',
+    scheduled_at: scheduledAt || resultBody?.scheduledAt || nowIso,
+  }
+  if (resultBody?.postId) committed.platform_post_id = resultBody.postId
+  return committed
+}
+
 export async function runBundlePublish(workspace, { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents, format = null, title = null, description = null, privacy = null }) {
   let publisher
   try {
@@ -260,16 +280,15 @@ async function handleBundlePublish(req, res, workspace) {
     // sync-published-status backstop only picks up rows whose scheduled_at is
     // non-null AND in the past, so a null would strand the row at 'scheduled'
     // forever on any workspace whose webhook delivery failed.
-    const committedAt = scheduledAt || result.body?.scheduledAt || new Date().toISOString()
     const extra = result.status === 200
-      ? { status: 'scheduled', scheduled_at: committedAt }
+      ? dispatchCommitFields(result.body, scheduledAt, new Date().toISOString())
       : {}
     await releaseDispatch(contentItemId, workspace.id, extra)
 
     if (result.status === 200) {
       // Tell the client the row is already committed so it doesn't overwrite the
       // status with an optimistic 'published' of its own.
-      return res.status(200).json({ ...result.body, committedStatus: 'scheduled', scheduledAt: committedAt })
+      return res.status(200).json({ ...result.body, committedStatus: 'scheduled', scheduledAt: extra.scheduled_at })
     }
   }
 
