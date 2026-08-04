@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useRef, useState } from 'react'
 import { toast } from '@/lib/toast'
 
 // PostCaptionField — the one save-on-blur textarea bound to a content item's
@@ -21,14 +21,14 @@ import { toast } from '@/lib/toast'
 //   hint          : the line shown under the textarea (accuracy matters — only
 //                   claim a live preview updates if the host actually shows one)
 //   minHeightClass: tailwind min-height for the textarea (default min-h-[200px])
-export default function PostCaptionField({
+const PostCaptionField = forwardRef(function PostCaptionField({
   piece,
   updateItem,
   ariaLabel = 'Caption',
   placeholder = 'Caption visible to followers…',
   hint = 'Saves when you click away.',
   minHeightClass = 'min-h-[200px]',
-}) {
+}, ref) {
   const [draft, setDraft] = useState(() => (typeof piece?.content === 'string' ? piece.content : ''))
   const savedRef = useRef(draft)
 
@@ -59,6 +59,7 @@ export default function PostCaptionField({
   return (
     <>
       <textarea
+        ref={ref}
         aria-label={ariaLabel}
         spellCheck
         lang="en"
@@ -71,4 +72,6 @@ export default function PostCaptionField({
       <p className="shrink-0 text-3xs text-muted-foreground/70">{hint}</p>
     </>
   )
-}
+})
+
+export default PostCaptionField
