@@ -46,7 +46,7 @@ export default function ModelPostRating({ piece }) {
       <div className="flex items-center justify-between gap-2 rounded-lg border border-success/30 bg-success/10 px-2.5 py-1.5">
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-success">
           <Sparkles className="h-3.5 w-3.5 fill-success" />
-          A model post
+          The post came together
         </span>
         <button
           type="button"
@@ -75,7 +75,7 @@ export default function ModelPostRating({ piece }) {
         >
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-action">
             <Sparkles className="h-3.5 w-3.5" />
-            This one&rsquo;s a keeper?
+            The post came together
           </span>
           <span className="text-2xs font-medium text-action">Mark it</span>
         </button>
