@@ -31,6 +31,42 @@ describe('the frame model is shared, not duplicated per surface', () => {
   })
 })
 
+// The published Facebook artifact is the BAKED slide (photo + text blocks,
+// slides[].rendered_url), not the raw media_urls file. Previewing media_urls
+// showed a post with no on-photo text while claiming it was what shipped —
+// found on a live post whose Facebook copy carried a headline and a footer the
+// preview did not show.
+describe('FacebookPreview shows the baked slide, not the raw photo', () => {
+  const DISPATCH = src.split('\n').find((l) => l.includes("case 'facebook'"))
+
+  it('receives slides from the dispatch, like Instagram does', () => {
+    expect(DISPATCH).toContain('slides={slides}')
+  })
+
+  it('receives the theme and aspect the bake used', () => {
+    expect(DISPATCH).toContain('photoTemplateId={photoTemplateId}')
+    expect(DISPATCH).toContain('aspectRatio={aspectRatio}')
+  })
+
+  it('declares the slides prop rather than silently dropping it', () => {
+    const sig = src.split('\n').find((l) => l.includes('function FacebookPreview'))
+    expect(sig).toContain('slides')
+  })
+
+  it('renders SlidesCarousel when slides exist', () => {
+    const fb = src.slice(src.indexOf('function FacebookPreview'))
+    const body = fb.slice(0, fb.indexOf('\nfunction '))
+    expect(body).toContain('<SlidesCarousel')
+    expect(body).toContain('hasSlides')
+  })
+
+  // Instagram was already correct; this pins that the fix did not regress it.
+  it('leaves the Instagram dispatch passing slides too', () => {
+    const ig = src.split('\n').find((l) => l.includes("case 'instagram':"))
+    expect(ig).toContain('slides={slides}')
+  })
+})
+
 describe('FacebookPreview renders the true frame', () => {
   it('has a live MediaCarousel for Facebook', () => {
     expect(FB_LINE).toBeTruthy()

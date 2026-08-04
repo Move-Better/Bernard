@@ -418,11 +418,12 @@ function InstagramPreview({ content, mediaUrls = [], slides = null, photoTemplat
 }
 
 // ── Facebook ─────────────────────────────────────────────────────────────────
-function FacebookPreview({ content, mediaUrls = [] }) {
+function FacebookPreview({ content, mediaUrls = [], slides = null, photoTemplateId = null, aspectRatio = '4:5' }) {
   const [showFull, setShowFull] = React.useState(false)
   const lines = (content || '').split('\n')
   const preview = lines.slice(0, 5).join('\n')
   const hasMore = lines.length > 5
+  const hasSlides = Array.isArray(slides) && slides.length > 0
 
   return (
     <div className="max-w-sm mx-auto border rounded-xl overflow-hidden bg-white shadow-sm font-sans">
@@ -459,8 +460,17 @@ function FacebookPreview({ content, mediaUrls = [] }) {
           58% of its height) and contradicted the 4:5 we publish at. The
           aspectClass here is only the pre-measure placeholder; once the image
           loads, its true aspect wins. */}
-      {mediaUrls.length > 0 && (
-        <MediaCarousel mediaUrls={mediaUrls} aspectClass="aspect-[4/5]" trueFrame platformLabel="Facebook" />
+      {/* Slides FIRST, exactly as InstagramPreview does. A Facebook photo post
+          publishes the BAKED slide (photo + text blocks, slides[].rendered_url),
+          not the raw media_urls file — so previewing media_urls here showed a
+          post with no on-photo text and claimed it was what shipped. That is
+          the preview-vs-published-artifact failure this file already warns
+          about in InstagramPreview; Facebook simply never got the slides prop.
+          MediaCarousel stays as the fallback for rows with no slides. */}
+      {(hasSlides || mediaUrls.length > 0) && (
+        hasSlides
+          ? <SlidesCarousel slides={slides} mediaUrls={mediaUrls} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} />
+          : <MediaCarousel mediaUrls={mediaUrls} aspectClass="aspect-[4/5]" trueFrame platformLabel="Facebook" />
       )}
 
       {/* Reactions bar — FB style */}
@@ -1300,7 +1310,7 @@ export default function PostPreview({ platform, content, mediaUrls = [], slides 
   switch (platform) {
     case 'instagram':   return <InstagramPreview content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} format={format} />
     case 'instagram_story': return <InstagramStoryPreview content={content} mediaUrls={mediaUrls} overlayText={overlayText} textCard={textCard} />
-    case 'facebook':    return <FacebookPreview  content={content} mediaUrls={mediaUrls} />
+    case 'facebook':    return <FacebookPreview  content={content} mediaUrls={mediaUrls} slides={slides} photoTemplateId={photoTemplateId} aspectRatio={aspectRatio} />
     case 'linkedin':    return <LinkedInPreview  content={content} />
     case 'gbp':         return <GBPPreview       content={content} locationOverrides={locationOverrides} />
     case 'blog':        return <BlogPreview      content={content} mediaUrls={mediaUrls} />
