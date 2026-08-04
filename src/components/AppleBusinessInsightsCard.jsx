@@ -30,12 +30,12 @@ function readAsBase64(file) {
   })
 }
 
-export default function AppleBusinessInsightsCard({ disabled, onChange }) {
+export default function AppleBusinessInsightsCard({ disabled, onChange, defaultOpen = false }) {
   const qc = useQueryClient()
   const { data: perf } = useApplePerformance()
   const { data: locations = [] } = useLocations()
 
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   const [locationId, setLocationId] = useState('')
   const [preview, setPreview] = useState(null)   // { period, metrics, ... , _pdfBase64, _filename }
   const [parsing, setParsing] = useState(false)

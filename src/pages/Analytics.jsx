@@ -573,7 +573,7 @@ function AppleInsightsRead({ data, disabled }) {
           <span className="font-semibold text-foreground">Coming:</span>{' '}
           place-card views, search taps, and interactions from Apple Maps — upload the monthly recap below.
         </PendingRead>
-        <AppleBusinessInsightsCard disabled={disabled} />
+        <AppleBusinessInsightsCard disabled={disabled} defaultOpen />
       </div>
     )
   }
@@ -652,7 +652,7 @@ function AppleInsightsRead({ data, disabled }) {
       )}
       </div>
 
-      <AppleBusinessInsightsCard disabled={disabled} />
+      <AppleBusinessInsightsCard disabled={disabled} defaultOpen />
     </div>
   )
 }
