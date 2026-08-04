@@ -19,6 +19,7 @@ import { extractVoicePhrases } from '../../_lib/voicePhraseExtractor.js'
 import { markBookStale } from '../../_lib/bookStale.js'
 import { indexInterviewTranscriptFull } from '../../_lib/practiceMemoryRag.js'
 import { extractAndBankMoments } from '../../_lib/momentExtract.js'
+import { selectMissingOutputPlatforms } from '../../_lib/interviewOutputFanout.js'
 import { waitUntil } from '@vercel/functions'
 
 
@@ -389,25 +390,23 @@ export default async function handler(req, res) {
 
       // content_items insert
       try {
-        const existsRes = await sb(`content_items?interview_id=eq.${id}&${wsFilter}&select=id&limit=1`)
+        // Per-platform guard, not an any-row guard. Selecting `platform` (not
+        // `id&limit=1`) is what makes the fan-out re-entrant: an output key
+        // that arrives in a later PATCH still materialises, while a platform
+        // that already has a row is still skipped so retries can't duplicate.
+        // See api/_lib/interviewOutputFanout.js for why — the old gate silently
+        // discarded 10 finished pieces across 5 platforms.
+        const existsRes = await sb(`content_items?interview_id=eq.${id}&${wsFilter}&select=platform`)
         const existsRows = existsRes.ok ? await existsRes.json() : []
-
-        if (existsRows.length === 0) {
-          // Platforms covered by the on-demand content plan (instagram,
-          // facebook, linkedin, gbp, tiktok) are intentionally
-          // NOT in this map — the Plan tab handles those via content_plan_atoms.
-          const platformMap = [
-            { key: 'blogPost',        platform: 'blog' },
-            { key: 'googleAds',       platform: 'google_ads' },
-            { key: 'landingPage',     platform: 'landing_page' },
-            { key: 'youtubeScript',   platform: 'youtube' },
-            { key: 'emailNewsletter', platform: 'email' },
-            { key: 'instagramAds',    platform: 'instagram_ads' },
-          ]
+        if (!existsRes.ok) {
+          // Fail closed: an unreadable existing-platform list means we cannot
+          // tell what is already there, and inserting blind would duplicate.
+          console.error(`[db/interviews] content_items platform lookup ${existsRes.status} for interview=${id} ws=${ws.slug} — skipping fan-out`)
+        } else {
+          const existingPlatforms = existsRows.map((r) => r.platform).filter(Boolean)
 
           const nowIso = new Date().toISOString()
-          const items = platformMap
-            .filter(({ key }) => o[key]?.trim())
+          const items = selectMissingOutputPlatforms(o, existingPlatforms)
             .map(({ key, platform }) => {
               // Imported blog = already-published source. Other platforms
               // (atoms generated from it) are still drafts pending review.
