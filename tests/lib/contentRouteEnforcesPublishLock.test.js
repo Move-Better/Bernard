@@ -5,7 +5,29 @@ import { fileURLToPath } from 'node:url'
 // new URL(...).pathname percent-encodes the space in "Claude Projects" and any
 // fs call on it fails ENOENT — fileURLToPath is the only safe form here.
 const ROUTE = fileURLToPath(new URL('../../api/_routes/db/content.js', import.meta.url))
-const src = readFileSync(ROUTE, 'utf8')
+const raw = readFileSync(ROUTE, 'utf8')
+
+// Scan LIVE code only. A first pass of this file asserted against the raw
+// source and passed happily when the call was demoted to
+// `const verdict = { ok: true } // checkPatchAgainstLock(...)` — the mutation
+// that proves a source guard is hollow. Everything below runs on the
+// comment-stripped text so a mention can never stand in for a call.
+const src = raw
+  .replace(/\/\*[\s\S]*?\*\//g, ' ')
+  .replace(/(^|[^:])\/\/[^\n]*/g, '$1') // the [^:] keeps https:// in string literals intact
+
+// Guard the guard: if the stripper ever eats the whole file, every assertion
+// below would pass vacuously against an empty string.
+describe('the comment stripper leaves real code behind', () => {
+  it('keeps the handler body', () => {
+    expect(src.length).toBeGreaterThan(raw.length * 0.4)
+    expect(src).toContain('export default')
+  })
+
+  it('removes commented-out code', () => {
+    expect(src).not.toContain('// checkPatchAgainstLock')
+  })
+})
 
 // The lock decision is pure and unit-tested (publishLock.test.js). What THIS
 // pins is that the handler still calls it — the failure mode being a refactor
