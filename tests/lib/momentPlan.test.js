@@ -36,6 +36,30 @@ describe('momentWindow', () => {
     expect(win.messages[0]).toEqual({ role: 'assistant', content: 'Tell me about knees.' })
     expect(win.clinicianText).toContain('Cartilage adapts')
     expect(win.clinicianText).not.toContain('Tell me about knees')
+    // anchorIndex points at the anchored turn inside the returned window.
+    expect(win.anchorIndex).toBe(3)
+    expect(win.messages[win.anchorIndex]).toEqual({ role: 'user', content: 'Cartilage adapts to gradual stress over months.' })
+  })
+
+  it('reports anchorIndex — the anchored turn\'s position WITHIN the window, not its raw msg_idx', () => {
+    // Full window: the anchor keeps its natural index.
+    expect(momentWindow(MSGS, { msg_idx: 3 }).anchorIndex).toBe(3)
+    // Anchor at the very start of the transcript → index 0.
+    const w0 = momentWindow(MSGS, { msg_idx: 0 })
+    expect(w0.anchorIndex).toBe(0)
+    expect(w0.messages[w0.anchorIndex].content).toBe('Tell me about knees.')
+    // Contiguous truncation drops earlier turns, so the anchor's position in
+    // the WINDOW (1) differs from its msg_idx (3) — a caller that highlighted
+    // by msg_idx would mark the wrong turn.
+    const msgs = [
+      { role: 'assistant', content: 'Q1?' },
+      { role: 'user', content: 'x'.repeat(500) },
+      { role: 'assistant', content: 'Q2?' },
+      { role: 'user', content: 'anchored moment here' },
+    ]
+    const win = momentWindow(msgs, { msg_idx: 3 }, { maxChars: 40 })
+    expect(win.anchorIndex).toBe(1)
+    expect(win.messages[win.anchorIndex].content).toBe('anchored moment here')
   })
 
   it('budgets expansion but ALWAYS includes the anchored turn', () => {
