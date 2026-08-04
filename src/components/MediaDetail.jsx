@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Archive, ArchiveRestore, X, Trash2, Loader2, Plus, Sparkles, AlertTriangle, FilePlus2, Wand2, Link2, Download, Check, Image as ImageIcon, Crop, Expand, Minimize, RotateCw, RotateCcw, FileDown, Scissors, Megaphone } from 'lucide-react'
+import { Archive, ArchiveRestore, X, Trash2, Loader2, Plus, Sparkles, AlertTriangle, FilePlus2, Wand2, Link2, Download, Check, Image as ImageIcon, Crop, Expand, Minimize, RotateCw, RotateCcw, FileDown, Scissors, Megaphone, Youtube } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -30,6 +30,8 @@ import ConsentControls from './moments/ConsentControls'
 import MediaEditModal from './MediaEditModal'
 import MediaVideoPlayer from './MediaVideoPlayer'
 import AdExportModal from './AdExportModal'
+import YouTubePublishDialog from './YouTubePublishDialog'
+import { isYouTubeEligible } from '@/lib/youtubeLib'
 import { downloadFromUrl } from '@/lib/download'
 import { useConfirm } from '@/lib/useConfirm'
 
@@ -200,6 +202,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   const [rotatingQuick, setRotatingQuick] = useState(false)
   const [downloadingOriginal, setDownloadingOriginal] = useState(false)
   const [adExportOpen, setAdExportOpen] = useState(false)
+  const [youtubeOpen, setYoutubeOpen] = useState(false)
 
   const { canEdit, canArchive, canRestore, canPurge } = useUserRole()
 
@@ -1028,6 +1031,28 @@ export default function MediaDetail({ asset, onClose, onChange }) {
               </div>
             )}
 
+            {/* Publish it whole — a DISTRIBUTION lane, not a create lane, which
+                is why it sits beside the cutting-desk door rather than inside
+                it. The three buttons that panel replaced were all "make content
+                from this video" via different machinery; this one makes nothing.
+                It sends a finished landscape file to YouTube untouched.
+                Landscape-only: a vertical source belongs in the Shorts/clip
+                lane (isYouTubeEligible). */}
+            {canEdit && isYouTubeEligible(a) && (
+              <div className="rounded-lg border-2 border-primary/35 bg-primary/5 p-3 space-y-2">
+                <div className="text-3xs uppercase tracking-wide font-bold text-primary">Publish it whole</div>
+                <Button
+                  size="sm" variant="outline" className="w-full gap-1.5"
+                  onClick={() => setYoutubeOpen(true)}
+                >
+                  <Youtube className="h-3.5 w-3.5" aria-hidden="true" />Publish to YouTube
+                </Button>
+                <p className="text-2xs text-muted-foreground leading-snug">
+                  Sends this file to YouTube as it is — no re-encode, no trim. For video that is already finished.
+                </p>
+              </div>
+            )}
+
             {/* Edit briefs */}
             {asset.kind === 'video' && (
               <div className="rounded-md border p-3 space-y-2">
@@ -1285,6 +1310,13 @@ export default function MediaDetail({ asset, onClose, onChange }) {
       {adExportOpen && (
         <AdExportModal asset={a} onClose={() => setAdExportOpen(false)} />
       )}
+
+      <YouTubePublishDialog
+        asset={a}
+        open={youtubeOpen}
+        onOpenChange={setYoutubeOpen}
+        onPublished={() => onChange?.()}
+      />
     </div>
   )
 }

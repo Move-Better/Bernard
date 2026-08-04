@@ -117,6 +117,15 @@ export async function publishItem(item, { scheduledAt, useQueue } = {}) {
     // the bundle path publish e.g. a mixed photo+video carousel instead of
     // deriving Reel-vs-post from the media. Absent = legacy derived behavior.
     if (item.format) body.format = item.format
+    // YouTube splits the words in two — `title` is the video title (capped at
+    // 100 chars there) and the description is the body — where every other
+    // channel has a single caption. Sent only when the caller has a real title
+    // to give; without them the server keeps the legacy single-caption shape.
+    if (platform === 'youtube' || platform === 'youtube_short') {
+      if (item.youtubeTitle) body.title = item.youtubeTitle
+      if (item.youtubeDescription) body.description = item.youtubeDescription
+      if (item.youtubePrivacy) body.privacy = item.youtubePrivacy
+    }
     // contentItemId — lets the server enforce the words-approval gate
     // (Phase 3, story-monitor redesign) and the pre-existing workspace-
     // ownership check. item.id is the content_items row id.
