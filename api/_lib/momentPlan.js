@@ -202,12 +202,17 @@ export const MOMENT_WINDOW_MAX_CHARS = 6000
 
 /**
  * PURE: the tight verbatim window around a moment's anchor inside
- * interviews.messages. Returns { messages, clinicianText } — a contiguous
- * conversation slice centered on the anchored turn (the interviewer's question
- * before it included for meaning), budgeted to maxChars — or null when the
- * anchor can't be resolved (time-coded {t_start,t_end} anchors, out-of-range
- * msg_idx, non-string content), in which case callers fall back to the legacy
- * full-transcript path.
+ * interviews.messages. Returns { messages, clinicianText, anchorIndex } — a
+ * contiguous conversation slice centered on the anchored turn (the
+ * interviewer's question before it included for meaning), budgeted to maxChars
+ * — or null when the anchor can't be resolved (time-coded {t_start,t_end}
+ * anchors, out-of-range msg_idx, non-string content), in which case callers
+ * fall back to the legacy full-transcript path.
+ *
+ * anchorIndex is the position of the anchored turn WITHIN the returned
+ * `messages` array (always ≥ 0 — the anchor is always included), so a caller
+ * can highlight it. The moment-review context viewer (GET /api/moments/context)
+ * uses it; draft generation ignores it.
  *
  * If the anchored turn ALONE exceeds the budget (seminar-length turns), it is
  * center-sliced around the excerpt's char range so the excerpt always survives.
@@ -259,6 +264,7 @@ export function momentWindow(messages, anchor, { maxChars = MOMENT_WINDOW_MAX_CH
   return {
     messages: parts.map(({ role, content }) => ({ role, content })),
     clinicianText: parts.filter((p) => p.role === 'user').map((p) => p.content).join('\n\n'),
+    anchorIndex: parts.findIndex((p) => p.i === idx),
   }
 }
 

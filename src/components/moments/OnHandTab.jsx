@@ -13,6 +13,7 @@ import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import ErrorState from '@/components/ErrorState'
 import MomentRetireReasons from '@/components/moments/MomentRetireReasons'
+import MomentContext from '@/components/moments/MomentContext'
 import { MOMENT_RETIRE_REASON_LABEL } from '@/lib/momentRetire'
 import { MOMENT_SEND_BACK_NOTE_MAX, MOMENT_SEND_BACK_PLACEHOLDER } from '@/lib/momentSendBack'
 
@@ -295,7 +296,9 @@ function QueueCard({ m, staffName, onApprove, onRetire, onSkip, onSaveExcerpt, o
       <div className="min-w-0 flex-1">
         <MomentExcerpt m={m} onSave={onSaveExcerpt} disabled={busy}>
           <div className="mt-2.5">
-            <MomentMeta m={m} staffName={staffName} />
+            <MomentMeta m={m} staffName={staffName}>
+              <MomentContext m={m} staffName={staffName} />
+            </MomentMeta>
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-3.5">
             <Button
@@ -396,7 +399,7 @@ function RetireReasonLine({ m }) {
  * The producer's note leads the card. Without it this is just "something's
  * wrong with a thing you said months ago", which is not enough to act on.
  */
-function AuthorFixCard({ m, senderName, onSaveExcerpt, onConfirmFine, busy }) {
+function AuthorFixCard({ m, senderName, staffName, onSaveExcerpt, onConfirmFine, busy }) {
   return (
     <article className="rounded-xl border border-action/40 bg-action/5 shadow-sm p-4 flex gap-3.5">
       <span
@@ -415,7 +418,9 @@ function AuthorFixCard({ m, senderName, onSaveExcerpt, onConfirmFine, busy }) {
         )}
         <MomentExcerpt m={m} onSave={onSaveExcerpt} disabled={busy}>
           <div className="mt-2.5">
-            <MomentMeta m={m} />
+            <MomentMeta m={m}>
+              <MomentContext m={m} staffName={staffName} />
+            </MomentMeta>
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-3.5">
             <span className="text-2xs text-muted-foreground">
@@ -712,6 +717,7 @@ export default function OnHandTab({ moments, isLoading, error, refetch, staffMap
                 key={m.id}
                 m={m}
                 senderName={staffByUserId[m.sent_back_by]}
+                staffName={staffMap[m.staff_id]}
                 busy={busy}
                 onSaveExcerpt={saveExcerpt}
                 onConfirmFine={confirmFine}
