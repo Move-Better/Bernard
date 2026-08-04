@@ -88,11 +88,16 @@ export default function MomentContext({ m, staffName }) {
   const anchorIndex = data?.anchorIndex ?? -1
   const unavailable = !!data && (turns.length === 0 || anchorIndex < 0)
 
-  // Bring the quoted turn into view WITHIN the panel — never scroll the page
-  // (scrollIntoView would). offsetTop is relative to the scroll container.
+  // Center the quoted turn in the panel so the turn that prompted it (usually
+  // the interviewer's question) reads directly above it and the response flow
+  // reads below — the context that makes a bare quote make sense. Scrolls only
+  // the panel, never the page (scrollIntoView would); offsetTop is relative to
+  // the scroll container.
   useEffect(() => {
     if (!open || !data || !scrollRef.current || !anchorRef.current) return
-    scrollRef.current.scrollTop = Math.max(0, anchorRef.current.offsetTop - 12)
+    const c = scrollRef.current
+    const a = anchorRef.current
+    c.scrollTop = Math.max(0, a.offsetTop - (c.clientHeight - a.clientHeight) / 2)
   }, [open, data])
 
   const storyHref = `/stories/${m.interview_id}`
