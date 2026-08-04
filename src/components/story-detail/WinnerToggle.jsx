@@ -19,9 +19,14 @@ import { useUpdateContentItem } from '@/lib/queries'
 // match its full-width shape (a chip beside a full-width bar read as a
 // truncated, half-disabled control).
 //
-// Unmarked is NOT muted grey any more: muted text on a muted fill reads as
-// "unavailable", not "not yet chosen". Both variants now use foreground text on
-// the normal card surface and only turn emerald once actually set.
+// Colour follows the same rule as ModelPostRating, and the two must move
+// together: idle uses --scheduled (violet) so the control reads as clickable
+// rather than a plain status label — a flat neutral border/text read as inert,
+// and muted-on-muted before that read as disabled. Once actually marked it
+// turns emerald: violet = "you can click this", green = "this is set". Not
+// amber (--action is the act-now/caution signal, wrong family for a positive
+// judgment) and not --primary/teal (that's the brand colour, used for
+// navigation — a rating control in the same hue reads as a link, not a verdict).
 export default function WinnerToggle({ piece, variant = 'chip' }) {
   const updateItem = useUpdateContentItem()
   const isWinner = !!piece.performed_well
@@ -38,7 +43,7 @@ export default function WinnerToggle({ piece, variant = 'chip' }) {
 
   const tone = isWinner
     ? 'bg-success/10 text-success border-success/40 hover:bg-success/20'
-    : 'bg-card text-foreground border-border hover:border-success/50 hover:bg-success/5'
+    : 'bg-scheduled/5 text-scheduled border-scheduled/40 hover:border-scheduled/70 hover:bg-scheduled/10'
 
   return (
     <div className={isRow ? '' : 'flex items-center gap-2 pt-1'}>
@@ -55,13 +60,13 @@ export default function WinnerToggle({ piece, variant = 'chip' }) {
         }
       >
         <span className="inline-flex items-center gap-1.5">
-          <Trophy className={`h-3.5 w-3.5 ${isWinner ? 'fill-success' : 'text-muted-foreground'}`} />
+          <Trophy className={`h-3.5 w-3.5 ${isWinner ? 'fill-success' : ''}`} />
           The audience responded
         </span>
         {/* The row variant mirrors ModelPostRating's trailing affordance so the
             two sit as a matched pair rather than a bar next to a chip. */}
         {isRow && (
-          <span className={`text-2xs font-semibold ${isWinner ? 'text-success' : 'text-primary'}`}>
+          <span className="text-2xs font-semibold">
             {isWinner ? 'Marked' : 'Mark it'}
           </span>
         )}

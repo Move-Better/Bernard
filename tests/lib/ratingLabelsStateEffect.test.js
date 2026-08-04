@@ -58,14 +58,58 @@ describe('the two ratings say which one they are', () => {
   })
 
   // Muted text on a muted fill read as "unavailable" rather than "not chosen".
-  it('does not render the unset audience signal as disabled-looking grey', () => {
+  // A flat neutral border/text was the next attempt and still read as inert —
+  // a plain-bordered box beside a filled preview card looked like a label, not
+  // a button. The idle state now carries real colour (violet, below), which is
+  // what makes it look clickable at all.
+  it('does not render the unset controls as disabled-looking grey', () => {
     expect(winner).not.toContain('bg-muted/50 text-muted-foreground')
-    expect(winner).toContain('text-foreground')
+    expect(keeper).not.toMatch(/border-border bg-card[^"]*hover:border-success/)
   })
 
   it('turns emerald only once actually set', () => {
     expect(winner).toContain('bg-success/10 text-success')
     expect(keeper).toContain('bg-success/10')
+  })
+
+  // --scheduled (violet) marks "you can click this" before a verdict is set;
+  // --success (emerald) marks "this is set". Reusing --scheduled is deliberate:
+  // this screen never colours the piece's own Scheduled/Published status with
+  // it (that line is plain text-foreground), so there's no collision with its
+  // "content queued to publish" meaning elsewhere in the app — see the header
+  // comment in ModelPostRating.jsx for the full reasoning.
+  it('marks the idle (unset) state as violet, not neutral or teal', () => {
+    for (const src of [keeper, winner]) {
+      expect(src).toMatch(/border-scheduled|text-scheduled|bg-scheduled/)
+    }
+  })
+
+  // --primary is the brand teal, used for navigation elsewhere in the app. A
+  // rating control that borrows it reads as a link, not a verdict — this was
+  // the exact complaint that motivated the violet change. Scoped to the
+  // trigger buttons specifically: ModelPostRating's popover legitimately uses
+  // primary for a SELECTED reason chip, a different affordance (choosing among
+  // options inside an already-open panel), not the main rating control.
+  it('does not use the brand teal on the main trigger buttons', () => {
+    const winnerButton = winner.slice(winner.indexOf('const tone ='), winner.indexOf('return ('))
+    expect(winnerButton).not.toMatch(/\btext-primary\b|\bbg-primary\b|\bborder-primary\b/)
+
+    const keeperTrigger = keeper.slice(keeper.indexOf('<PopoverTrigger'), keeper.indexOf('</PopoverTrigger>'))
+    expect(keeperTrigger).not.toMatch(/\btext-primary\b|\bbg-primary\b|\bborder-primary\b/)
+  })
+
+  it('the click that saves the rating turns green, not teal', () => {
+    // ModelPostRating: the popover's "Use as a model" submit button — clicking
+    // it is what sets is_model_post, so it is the moment the control commits.
+    const submit = keeper.slice(keeper.indexOf('onClick={save}'), keeper.indexOf('</button>', keeper.indexOf('onClick={save}')))
+    expect(submit).toMatch(/bg-success/)
+    expect(submit).not.toMatch(/bg-primary|bg-scheduled/)
+  })
+
+  it('the receipt does not colour the piece status line violet', () => {
+    // Guards the non-collision claim above: if this ever starts using
+    // --scheduled, the reuse in the rating controls needs re-justifying.
+    expect(receipt).not.toMatch(/text-scheduled|bg-scheduled|border-scheduled/)
   })
 
   // A full-width bar beside a pill read as a truncated, half-broken control.
