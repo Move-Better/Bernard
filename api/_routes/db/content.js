@@ -28,6 +28,9 @@ import {
   modelNoteSchema,
 } from '../../_lib/requestSchemas/dbContent.js'
 import { supabaseRest } from '../../_lib/supabaseRest.js'
+// Shared with the editor client (src/pages/StoryboardPublish.jsx) so the screen
+// and this handler can never disagree about what a committed post may change.
+import { checkPatchAgainstLock, patchNeedsLockCheck } from '../../../src/lib/publishLock.js'
 
 const MAX_LIMIT = 100
 
@@ -283,14 +286,36 @@ export default async function handler(req, res) {
     //                            ("you swapped the photo on 21 of 48").
     // Identical arrays (a no-op re-save, e.g. an autosave round-trip) must not
     // count — that would inflate the rate every time an editor is opened.
-    let mediaOverride
-    if (Array.isArray(patch.mediaUrls)) {
-      const curRes = await sb(`content_items?id=eq.${id}&workspace_id=eq.${ws.id}&select=media_urls&limit=1`)
-      if (curRes.ok) {
-        const curRow = (await curRes.json().catch(() => []))[0]
-        const before = Array.isArray(curRow?.media_urls) ? curRow.media_urls : []
-            mediaOverride = classifyMediaChange(before, patch.mediaUrls)
+    // One read serves two jobs: the publish lock (below) needs the row's STORED
+    // status, and the media-override classifier needs its current media_urls.
+    // Read once — this route is the editor's autosave path, so an extra
+    // round-trip per keystroke-batch is not free.
+    let curRow = null
+    if (Array.isArray(patch.mediaUrls) || patchNeedsLockCheck(patch)) {
+      const curRes = await sb(`content_items?id=eq.${id}&workspace_id=eq.${ws.id}&select=status,media_urls&limit=1`)
+      if (!curRes.ok) return dbErr(res, curRes, 'Update failed')
+      curRow = (await curRes.json().catch(() => []))[0] || null
+    }
+
+    // ── Publish lock ─────────────────────────────────────────────────────
+    // A scheduled or published row's CONTENT is committed: the payload is
+    // already with bundle.social (scheduled) or already live (published), so an
+    // edit here changes nothing downstream and only desyncs our record of what
+    // shipped. Judgment fields (ratings, notes) stay open — see publishLock.js.
+    // Checked against the STORED status, never patch.status, so a body claiming
+    // 'draft' can't unlock itself in the same request.
+    if (curRow) {
+      const verdict = checkPatchAgainstLock(curRow.status, patch)
+      if (!verdict.ok) {
+        console.error('[db/content] blocked edit to a locked piece:', id, verdict.reason, verdict.fields.join(','))
+        return res.status(409).json({ error: verdict.reason })
       }
+    }
+
+    let mediaOverride
+    if (Array.isArray(patch.mediaUrls) && curRow) {
+      const before = Array.isArray(curRow.media_urls) ? curRow.media_urls : []
+      mediaOverride = classifyMediaChange(before, patch.mediaUrls)
     }
 
     if (patch.locationId) {
