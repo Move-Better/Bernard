@@ -167,7 +167,12 @@ export function planChapters(words, { targetSeconds = TARGET_CHAPTER_SECONDS } =
 
   if (segments.length < MIN_CHAPTERS) return []
 
-  // The first stamp MUST be 0:00 or YouTube ignores the whole list.
+  // The first stamp MUST be 0:00 or YouTube ignores the whole chapter list —
+  // which matters on a clip with leading silence, where the first spoken word
+  // can land tens of seconds in. Belt and braces with the `startSec: 0` the
+  // first segment is initialised with above: mutation testing showed either one
+  // alone holds the invariant, so removing just one is safe but pointless.
+  // Removing BOTH reddens the leading-silence case in tests/lib/youtubeCopy.test.js.
   segments[0].startSec = 0
 
   return segments.map((s) => ({ startSec: s.startSec, text: transcriptText(s.words) }))
