@@ -25,6 +25,33 @@ already paid for itself: adding `media_source` in #2479 tripped it in CI within 
 one test run what had previously cost a full prod debugging session. **When adding a column here,
 add both halves in the same edit — and if that guard goes red, it is telling you the truth.**
 
+## A committed post is read-only — and a new content column must be added to the freeze list
+
+`scheduled` and `published` pieces never open an editor. `src/lib/publishLock.js` is the single
+source of truth, imported by BOTH the client router (`src/pages/StoryboardPublish.jsx`) and the API
+handler (`api/_routes/db/content.js`) — one copy on purpose, so the screen and the server cannot
+disagree. Every route into an editor funnels through `/publish/:pieceId`, so the router branch is a
+real choke point rather than one door of several.
+
+Content freezes (caption, media, slides, aspect, format, SEO, locations, schedule); judgment stays
+live (the keeper rating, winner toggle, notes, comments). `scheduled` gets one escape —
+"Unschedule to edit" returns it to `approved` — because without it a typo caught after scheduling
+would be unfixable until the post went live. `published` is terminal. `failed` is NOT locked: you
+need the editor to fix and retry.
+
+**The maintenance hazard: adding a new content-shaped column means adding its camelCase patch key to
+`FROZEN_PATCH_FIELDS`.** Miss it and that one field stays editable on a published post — no error,
+no failing test, exactly the silent-drift this exists to stop. Same shape as the write-only-column
+trap above: two lists that must be extended together.
+
+Why it matters at all: editing a committed post changes nothing on the network (the payload already
+left), so the only thing an edit alters is our record of what shipped — which metrics attribution,
+the exemplar pool (`is_model_post` → `fetchTopExemplars`) and the learning loop all read.
+
+The server checks the STORED status, never `patch.status`, so a body claiming `draft` cannot unlock
+itself in the same request; blocked writes return 409. The publish pipeline is unaffected —
+`social.js` and `dispatchContentItem.js` write via `sb()` directly and never pass through this route.
+
 ## API handler checklist — 7 rules every new route must follow
 
 These patterns caused 26+ consecutive audit rounds because each appeared in one reference handler and got copy-pasted to ~15 others without being caught. The ESLint rule `bernard/no-detail-in-error-response` catches #1 at lint time; the PR review job's Claude prompt checks these. But check them manually before opening a PR:
