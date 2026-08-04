@@ -37,12 +37,12 @@ export default function WinnerToggle({ piece }) {
         }
         title={
           isWinner
-            ? 'Marked as a winner — the audience responded. Click to unmark.'
-            : 'Mark as a winner if the audience responded. Resurfaces this topic on the daily lineup.'
+            ? 'Marked — the audience responded to this one. Bernard brings this topic back sooner. Click to unmark.'
+            : 'Mark this when the audience responded — comments, shares, bookings. Bernard brings this topic back sooner.'
         }
       >
         <Trophy className={`h-3.5 w-3.5 ${isWinner ? 'fill-success' : ''}`} />
-        {isWinner ? 'Winner' : 'Mark as winner'}
+        The audience responded
       </button>
     </div>
   )

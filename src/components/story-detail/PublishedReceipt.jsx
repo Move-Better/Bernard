@@ -161,12 +161,33 @@ export default function PublishedReceipt({ piece, title, nextPiece, nextTitle, n
           {isPublished && piece.platform_post_id && <PostMetricsRow contentItemId={piece.id} />}
           {isPublished && piece.platform === 'gbp' && <GbpInsightsRow contentItemId={piece.id} />}
 
-          <div className="space-y-2 rounded-lg border bg-card p-4">
+          {/* Two signals, deliberately not interchangeable: one is YOUR read of
+              the craft (words, media, framing) and teaches Bernard how to
+              write; the other is the AUDIENCE's response and teaches it what to
+              write about. Both used to be phrased as verdicts on quality, which
+              made them impossible to tell apart — so each now states the effect
+              it has. The winner half only appears once a post is live, because
+              until then there is no audience to have responded. */}
+          <div className="space-y-3 rounded-lg border bg-card p-4">
             <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Your call on this one
+              Teach Bernard from this post
             </p>
-            <ModelPostRating piece={piece} />
-            {isPublished && <WinnerToggle piece={piece} />}
+
+            <div className="space-y-1">
+              <ModelPostRating piece={piece} />
+              <p className="pl-1 text-2xs text-muted-foreground">
+                Used as a style example in future drafts — words, media and framing.
+              </p>
+            </div>
+
+            {isPublished && (
+              <div className="space-y-1">
+                <WinnerToggle piece={piece} />
+                <p className="pl-1 text-2xs text-muted-foreground">
+                  Brings this topic back sooner in the plan.
+                </p>
+              </div>
+            )}
           </div>
 
           {canUnschedule(piece) && <UnscheduleControl piece={piece} />}

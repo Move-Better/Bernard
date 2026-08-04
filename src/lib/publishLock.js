@@ -14,7 +14,8 @@
 // the ONLY status transition this module permits on a locked row. Without it a
 // typo caught after scheduling would be unfixable until the post went live.
 //
-// JUDGMENT is never frozen. Rating a post ("this one's a keeper", "winner"),
+// JUDGMENT is never frozen. Rating a post ("the post came together", "the
+// audience responded"),
 // commenting on it and taking notes are the whole point of looking at a
 // published post, and they don't claim anything about what shipped.
 //
