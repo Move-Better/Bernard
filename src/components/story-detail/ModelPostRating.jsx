@@ -70,19 +70,24 @@ export default function ModelPostRating({ piece }) {
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setReasons([]); setNote('') } }}>
       <PopoverTrigger asChild>
         {/* Not amber: --action is the act-now/caution signal, which is the wrong
-            family for a positive judgment. Unmarked is deliberately uncoloured
-            (foreground label, not muted — muted read as disabled) and only
-            turns emerald once it is actually set. Same row shape as
-            WinnerToggle's row variant so the pair reads as one list. */}
+            family for a positive judgment. Not uncoloured either — a plain
+            border read as inert, like a label rather than a button. Idle state
+            uses --scheduled (violet), reused deliberately: this screen never
+            shows that token for the piece's own status (the Scheduled/Published
+            line above is plain text-foreground), so there's no collision with
+            its "content queued to publish" meaning elsewhere in the app. Once
+            actually marked it turns emerald (below) — violet is "you can click
+            this", green is "this is set". Same row shape as WinnerToggle's row
+            variant so the pair reads as one list. */}
         <button
           type="button"
-          className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-left transition-colors hover:border-success/50 hover:bg-success/5"
+          className="flex w-full items-center justify-between gap-2 rounded-lg border border-scheduled/40 bg-scheduled/5 px-2.5 py-2 text-left transition-colors hover:border-scheduled/70 hover:bg-scheduled/10"
         >
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-scheduled">
+            <Sparkles className="h-3.5 w-3.5" />
             The post came together
           </span>
-          <span className="text-2xs font-semibold text-primary">Mark it</span>
+          <span className="text-2xs font-semibold text-scheduled">Mark it</span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 space-y-3">
