@@ -1039,13 +1039,20 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 Landscape-only: a vertical source belongs in the Shorts/clip
                 lane (isYouTubeEligible). */}
             {canEdit && isYouTubeEligible(a) && (
-              <div className="rounded-lg border-2 border-primary/35 bg-primary/5 p-3 space-y-2">
-                <div className="text-3xs uppercase tracking-wide font-bold text-primary">Publish it whole</div>
+              // Deliberately NOT border-primary/bg-primary like the cutting-desk
+              // panel above — that made the two panels visually identical, so
+              // this one read as the greyed-out lesser option of the two
+              // (Q, 2026-08-03). Same red PLATFORM_META.youtube already uses
+              // everywhere else YouTube appears in the app (text-red-600 /
+              // bg-red-50 / border-red-200) — not a new color, just applied here.
+              <div className="rounded-lg border-2 border-red-200 bg-red-50 p-3 space-y-2">
+                <div className="text-3xs uppercase tracking-wide font-bold text-red-700">Publish it whole</div>
                 <Button
-                  size="sm" variant="outline" className="w-full gap-1.5"
+                  size="sm" variant="outline"
+                  className="w-full gap-1.5 border-red-300 text-red-700 hover:bg-red-100 hover:text-red-800"
                   onClick={() => setYoutubeOpen(true)}
                 >
-                  <Youtube className="h-3.5 w-3.5" aria-hidden="true" />Publish to YouTube
+                  <Youtube className="h-3.5 w-3.5 text-red-600" aria-hidden="true" />Publish to YouTube
                 </Button>
                 <p className="text-2xs text-muted-foreground leading-snug">
                   Sends this file to YouTube as it is — no re-encode, no trim. For video that is already finished.
