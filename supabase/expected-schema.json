@@ -681,6 +681,7 @@
   "staff": [
     "answer_review_enabled",
     "blog_review_enabled",
+    "blog_target_nudged_month",
     "campaign_settings",
     "capability_overrides",
     "capture_upload_token",
