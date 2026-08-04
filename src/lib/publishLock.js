@@ -81,6 +81,20 @@ export function isUnschedulePatch(patch) {
 }
 
 /**
+ * Could this patch possibly be refused by the lock? Lets the handler skip the
+ * status read for the common autosave-adjacent saves that touch only judgment
+ * fields (a rating, a note), which are legal on every status.
+ *
+ * Must stay a strict over-approximation: a false negative here silently
+ * disables the lock for that field, which is exactly the failure this whole
+ * module exists to prevent.
+ */
+export function patchNeedsLockCheck(patch = {}) {
+  if (patch.status !== undefined || patch.scheduledAt !== undefined) return true
+  return FROZEN_PATCH_FIELDS.some((k) => patch[k] !== undefined)
+}
+
+/**
  * The single decision both sides call.
  *
  * @param {string} currentStatus - the row's status as stored, never as claimed

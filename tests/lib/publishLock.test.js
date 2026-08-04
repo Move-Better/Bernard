@@ -5,6 +5,7 @@ import {
   canUnschedule,
   checkPatchAgainstLock,
   isPieceLocked,
+  patchNeedsLockCheck,
 } from '../../src/lib/publishLock.js'
 
 // The editor's real save shapes, so a rename in the client can't quietly make
@@ -111,6 +112,39 @@ describe('the unschedule escape', () => {
     expect(checkPatchAgainstLock('published', { status: 'draft' }).ok).toBe(false)
     expect(checkPatchAgainstLock('published', { status: 'approved' }).ok).toBe(false)
     expect(checkPatchAgainstLock('published', { scheduledAt: null }).ok).toBe(false)
+  })
+})
+
+describe('patchNeedsLockCheck gates the status read', () => {
+  it('skips the read for judgment-only saves', () => {
+    expect(patchNeedsLockCheck(RATING)).toBe(false)
+    expect(patchNeedsLockCheck(WINNER)).toBe(false)
+    expect(patchNeedsLockCheck({ notes: 'n' })).toBe(false)
+  })
+
+  // The property that matters: anything checkPatchAgainstLock could ever refuse
+  // must first be routed to the read. A gap here silently unlocks that field.
+  it.each(FROZEN_PATCH_FIELDS)('demands the read for %s', (field) => {
+    expect(patchNeedsLockCheck({ [field]: 'x' })).toBe(true)
+  })
+
+  it('demands the read for status and scheduledAt', () => {
+    expect(patchNeedsLockCheck({ status: 'draft' })).toBe(true)
+    expect(patchNeedsLockCheck({ scheduledAt: null })).toBe(true)
+  })
+
+  it('never refuses a patch it declined to check', () => {
+    // Exhaustive over the union of both statuses and every single-key patch the
+    // frozen list plus the special cases can produce.
+    const keys = [...FROZEN_PATCH_FIELDS, 'status', 'scheduledAt', 'notes', 'performedWell', 'isModelPost']
+    for (const status of LOCKED_STATUSES) {
+      for (const k of keys) {
+        const patch = { [k]: k === 'scheduledAt' ? null : 'x' }
+        if (!patchNeedsLockCheck(patch)) {
+          expect(checkPatchAgainstLock(status, patch).ok).toBe(true)
+        }
+      }
+    }
   })
 })
 

@@ -71,7 +71,10 @@ function StatusBadge({ status }) {
   return <Badge className={`text-xs border-0 ${badgeClass}`}>{sm.label}</Badge>
 }
 
-function CommentThread({ pieceId, interviewId }) {
+// Exported for PublishedReceipt: a committed post is read-only, but the
+// conversation about it isn't — comments are the one editable thing that makes
+// no claim about what shipped.
+export function CommentThread({ pieceId, interviewId }) {
   const qc = useQueryClient()
   // While the newest comment is a human change request Bernard hasn't answered,
   // poll so his reply appears live (within ~one 5-min tick). Stops the moment he

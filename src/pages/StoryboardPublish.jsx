@@ -9,11 +9,11 @@ import LoadingState from '@/components/LoadingState'
 import ErrorState from '@/components/ErrorState'
 import SlideEditor from '@/components/story-detail/SlideEditor'
 import StoryComposer from '@/components/story-detail/StoryComposer'
-import PostMetricsRow from '@/components/story-detail/PostMetricsRow'
-import WinnerToggle from '@/components/story-detail/WinnerToggle'
+import PublishedReceipt from '@/components/story-detail/PublishedReceipt'
 import UnifiedEditor from '@/components/editor/UnifiedEditor'
 import { ApprovalPanel } from '@/components/story-detail/AssetsPane'
 import { useContentItem, useContentItems } from '@/lib/queries'
+import { isPieceLocked } from '@/lib/publishLock'
 import { posthogCapture } from '@/lib/posthog'
 import { PLATFORM_META } from '@/lib/contentMeta'
 
@@ -128,6 +128,25 @@ export default function StoryboardPublish() {
   const queueTotal = worklist.length
   const curIdx = worklist.findIndex((p) => p.id === pieceId)
 
+  // ── Publish lock ──────────────────────────────────────────────────────
+  // A scheduled or published piece never reaches an editor. This sits ABOVE
+  // every archetype branch on purpose: the lock is a property of the piece's
+  // status, not of which editor its format would otherwise route to, so a Reel,
+  // a carousel and a blog post all land on the same read-only receipt. The
+  // server enforces the same rule (api/_routes/db/content.js) against the
+  // stored status — this branch is the affordance, not the guarantee.
+  if (isPieceLocked(piece)) {
+    return (
+      <PublishedReceipt
+        piece={piece}
+        title={title}
+        nextPiece={nextPiece}
+        nextTitle={nextTitle}
+        nextMeta={nextMeta}
+      />
+    )
+  }
+
   // Carousel + single visual + photo Story → the full-bleed SlideEditor. Breaks
   // out of the page's padding (the Layout `main` adds px/py) and fills the
   // content region so the editor canvas dominates. Publish/schedule fold into
@@ -158,10 +177,10 @@ export default function StoryboardPublish() {
             </span>
           </Link>
         )}
-        {piece.status === 'published' && piece.platform_post_id && (
-          <PostMetricsRow contentItemId={piece.id} />
-        )}
-        {piece.status === 'published' && <WinnerToggle piece={piece} />}
+        {/* Metrics + the winner toggle used to hang here for published pieces.
+            A published piece can no longer reach this branch at all (the lock
+            above returns PublishedReceipt first), so they moved there rather
+            than staying as unreachable code that reads like live behaviour. */}
       </div>
     )
     return (
