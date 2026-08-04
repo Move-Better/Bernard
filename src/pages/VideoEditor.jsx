@@ -39,6 +39,7 @@ import { useVideoShortcuts } from '@/lib/useVideoShortcuts'
 import { useAutosave } from '@/lib/useAutosave'
 import { detectFaceCenterX } from '@/lib/faceReframe'
 import { FORMATS, FORMAT_KEYS, channelFor, defaultFormatFor, normalizeFormat } from '@/lib/videoFormats'
+import { PLATFORM_META } from '@/lib/contentMeta'
 import { listRevisions, saveRevision } from '@/lib/editorRevisions'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -577,7 +578,7 @@ function CaptionInspector({ ctx }) {
         className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-md border py-2 text-2xs"
         style={{ borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.06)', color: 'hsl(var(--primary))' }}
       >
-        <LayoutTemplate className="h-3.5 w-3.5" />Save as reel template
+        <LayoutTemplate className="h-3.5 w-3.5" />Save as video template
       </button>
     </InspectorShell>
   )
@@ -1108,7 +1109,7 @@ function HorizontalTimeline({ ctx }) {
 
 // ── MAIN ─────────────────────────────────────────────────────────────────────
 export default function VideoEditor({ piece = null, embedded = false, onBack = null } = {}) {
-  useDocumentTitle('Reel Editor · Moment Miner')
+  useDocumentTitle('Video editor')
   const { assetId: routeAssetId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
@@ -1236,7 +1237,19 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
       const d = (server && typeof server === 'object') ? server : local
       if (d && typeof d === 'object') {
         if (d.grade) setGrade(d.grade)
-        if (FORMAT_KEYS.includes(normalizeFormat(d.format))) setFormat(normalizeFormat(d.format))
+        // Output shape is a property of the DESTINATION, not the clip. The draft
+        // is asset-scoped and shared across every piece a b-roll clip appears
+        // in, so its stored shape must NOT override a new piece's platform
+        // default — a clip once edited as a Vertical (9:16) reel was forcing that
+        // shape onto later Google Business / LinkedIn posts. Honour a saved shape
+        // only when it was chosen FOR this piece (shapePieceId match), or when
+        // there's no piece at all (standalone Moment Miner / Slate). Otherwise
+        // the platform default seeded at line ~1153 stands. Every OTHER draft
+        // field (grade, trim, captions, music) is a genuine clip edit and still
+        // restores regardless of piece.
+        const savedShape = normalizeFormat(d.format)
+        const shapeAppliesHere = piece ? d.shapePieceId === piece.id : true
+        if (shapeAppliesHere && FORMAT_KEYS.includes(savedShape)) setFormat(savedShape)
         if (d.reframe) setReframe(d.reframe)
         if (d.kenBurns) setKenBurnsState((s) => ({ ...s, ...d.kenBurns }))
         if (Array.isArray(d.overlays)) setOverlays(d.overlays)
@@ -1272,12 +1285,17 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
       setCaptionState((c) => ({ ...c, accent: workspaceCaptionAccent(asset.workspace) }))
     }
     setHydrated(true)
-  }, [asset, assetId])
+    // restoredRef guards this to one run, so `piece` in the deps can't re-fire
+    // it — it's here only because the shape-restore gate above reads piece.id.
+  }, [asset, assetId, piece])
 
   // Draft snapshot shared by autosave + undo/redo.
+  // shapePieceId records WHICH piece the current `format` was chosen for, so a
+  // deliberate per-post shape override sticks on reopen (see the restore gate
+  // above) without leaking to a different piece that reuses the same b-roll.
   const draftDoc = useMemo(
-    () => ({ format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited, wordEdits }),
-    [format, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited, wordEdits],
+    () => ({ format, shapePieceId: piece?.id ?? null, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited, wordEdits }),
+    [format, piece?.id, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited, wordEdits],
   )
 
   // localStorage mirror — immediate, undebounced offline copy. The server
@@ -1848,7 +1866,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     onSuccess: () => toast("Saved as your Brand look — it's now a vibe preset."),
   })
 
-  // Save-as-template — the look of THIS clip becomes a reusable reel template.
+  // Save-as-template — the look of THIS clip becomes a reusable video template.
   // Authoring happens in the editor rather than a separate template screen, so
   // what you signed off on is literally what the bake produces. The dialog shows
   // the captured/skipped split before committing: a template that silently took
@@ -1951,14 +1969,20 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     )
   }
 
+  // Where this clip publishes. Embedded from a content piece → the piece's
+  // platform pill (so the editor and the Weekly card agree on the destination);
+  // standalone (Moment Miner / Slate) there's no destination, so the shape badge
+  // carries the header instead.
+  const destMeta = piece?.platform ? PLATFORM_META[piece.platform] : null
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       {/* Shared top chrome (unified shell). Format switcher + transport + Export
           fold into the action slot; the side panel below is inspector-only. */}
       <EditorChrome
         onBack={goBack}
-        title={asset.display_title || asset.filename || 'Reel'}
-        badge={{ icon: Film, label: (FORMATS[format] || FORMATS.reel).label, sub: (FORMATS[format] || FORMATS.reel).dim }}
+        title={asset.display_title || asset.filename || 'Clip'}
+        destination={destMeta ? { icon: destMeta.icon, label: destMeta.label, colorClass: destMeta.color, bgClass: destMeta.bg, borderClass: destMeta.border } : null}
+        badge={destMeta ? null : { icon: Film, label: (FORMATS[format] || FORMATS.reel).label, sub: (FORMATS[format] || FORMATS.reel).dim }}
       >
         {/* Transport */}
         <div className="flex items-center gap-2 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))' }}>
@@ -2172,11 +2196,11 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
       {tplOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/50" aria-hidden="true" onClick={() => setTplOpen(false)} />
-          <div role="dialog" aria-modal="true" aria-label="Save as reel template"
+          <div role="dialog" aria-modal="true" aria-label="Save as video template"
             className="relative w-full max-w-md rounded-xl border bg-card p-5 shadow-lg">
-            <h2 className="text-base font-semibold">Save as reel template</h2>
+            <h2 className="text-base font-semibold">Save as video template</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              New reels will be able to use this look. It saves the styling, not this clip&apos;s content.
+              New video posts will be able to use this look. It saves the styling, not this clip&apos;s content.
             </p>
 
             <label className="mt-4 block text-2xs font-semibold uppercase tracking-wide text-muted-foreground" htmlFor="tpl-name">Name</label>

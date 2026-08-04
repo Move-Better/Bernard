@@ -8,6 +8,10 @@ import { ArrowLeft } from 'lucide-react'
 // Slots:
 //   onBack            back arrow handler
 //   title             piece title (truncated)
+//   destination       { icon, label, colorClass, bgClass, borderClass } | null —
+//                     WHERE this piece publishes (platform pill). Shown first so
+//                     an editor never hides its own destination; feed it from
+//                     PLATFORM_META so it matches the rest of the app.
 //   badge             { icon: Component, label, sub }  — the format pill
 //   note              optional muted aside (e.g. "3 slides from 2 photos")
 //   format            { value, options: [{id,label,disabled?,title?}], onChange } | null
@@ -15,8 +19,9 @@ import { ArrowLeft } from 'lucide-react'
 //   children          right-aligned action buttons (Preview / Save / Schedule)
 //
 // Extracted from SlideEditor's header verbatim so wiring it in is a visual no-op.
-export default function EditorChrome({ onBack, title, badge, note, format, aspect, children }) {
+export default function EditorChrome({ onBack, title, destination, badge, note, format, aspect, children }) {
   const BadgeIcon = badge?.icon
+  const DestIcon = destination?.icon
   return (
     <header className="flex items-center gap-3 border-b bg-card px-4 py-2.5 shrink-0">
       <button
@@ -28,7 +33,16 @@ export default function EditorChrome({ onBack, title, badge, note, format, aspec
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
       </button>
 
-      <span className="text-sm font-semibold truncate max-w-[200px]">{title || 'Untitled'}</span>
+      {destination && (
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-2xs font-semibold ${destination.bgClass || ''} ${destination.colorClass || ''} ${destination.borderClass || 'border-transparent'}`}
+        >
+          {DestIcon && <DestIcon className="h-3.5 w-3.5" aria-hidden="true" />}
+          {destination.label}
+        </span>
+      )}
+
+      <span className={`text-sm font-semibold truncate max-w-[200px] ${destination ? 'text-muted-foreground' : ''}`}>{title || 'Untitled'}</span>
 
       {badge && (
         <span

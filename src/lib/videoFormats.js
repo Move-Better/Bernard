@@ -12,11 +12,16 @@
 // You composed square and got a 4:5 post. "Portrait" rendered the identical
 // frame, so two of three options were the same shape and one of them lied.
 
-// The three frames the renderer actually produces.
+// The three frames the renderer actually produces. Labels are ORIENTATION
+// words, not platform names: a 9:16 clip used to be labelled "Reel", which read
+// as an Instagram destination even on a Google Business or LinkedIn post
+// (reported from the field). The destination is shown separately in the editor
+// chrome; these describe only the output shape. Keys are PERSISTED (they ride
+// to the render channel), so only the labels changed.
 export const FORMATS = {
-  reel: { css: '9 / 16', label: 'Reel', dim: '9:16' },
-  feed: { css: '4 / 5',  label: 'Feed', dim: '4:5' },
-  wide: { css: '4 / 3',  label: 'Wide', dim: '4:3' },
+  reel: { css: '9 / 16', label: 'Vertical',  dim: '9:16' },
+  feed: { css: '4 / 5',  label: 'Portrait',  dim: '4:5' },
+  wide: { css: '4 / 3',  label: 'Landscape', dim: '4:3' },
 }
 
 export const FORMAT_KEYS = ['reel', 'feed', 'wide']
