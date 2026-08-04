@@ -1,9 +1,15 @@
-// What Instagram's feed will actually do to a photo.
+// What a Meta feed will actually do to a photo.
 //
 // The feed accepts anything between 1.91:1 (landscape) and 4:5 (portrait) and
 // crops whatever falls outside that range back to the nearest edge of it.
-// Everything inside the range posts untouched — Instagram does NOT square-crop,
+// Everything inside the range posts untouched — the feed does NOT square-crop,
 // which is what Bernard's preview used to imply.
+//
+// Applies to the Facebook feed as well as Instagram's. postFrames.js already
+// treats them as one family — identical rows (`post: '4:5'`) and a note that
+// Meta consolidated the vertical placements in March 2026 — so the range is
+// shared rather than re-derived per surface. `metaFeedFrame` is the name to
+// reach for; `instagramFeedFrame` stays exported for the existing callers.
 //
 // Only relevant to the raw-photo path: a piece with slides publishes a baked
 // image at the deck's aspect, which is already inside this range, so Instagram
@@ -21,7 +27,7 @@ export const IG_TALLEST_AR = 0.8   // 4:5    — taller than this gets top and b
  *   of the image area is discarded; `trims` names the edges, or null when the
  *   photo posts whole. Returns null when the dimensions aren't usable.
  */
-export function instagramFeedFrame(width, height) {
+export function metaFeedFrame(width, height) {
   const w = Number(width)
   const h = Number(height)
   if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null
@@ -45,3 +51,6 @@ export function instagramFeedFrame(width, height) {
   }
   return { aspect: ar, croppedPct: 0, trims: null }
 }
+
+/** Back-compat name for the Instagram callers. Same range, same result. */
+export const instagramFeedFrame = metaFeedFrame

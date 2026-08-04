@@ -206,7 +206,7 @@ function SlidesCarousel({ slides, mediaUrls, photoTemplateId = null, aspectRatio
 //
 // The dimensions come from the loaded <img> rather than the media entry, which
 // doesn't carry width/height — this measures the real file and so can't go stale.
-function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square', trueFrame = false }) {
+function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square', trueFrame = false, platformLabel = 'Instagram' }) {
   const [idx, setIdx] = React.useState(0)
   const [natural, setNatural] = React.useState(null)
   const total = mediaUrls.length
@@ -317,7 +317,7 @@ function MediaCarousel({ mediaUrls, aspectClass = 'aspect-square', trueFrame = f
       <p className="flex items-start gap-1.5 border-t border-action/25 bg-action/10 px-4 py-2 text-2xs text-action">
         <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         <span>
-          Instagram will trim about <strong className="font-semibold">{frame.croppedPct}%</strong> off {frame.trims} of this
+          {platformLabel} will trim about <strong className="font-semibold">{frame.croppedPct}%</strong> off {frame.trims} of this
           photo. Open it in the editor to reframe it, or use a shot closer to 4:5.
         </span>
       </p>
@@ -452,8 +452,15 @@ function FacebookPreview({ content, mediaUrls = [] }) {
       </div>
 
       {/* Media carousel */}
+      {/* Facebook's feed is the same Meta surface as Instagram's — postFrames
+          puts both at `post: '4:5'` — so the photo renders in the frame the feed
+          will actually give it, not a hardcoded 16:9. The old aspect-video
+          squeezed every portrait photo into a thin centre band (a 3:4 shot lost
+          58% of its height) and contradicted the 4:5 we publish at. The
+          aspectClass here is only the pre-measure placeholder; once the image
+          loads, its true aspect wins. */}
       {mediaUrls.length > 0 && (
-        <MediaCarousel mediaUrls={mediaUrls} aspectClass="aspect-video" />
+        <MediaCarousel mediaUrls={mediaUrls} aspectClass="aspect-[4/5]" trueFrame platformLabel="Facebook" />
       )}
 
       {/* Reactions bar — FB style */}
