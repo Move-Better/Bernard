@@ -15,7 +15,6 @@ import { CAPTION_LIMITS, PLATFORM_META } from '@/lib/contentMeta'
 import { uploadMedia } from '@/lib/mediaLib'
 import { useUser } from '@clerk/react'
 import { publishPieceToSocial } from '@/lib/publishPiece'
-import { updateContentItem } from '@/lib/publish'
 import { toast } from '@/lib/toast'
 
 // Channels that Brief generation supports. Other channels (blog, email,
@@ -225,18 +224,17 @@ export default function NewBrief() {
       const scheduledISO = effective === 'schedule' && scheduledAt
         ? new Date(scheduledAt).toISOString()
         : null
+      // No post-dispatch echo: the publish route commits status + scheduled_at
+      // server-side for a specific slot too (dispatchCommitFields), past the
+      // publish lock. A client PATCH of scheduledAt here would 409 on the
+      // now-'scheduled' row (the locked_scheduled bug) and get counted as a
+      // failure — reporting a genuinely scheduled post as failed. approvedBy was
+      // never honored by the route either (server sets approved_by on the
+      // status→approved transition).
       const results = await Promise.allSettled(
-        items.map(async (it) => {
-          const r = await publishPieceToSocial(it, {
-            scheduledAt: scheduledISO, useQueue: false, userEmail, workspace, themes: [],
-          })
-          // publishAndTrack sets status but persists scheduled_at only in queue
-          // mode; for a specific slot, write it (+ approver) ourselves.
-          if (scheduledISO) {
-            await updateContentItem(it.id, { scheduledAt: scheduledISO, approvedBy: userEmail })
-          }
-          return r
-        }),
+        items.map((it) => publishPieceToSocial(it, {
+          scheduledAt: scheduledISO, useQueue: false, userEmail, workspace, themes: [],
+        })),
       )
       const ok = results.filter((r) => r.status === 'fulfilled').length
       const failed = results.length - ok

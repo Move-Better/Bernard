@@ -6,7 +6,6 @@ import { posthogCapture } from '@/lib/posthog'
 import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import {
-  useUpdateContentItem,
   useUpdateContentItemStatus,
   useCarouselThemes,
   queryKeys,
@@ -65,7 +64,6 @@ export function useContentWorkflow(piece) {
   const workspace = useWorkspace()
   const skipReview = !!workspace?.skip_review
   const updateStatus = useUpdateContentItemStatus()
-  const updateItem = useUpdateContentItem()
   const qc = useQueryClient()
   const { data: allThemes = [] } = useCarouselThemes()
 
@@ -225,9 +223,10 @@ export function useContentWorkflow(piece) {
       } else {
         // Social publish runs through the shared publishPieceToSocial helper —
         // the single source of truth for the Buffer path (incl. carousel
-        // slide-baking). The helper dispatches + PATCHes status; we own the
-        // toast, the baked-slide persist, and the approver audit.
-        const { scheduling, renderedSlides } = await runWithToast(
+        // slide-baking). The helper dispatches + PATCHes status AND persists the
+        // freshly-baked slides itself (pre-lock, before dispatch); we own only the
+        // toast and the approver audit.
+        const { scheduling } = await runWithToast(
           publishPieceToSocial(piece, {
             scheduledAt: effectiveScheduledAt,
             useQueue: usingQueue,
@@ -245,17 +244,12 @@ export function useContentWorkflow(piece) {
             error: (e) => ({ message: 'Publish failed', description: e.message }),
           },
         )
-        // Persist freshly-baked slide URLs so the next publish reuses them.
-        if (renderedSlides) {
-          try {
-            await updateItem.mutateAsync({ id: piece.id, patch: { slides: renderedSlides } })
-          } catch { /* non-fatal: publish already used the rendered URLs */ }
-        }
         // The publish route already committed status + scheduled_at (and the
-        // post id) server-side, bypassing the publish lock. We must NOT echo them
-        // back through updateStatus: that PATCH hits the lock's route
-        // (/api/db/content) and 409s on the now-'scheduled'/'published' row — the
-        // false "Post failed" / locked_scheduled bug. Just refetch so the
+        // post id) server-side, bypassing the publish lock, and the helper
+        // persisted the baked slides pre-lock. We must NOT echo any frozen field
+        // (status/scheduled_at/slides) back through the lock's route
+        // (/api/db/content) — that 409s on the now-'scheduled'/'published' row,
+        // the false "Post failed" / locked_scheduled bug. Just refetch so the
         // calendar and header reflect the server-committed state.
         qc.invalidateQueries({ queryKey: queryKeys.contentItems.all })
         qc.invalidateQueries({ queryKey: queryKeys.stories.all })

@@ -15,7 +15,7 @@ import { instagramFeedFrame } from '@/lib/instagramFrame'
 import { useUserRole } from '@/lib/useUserRole'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
-import { useUpdateContentItem, useCarouselThemes, queryKeys } from '@/lib/queries'
+import { useCarouselThemes, queryKeys } from '@/lib/queries'
 import { SOCIAL_DISPATCH_PLATFORMS } from '@/lib/publish'
 import { publishPieceToSocial } from '@/lib/publishPiece'
 import { adHocSlotOptions, computeEmptySlots, localSlotParts } from '@/lib/postingSlots'
@@ -945,7 +945,6 @@ export default function YourWeek() {
   const wsTz = workspace?.cadence_policy?.timezone || 'America/Los_Angeles'
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const updateItem = useUpdateContentItem()
   const { data: allThemes = [] } = useCarouselThemes()
 
   const [draftingAtom, setDraftingAtom] = useState(null) // atom id being drafted
@@ -1038,20 +1037,19 @@ export default function YourWeek() {
         // Server approved it but can't dispatch (carousel bake / Buffer provider)
         // — finish on the client via the proven publish path.
         const piece = await apiFetch(`/api/db/content?id=${encodeURIComponent(item.contentPieceId)}`)
-        const { renderedSlides } = await publishPieceToSocial(piece, {
+        await publishPieceToSocial(piece, {
           scheduledAt: item.scheduled_at || null,
           useQueue: !item.scheduled_at,
           userEmail,
           workspace,
           themes: allThemes,
         })
-        if (renderedSlides) {
-          try { await updateItem.mutateAsync({ id: piece.id, patch: { slides: renderedSlides } }) } catch { /* non-fatal */ }
-        }
         // The publish route committed status + scheduled_at server-side (past the
-        // publish lock). Echoing them back here would 409 on the now-'scheduled'
-        // row — the false "scheduling failed" bug. The week refetch below shows
-        // the server-committed state.
+        // publish lock), and publishPieceToSocial persisted the baked slides
+        // pre-lock. Echoing any frozen field (status/scheduled_at/slides) back
+        // here would 409 on the now-'scheduled' row — the false "scheduling
+        // failed" / locked_scheduled bug. The week refetch below shows the
+        // server-committed state.
         toast.success('Approved & scheduled')
       } else if (resp?.reason === 'in_progress') {
         // Another approve (another tab/teammate) is already dispatching this piece.
@@ -1282,21 +1280,19 @@ export default function YourWeek() {
         try {
           // Fetch full piece data (needed for slide-baking, media_urls, etc.)
           const piece = await apiFetch(`/api/db/content?id=${encodeURIComponent(item.contentPieceId)}`)
-          const { renderedSlides } = await publishPieceToSocial(piece, {
+          await publishPieceToSocial(piece, {
             scheduledAt: item.scheduled_at || null,
             useQueue: !item.scheduled_at,
             userEmail,
             workspace,
             themes: allThemes,
           })
-          if (renderedSlides) {
-            try { await updateItem.mutateAsync({ id: piece.id, patch: { slides: renderedSlides } }) } catch { /* non-fatal */ }
-          }
           // The publish route already committed status + scheduled_at server-side
-          // (past the publish lock). This used to echo them back via updateStatus,
-          // which 409'd on the now-'scheduled' row and got counted as failCount++
-          // below — reporting a genuinely scheduled post as "failed". The row is
-          // committed by the server; count it and let the week refetch reflect it.
+          // (past the publish lock), and publishPieceToSocial persisted the baked
+          // slides pre-lock. This used to echo them back, which 409'd on the
+          // now-'scheduled' row and got counted as failCount++ below — reporting a
+          // genuinely scheduled post as "failed". The row is committed by the
+          // server; count it and let the week refetch reflect it.
           okCount++
         } catch (e) {
           if (e?.payload?.error === 'words_not_approved') wordsBlockedCount++
