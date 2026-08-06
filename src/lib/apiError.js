@@ -101,3 +101,25 @@ export async function throwApiError(response) {
 
   throw new ApiError(message || `Request failed: ${response.status}`, response.status, payload)
 }
+
+/**
+ * True for errors worth automatically retrying: a transient server failure
+ * (5xx) or a network error (fetch rejected before any Response, so there is no
+ * HTTP status). A 4xx is the server deliberately rejecting THIS request —
+ * validation (400), auth (401/403), not-found (404), a publish lock (409), or
+ * rate-limit (429) — so retrying it is pointless or actively harmful; never
+ * retry those. Only ever consulted for errors thrown by a mutationFn (i.e. by
+ * apiFetch), where a status-less error is a genuine `fetch` failure, not a bug
+ * in an onSuccess handler.
+ * @param {unknown} error
+ * @returns {boolean}
+ */
+export function isTransientApiError(error) {
+  const status =
+    error && typeof error === 'object' && 'status' in error
+      ? /** @type {{ status?: unknown }} */ (error).status
+      : undefined
+  if (typeof status === 'number') return status >= 500 && status < 600
+  // No HTTP status → the fetch itself failed (offline, DNS, reset) → transient.
+  return true
+}

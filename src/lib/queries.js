@@ -20,6 +20,7 @@
 
 import { useQuery, useInfiniteQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { useAppMutation } from './useAppMutation'
+import { isTransientApiError } from './apiError'
 import {
   apiFetch,
   fetchStaff,
@@ -534,6 +535,15 @@ export function useUpdateContentItem() {
   return useAppMutation({
     errorMessage: "Couldn't update content",
     mutationFn: ({ id, patch }) => updateContentItem(id, patch),
+    // A content save is an idempotent PATCH (it sets fields to fixed values), so
+    // a transient backend blip is safe to auto-retry rather than dead-ending the
+    // producer with a scary "Update failed" they then retry by hand. This was a
+    // real report (movebetter, 2026-08-05): a ~minutes-long window where every
+    // content_items write 5xx'd, and the editor gave up on the first failure.
+    // Retry ONLY transient 5xx/network errors — never a 4xx (a 409 publish lock,
+    // a 400 validation, a 403) which the server is deliberately rejecting.
+    retry: (failureCount, error) => failureCount < 2 && isTransientApiError(error),
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
     onSuccess: (data, { id, patch }) => {
       // Merge only the columns this patch wrote into the detail cache so a
       // concurrent PATCH's stale echo can't revert a sibling edit (see
