@@ -16,7 +16,7 @@ import { useStaffMember, useInterview, useCampaigns, queryKeys } from '@/lib/que
 import { useQueryClient } from '@tanstack/react-query'
 import PostCallReveal from '@/components/PostCallReveal'
 import { streamMessage } from '@/lib/claude'
-import { getInterviewSystemPrompt, getBlogPostSystemPrompt, getNewsletterSystemPrompt, buildCampaignGoalBlock, getMinimalEditSystemPrompt, getCoveredSummarySystemPrompt, TONES, getVoiceModes, getPatientPrototypesUi, buildVerbatimBlock } from '@/lib/prompts'
+import { getInterviewSystemPrompt, getPointInterviewSystemPrompt, getBlogPostSystemPrompt, getNewsletterSystemPrompt, buildCampaignGoalBlock, getMinimalEditSystemPrompt, getCoveredSummarySystemPrompt, TONES, getVoiceModes, getPatientPrototypesUi, buildVerbatimBlock } from '@/lib/prompts'
 import { resolveAudienceSlot, resolveStoryTypeSlot } from '@/lib/interviewOptionsCatalog'
 import { buildStyleMemoryBlock } from '@/lib/interviewTactics'
 import { detectEmotionalState, getEmotionPromptInjection } from '@/lib/emotionDetection'
@@ -732,7 +732,18 @@ export default function InterviewSession() {
       !reprobedIndexesRef.current.has(lastUserIdx)
     if (shouldReprobe) reprobedIndexesRef.current.add(lastUserIdx)
 
-    const baseSystemPrompt = getInterviewSystemPrompt(
+    // "Make a point" interviews (kind='point') run the dynamic podcast-host
+    // interviewer, seeded with the user's own point. Everything else — the
+    // clinical extraction prompt and its RAG blocks — stays byte-identical.
+    const baseSystemPrompt = interviewRef.current?.kind === 'point'
+      ? getPointInterviewSystemPrompt(
+          overlaidWorkspace,
+          staffMember.name,
+          interviewRef.current.point,
+          pastInterviewsRef.current,
+          { isFirstMessage },
+        )
+      : getInterviewSystemPrompt(
       overlaidWorkspace,
       staffMember.name,
       interviewRef.current.topic,

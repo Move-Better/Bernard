@@ -1,0 +1,237 @@
+<title>New Interview — "Make a point" mode</title>
+<style>
+  :root {
+    --bg: #f6f8f8;
+    --card: #ffffff;
+    --fg: #0d1b1e;
+    --muted: #5b6b6e;
+    --faint: #8b9a9c;
+    --border: #e1e8e8;
+    --border-strong: #cdd8d8;
+    --primary: #0c7580;
+    --primary-fg: #ffffff;
+    --primary-tint: #e4f1f2;
+    --primary-tint-border: #b8dcdf;
+    --action: #c77d1a;
+    --action-tint: #fbf1e0;
+    --shadow: 0 1px 2px rgba(13,27,30,.04), 0 8px 24px rgba(13,27,30,.06);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0a1214;
+      --card: #10191b;
+      --fg: #e8f0f0;
+      --muted: #9fb0b2;
+      --faint: #6f8082;
+      --border: #22302f;
+      --border-strong: #2f4140;
+      --primary: #3fb3bd;
+      --primary-fg: #041416;
+      --primary-tint: #0f2b2d;
+      --primary-tint-border: #1d4547;
+      --action: #e0a53f;
+      --action-tint: #2a2114;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a1214; --card: #10191b; --fg: #e8f0f0; --muted: #9fb0b2; --faint: #6f8082;
+    --border: #22302f; --border-strong: #2f4140; --primary: #3fb3bd; --primary-fg: #041416;
+    --primary-tint: #0f2b2d; --primary-tint-border: #1d4547; --action: #e0a53f; --action-tint: #2a2114;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f8f8; --card: #ffffff; --fg: #0d1b1e; --muted: #5b6b6e; --faint: #8b9a9c;
+    --border: #e1e8e8; --border-strong: #cdd8d8; --primary: #0c7580; --primary-fg: #ffffff;
+    --primary-tint: #e4f1f2; --primary-tint-border: #b8dcdf; --action: #c77d1a; --action-tint: #fbf1e0;
+    --shadow: 0 1px 2px rgba(13,27,30,.04), 0 8px 24px rgba(13,27,30,.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 660px; margin: 0 auto; padding: 40px 20px 72px; }
+  .eyebrow {
+    text-transform: uppercase; letter-spacing: .09em; font-size: 11px; font-weight: 600;
+    color: var(--faint); margin: 0 0 8px;
+  }
+  h1.page { font-size: 26px; font-weight: 650; letter-spacing: -.01em; margin: 0 0 4px; text-wrap: balance; }
+  .page-sub { color: var(--muted); font-size: 14px; margin: 0 0 24px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 22px;
+  }
+
+  /* mode toggle */
+  .segmented {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 11px; padding: 4px; margin-bottom: 22px;
+  }
+  .seg-btn {
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    font: inherit; font-weight: 550; font-size: 14px; color: var(--muted);
+    padding: 9px 10px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background .15s, color .15s, box-shadow .15s;
+  }
+  .seg-btn .ic { width: 16px; height: 16px; opacity: .85; }
+  .seg-btn[aria-selected="true"] {
+    background: var(--card); color: var(--fg); box-shadow: var(--shadow); font-weight: 600;
+  }
+
+  .field { margin-bottom: 20px; }
+  label.f {
+    display: block; font-size: 13.5px; font-weight: 600; margin-bottom: 6px;
+  }
+  label.f .req { color: #c0392b; }
+  :root[data-theme="dark"] label.f .req { color: #e57373; }
+  .hint { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+  input.t, textarea.t {
+    width: 100%; font: inherit; font-size: 14.5px; color: var(--fg); background: var(--card);
+    border: 1px solid var(--border-strong); border-radius: 10px; padding: 11px 13px; resize: vertical;
+  }
+  textarea.t { min-height: 96px; line-height: 1.5; }
+  input.t::placeholder, textarea.t::placeholder { color: var(--faint); }
+  input.t:focus, textarea.t:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: var(--primary); }
+
+  /* preset chips (topic mode) */
+  .chips-group { margin-top: 12px; }
+  .chips-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); font-weight: 600; margin-bottom: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .chip {
+    font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong);
+    background: var(--card); color: var(--fg); cursor: pointer;
+  }
+  .chip:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* point mode "what happens" note */
+  .flow-note {
+    display: flex; gap: 11px; align-items: flex-start; margin-top: 12px;
+    background: var(--primary-tint); border: 1px solid var(--primary-tint-border);
+    border-radius: 11px; padding: 12px 14px;
+  }
+  .flow-note .dot { flex: none; width: 26px; height: 26px; border-radius: 8px; background: var(--primary); color: var(--primary-fg); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .flow-note p { margin: 0; font-size: 13px; color: var(--fg); }
+  .flow-note b { font-weight: 650; }
+
+  /* voice picker */
+  .voice { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .voice .opt {
+    border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 12px; cursor: pointer;
+    font-size: 13.5px;
+  }
+  .voice .opt small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; font-weight: 400; }
+  .voice .opt[data-on="true"] { border-color: var(--primary); background: var(--primary-tint); }
+  .voice .opt b { font-weight: 600; }
+
+  .levers { display: flex; align-items: center; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
+  .lever-pill { border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; }
+  .more { margin-left: auto; color: var(--primary); cursor: pointer; font-weight: 550; }
+
+  .start {
+    margin-top: 22px; width: 100%; appearance: none; border: 0; cursor: pointer;
+    background: var(--primary); color: var(--primary-fg); font: inherit; font-weight: 650; font-size: 15px;
+    padding: 13px; border-radius: 11px;
+  }
+  .start:hover { filter: brightness(1.06); }
+
+  .legend { margin-top: 28px; border: 1px dashed var(--border-strong); border-radius: 12px; padding: 16px 18px; background: transparent; }
+  .legend h3 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); }
+  .legend ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 9px; }
+  .legend li { display: flex; gap: 10px; font-size: 13.5px; color: var(--fg); align-items: flex-start; }
+  .legend .tag { flex: none; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 6px; margin-top: 1px; }
+  .legend .tag.same { background: var(--border); color: var(--muted); }
+  .legend .tag.new { background: var(--action-tint); color: var(--action); }
+  .muted-i { color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">New interview · mockup for sign-off</p>
+  <h1 class="page">Start an interview</h1>
+  <p class="page-sub">Flip the toggle to compare the two modes. <b>Cover a topic</b> is today's flow, unchanged. <b>Make a point</b> is the new mode.</p>
+
+  <div class="card">
+    <div class="segmented" role="tablist" aria-label="Interview mode">
+      <button class="seg-btn" role="tab" id="tab-topic" aria-selected="false" onclick="setMode('topic')">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        Cover a topic
+      </button>
+      <button class="seg-btn" role="tab" id="tab-point" aria-selected="true" onclick="setMode('point')">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/><circle cx="12" cy="12" r="3.4"/></svg>
+        Make a point
+      </button>
+    </div>
+
+    <!-- TOPIC MODE -->
+    <div id="mode-topic" hidden>
+      <div class="field">
+        <label class="f">Topic <span class="req">*</span></label>
+        <p class="hint">Only required field — everything else is optional.</p>
+        <input class="t" type="text" placeholder="e.g. Low back pain, IT band rehab, postpartum recovery…" />
+        <div class="chips-group">
+          <div class="chips-label">High patient interest — no content yet</div>
+          <div class="chips">
+            <span class="chip">Sciatica</span><span class="chip">Plantar fasciitis</span><span class="chip">Rotator cuff</span><span class="chip">Text neck</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POINT MODE -->
+    <div id="mode-point">
+      <div class="field">
+        <label class="f">What's the point you want to make? <span class="req">*</span></label>
+        <p class="hint">A sentence or a paragraph — your own experience or take. The interviewer already knows you have a point; its job is to sharpen it, not quiz you.</p>
+        <textarea class="t" placeholder="e.g. Six months of terrible deep sleep — my Whoop showed it flatlined. A decade of sleep-hygiene fixes did nothing. Then two 10-minute runs and it came right back.">For about six months my deep sleep was basically gone — my Whoop showed 20–30 min a night. I'd thrown a decade of sleep-hygiene fixes at it, nothing moved. Then two 10-minute runs, two days in a row, and it came right back.</textarea>
+        <div class="flow-note">
+          <span class="dot">→</span>
+          <p><b>Next:</b> a short, dynamic interview draws out the proof, the significance, and why it matters — then it becomes drafts on your channels, in your voice. Nothing publishes without your review.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- shared: whose voice -->
+    <div class="field">
+      <label class="f">Whose voice is this interview in?</label>
+      <div class="voice">
+        <div class="opt" data-on="true"><b>I / me</b><small>A personal take or story</small></div>
+        <div class="opt"><b>We / the clinic</b><small>The practice's collective voice</small></div>
+      </div>
+    </div>
+
+    <div class="levers">
+      <span class="lever-pill">Dr. Quasney</span>
+      <span class="lever-pill">Light cleanup</span>
+      <span class="more">More options ▾</span>
+    </div>
+
+    <button class="start" id="startbtn">Start interview →</button>
+  </div>
+
+  <div class="legend">
+    <h3>What changes vs. today</h3>
+    <ul>
+      <li><span class="tag new">New</span><span>A <b>mode toggle</b> at the top. "Make a point" swaps the clinical Topic field for a free-text <b>“What's the point you want to make?”</b> box — your angle, seeded straight into the interviewer.</span></li>
+      <li><span class="tag new">New</span><span>The interview runs the <b>dynamic podcast-host</b> model (the one we prototyped), not the clinical checklist. Non-diagnostic framing is applied when it becomes content.</span></li>
+      <li><span class="tag same">Same</span><span>Whose-voice picker, staff, cleanup, "more options," and the whole downstream Storyboard → Publish flow are <span class="muted-i">unchanged</span>.</span></li>
+      <li><span class="tag same">Same</span><span>"Cover a topic" is today's screen, exactly as-is — nothing about the clinical interview flow moves.</span></li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  function setMode(m) {
+    document.getElementById('mode-topic').hidden = m !== 'topic';
+    document.getElementById('mode-point').hidden = m !== 'point';
+    document.getElementById('tab-topic').setAttribute('aria-selected', m === 'topic');
+    document.getElementById('tab-point').setAttribute('aria-selected', m === 'point');
+    document.getElementById('startbtn').textContent = m === 'point' ? 'Start interview →' : 'Start interview →';
+  }
+  setMode('point');
+</script>
