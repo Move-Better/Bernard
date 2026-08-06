@@ -10,6 +10,7 @@ import { embedTexts } from './embeddings.js'
 
 
 import { supabaseRest } from './supabaseRest.js'
+import { shapeUsagePlatforms } from './mediaUsageShape.js'
 // ── Freshness ranking ────────────────────────────────────────────────────────
 //
 // Similarity alone makes the picker deterministic in the worst way: the single
@@ -64,7 +65,8 @@ const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'applica
  *   can never be returned, no matter how strong its match.
  *
  * @returns {Promise<Array>} shaped clip objects (camelCase), each carrying
- *   `usage` ({ total, published }) and the `effectiveScore` it was ranked on.
+ *   `usage` ({ total, published, platforms: [{platform, count}] }) and the
+ *   `effectiveScore` it was ranked on.
  * @throws on embed failure or RPC failure
  */
 export async function searchClips({
@@ -128,7 +130,7 @@ export async function searchClips({
 
   const ranked = rows
     .map((r) => {
-      const usage = usageById.get(r.source_id) || { total: 0, published: 0 }
+      const usage = usageById.get(r.source_id) || { total: 0, published: 0, platforms: [] }
       const similarity = r.similarity ?? 0
       return {
         row: r,
@@ -174,7 +176,7 @@ async function fetchUsage(workspaceId, assetIds) {
 
   try {
     const r = await sb(
-      `media_asset_usage?select=asset_id,use_count,published_count` +
+      `media_asset_usage?select=asset_id,use_count,published_count,published_platforms` +
       `&workspace_id=eq.${workspaceId}&asset_id=in.(${ids.map(encodeURIComponent).join(',')})`
     )
     if (!r.ok) {
@@ -182,7 +184,11 @@ async function fetchUsage(workspaceId, assetIds) {
       return byId
     }
     for (const u of await r.json()) {
-      byId.set(u.asset_id, { total: u.use_count || 0, published: u.published_count || 0 })
+      byId.set(u.asset_id, {
+        total:     u.use_count || 0,
+        published: u.published_count || 0,
+        platforms: shapeUsagePlatforms(u.published_platforms),
+      })
     }
   } catch (e) {
     console.error('[clipSearch] usage lookup failed:', e?.message)

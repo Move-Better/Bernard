@@ -14,6 +14,7 @@ import { isTextOnlyPlatform } from '../../../src/lib/platformMediaKind.js'
 import { shapeApprovedBlog } from '../../_lib/approvedBlogs.js'
 import { blogTargetFor, monthKey, progressFor } from '../../_lib/blogTarget.js'
 import { isEditor } from '../../../src/lib/roles.js'
+import { shapeUsagePlatforms } from '../../_lib/mediaUsageShape.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -351,19 +352,23 @@ export default async function handler(req, res) {
 
   // Batched reuse-counter lookup (media_asset_usage, migration 185) across
   // every card's thumbnail asset in one round trip — never per-card. Mirrors
-  // MediaUsageBadge's { total, published } shape so the client can reuse that
-  // same component. Best-effort: a failed lookup just leaves mediaUsage null,
-  // same as an asset with no usage row.
+  // MediaUsageBadge's { total, published, platforms } shape so the client can
+  // reuse that same component. Best-effort: a failed lookup just leaves
+  // mediaUsage null, same as an asset with no usage row.
   async function attachMediaUsage(items) {
     const ids = [...new Set(items.map((it) => it.mediaAssetId).filter((v) => UUID_RE.test(v || '')))]
     if (!ids.length) return
     const quoted = ids.map((v) => `"${v}"`).join(',')
     const r = await sb(
-      `media_asset_usage?workspace_id=eq.${ws.id}&asset_id=in.(${quoted})&select=asset_id,use_count,published_count`,
+      `media_asset_usage?workspace_id=eq.${ws.id}&asset_id=in.(${quoted})&select=asset_id,use_count,published_count,published_platforms`,
     )
     if (!r.ok) { console.error('[week-summary] media usage lookup failed:', r.status); return }
     const rows = await r.json()
-    const byId = new Map((Array.isArray(rows) ? rows : []).map((u) => [u.asset_id, { total: u.use_count || 0, published: u.published_count || 0 }]))
+    const byId = new Map((Array.isArray(rows) ? rows : []).map((u) => [u.asset_id, {
+      total:     u.use_count || 0,
+      published: u.published_count || 0,
+      platforms: shapeUsagePlatforms(u.published_platforms),
+    }]))
     for (const it of items) {
       if (it.mediaAssetId && byId.has(it.mediaAssetId)) it.mediaUsage = byId.get(it.mediaAssetId)
     }
