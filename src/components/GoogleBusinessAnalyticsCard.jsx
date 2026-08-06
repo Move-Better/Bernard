@@ -153,11 +153,15 @@ export default function GoogleBusinessAnalyticsCard({ row, loading, disabled, on
           ) : (
             <div className="space-y-3">
               {locationDetectFailed && (
-                <div className="rounded-lg bg-action/5 border border-action/30 px-3 py-2 text-sm text-foreground">
-                  <p className="font-medium mb-1">Location data not loaded yet</p>
-                  <p className="text-xs text-muted-foreground">The Google API rate-limited the location lookup during connect. Click below to retry — it only takes a second.</p>
-                  <Button size="sm" className="mt-2" onClick={handleRetryLocations} disabled={retrying || disabled}>
-                    {retrying ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Detecting locations…</> : 'Retry location detection'}
+                <div className="rounded-lg bg-muted/60 border border-border px-3 py-2 text-sm text-foreground">
+                  <p className="font-medium mb-1">Location data isn&rsquo;t loading</p>
+                  <p className="text-xs text-muted-foreground">
+                    Google hasn&rsquo;t approved the API access this needs yet, so location detection won&rsquo;t
+                    complete until that&rsquo;s granted — retrying won&rsquo;t fix it on its own. You&rsquo;re
+                    still connected; this only affects the location-level numbers below.
+                  </p>
+                  <Button size="sm" variant="outline" className="mt-2" onClick={handleRetryLocations} disabled={retrying || disabled}>
+                    {retrying ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Checking…</> : 'Check again'}
                   </Button>
                 </div>
               )}
