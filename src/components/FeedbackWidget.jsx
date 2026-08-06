@@ -97,6 +97,11 @@ export function FeedbackWidget({ anchor = 'floating', collapsed = false }) {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', end)
       dragCleanup.current = null
+      // movedRef exists only to let the click that immediately follows a *pill*
+      // drag be ignored. Clear it on the next tick — after that click has fired —
+      // so a later, unrelated pill tap (e.g. after the panel itself was dragged)
+      // isn't wrongly swallowed and needs a double-click to reopen.
+      setTimeout(() => { movedRef.current = false }, 0)
     }
     dragCleanup.current = end
     window.addEventListener('pointermove', move)
