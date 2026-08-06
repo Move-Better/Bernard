@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -47,6 +48,10 @@ export default function NewInterview() {
   const preferredName = user?.unsafeMetadata?.display_name || user?.fullName || ''
   const [staffName, setStaffName] = useState(preferredName)
   const [condition, setCondition] = useState(searchParams.get('topic') || '')
+  // Interview mode: 'topic' (clinical extraction, the default) or 'point'
+  // ("Make a point" — the user brings a thesis, a dynamic host sharpens it).
+  const [mode, setMode] = useState('topic')
+  const [point, setPoint] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -157,8 +162,7 @@ export default function NewInterview() {
   // the interview row is created only after the mic check passes (createAndStart),
   // so a failed/abandoned audio check never leaves a phantom interview behind.
   function handleStart(selectedCondition) {
-    const topic = (selectedCondition ?? condition).trim()
-    if (!staffName.trim() || !topic || !user) return
+    if (!staffName.trim() || !user) return
 
     // Self-detection — if the typed clinician name matches the user's
     // display name OR Clerk full name (case-insensitive), bind the
@@ -168,7 +172,15 @@ export default function NewInterview() {
     const full    = (user?.fullName || '').trim().toLowerCase()
     const isSelf  = !!typed && (typed === display || typed === full)
 
-    pendingStartRef.current = { topic, isSelf }
+    if (mode === 'point') {
+      const pt = point.trim()
+      if (!pt) return
+      pendingStartRef.current = { mode: 'point', point: pt, isSelf }
+    } else {
+      const topic = (selectedCondition ?? condition).trim()
+      if (!topic) return
+      pendingStartRef.current = { mode: 'topic', topic, isSelf }
+    }
     setError('')
     setStep('miccheck')
   }
@@ -191,7 +203,9 @@ export default function NewInterview() {
       })
       const interview = await createInterview({
         staffId: staffMember.id,
-        topic: pending.topic,
+        ...(pending.mode === 'point'
+          ? { kind: 'point', point: pending.point }
+          : { topic: pending.topic }),
         ownerEmail: user.primaryEmailAddress?.emailAddress,
         tone,
         voiceMode,
@@ -199,7 +213,7 @@ export default function NewInterview() {
         cleanupLevel,
         topicBacklogId: searchParams.get('topicBacklogId') || undefined,
       })
-      posthogCapture('capture_started', { topic: pending.topic })
+      posthogCapture('capture_started', { kind: pending.mode, topic: pending.mode === 'point' ? undefined : pending.topic })
       navigate(`/interview/${staffMember.id}/${interview.id}`, { state: { micChecked: true } })
     } catch (e) {
       // Drop back to the form so the user can retry without re-running the
@@ -390,43 +404,88 @@ export default function NewInterview() {
             )}
           </div>
 
-          {/* Topic */}
+          {/* Interview mode — clinical topic vs "make a point" */}
           <div className="space-y-1.5">
-            <Label htmlFor="condition">
-              Topic <span className="text-destructive">*</span>
-            </Label>
-            <p className="text-2xs text-muted-foreground">Only required field — everything else is optional.</p>
-            <Input
-              id="condition"
-              placeholder="e.g. Low back pain, IT band rehab, postpartum recovery…"
-              value={condition}
-              onChange={(e) => {
-                setCondition(e.target.value)
-                if (suggestionAddedFor && e.target.value.trim() !== suggestionAddedFor) {
-                  setSuggestionAddedFor('')
-                }
-              }}
-              onKeyDown={(e) => e.key === 'Enter' && condition.trim() && handleStart()}
-              autoFocus={!preferredName}
-            />
-            {canAddSuggestion && (
+            <Label>What kind of interview?</Label>
+            <div className="grid grid-cols-2 gap-1 rounded-lg border bg-muted/40 p-1">
               <button
                 type="button"
-                onClick={handleAddSuggestion}
-                disabled={addingSuggestion}
-                className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50 mt-1"
+                onClick={() => setMode('topic')}
+                aria-pressed={mode === 'topic'}
+                className={`rounded-md px-3 py-2 text-sm font-medium transition ${mode === 'topic' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
-                {addingSuggestion ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                Add &ldquo;{trimmedCondition}&rdquo; to your workspace&apos;s topic suggestions
+                Cover a topic
               </button>
-            )}
-            {suggestionAddedFor && suggestionAddedFor === trimmedCondition && (
-              <p className="text-xs text-primary mt-1 inline-flex items-center gap-1">
-                <Check className="h-3 w-3" />
-                Added — you&apos;ll see it in your suggestions next time.
-              </p>
-            )}
+              <button
+                type="button"
+                onClick={() => { setMode('point'); if (voiceMode === 'practice') { setVoiceMode('personal'); markDrift() } }}
+                aria-pressed={mode === 'point'}
+                className={`rounded-md px-3 py-2 text-sm font-medium transition ${mode === 'point' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Make a point
+              </button>
+            </div>
           </div>
+
+          {mode === 'topic' ? (
+            /* Topic */
+            <div className="space-y-1.5">
+              <Label htmlFor="condition">
+                Topic <span className="text-destructive">*</span>
+              </Label>
+              <p className="text-2xs text-muted-foreground">Only required field — everything else is optional.</p>
+              <Input
+                id="condition"
+                placeholder="e.g. Low back pain, IT band rehab, postpartum recovery…"
+                value={condition}
+                onChange={(e) => {
+                  setCondition(e.target.value)
+                  if (suggestionAddedFor && e.target.value.trim() !== suggestionAddedFor) {
+                    setSuggestionAddedFor('')
+                  }
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && condition.trim() && handleStart()}
+                autoFocus={!preferredName}
+              />
+              {canAddSuggestion && (
+                <button
+                  type="button"
+                  onClick={handleAddSuggestion}
+                  disabled={addingSuggestion}
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50 mt-1"
+                >
+                  {addingSuggestion ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                  Add &ldquo;{trimmedCondition}&rdquo; to your workspace&apos;s topic suggestions
+                </button>
+              )}
+              {suggestionAddedFor && suggestionAddedFor === trimmedCondition && (
+                <p className="text-xs text-primary mt-1 inline-flex items-center gap-1">
+                  <Check className="h-3 w-3" />
+                  Added — you&apos;ll see it in your suggestions next time.
+                </p>
+              )}
+            </div>
+          ) : (
+            /* Make a point — the seed the dynamic host is briefed on */
+            <div className="space-y-1.5">
+              <Label htmlFor="point">
+                What&apos;s the point you want to make? <span className="text-destructive">*</span>
+              </Label>
+              <p className="text-2xs text-muted-foreground">A sentence or a paragraph — your own experience or take. The interviewer already knows you have a point; its job is to sharpen it, not quiz you.</p>
+              <Textarea
+                id="point"
+                rows={4}
+                placeholder="e.g. Six months of terrible deep sleep — my Whoop showed it flatlined. A decade of sleep-hygiene fixes did nothing. Then two 10-minute runs and it came right back."
+                value={point}
+                onChange={(e) => setPoint(e.target.value)}
+                autoFocus={!preferredName}
+              />
+              <div className="flex items-start gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs text-foreground">
+                <span aria-hidden="true" className="text-primary font-semibold">→</span>
+                <span><span className="font-semibold">Next:</span> a short, dynamic interview draws out the proof and why it matters — then it becomes drafts in your voice. Nothing publishes without your review.</span>
+              </div>
+            </div>
+          )}
 
           {/* Whose voice — the one lane decision that shapes every output.
               Always visible (not buried in Tune): "We" (clinic) vs "I"
@@ -497,7 +556,7 @@ export default function NewInterview() {
               handler. */}
           <Button
             onClick={() => handleStart()}
-            disabled={!staffName.trim() || !condition.trim() || loading}
+            disabled={!staffName.trim() || (mode === 'point' ? !point.trim() : !condition.trim()) || loading}
             className="w-full"
             size="lg"
           >
@@ -512,8 +571,9 @@ export default function NewInterview() {
           </Button>
 
           {/* Topic suggestions — collapsed under a heading so they don't
-              dominate the page now that the lever section is bigger. */}
-          {suggestionsLoading ? (
+              dominate the page now that the lever section is bigger.
+              Clinical topic ideas only apply to "Cover a topic" mode. */}
+          {mode === 'topic' && (suggestionsLoading ? (
             <div role="status" className="flex items-center gap-2 text-xs text-muted-foreground py-2 border-t pt-4">
               <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
               <span className="sr-only">Loading topic suggestions…</span>
@@ -585,7 +645,7 @@ export default function NewInterview() {
                 </div>
               </div>
             </div>
-          )}
+          ))}
         </CardContent>
       </Card>
 

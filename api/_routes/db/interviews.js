@@ -103,7 +103,7 @@ export default async function handler(req, res) {
     if (id) {
       if (!UUID_RE.test(id)) return err(res, 'Invalid id', 400)
       const r = await sb(
-        `interviews?id=eq.${id}&${wsFilter}&select=id,staff_id,topic,status,messages,cleaned_messages,outputs,session_state,paused_at,owner_id,owner_email,tone,voice_mode,prototype_id,location_id,audience,story_type,cleanup_level,pull_quote_candidates,pull_quote_selected_id,verbatim_flags,generation_style,capture_mode,source_audio_url,selected_outputs,campaign_id,summary_text,summary_generated_at,words_approved_at,words_approved_by,created_at,updated_at`
+        `interviews?id=eq.${id}&${wsFilter}&select=id,staff_id,topic,kind,point,status,messages,cleaned_messages,outputs,session_state,paused_at,owner_id,owner_email,tone,voice_mode,prototype_id,location_id,audience,story_type,cleanup_level,pull_quote_candidates,pull_quote_selected_id,verbatim_flags,generation_style,capture_mode,source_audio_url,selected_outputs,campaign_id,summary_text,summary_generated_at,words_approved_at,words_approved_by,created_at,updated_at`
       )
       if (!r.ok) return dbErr(res, r)
       const data = await r.json()
@@ -130,10 +130,29 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
-    const { staffId, topic, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, generationStyle, topicBacklogId, campaignId, selectedOutputs } = req.body || {}
+    const { staffId, topic, kind, point, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, generationStyle, topicBacklogId, campaignId, selectedOutputs } = req.body || {}
     if (!staffId) return err(res, 'Missing staffId')
     if (!UUID_RE.test(staffId)) return err(res, 'Invalid staffId', 400)
-    if (!topic?.trim()) return err(res, 'Topic required')
+
+    // Interview kind: 'topic' (clinical extraction, the default) or 'point'
+    // ("Make a point" — the guest brings a thesis; a dynamic host sharpens it).
+    const interviewKind = kind === 'point' ? 'point' : 'topic'
+    let finalTopic
+    let pointText = null
+    if (interviewKind === 'point') {
+      // A point interview seeds on the user's own point, not a clinical topic.
+      // We still need a short `topic` for the downstream Storyboard title, so
+      // derive it from the point (server is the source of truth for the title).
+      pointText = typeof point === 'string' ? point.trim() : ''
+      if (!pointText) return err(res, 'Point required')
+      if (pointText.length > 4000) return err(res, 'Point too long', 400)
+      const firstSentence = pointText.replace(/\s+/g, ' ').split(/(?<=[.!?])\s/)[0] || pointText
+      finalTopic = (typeof topic === 'string' && topic.trim())
+        || (firstSentence.length > 80 ? firstSentence.slice(0, 77).trimEnd() + '…' : firstSentence)
+    } else {
+      if (!topic?.trim()) return err(res, 'Topic required')
+      finalTopic = topic.trim()
+    }
     if (topicBacklogId && !UUID_RE.test(topicBacklogId)) return err(res, 'Invalid topicBacklogId', 400)
     if (campaignId && !UUID_RE.test(campaignId)) return err(res, 'Invalid campaignId', 400)
     if (prototypeId && !UUID_RE.test(prototypeId)) return err(res, 'Invalid prototypeId', 400)
@@ -162,7 +181,9 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         workspace_id: ws.id,
         staff_id: staffId,
-        topic: topic.trim(),
+        topic: finalTopic,
+        kind: interviewKind,
+        point: pointText,
         owner_id: ownerId,
         owner_email: ownerEmail,
         status: 'in_progress',
