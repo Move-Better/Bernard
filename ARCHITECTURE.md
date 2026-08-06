@@ -210,6 +210,19 @@ writing a `content_items` patch, copy the key from the handler's `allowed` map, 
 persistence on these handlers** — verify the actual row; (3) the diagnostic signature is
 `updated_at` advanced + payload identical, which means a dropped field, never a failed request.
 
+**Transient-5xx auto-retry — idempotent mutations only.** `useAppMutation` does NO retry by default: a
+single throw immediately toasts and gives up. `useUpdateContentItem` opts in via
+`retry: (n, e) => n < 2 && isTransientApiError(e)` + 1s/2s backoff (`src/lib/queries.js`), because a
+content save is an idempotent PATCH (sets fields to fixed values) so replaying it through a transient
+backend blip is safe. `isTransientApiError` (`src/lib/apiError.js`, unit-pinned) retries ONLY 5xx /
+network errors — never a 4xx the server *deliberately* returned (409 publish lock, 400 validation,
+401/403 auth, 429 rate-limit); retrying those is pointless, and on a non-idempotent action would
+double-write. Rule: only add this retry to a mutation whose `mutationFn` is idempotent (a PATCH/PUT to a
+fixed value), never a create/append/increment. Motivation: a movebetter producer hit *repeated* "Update
+failed" during a ~minutes-long window where every `content_items` write 5xx'd (2026-08-05, #2556) — a
+transient DB blip, not a code bug (330-byte URL-only payload, clean embed graph, same piece published
+fine hours later); the editor's zero-retry gave up on the first failure and dead-ended them.
+
 ### Consolidated `_routes` vs standalone physical handlers
 
 Most light JSON routes live in `api/_routes/**` and are served by the single consolidated
