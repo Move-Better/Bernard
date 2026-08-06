@@ -23,6 +23,7 @@
 import { generateText } from 'ai'
 import { getAtomSystemPrompt, buildModelExemplarsBlock } from '../atomPrompts.js'
 import { stripAiDashes } from '../stripAiDashes.js'
+import { fixBrokenHashtags } from '../fixBrokenHashtags.js'
 import { hasPublishedBlogArticle } from '../blogLinkStatus.js'
 import { getContextBlock } from '../conceptRetrieval.js'
 import { resolveOwnHistoryBlock, buildRagQuery } from '../practiceMemory.js'
@@ -483,7 +484,7 @@ export async function draftAtom({ ws, atom, interview }) {
   // blind mid-sentence slice at publish time. Clamp here (sentence-aware) so the
   // stored caption the editor shows is always within cap. Applied AFTER the voice
   // judge so fidelity is scored on the full generated text, not the clamped copy.
-  const cappedCaption = clampToCap(stripAiDashes(caption), platformCap(atom.platform))
+  const cappedCaption = clampToCap(fixBrokenHashtags(stripAiDashes(caption)), platformCap(atom.platform))
 
   return {
     caption: cappedCaption,
@@ -599,7 +600,7 @@ export async function buildGbpLocationVariants({ ws, atom, interview, staffName,
         if (!locText?.trim()) return null
         return [loc.id, {
           // GBP-only path — clamp each per-location variant to the 1500 cap too.
-          content:       clampToCap(stripAiDashes(extractProvenanceBlock(locText.trim()).content), platformCap('gbp')),
+          content:       clampToCap(fixBrokenHashtags(stripAiDashes(extractProvenanceBlock(locText.trim()).content)), platformCap('gbp')),
           location_name: loc.label ?? loc.city,
           generated_at:  new Date().toISOString(),
         }]

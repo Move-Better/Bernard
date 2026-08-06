@@ -24,6 +24,7 @@ import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { getAtomSystemPrompt } from '../../_lib/atomPrompts.js'
 import { stripAiDashes } from '../../_lib/stripAiDashes.js'
+import { fixBrokenHashtags } from '../../_lib/fixBrokenHashtags.js'
 import { hasPublishedBlogArticle } from '../../_lib/blogLinkStatus.js'
 import { getContextBlock } from '../../_lib/conceptRetrieval.js'
 import { resolveOwnHistoryBlock, buildRagQuery } from '../../_lib/practiceMemory.js'
@@ -320,7 +321,7 @@ export default async function handler(req, res) {
     // then blocks Approve (checkCaptionCap) with no way forward but hand-editing
     // — measured live on 2026-07-27: a 3,015-char LinkedIn draft, machine-written
     // and untouched, sitting over the 3,000 ceiling.
-    newContent = clampToCap(stripAiDashes(captionRaw), platformCap(item.platform))
+    newContent = clampToCap(fixBrokenHashtags(stripAiDashes(captionRaw)), platformCap(item.platform))
 
     // ── Update content_item in place ──────────────────────────────────────
     // Reset to draft + clear approval audit so regenerated content needs
