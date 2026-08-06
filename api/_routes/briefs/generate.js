@@ -11,6 +11,8 @@ import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { getBriefChannelPrompt, parseStoryOutput, buildStoryTextCard } from '../../_lib/briefPrompts.js'
 import { clampToCap, platformCap } from '../../_lib/socialLengthTargets.js'
+import { stripAiDashes } from '../../_lib/stripAiDashes.js'
+import { fixBrokenHashtags } from '../../_lib/fixBrokenHashtags.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -130,7 +132,7 @@ async function handler(req, res) {
         // (draftAtom.js). platformCap is null for uncapped platforms (facebook /
         // instagram_story), so clampToCap is a no-op there and the story branch
         // below still parses the full model output.
-        contentText = clampToCap(text.trim(), platformCap(platform))
+        contentText = clampToCap(fixBrokenHashtags(stripAiDashes(text.trim())), platformCap(platform))
       }
 
       // Build the content_item row for this channel.

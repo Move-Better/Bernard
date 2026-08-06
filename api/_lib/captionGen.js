@@ -9,6 +9,8 @@
 // corpus via the service-key REST client below and returns a trimmed string.
 
 import { generateText } from 'ai'
+import { stripAiDashes } from './stripAiDashes.js'
+import { fixBrokenHashtags } from './fixBrokenHashtags.js'
 
 
 import { supabaseRest } from './supabaseRest.js'
@@ -164,5 +166,9 @@ Write a caption (1-2 sentences, no hashtags, no CTA):`,
     maxOutputTokens: 200,
   })
 
-  return text.trim().replace(/^["']|["']$/g, '')
+  // Deterministic AI-tell cleanup, identical to every other caption entry point
+  // (draftAtom.js / regenerate.js): strip connector dashes, rejoin split hashtags.
+  // The prompt forbids hashtags so fixBrokenHashtags is usually a no-op here, but
+  // the shared composition keeps this shared generator consistent with the rest.
+  return fixBrokenHashtags(stripAiDashes(text.trim().replace(/^["']|["']$/g, '')))
 }

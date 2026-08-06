@@ -16,6 +16,8 @@ import { getContextBlock } from '../conceptRetrieval.js'
 import { resolveOwnHistoryBlock, buildRagQuery } from '../practiceMemory.js'
 import { buildFidelityPrompt, parseFidelity } from '../captionFidelityRubric.js'
 import { clampToCap, platformCap } from '../socialLengthTargets.js'
+import { stripAiDashes } from '../stripAiDashes.js'
+import { fixBrokenHashtags } from '../fixBrokenHashtags.js'
 import { recordAgentAction } from '../agentActions.js'
 
 
@@ -203,7 +205,7 @@ export async function reviseContentItem({ ws, contentItemId, changeRequest, comm
   // rather than the clamped copy. A revision that answers the change request but
   // grows past the cap would otherwise land back in the reviewer's queue only to
   // be blocked at Approve.
-  const cappedRevised = clampToCap(revised, platformCap(piece.platform))
+  const cappedRevised = clampToCap(fixBrokenHashtags(stripAiDashes(revised)), platformCap(piece.platform))
   const patchBody = { content: cappedRevised, status: 'in_review', updated_at: new Date().toISOString() }
   if (score !== null) { patchBody.voice_fidelity_score = score; patchBody.voice_audit = audit }
   const patchRes = await sb(

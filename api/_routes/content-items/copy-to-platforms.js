@@ -35,6 +35,8 @@ import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { clampToCap, platformCap } from '../../_lib/socialLengthTargets.js'
+import { stripAiDashes } from '../../_lib/stripAiDashes.js'
+import { fixBrokenHashtags } from '../../_lib/fixBrokenHashtags.js'
 import { photoSourceUrl, isVideoEntry } from '../../../src/lib/mediaEntry.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -189,10 +191,10 @@ export default async function handler(req, res) {
   const results = await Promise.all(targets.map(async (t) => {
     const cap = platformCap(t.platform)
     const caption = t.captionMode === 'refit'
-      ? clampToCap(await refitCaption({
+      ? clampToCap(fixBrokenHashtags(stripAiDashes(await refitCaption({
           ws, sourceCaption: source.content, sourcePlatform: source.platform,
           targetPlatform: t.platform, cap,
-        }), cap)
+        }))), cap)
       : clampToCap(source.content, cap)
 
     const verdict = await resolveSiblingAction({ ws, source, platform: t.platform })
