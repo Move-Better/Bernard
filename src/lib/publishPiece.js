@@ -1,4 +1,4 @@
-import { publishAndTrack } from '@/lib/publish'
+import { publishAndTrack, updateContentItem } from '@/lib/publish'
 import { resolveTheme, DEFAULT_DECK_THEME } from '@/lib/photoTemplates'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import { isInstagramReel } from '@/lib/mediaEntry'
@@ -21,9 +21,15 @@ import { resolveGbpLocationIds } from '@/lib/gbpLocations'
  * Side-effect boundary: this performs the publish dispatch (via publishAndTrack,
  * which also PATCHes the row's status). It does NOT invalidate React Query
  * caches, write the approver audit trail, or toast — the CALLER owns those so it
- * can batch them (bulk) or attach per-piece approval fields (single). When a
- * carousel's slides were freshly baked, `renderedSlides` is returned so the
- * caller can persist them on the row for reuse on the next publish.
+ * can batch them (bulk) or attach per-piece approval fields (single).
+ *
+ * Freshly-baked slides are persisted HERE, before the dispatch below, while the
+ * row is still pre-lock (draft/approved). That is the only legal window: 'slides'
+ * is a FROZEN_PATCH_FIELD, so a caller that persisted them AFTER dispatch would
+ * PATCH a frozen field on a row the publish route has already committed to
+ * 'scheduled', which the publish lock 409s — the false "Couldn't update content —
+ * locked_scheduled" toast even though the post shipped (the #2553 gap, feedback
+ * 2026-08-05). Callers must NOT re-persist slides after this returns.
  *
  * @param {object} piece content_items row (platform, content, media_urls, slides, photo_template_id, …)
  * @param {object} opts
@@ -32,7 +38,7 @@ import { resolveGbpLocationIds } from '@/lib/gbpLocations'
  * @param {string} opts.userEmail approver/publisher identity
  * @param {object} opts.workspace workspace row (for brand_style on baked slides)
  * @param {Array} [opts.themes] photo templates (resolveTheme custom-template lookup)
- * @returns {Promise<{result:any, scheduling:boolean, scheduledAt:(string|null), renderedSlides:(Array|null)}>}
+ * @returns {Promise<{result:any, scheduling:boolean, scheduledAt:(string|null)}>}
  */
 export async function publishPieceToSocial(
   piece,
@@ -45,7 +51,6 @@ export async function publishPieceToSocial(
   // skips this — baking photo-slides would silently drop the video. Identical to
   // the logic that used to live inline in ApprovalPanel.handlePublish.
   let mediaUrls = piece.media_urls || []
-  let renderedSlides = null
   const reelHasVideo = isInstagramReel(piece.media_urls)
   if (!reelHasVideo && Array.isArray(piece.slides) && piece.slides.length) {
     const customThemes = themes.filter((t) => t.custom)
@@ -71,7 +76,16 @@ export async function publishPieceToSocial(
       aspect: piece.aspect_ratio || '4:5',
     })
     if (publishMediaUrls.length) mediaUrls = publishMediaUrls
-    if (changed) renderedSlides = slides
+    // Persist the freshly-baked slide URLs NOW — while the row is still pre-lock
+    // (draft/approved), the one legal window to write 'slides' (a FROZEN_PATCH_
+    // FIELD). Doing it after the dispatch below 409s on the now-'scheduled' row
+    // (see the header note + #2553). Non-fatal: the dispatch already ships these
+    // URLs, so a persist miss costs only slide reuse next time, never the post.
+    if (changed) {
+      try {
+        await updateContentItem(piece.id, { slides })
+      } catch { /* non-fatal: dispatch below still ships the baked URLs */ }
+    }
   }
 
   const result = await publishAndTrack(
@@ -106,6 +120,5 @@ export async function publishPieceToSocial(
     result,
     scheduling,
     scheduledAt: scheduling ? scheduledAt || queueDueAt : null,
-    renderedSlides,
   }
 }
