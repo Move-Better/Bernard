@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useUser } from '@clerk/react'
-import { MessageSquare, X, Camera, Paperclip, Send, CheckCircle, Loader2 } from 'lucide-react'
+import { MessageSquare, X, Camera, Paperclip, Send, CheckCircle, Loader2, Minus, GripVertical } from 'lucide-react'
 import { useWorkspaceState } from '@/lib/WorkspaceContext'
 import { apiFetch } from '@/lib/api'
 
@@ -12,6 +12,13 @@ import { apiFetch } from '@/lib/api'
 const MAX_SCREENSHOT_DIM = 1600
 const SCREENSHOT_JPEG_QUALITY = 0.82
 
+// Persisted panel position + minimized state. Users kept reporting the panel
+// covering the exact content they were trying to show (and baking itself into
+// the screenshot). It's now a draggable, minimizable floating panel that
+// remembers where it was last left across sessions.
+const STORAGE_KEY = 'feedbackWidget:v2'
+const EDGE_GAP = 8 // keep this many px between the panel and the viewport edge
+
 function encodeScreenshot(source, width, height) {
   const scale = Math.min(1, MAX_SCREENSHOT_DIM / Math.max(width, height))
   const canvas = document.createElement('canvas')
@@ -21,10 +28,19 @@ function encodeScreenshot(source, width, height) {
   return canvas.toDataURL('image/jpeg', SCREENSHOT_JPEG_QUALITY)
 }
 
+function loadPersisted() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    return { pos: s.pos ?? null, minimized: !!s.minimized }
+  } catch {
+    return { pos: null, minimized: false }
+  }
+}
+
 // anchor='floating' (default) keeps the legacy fixed bottom-right FAB.
 // anchor='sidebar' renders an inline trigger meant to sit in the sidebar's
-// bottom rail, with the panel opening upward next to it instead of floating
-// over page content.
+// bottom rail. In both modes the panel itself floats free (position: fixed)
+// so it can be dragged anywhere and never gets trapped over page content.
 export function FeedbackWidget({ anchor = 'floating', collapsed = false }) {
   const { user } = useUser()
   const { workspace: ws } = useWorkspaceState()
@@ -34,7 +50,70 @@ export function FeedbackWidget({ anchor = 'floating', collapsed = false }) {
   const [screenshot, setScreenshot] = useState(null) // data URL
   const [status,     setStatus]     = useState('idle') // idle | capturing | submitting | done | error
 
+  const [pos,       setPos]       = useState(() => loadPersisted().pos)       // {left, top} in viewport px, or null → default corner
+  const [minimized, setMinimized] = useState(() => loadPersisted().minimized)
+
   const fileInputRef = useRef(null)
+  const movableRef   = useRef(null)   // the mounted panel or pill element, for size-aware clamping
+  const dragCleanup  = useRef(null)   // tears down an in-flight drag's window listeners
+  const movedRef     = useRef(false)  // true when the last pointer gesture was a drag, so the pill's click can ignore it
+
+  const capturing = status === 'capturing'
+
+  // ── persist position + minimized state ───────────────────────────────────────
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ pos, minimized })) } catch { /* private mode */ }
+  }, [pos, minimized])
+
+  // ── dragging (shared by the panel header and the minimized pill) ──────────────
+  const clampToViewport = useCallback((left, top, el) => {
+    const w = el?.offsetWidth  ?? 320
+    const h = el?.offsetHeight ?? 200
+    const maxLeft = window.innerWidth  - w - EDGE_GAP
+    const maxTop  = window.innerHeight - h - EDGE_GAP
+    return {
+      left: Math.round(Math.max(EDGE_GAP, Math.min(left, Math.max(EDGE_GAP, maxLeft)))),
+      top:  Math.round(Math.max(EDGE_GAP, Math.min(top,  Math.max(EDGE_GAP, maxTop)))),
+    }
+  }, [])
+
+  const onDragStart = useCallback((e) => {
+    // Let real controls (minimize / close) work without starting a drag.
+    if (e.target.closest('[data-fb-nodrag]')) return
+    const el = e.target.closest('[data-fb-movable]')
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const startX = e.clientX, startY = e.clientY
+    const baseLeft = rect.left, baseTop = rect.top
+    movedRef.current = false
+
+    const move = (ev) => {
+      const dx = ev.clientX - startX
+      const dy = ev.clientY - startY
+      if (Math.abs(dx) + Math.abs(dy) > 3) movedRef.current = true
+      setPos(clampToViewport(baseLeft + dx, baseTop + dy, el))
+    }
+    const end = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', end)
+      dragCleanup.current = null
+    }
+    dragCleanup.current = end
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', end)
+    e.preventDefault()
+  }, [clampToViewport])
+
+  // Tear down an in-flight drag if the widget unmounts mid-gesture.
+  useEffect(() => () => { dragCleanup.current?.() }, [])
+
+  // Keep the panel on-screen if the window shrinks under it.
+  useEffect(() => {
+    if (!pos) return
+    const onResize = () => setPos((p) => (p ? clampToViewport(p.left, p.top, movableRef.current) : p))
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [pos, clampToViewport])
 
   // ── screen capture ──────────────────────────────────────────────────────────
   const captureScreen = useCallback(async () => {
@@ -42,7 +121,12 @@ export function FeedbackWidget({ anchor = 'floating', collapsed = false }) {
       fileInputRef.current?.click()
       return
     }
+    // Hide the panel first so it isn't baked into the very screenshot the
+    // user is trying to take. `status === 'capturing'` drives the opacity,
+    // and awaiting a couple of frames guarantees the hide has painted before
+    // we grab. (getDisplayMedia's own prompt gives plenty more slack.)
     setStatus('capturing')
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, preferCurrentTab: true })
       const track  = stream.getVideoTracks()[0]
@@ -103,12 +187,24 @@ export function FeedbackWidget({ anchor = 'floating', collapsed = false }) {
   const close = useCallback(() => {
     if (status === 'submitting') return
     setOpen(false)
+    setMinimized(false)
     setMessage('')
     setScreenshot(null)
     setStatus('idle')
   }, [status])
 
+  const restore = useCallback(() => {
+    // A drag that ended on the pill shouldn't also count as a click-to-open.
+    if (movedRef.current) { movedRef.current = false; return }
+    setMinimized(false)
+  }, [])
+
   const sidebar = anchor === 'sidebar'
+
+  // Explicit position once dragged; otherwise fall back to the default corner.
+  const movableStyle  = pos ? { left: pos.left, top: pos.top, right: 'auto', bottom: 'auto' } : undefined
+  const cornerClass   = pos ? '' : 'bottom-5 right-5'
+  const captureHidden = capturing ? 'opacity-0 pointer-events-none' : ''
 
   return (
     <div className={sidebar ? 'relative' : undefined}>
@@ -141,15 +237,54 @@ export function FeedbackWidget({ anchor = 'floating', collapsed = false }) {
         </button>
       )}
 
+      {/* Minimized pill — draggable; click (without dragging) reopens */}
+      {open && minimized && (
+        <button
+          type="button"
+          ref={movableRef}
+          data-fb-movable
+          onPointerDown={onDragStart}
+          onClick={restore}
+          style={movableStyle}
+          aria-label="Reopen feedback"
+          className={`fixed ${cornerClass} z-50 flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-2xl transition-opacity hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${captureHidden}`}
+        >
+          <GripVertical className="h-4 w-4 opacity-70" aria-hidden="true" />
+          Feedback
+        </button>
+      )}
+
       {/* Panel */}
-      {open && (
-        <div className={sidebar
-          ? 'absolute bottom-0 left-full ml-2 z-50 w-80 rounded-xl border border-border bg-background shadow-2xl'
-          : 'fixed bottom-20 right-5 z-50 w-80 rounded-xl border border-border bg-background shadow-2xl'}>
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <span className="text-sm font-semibold">Send feedback</span>
-            <button onClick={close} aria-label="Close feedback" className="text-muted-foreground hover:text-foreground">
+      {open && !minimized && (
+        <div
+          ref={movableRef}
+          data-fb-movable
+          style={movableStyle}
+          className={`fixed ${cornerClass} z-50 w-80 rounded-xl border border-border bg-background shadow-2xl transition-opacity ${captureHidden}`}
+        >
+          {/* Header — drag handle */}
+          <div
+            onPointerDown={onDragStart}
+            className="flex items-center gap-1.5 border-b border-border px-2 py-2.5 cursor-grab active:cursor-grabbing select-none"
+          >
+            <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/60" aria-hidden="true" />
+            <span className="flex-1 text-sm font-semibold">Send feedback</span>
+            <button
+              type="button"
+              data-fb-nodrag
+              onClick={() => setMinimized(true)}
+              aria-label="Minimize feedback"
+              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <Minus className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              data-fb-nodrag
+              onClick={close}
+              aria-label="Close feedback"
+              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
