@@ -117,7 +117,7 @@ async function handler(req, res) {
         const prompts = getBriefChannelPrompt(brief_, platform, ws)
         if (!prompts) return null // unsupported platform — skip silently
         const { text } = await generateText({
-          model:    'anthropic/claude-haiku-4-5-20251001',
+          model:    'anthropic/claude-haiku-4-5',
           instructions:   prompts.instructions,
           messages: [{ role: 'user', content: prompts.user }],
           maxOutputTokens: 600,
