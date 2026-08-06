@@ -183,6 +183,18 @@ export function useApplePerformance() {
   })
 }
 
+// Connected publish/analytics credentials (GET /api/workspace/credentials,
+// admin-only — 403s for non-admins, so this tolerantly resolves to `null`
+// rather than throwing). Powers per-service "connected" cards outside
+// Settings → Integrations, e.g. GoogleBusinessAnalyticsCard on Insights.
+export function useWorkspaceCredentials() {
+  return useQuery({
+    queryKey: ['workspace-credentials'],
+    queryFn: () => apiFetch('/api/workspace/credentials').catch(() => null),
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
 // Workspace weekly-recap aggregate (team all-time/streak + cost usage units).
 // Powers the Overview "This week" recap. Editor-only surface, so this is only
 // mounted there. Tolerant default so a transient failure doesn't blank the page.

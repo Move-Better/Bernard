@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link, Navigate } from 'react-router-dom'
 import {
   Sparkles, MessageSquareText, TrendingUp, CalendarClock, Activity,
@@ -12,12 +13,13 @@ import {
   useStories, useTopPerformers, useWorkspaceRecap, useTopicSuggestions,
   useWebsiteHealth, useWebsiteGA4, useSearchQueries, useGbpPerformance,
   useApplePerformance, useSocialByPeriod, useWebsiteByPeriod, useSearchByPeriod,
-  useInsightsSeries,
+  useInsightsSeries, useWorkspaceCredentials,
 } from '@/lib/queries'
 import TrendStrip from '@/components/insights/TrendStrip'
 import LearningPanel from '@/components/producer/LearningPanel'
 import CheckInCard from '@/components/producer/CheckInCard'
 import AppleBusinessInsightsCard from '@/components/AppleBusinessInsightsCard'
+import GoogleBusinessAnalyticsCard from '@/components/GoogleBusinessAnalyticsCard'
 import { useUserRole } from '@/lib/useUserRole'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { deriveInsights } from '@/lib/insightsReads'
@@ -434,13 +436,27 @@ function LocationStatRow({ loc, fmtN }) {
   )
 }
 
-function GbpPerformanceRead({ data }) {
+function GbpPerformanceRead({ data, disabled }) {
+  const qc = useQueryClient()
+  const { data: creds } = useWorkspaceCredentials()
+  const gbpRow = creds?.services?.find?.((s) => s.service === 'gbp_analytics') || null
+  const reloadCreds = () => qc.invalidateQueries({ queryKey: ['workspace-credentials'] })
+
   if (!data?.connected) {
     return (
-      <PendingRead icon={MapPin} badge="Unlocks when Google Business Profile connects">
-        <span className="font-semibold text-foreground">Coming:</span>{' '}
-        how many people find your listing on Maps and Search, request directions, or call — across all your locations.
-      </PendingRead>
+      <div className="space-y-3">
+        <PendingRead icon={MapPin} badge="Unlocks when Google Business Profile connects">
+          <span className="font-semibold text-foreground">Coming:</span>{' '}
+          how many people find your listing on Maps and Search, request directions, or call — across all your locations.
+        </PendingRead>
+        <GoogleBusinessAnalyticsCard
+          row={gbpRow}
+          disabled={disabled}
+          connectedHint={data?.connected}
+          onChange={reloadCreds}
+          defaultOpen
+        />
+      </div>
     )
   }
   if (data.error) {
@@ -456,7 +472,8 @@ function GbpPerformanceRead({ data }) {
   const multiLoc = locations.length > 1
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-border bg-card p-5">
       <div className="flex items-start gap-3">
         <div className="h-9 w-9 rounded-full bg-info/10 flex items-center justify-center shrink-0">
           <MapPin className="h-4 w-4 text-info" />
@@ -497,6 +514,14 @@ function GbpPerformanceRead({ data }) {
           )}
         </div>
       </div>
+      </div>
+
+      <GoogleBusinessAnalyticsCard
+        row={gbpRow}
+        disabled={disabled}
+        connectedHint={data?.connected}
+        onChange={reloadCreds}
+      />
     </div>
   )
 }
@@ -1358,7 +1383,7 @@ export default function Analytics() {
       {activeTab === 'gbp' && (
         <div>
           <ChannelNotScopedNotice>Rolling last 30 days — not yet scoped to a specific week.</ChannelNotScopedNotice>
-          <GbpPerformanceRead data={gbpData} />
+          <GbpPerformanceRead data={gbpData} disabled={role !== 'admin'} />
         </div>
       )}
 
