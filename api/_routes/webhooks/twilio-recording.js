@@ -102,7 +102,7 @@ export default async function handler(req, res) {
 
 async function processRecording({ iv, recordingUrl, authToken }) {
   // 1. Load the interview (+status for the idempotency guard below).
-  const ivRes = await sb(`interviews?id=eq.${encodeURIComponent(iv)}&select=id,workspace_id,staff_id,topic,created_at,status&limit=1`)
+  const ivRes = await sb(`interviews?id=eq.${encodeURIComponent(iv)}&select=id,workspace_id,staff_id,topic,kind,created_at,status&limit=1`)
   const interview = ivRes.ok ? (await ivRes.json())[0] : null
   if (!interview) throw new Error('interview_not_found')
   const wsId = interview.workspace_id
@@ -172,7 +172,7 @@ async function runCascade({ iv, recordingUrl, authToken, interview, wsId }) {
   }
 
   // 3. Generate outputs (browserless), same builders as the in-app interview.
-  const outputs = await generateOutputsFromTranscript({ workspace, staff, topic: interview.topic, messages })
+  const outputs = await generateOutputsFromTranscript({ workspace, staff, topic: interview.topic, messages, isPoint: interview.kind === 'point' })
 
   // 3b. Auto-title the story from the conversation. The trigger seeds a generic
   // placeholder ("Your weekly call"); replace it with a full-date + derived-topic

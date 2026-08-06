@@ -1,5 +1,6 @@
 import { getLengthPreset, DEFAULT_LENGTH_PRESET } from './lengthPresets.js'
 import { buildTacticLibraryBlock } from './interviewTactics.js'
+import { pointContentFraming } from './pointContentFraming.js'
 
 // All paradigm content (tone modifiers, interview/PNW context, patient
 // prototypes, topic suggestions) is now stored per-workspace in JSONB
@@ -638,9 +639,9 @@ ${isFirstMessage ? 'Introduce yourself briefly, then ask your first question.' :
 // drift between the copies. Written without an em-dash itself.
 const NO_EM_DASH_RULE = 'No em-dashes or spaced hyphens as connectors between clauses. They are a strong AI tell. Use a comma, a colon, or a new sentence instead.'
 
-export function getBlogPostSystemPrompt(workspace, staffName, condition, tone = 'smart', voiceMode = 'practice', prototypeId = null, voiceNotes = '', voicePhrases = [], audienceSlot = null, storyTypeSlot = null, lengthPreset = null, ownHistoryBlock = '') {
+export function getBlogPostSystemPrompt(workspace, staffName, condition, tone = 'smart', voiceMode = 'practice', prototypeId = null, voiceNotes = '', voicePhrases = [], audienceSlot = null, storyTypeSlot = null, lengthPreset = null, ownHistoryBlock = '', isPoint = false) {
   if (isGeneralMode(workspace)) {
-    return getGeneralBlogPostSystemPrompt(workspace, staffName, condition, tone, voiceMode, voiceNotes, voicePhrases, audienceSlot, storyTypeSlot, lengthPreset, ownHistoryBlock)
+    return getGeneralBlogPostSystemPrompt(workspace, staffName, condition, tone, voiceMode, voiceNotes, voicePhrases, audienceSlot, storyTypeSlot, lengthPreset, ownHistoryBlock, isPoint)
   }
   void audienceSlot; void storyTypeSlot; void tone
   const isPersonal = voiceMode === 'personal'
@@ -688,7 +689,7 @@ HEADLINE: write one compelling, specific headline that front-loads the primary t
 
 FORMAT: Markdown. The first line is the headline as a single "# " heading — that is the ONLY single-"#" (h1) line allowed. Every section heading in the body uses "## " (and "### " for subsections); never start another line with a single "# ". Use headings only where the content actually shifts thread. No fixed section count.
 
-${resolveBlogLengthLine(lengthPreset, 'TARGET LENGTH: 700–950 words, but voice fidelity beats length. If the interview only has 500 words of real material, write 500. Never pad.')}${PROVENANCE_INSTRUCTION}`
+${resolveBlogLengthLine(lengthPreset, 'TARGET LENGTH: 700–950 words, but voice fidelity beats length. If the interview only has 500 words of real material, write 500. Never pad.')}${PROVENANCE_INSTRUCTION}${pointContentFraming({ isPoint, format: 'long' })}`
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -730,7 +731,7 @@ Gather exactly what this newsletter needs: who or what to feature, the specific 
 `
 }
 
-export function getNewsletterSystemPrompt(workspace, staffName, condition, voiceMode = 'practice', voiceNotes = '', voicePhrases = [], campaign = null, ownHistoryBlock = '') {
+export function getNewsletterSystemPrompt(workspace, staffName, condition, voiceMode = 'practice', voiceNotes = '', voicePhrases = [], campaign = null, ownHistoryBlock = '', isPoint = false) {
   const isPersonal = voiceMode === 'personal'
   const goalName  = campaign?.name || condition
   const goalAbout = (campaign?.theme_notes || campaign?.description || '').trim()
@@ -792,7 +793,7 @@ ${ctaUrl || '#'}
 ---PS---
 A short, warm postscript in ${staffName}'s voice, the kind of line they'd actually add at the end.
 
-Keep it tight. This is an email, not an essay. Voice fidelity beats length.`
+Keep it tight. This is an email, not an essay. Voice fidelity beats length.${pointContentFraming({ isPoint, format: 'long' })}`
 }
 
 /**
@@ -1095,7 +1096,7 @@ ${isFirstMessage ? 'Introduce yourself briefly, then ask your first question.' :
 
 // Voice-fidelity rewrite (2026-05-28): see notes on getBlogPostSystemPrompt
 // above. audienceSlot, storyTypeSlot, and tone are accepted but ignored.
-function getGeneralBlogPostSystemPrompt(workspace, expertName, topic, tone, voiceMode, voiceNotes, voicePhrases, audienceSlot, storyTypeSlot, lengthPreset = null, ownHistoryBlock = '') {
+function getGeneralBlogPostSystemPrompt(workspace, expertName, topic, tone, voiceMode, voiceNotes, voicePhrases, audienceSlot, storyTypeSlot, lengthPreset = null, ownHistoryBlock = '', isPoint = false) {
   void audienceSlot; void storyTypeSlot; void tone
   const isPersonal = voiceMode === 'personal'
   const internalLinks = workspace?.internal_links_markdown
@@ -1132,7 +1133,7 @@ HEADLINE: one compelling, specific headline that front-loads the primary topic/k
 
 FORMAT: Markdown. The first line is the headline as a single "# " heading — that is the ONLY single-"#" (h1) line allowed. Every section heading in the body uses "## " (and "### " for subsections); never start another line with a single "# ". Use headings only where the content actually shifts thread. No fixed section count.
 
-${resolveBlogLengthLine(lengthPreset, 'TARGET LENGTH: 900–1200 words, but voice fidelity beats length. If the interview only has 600 words of real material, write 600. Never pad.')}${PROVENANCE_INSTRUCTION}`
+${resolveBlogLengthLine(lengthPreset, 'TARGET LENGTH: 900–1200 words, but voice fidelity beats length. If the interview only has 600 words of real material, write 600. Never pad.')}${PROVENANCE_INSTRUCTION}${pointContentFraming({ isPoint, format: 'long' })}`
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

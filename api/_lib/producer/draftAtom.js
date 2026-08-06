@@ -321,6 +321,7 @@ export async function draftAtom({ ws, atom, interview }) {
     hasPublishedArticle,
     siblingBlock,
     modelExemplarsBlock,
+    interview.kind === 'point',
   )
   if (!systemPrompt) throw new Error(`No prompt defined for ${atom.platform}/${atom.angle}`)
 
@@ -589,6 +590,7 @@ export async function buildGbpLocationVariants({ ws, atom, interview, staffName,
           false,
           siblingBlock,
           modelExemplarsBlock,
+          interview.kind === 'point',
         )
         if (!locPrompt) return null
         const { text: locText } = await generateText({
