@@ -7,6 +7,7 @@ export const config = { runtime: 'nodejs' }
 import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
+import { shapeUsagePlatforms } from '../../_lib/mediaUsageShape.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -148,7 +149,7 @@ async function handler(req, res) {
 // returned; a failure degrades to zeros rather than failing the list, since
 // a missing badge is far better than an empty library.
 async function withUsage(rows, scope) {
-  const zero = { total: 0, published: 0, lastUsedAt: null }
+  const zero = { total: 0, published: 0, lastUsedAt: null, platforms: [] }
   if (!Array.isArray(rows) || rows.length === 0) return rows
 
   const ids = rows.map((a) => a.id).filter(Boolean)
@@ -157,7 +158,7 @@ async function withUsage(rows, scope) {
   const byId = new Map()
   try {
     const uRes = await sb(
-      `media_asset_usage?select=asset_id,use_count,published_count,last_used_at` +
+      `media_asset_usage?select=asset_id,use_count,published_count,last_used_at,published_platforms` +
       `&${scope.column}=eq.${scope.id}` +
       `&asset_id=in.(${ids.map(encodeURIComponent).join(',')})`
     )
@@ -167,6 +168,7 @@ async function withUsage(rows, scope) {
           total:      u.use_count || 0,
           published:  u.published_count || 0,
           lastUsedAt: u.last_used_at || null,
+          platforms:  shapeUsagePlatforms(u.published_platforms),
         })
       }
     } else {

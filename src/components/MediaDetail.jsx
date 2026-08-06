@@ -44,9 +44,43 @@ import { useConfirm } from '@/lib/useConfirm'
 // `usage` is absent when the server-side lookup degraded, which is NOT the same
 // as zero uses — showing "not used yet" there would be a confident lie, so we
 // render nothing at all in that case.
+//
+// Feedback bdae4d9d (Philip): "which platform" + "only published count, not
+// drafts." The post list already carried platform + status per row — this
+// adds a glanceable platform-published summary above it, derived client-side
+// from usage.posts[] (no API change needed, unlike the picker badge, which
+// needed the media_asset_usage view's new published_platforms column since a
+// thumbnail-sized chip has no per-post list to derive from). Published rows
+// sort first and stay full-strength; drafts/rejected stay visible below,
+// dimmed rather than hidden — still useful context, just not the same claim.
 function MediaUsageSection({ usage }) {
   if (!usage) return null
   const posts = Array.isArray(usage.posts) ? usage.posts : []
+  const published = posts.filter((p) => p.status === 'published')
+  const sortedPosts = [...posts].sort(
+    (a, b) => (b.status === 'published' ? 1 : 0) - (a.status === 'published' ? 1 : 0),
+  )
+
+  const platformCounts = new Map()
+  for (const p of published) {
+    platformCounts.set(p.platform, (platformCounts.get(p.platform) || 0) + 1)
+  }
+  const platforms = [...platformCounts.entries()]
+    .map(([platform, count]) => ({ platform, count, label: PLATFORM_META[platform]?.label || platform }))
+    .sort((a, b) => b.count - a.count)
+
+  const drafts = posts.length - published.length
+  let subline = 'Not used in any post yet — this one is fresh.'
+  if (posts.length > 0) {
+    if (published.length === 0) {
+      subline = 'None published yet.'
+    } else if (drafts === 0) {
+      subline = 'Published everywhere it’s been used.'
+    } else {
+      const platformCount = platforms.length === 1 ? '1 platform' : `${platforms.length} platforms`
+      subline = `Published on ${platformCount} · ${drafts} more still in draft, below.`
+    }
+  }
 
   return (
     <div className="rounded-md border p-3 space-y-2">
@@ -60,39 +94,47 @@ function MediaUsageSection({ usage }) {
         </Badge>
       </div>
 
-      {posts.length === 0 ? (
-        <p className="text-2xs text-muted-foreground">
-          Not used in any post yet — this one is fresh.
-        </p>
-      ) : (
-        <>
-          <p className="text-2xs text-muted-foreground">
-            {usage.published > 0
-              ? `${usage.published} of these ${usage.published === 1 ? 'has' : 'have'} already been published.`
-              : 'None published yet.'}
-          </p>
-          <ul className="space-y-1">
-            {posts.map((p) => {
-              const platform = PLATFORM_META[p.platform] || { label: p.platform || 'Post' }
-              const status   = statusMetaFor(p)
-              const when     = p.published_at || p.created_at
-              return (
-                <li key={p.id}>
-                  <Link
-                    to={`/publish/${p.id}`}
-                    className="flex items-center gap-2 rounded px-1.5 py-1 -mx-1.5 hover:bg-accent/50 transition-colors"
-                  >
-                    <span className="text-2xs font-medium text-foreground shrink-0">{platform.label}</span>
-                    <span className={`text-3xs px-1.5 py-0.5 rounded shrink-0 ${status.color}`}>{status.label}</span>
-                    <span className="text-3xs text-muted-foreground truncate">
-                      {p.topic || (when ? new Date(when).toLocaleDateString() : '')}
-                    </span>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        </>
+      {platforms.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {platforms.map((p) => (
+            <span
+              key={p.platform}
+              className="inline-flex items-center gap-1 text-2xs font-medium pl-2 pr-1 py-0.5 rounded-full bg-success/10 text-success border border-success/25"
+            >
+              {p.label}
+              {p.count > 1 && (
+                <span className="text-3xs bg-success text-white rounded-full px-1.5 leading-4">{p.count}</span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <p className="text-2xs text-muted-foreground">{subline}</p>
+
+      {posts.length > 0 && (
+        <ul className="space-y-1">
+          {sortedPosts.map((p) => {
+            const platform = PLATFORM_META[p.platform] || { label: p.platform || 'Post' }
+            const status   = statusMetaFor(p)
+            const when     = p.published_at || p.created_at
+            const isPublished = p.status === 'published'
+            return (
+              <li key={p.id} className={isPublished ? '' : 'opacity-55'}>
+                <Link
+                  to={`/publish/${p.id}`}
+                  className="flex items-center gap-2 rounded px-1.5 py-1 -mx-1.5 hover:bg-accent/50 transition-colors"
+                >
+                  <span className="text-2xs font-medium text-foreground shrink-0">{platform.label}</span>
+                  <span className={`text-3xs px-1.5 py-0.5 rounded shrink-0 ${status.color}`}>{status.label}</span>
+                  <span className="text-3xs text-muted-foreground truncate">
+                    {p.topic || (when ? new Date(when).toLocaleDateString() : '')}
+                  </span>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
       )}
     </div>
   )

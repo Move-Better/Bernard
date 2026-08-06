@@ -117,6 +117,11 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
               thumbnail_url: c.thumbnailUrl,
               blob_url:      c.blobUrl,
               duration_s:    c.durationS,
+              // searchClips already attaches this (see clipSearch.js) — it was
+              // being built and then silently dropped here, so a photo found by
+              // semantic search rendered no reuse badge at all regardless of how
+              // many times it had actually been used. Feedback bdae4d9d.
+              usage:         c.usage,
             }))
         } catch {
           // embeddings unavailable — plain text search still works
