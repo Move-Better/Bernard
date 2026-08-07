@@ -111,6 +111,15 @@ export function formatChoicesFor(piece) {
   })
 }
 
+// Human platform names for the full-sentence violation copy below. Kept local
+// (not imported from contentMeta.js) so this module stays lean and serverless-
+// safe — it's cross-imported by api/_lib/social/bundlePublisher.js.
+const PLATFORM_LABELS = {
+  instagram: 'Instagram',
+  instagram_story: 'Instagram Story',
+  facebook: 'Facebook',
+}
+
 // Validate a media_urls array against an explicit format choice. Returns
 // { ok: true } or { ok: false, reason } with a stable machine key — callers
 // turn reasons into UI copy (picker disable hints) or publishError keys.
@@ -133,4 +142,73 @@ export function validateFormatMedia(platform, format, mediaUrls) {
   if (entries.length < rule.min) return { ok: false, reason: 'too_few_items' }
   if (entries.length > rule.max) return { ok: false, reason: 'too_many_items' }
   return { ok: true }
+}
+
+// Noun for a media count, so the sentence reads "6 photos" / "2 videos" /
+// "3 items" rather than a bare "items".
+function mediaNoun(images, videos, n) {
+  if (videos === 0) return n === 1 ? 'photo' : 'photos'
+  if (images === 0) return n === 1 ? 'video' : 'videos'
+  return n === 1 ? 'item' : 'items'
+}
+
+/**
+ * A full, human-readable explanation of why the CURRENT media can't publish
+ * under the chosen format — plus which format WOULD accept it — or null when
+ * the combination is valid (or the platform has no format choice at all).
+ *
+ * Single source of truth so the publish-blocked hint (client, before the
+ * round-trip) and the 400 passthrough (server, in api/_routes/publish/social.js)
+ * say the SAME thing. The recurring publish-path-divergence bug class is why the
+ * copy lives here once rather than being re-authored on each surface.
+ *
+ * @param {string} platform
+ * @param {string|null|undefined} format explicit content_items.format
+ * @param {unknown} mediaUrls the piece's media_urls array
+ * @returns {{reason:string, message:string}|null}
+ */
+export function describeFormatViolation(platform, format, mediaUrls) {
+  // No explicit format, or a platform with no format registry at all: 'format'
+  // is a no-op field there (legacy derived behaviour), so there's nothing to
+  // validate and nothing to block. Guards non-registry platforms (linkedin,
+  // gbp, …) from a spurious 'format_not_supported' block.
+  if (!format || formatOptions(platform).length === 0) return null
+  const check = validateFormatMedia(platform, format, mediaUrls)
+  if (check.ok) return null
+
+  const rule = formatMediaRule(platform, format) || {}
+  const entries = Array.isArray(mediaUrls) ? mediaUrls.filter((m) => m && m.url) : []
+  const n = entries.length
+  const videos = entries.filter(isVideoEntry).length
+  const noun = mediaNoun(n - videos, videos, n)
+  const pLabel = PLATFORM_LABELS[platform] || platform
+  const fLabel = FORMAT_LABELS[format] || format
+
+  // Suggest the first OTHER format on this platform the current media satisfies.
+  const alt = formatOptions(platform).find(
+    (id) => id !== format && validateFormatMedia(platform, id, mediaUrls).ok,
+  )
+  const suggestion = alt ? ` Switch the format to ${FORMAT_LABELS[alt] || alt} to publish ${n > 1 ? 'them all' : 'it'}.` : ''
+
+  let why
+  switch (check.reason) {
+    case 'too_many_items':
+      why = `has ${n} ${noun}, but a ${fLabel} fits ${rule.max === 1 ? 'just 1' : `at most ${rule.max}`}`
+      break
+    case 'too_few_items':
+      why = `has ${n} ${noun}, but a ${fLabel} needs at least ${rule.min}`
+      break
+    case 'video_not_allowed':
+      why = `includes a video, which a ${fLabel} can’t carry`
+      break
+    case 'image_not_allowed':
+      why = `includes a photo, which a ${fLabel} can’t carry`
+      break
+    case 'mixed_not_allowed':
+      why = `mixes photos and video, which a ${fLabel} can’t combine`
+      break
+    default: // format_not_supported
+      why = `can’t publish as a ${fLabel}`
+  }
+  return { reason: check.reason, message: `This ${pLabel} post ${why}.${suggestion}` }
 }

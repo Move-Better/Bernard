@@ -16,6 +16,7 @@ import { suggestScheduleTime } from '@/lib/scheduleHeuristics'
 import { buildImagesManifest } from '@/lib/publishImageMirror'
 import { slugifyTitle, deriveSeoTitle, deriveMetaDescription, cleanBlogMarkdown } from '@/lib/blogOutput'
 import { canDirectPublishPlatform } from '@/lib/outputChannels'
+import { describeFormatViolation } from '@/lib/platformFormats'
 import { toast, runWithToast } from '@/lib/toast'
 
 // Pull scheduled cross-platform items out of the React Query cache — free when
@@ -87,6 +88,19 @@ export function useContentWorkflow(piece) {
     workspace?.connected_publish_services,
   )
 
+  // Explicit format vs. attached media, checked before the publish round-trip.
+  // An Instagram "Post" with 6 photos, a Facebook album mixing photo + video,
+  // etc. would be rejected server-side (bundle validates format BEFORE upload) —
+  // so block it here with an actionable reason instead of letting it fail out.
+  // null (valid) whenever the piece has no explicit format or the platform has
+  // no format choice at all, so nothing else is affected.
+  const formatViolation = useMemo(
+    () => describeFormatViolation(piece.platform, piece.format, piece.media_urls),
+    [piece.platform, piece.format, piece.media_urls],
+  )
+  const formatValid = !formatViolation
+  const formatBlockReason = formatViolation?.message || null
+
   const sendForReview = async () => {
     try {
       await updateStatus.mutateAsync({ id: piece.id, status: 'in_review', reviewedBy: userEmail })
@@ -157,6 +171,15 @@ export function useContentWorkflow(piece) {
   //   {}                    — publish immediately (shareNow)
   // Blog publishes ignore both args and go to the website webhook synchronously.
   const publish = async ({ scheduledAt: scheduledDate, useQueue, bypassMediaCheck } = {}) => {
+    // Hard format gate (block): an explicit format the attached media can't
+    // satisfy would be rejected server-side after a round-trip. Stop here with
+    // the reason + the fix (usually "switch to Carousel"). Covers every publish
+    // surface — editor bar, publish panel, and the failed-piece Retry button —
+    // since they all funnel through this one hook.
+    if (formatViolation) {
+      toast.error('Can’t publish yet', { description: formatViolation.message })
+      return
+    }
     // Soft media gate (warn, don't block): a draft with no photo/video can still
     // ship — but media usually helps. Warn once with an override; "Add media"
     // routes to Storyboard. A confirmed publish re-runs with bypassMediaCheck.
@@ -241,7 +264,10 @@ export function useContentWorkflow(piece) {
             success: usingQueue ? 'Added to queue'
               : effectiveScheduledAt ? 'Scheduled'
               : '🎉 It’s live! Your story is out in the world.',
-            error: (e) => ({ message: 'Publish failed', description: e.message }),
+            // Prefer the server's human `message` (e.g. the format-mismatch
+            // explanation) over the raw machine `error` key that ApiError.message
+            // otherwise surfaces (extractMessage favours payload.error).
+            error: (e) => ({ message: 'Publish failed', description: e.payload?.message || e.message }),
           },
         )
         // The publish route already committed status + scheduled_at (and the
@@ -356,6 +382,11 @@ export function useContentWorkflow(piece) {
     prefsOverride,
     userEmail,
     canDirectPublish,
+    // Whether the piece's explicit format fits its media. false → publish is
+    // blocked; formatBlockReason is the human explanation + fix. true for pieces
+    // with no explicit format (nothing to gate).
+    formatValid,
+    formatBlockReason,
     skipReview,
     canReview,
   }

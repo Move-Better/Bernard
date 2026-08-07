@@ -79,17 +79,25 @@ function PublishControl({ wf, piece, enabled }) {
   }
 
   const slotLabel = wf.suggested ? formatSlot(wf.suggested) : null
+  // The piece's explicit format can't carry its media (e.g. an Instagram Post
+  // with 6 photos) — the server would reject it, so block publishing here and
+  // say why. wf.formatValid is true for pieces with no explicit format.
+  const formatBlocked = !wf.formatValid
+  const publishEnabled = enabled && !formatBlocked
+  const scheduleTitle = formatBlocked
+    ? wf.formatBlockReason
+    : enabled ? (slotLabel ? `Schedule for ${slotLabel}` : 'Schedule') : 'Approve first'
 
   return (
     <div className="relative inline-flex">
       <div className="inline-flex items-stretch">
         <Button
           size="sm"
-          disabled={!enabled || busy}
+          disabled={!publishEnabled || busy}
           loading={busy}
           onClick={() => wf.publish({ scheduledAt: wf.suggested })}
           className="rounded-r-none bg-action text-action-foreground hover:bg-action/90"
-          title={enabled ? (slotLabel ? `Schedule for ${slotLabel}` : 'Schedule') : 'Approve first'}
+          title={scheduleTitle}
         >
           {!busy && <CalendarClock className="mr-1.5 h-3.5 w-3.5" />}
           Schedule
@@ -97,7 +105,7 @@ function PublishControl({ wf, piece, enabled }) {
         </Button>
         <button
           type="button"
-          disabled={!enabled || busy}
+          disabled={!publishEnabled || busy}
           onClick={() => setMenuOpen((v) => !v)}
           aria-label="Publish options"
           className="inline-flex items-center rounded-r-md border-l border-black/15 bg-action px-1.5 text-action-foreground hover:bg-action/90 disabled:pointer-events-none disabled:opacity-50"
@@ -106,7 +114,7 @@ function PublishControl({ wf, piece, enabled }) {
         </button>
       </div>
 
-      {menuOpen && enabled && (
+      {menuOpen && publishEnabled && (
         <>
           <button
             type="button"

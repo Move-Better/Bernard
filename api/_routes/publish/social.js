@@ -18,7 +18,7 @@ import { resolveBundleGbpTargets } from '../../_lib/social/gbpTargets.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
 import { clampToCap, platformCap } from '../../_lib/socialLengthTargets.js'
-import { FORMAT_IDS } from '../../../src/lib/platformFormats.js'
+import { FORMAT_IDS, describeFormatViolation } from '../../../src/lib/platformFormats.js'
 
 // GBP's hard character ceiling, resolved from the single source of truth.
 const GBP_CAP = platformCap('gbp')
@@ -109,6 +109,21 @@ export async function runBundlePublish(workspace, { platform, content, mediaUrls
       },
     }
   } catch (e) {
+    // A format/media mismatch (e.g. an Instagram "Post" carrying 6 photos) is a
+    // deterministic 400 validation failure raised by BundlePublisher.publish
+    // BEFORE any media upload — not an opaque provider outage. Surface the real,
+    // actionable reason + human copy instead of flattening it to
+    // bundle_post_failed/502, which read to the producer as "just broken".
+    if (e?.status === 400 && typeof e?.message === 'string' && e.message.startsWith('format_')) {
+      const v = describeFormatViolation(platform, format, mediaUrls)
+      return {
+        status: 400,
+        body: {
+          error: v?.reason || e.message.slice('format_'.length),
+          message: v?.message || 'This post’s format doesn’t fit the attached media.',
+        },
+      }
+    }
     console.error('[publish/bundle] failed:', e?.stack || e?.message, e?.body ? JSON.stringify(e.body) : '')
     return { status: 502, body: { error: 'bundle_post_failed' } }
   }
