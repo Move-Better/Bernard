@@ -1422,6 +1422,23 @@ generation path or NEW capped platform must clamp too — don't rely on the prom
 `slice(0, N)` that used to be the only enforcement (shipped #2181, user feedback "caption auto
 generated over character limit").
 
+### `content_items.voice_audit` is a shared JSONB — any writer that PATCHes it must merge, not replace
+
+`voice_audit` carries fields from more than one writer: `draftAtom`'s judge output (`gate`, `rubric`,
+`red_flag`, …), the pre-draft lane's own provenance flag (`predrafted: true`, set only by
+`predraftWeek.js`), and `regradeContentItem.js`'s `producer_attempts`/`regraded_by`. Two lanes —
+`reviseContentItem.js` (change-request revisions) and `regradeContentItem.js` (held-caption
+auto-repair) — PATCH this column by building a fresh object from the judge's breakdown
+(`{ ...breakdown, gate: 'passed', … }`) rather than spreading the EXISTING row's `voice_audit` first,
+so any provenance key neither lane knows about is silently dropped. 19 of 32 real pre-drafted pieces
+on movebetter lost their `predrafted` marker this way between 07-22 and 08-07 — invisible until a
+kill-criterion metric read `content_items.voice_audit ? 'predrafted'` and came in far lower than the
+immutable `agent_actions` ledger said it should. Fixed in #2575 (both lanes now carry `predrafted`
+forward when present); historical rows were backfilled separately. Same failure class as
+`cadence_policy`'s wholesale-rebuild bug above — before adding any new `voice_audit` writer, read what
+existing writers stash there and spread the current row's value in, not just the fields your function
+computes.
+
 ## Unified editor shell (carousel + reel)
 
 Both editors — the carousel (`src/components/story-detail/SlideEditor.jsx`) and the clip/reel
