@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { getAtomSystemPrompt } from '../../api/_lib/atomPrompts.js'
-import { getBlogPostSystemPrompt, getNewsletterSystemPrompt } from '../../src/lib/prompts.js'
+import { getBlogPostSystemPrompt, getNewsletterSystemPrompt, getSeriesPartSystemPrompt, getSeriesClusterSystemPrompt } from '../../src/lib/prompts.js'
 import { pointContentFraming } from '../../src/lib/pointContentFraming.js'
 
 // Phase 2 of "Make a point" (.claude/make-a-point-spec.md): the non-diagnostic
@@ -18,6 +18,7 @@ import { pointContentFraming } from '../../src/lib/pointContentFraming.js'
 const ws = { display_name: 'Move Better', location: 'Austin, TX', brand_voice: 'warm, direct', prompt_mode: null }
 const staff = 'Dr. Quasney'
 const point = 'Six months of broken deep sleep, then two 10-minute runs fixed it.'
+const seriesCluster = { part: 1, title: 'The valley', brief: 'setup', anchor_moments: [], key_quotes: [] }
 
 describe('pointContentFraming', () => {
   it('returns empty string when not a point (every non-point caller stays untouched)', () => {
@@ -69,6 +70,16 @@ describe('point-aware content generators — byte-identical when not a point', (
     const prompt = getNewsletterSystemPrompt(ws, staff, point, 'personal', '', [], null, '')
     expect(prompt).not.toContain('POINT CONTENT')
   })
+
+  it('getSeriesPartSystemPrompt: no framing when isPoint is false', () => {
+    const prompt = getSeriesPartSystemPrompt(ws, staff, point, 'smart', 'personal', null, '', [], null, seriesCluster, [], '', '')
+    expect(prompt).not.toContain('POINT CONTENT')
+  })
+
+  it('getSeriesPartSystemPrompt (general-mode delegate): no framing when isPoint is false', () => {
+    const prompt = getSeriesPartSystemPrompt({ ...ws, prompt_mode: 'general' }, staff, point, 'smart', 'personal', null, '', [], null, seriesCluster, [], '', '')
+    expect(prompt).not.toContain('POINT CONTENT')
+  })
 })
 
 describe('point-aware content generators — framing threads through correctly', () => {
@@ -92,5 +103,22 @@ describe('point-aware content generators — framing threads through correctly',
   it('getNewsletterSystemPrompt (long) gets the framing', () => {
     const prompt = getNewsletterSystemPrompt(ws, staff, point, 'personal', '', [], null, '', true)
     expect(prompt).toContain('POINT CONTENT')
+  })
+
+  it('getSeriesPartSystemPrompt (long) gets the framing', () => {
+    const prompt = getSeriesPartSystemPrompt(ws, staff, point, 'smart', 'personal', null, '', [], null, seriesCluster, [], '', '', true)
+    expect(prompt).toContain('POINT CONTENT')
+  })
+
+  it('getSeriesPartSystemPrompt (general-mode delegate) also gets the framing', () => {
+    const prompt = getSeriesPartSystemPrompt({ ...ws, prompt_mode: 'general' }, staff, point, 'smart', 'personal', null, '', [], null, seriesCluster, [], '', '', true)
+    expect(prompt).toContain('POINT CONTENT')
+  })
+})
+
+describe('getSeriesClusterSystemPrompt — deliberately excluded from the guardrail', () => {
+  it('never contains the framing block, even for a point-sourced series (it emits JSON, no prose — see the comment on the function)', () => {
+    const prompt = getSeriesClusterSystemPrompt(ws, staff, point, 2, 'personal')
+    expect(prompt).not.toContain('POINT CONTENT')
   })
 })
