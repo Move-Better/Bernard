@@ -1265,6 +1265,21 @@ export default function YourWeek() {
     })
     .map((c) => ({ ...c, short: !isPast && c.got < (c.target * weekElapsedDays) / 7 }))
 
+  // Publish-silence chips — a different signal from the pace chips above, and
+  // deliberately kept as a separate leading chip rather than folded into the
+  // amber logic. Pace measures slots FILLED in the plan (so a channel fully
+  // scheduled for Friday reads as fine all week); this measures whether
+  // anything has actually gone out. A channel can be pace-healthy — even
+  // fully on target — and still silent, if what's scheduled hasn't published
+  // yet or the channel quietly fell out of planning altogether (see
+  // .claude/decisions.md 2026-07-22 "known limit, accepted"). Server-computed
+  // (api/_lib/producer/publishSilence.js) and only present on the current
+  // week, so no client-side date math needs to reproduce its 7-day rule.
+  const silentChips = (data?.silentChannels || []).map((c) => {
+    const meta = PLATFORM_META[c.platform] || { label: c.platform, icon: null }
+    return { ...c, label: meta.label, icon: meta.icon }
+  })
+
   // Batch schedule: fetch piece details then publishPieceToSocial for each approved piece.
   async function batchSchedule() {
     if (!approvedSchedulable.length || scheduling) return
@@ -1796,9 +1811,27 @@ export default function YourWeek() {
               channel's posts (2026-07-22 UX pain check: 3 dead clicks on the
               old counts) and still carries the scheduled/target tooltip that
               the removed explainer sentence used to spell out. */}
-          {cadenceChips.length > 0 && (
+          {(cadenceChips.length > 0 || silentChips.length > 0) && (
             <div className="flex flex-wrap items-center gap-1.5 rounded-xl border bg-card px-3 py-2">
               <span className="mr-1 text-2xs font-bold uppercase tracking-wide text-muted-foreground">Schedule</span>
+              {silentChips.map((chip) => (
+                <Tooltip key={`silent-${chip.platform}`}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={`/stories?platform=${encodeURIComponent(chip.platform)}`}
+                      aria-label={`${chip.label} has gone quiet — nothing published in ${Math.floor(chip.daysSilent)} days, ${chip.readyCount} post${chip.readyCount === 1 ? '' : 's'} ready. View posts.`}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-action px-2 py-1 text-2xs font-bold text-action-foreground transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      {chip.icon && <chip.icon className="h-3 w-3 shrink-0" aria-hidden="true" />}
+                      <BellOff className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span>{chip.label} quiet {Math.floor(chip.daysSilent)}d · {chip.readyCount} ready</span>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Nothing has published to {chip.label} in {Math.floor(chip.daysSilent)} days · {chip.readyCount} finished post{chip.readyCount === 1 ? '' : 's'} waiting · target {chip.target}/week
+                  </TooltipContent>
+                </Tooltip>
+              ))}
               {cadenceChips.map((chip) => (
                 <Tooltip key={chip.key}>
                   <TooltipTrigger asChild>

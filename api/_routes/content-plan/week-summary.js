@@ -9,6 +9,7 @@ import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { mondayOf } from '../../_lib/strategist.js'
 import { mergeSlotsIntoCadence } from '../../_lib/cadenceSlots.js'
+import { computeChannelSilence } from '../../_lib/producer/publishSilence.js'
 import { isInstagramReel } from '../../../src/lib/mediaEntry.js'
 import { isTextOnlyPlatform } from '../../../src/lib/platformMediaKind.js'
 import { shapeApprovedBlog } from '../../_lib/approvedBlogs.js'
@@ -229,12 +230,26 @@ export default async function handler(req, res) {
     return rows.map(shapeApprovedBlog)
   }
 
-  const [{ scheduled, itemStatusMap }, heldAtoms, yourReview, approvedBlogs, myBlogTarget] = await Promise.all([
+  // Publish-silence sensor (.claude/decisions.md 2026-07-22 "known limit,
+  // accepted" — this is the "different metric, different chip" it deferred).
+  // Reads published_at directly rather than the plan, so a channel that fell
+  // out of planning entirely is still visible. Only meaningful "right now",
+  // so skip it on a past/future week view rather than computing a signal the
+  // strip has no honest way to attach to a week that isn't this one.
+  async function fetchSilentChannels() {
+    if (weekMonday !== nowMonday) return []
+    const channels = ws.cadence_policy?.channels || {}
+    if (!Object.keys(channels).length) return []
+    return computeChannelSilence({ workspaceId: ws.id, sb, channels })
+  }
+
+  const [{ scheduled, itemStatusMap }, heldAtoms, yourReview, approvedBlogs, myBlogTarget, silentChannels] = await Promise.all([
     fetchAtomsAndDraftedItems(),
     fetchHeldAtoms(),
     fetchYourReview(),
     fetchApprovedBlogs(),
     fetchMyBlogProgress(),
+    fetchSilentChannels(),
   ])
 
   const byPlatform = {}
@@ -420,5 +435,6 @@ export default async function handler(req, res) {
     yourReview,
     approvedBlogs,
     myBlogTarget,
+    silentChannels,
   })
 }

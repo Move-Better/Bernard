@@ -7,8 +7,14 @@
 //
 // Daily. For each active workspace with the `escalation_email` producer lane on:
 //   1. Skip if a nudge already went out inside the cooldown (≤1/day/workspace).
-//   2. Find pieces sitting unapproved whose slot is today or already past.
-//   3. Skip if there are none — a clean queue sends NOTHING, ever.
+//   2. Two independent sensors, both worth a nudge: (a) pieces sitting
+//      unapproved whose slot is today or already past (findOverdueApprovals);
+//      (b) a channel that hasn't PUBLISHED anything in 7+ days while ready
+//      work waits (computeChannelSilence, api/_lib/producer/publishSilence.js
+//      — .claude/decisions.md 2026-07-22 "known limit, accepted": the pace
+//      strip measures slots filled in the plan, not posts actually going
+//      out, and this catches the channel that fell out of planning entirely).
+//   3. Skip only if BOTH sensors are empty — a clean queue sends NOTHING, ever.
 //   4. Resolve owner + producer-tier recipients via Clerk.
 //   5. Send one email each (a bad address must not blackhole the workspace).
 //   6. Record ONE `approval_nudge` row in agent_actions carrying the piece ids
@@ -37,6 +43,7 @@ import {
   findOverdueApprovals, hasRecentNudge, pieceUrl,
   NUDGE_KIND, MAX_ITEMS_PER_EMAIL,
 } from '../../_lib/producer/approvalEscalation.js'
+import { computeChannelSilence } from '../../_lib/producer/publishSilence.js'
 
 const SUPABASE_URL   = process.env.SUPABASE_URL
 const SUPABASE_KEY   = process.env.SUPABASE_SERVICE_KEY
@@ -192,8 +199,17 @@ async function handler(req, res) {
         continue
       }
 
-      const overdue = await findOverdueApprovals({ workspaceId: ws.id, sb, now })
-      if (overdue.length === 0) {
+      // Two independent sensors. `overdue` is per-piece (a slot came and went
+      // while the piece sat unapproved); `silentChannels` is per-channel (no
+      // publish at all in 7+ days, with ready work waiting) and reads
+      // published_at directly, so it also catches a channel that fell out of
+      // planning entirely — no atom, so it can never appear in `overdue`. A
+      // clean send requires BOTH to be empty; either alone is worth a nudge.
+      const [overdue, silentChannels] = await Promise.all([
+        findOverdueApprovals({ workspaceId: ws.id, sb, now }),
+        computeChannelSilence({ workspaceId: ws.id, sb, channels: ws.cadence_policy?.channels || {}, now }),
+      ])
+      if (overdue.length === 0 && silentChannels.length === 0) {
         results.push({ workspace: ws.slug, skipped: 'queue_clean' })
         continue
       }
@@ -203,19 +219,20 @@ async function handler(req, res) {
         ? [{ email: testTo, name: null }]
         : await resolveRecipients(ws)
       if (recipients.length === 0) {
-        results.push({ workspace: ws.slug, skipped: 'no_recipients', overdue: overdue.length })
+        results.push({ workspace: ws.slug, skipped: 'no_recipients', overdue: overdue.length, silentChannels: silentChannels.length })
         continue
       }
 
       const { subject, html, text } = buildEscalation({
-        workspace: ws, items: shown, totalCount: overdue.length,
+        workspace: ws, items: shown, totalCount: overdue.length, silentChannels,
       })
 
       if (dryRun) {
         results.push({
-          workspace:  ws.slug,
-          dry_run:    true,
-          overdue:    overdue.length,
+          workspace:      ws.slug,
+          dry_run:        true,
+          overdue:        overdue.length,
+          silentChannels: silentChannels.map((c) => ({ platform: c.platform, daysSilent: c.daysSilent, readyCount: c.readyCount })),
           subject,
           recipients: recipients.map((r) => r.email),
           links:      shown.map((it) => pieceUrl(ws.slug, it.pieceId)),
@@ -256,10 +273,22 @@ async function handler(req, res) {
         // Rehearsal — deliberately no ledger row. See the testTo comment above.
         results.push({
           workspace: ws.slug, test_send: true, sent_to: testTo,
-          overdue: overdue.length, recorded: false,
+          overdue: overdue.length, silentChannels: silentChannels.length, recorded: false,
           links: shown.map((it) => pieceUrl(ws.slug, it.pieceId)),
         })
         continue
+      }
+
+      // Title covers whichever sensor(s) actually fired — a workspace with an
+      // overdue queue AND a silent channel gets both clauses; a silence-only
+      // send (no overdue items — the channel fell out of planning) never says
+      // "0 posts past their slot".
+      const titleParts = []
+      if (overdue.length > 0) titleParts.push(`${overdue.length} post${overdue.length === 1 ? '' : 's'} past their slot`)
+      if (silentChannels.length > 0) {
+        titleParts.push(silentChannels.length === 1
+          ? `${silentChannels[0].platform} gone quiet`
+          : `${silentChannels.length} channels gone quiet`)
       }
 
       // Record AFTER the send, reflecting what actually went out. This row is
@@ -270,13 +299,14 @@ async function handler(req, res) {
         workspaceId:    ws.id,
         producerConfig: ws.producer_config,
         kind:           NUDGE_KIND,
-        title:          `Nudged ${sent === 1 ? '1 person' : `${sent} people`} about ${overdue.length} post${overdue.length === 1 ? '' : 's'} past their slot`,
+        title:          `Nudged ${sent === 1 ? '1 person' : `${sent} people`} about ${titleParts.join(' and ')}`,
         contentItemId:  overdue.length === 1 ? overdue[0].pieceId : null,
         detail: {
           overdue_count:   overdue.length,
           piece_ids:       overdue.map((it) => it.pieceId),
           platforms:       [...new Set(overdue.map((it) => it.platform).filter(Boolean))],
           max_days_past:   Number(overdue[overdue.length - 1]?.daysPast?.toFixed?.(1) ?? 0),
+          silent_channels: silentChannels.map((c) => ({ platform: c.platform, daysSilent: c.daysSilent, readyCount: c.readyCount })),
           recipients:      recipients.map((r2) => r2.email),
           recipient_count: sent,
           sent_at:         new Date().toISOString(),
@@ -287,13 +317,14 @@ async function handler(req, res) {
       }
 
       results.push({
-        workspace:  ws.slug,
-        sent:       true,
-        recipients: sent,
-        attempted:  recipients.length,
-        overdue:    overdue.length,
-        recorded:   !!recorded?.ok,
-        failures:   failures.length ? failures : undefined,
+        workspace:      ws.slug,
+        sent:           true,
+        recipients:     sent,
+        attempted:      recipients.length,
+        overdue:        overdue.length,
+        silentChannels: silentChannels.length,
+        recorded:       !!recorded?.ok,
+        failures:       failures.length ? failures : undefined,
       })
     } catch (e) {
       console.error(`[approval-escalation] error for ${ws.slug}:`, e?.stack || e?.message || e)
