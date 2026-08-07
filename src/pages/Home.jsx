@@ -19,6 +19,7 @@ import WeeklyCallHero from '@/components/home/WeeklyCallHero'
 import OnboardingCard, { isSnoozed as isOnboardingSnoozed } from '@/components/home/OnboardingCard'
 import HomeStats from '@/components/home/HomeStats'
 import ResumeStrip from '@/components/home/ResumeStrip'
+import PointCapture from '@/components/home/PointCapture'
 import PlanNextInterview from '@/components/home/PlanNextInterview'
 import PostsLiveCard from '@/components/home/PostsLiveCard'
 import RelationshipCard from '@/components/home/RelationshipCard'
@@ -347,6 +348,12 @@ export default function Home({ embedded = false }) {
       ) : (
         <GreetingRibbon greeting={greeting} callFirst={callFirst} />
       )}
+
+      {/* Make a point — quick-capture door (Phase 3). Always visible, ahead
+          of the hero cascade: a point can strike at any moment, and the box
+          is one field, so it never competes for attention the way a hero
+          card would. See .claude/make-a-point-spec.md. */}
+      <PointCapture />
 
       {/* Call-first hero — only when it's the winning primary surface (see
           heroState above). Suppressed when onboarding or an in-progress

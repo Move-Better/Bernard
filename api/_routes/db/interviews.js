@@ -110,6 +110,20 @@ export default async function handler(req, res) {
       return ok(res, data[0] ?? null)
     }
 
+    // "Points to record" (Phase 3 quick-capture) — parked points waiting to
+    // become a real interview. Excluded from the staff.js embed (and every
+    // view that reads through it — Stories, Home's resume/overdue/topic-gap
+    // calcs) via interviews.status=neq.parked, so this is the only read path
+    // that surfaces them.
+    if (searchParams.get('parked')) {
+      const r = await sb(
+        `interviews?${wsFilter}&kind=eq.point&status=eq.parked` +
+        `&select=id,point,topic,staff_id,staff(name),created_at&order=created_at.desc`
+      )
+      if (!r.ok) return dbErr(res, r)
+      return ok(res, await r.json())
+    }
+
     // Search past completed interviews by topic (for cross-interview context)
     const topic = searchParams.get('topic')
     const excludeId = searchParams.get('excludeId')
@@ -130,9 +144,15 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     if (!(await enforceLimit(req, res, 'media', ws.id))) return
 
-    const { staffId, topic, kind, point, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, generationStyle, topicBacklogId, campaignId, selectedOutputs } = req.body || {}
+    const { staffId, topic, kind, point, status, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, generationStyle, topicBacklogId, campaignId, selectedOutputs } = req.body || {}
     if (!staffId) return err(res, 'Missing staffId')
     if (!UUID_RE.test(staffId)) return err(res, 'Invalid staffId', 400)
+
+    // 'parked' is the only client-selectable creation status (Phase 3
+    // quick-capture — a point saved for later, not yet an active interview).
+    // Every other status ('completed', 'abandoned', ...) is a lifecycle
+    // transition reached only via PATCH, never at creation.
+    const createStatus = status === 'parked' ? 'parked' : 'in_progress'
 
     // Interview kind: 'topic' (clinical extraction, the default) or 'point'
     // ("Make a point" — the guest brings a thesis; a dynamic host sharpens it).
@@ -153,6 +173,9 @@ export default async function handler(req, res) {
       if (!topic?.trim()) return err(res, 'Topic required')
       finalTopic = topic.trim()
     }
+    // A parked interview is a not-yet-recorded point (Phase 3) — the concept
+    // has no meaning for a clinical topic interview, which starts immediately.
+    if (createStatus === 'parked' && interviewKind !== 'point') return err(res, 'Only point interviews can be parked', 400)
     if (topicBacklogId && !UUID_RE.test(topicBacklogId)) return err(res, 'Invalid topicBacklogId', 400)
     if (campaignId && !UUID_RE.test(campaignId)) return err(res, 'Invalid campaignId', 400)
     if (prototypeId && !UUID_RE.test(prototypeId)) return err(res, 'Invalid prototypeId', 400)
@@ -186,7 +209,7 @@ export default async function handler(req, res) {
         point: pointText,
         owner_id: ownerId,
         owner_email: ownerEmail,
-        status: 'in_progress',
+        status: createStatus,
         messages: [],
         tone: tone || 'smart',
         voice_mode: voiceMode === 'personal' ? 'personal' : 'practice',

@@ -95,7 +95,7 @@ export default async function handler(req, res) {
       // ONE workspace-wide query over three tiny columns, aggregated here and
       // attached to each interview — never a per-interview fan-out.
       const [r, mr] = await Promise.all([
-        sb(`staff?${wsFilter}&select=${staffSel},interviews(${interviewSel})&order=name.asc`),
+        sb(`staff?${wsFilter}&select=${staffSel},interviews(${interviewSel})&interviews.status=neq.parked&order=name.asc`),
         sb(`moments?${wsFilter}&status=eq.banked&select=interview_id,usage_count,last_used_at`),
       ])
       if (!r.ok) return dbErr(res, r)
@@ -121,7 +121,7 @@ export default async function handler(req, res) {
       }
       return ok(res, staffRows)
     }
-    const r = await sb(`staff?${wsFilter}&select=${staffSel},interviews(${interviewSel})&order=name.asc`)
+    const r = await sb(`staff?${wsFilter}&select=${staffSel},interviews(${interviewSel})&interviews.status=neq.parked&order=name.asc`)
     if (!r.ok) return dbErr(res, r)
     return ok(res, await r.json())
   }
