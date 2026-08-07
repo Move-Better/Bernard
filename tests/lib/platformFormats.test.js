@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { FORMAT_IDS, formatOptions, formatMediaRule, validateFormatMedia, describeFormatViolation } from '../../src/lib/platformFormats.js'
+import { FORMAT_IDS, formatOptions, formatMediaRule, validateFormatMedia, describeFormatViolation, promoteFormatForMedia } from '../../src/lib/platformFormats.js'
 
 // media_urls entries as the normalizers write them (clipToMediaEntry /
 // pickerItemToMediaEntry set both type and kind).
@@ -127,5 +127,38 @@ describe('describeFormatViolation — the human "why + fix" copy (feedback 14ba3
     const v = describeFormatViolation('instagram', 'reel', [PHOTO])
     expect(v.reason).toBe('image_not_allowed')
     expect(v.message).toContain('can’t carry')
+  })
+})
+
+describe('promoteFormatForMedia — the root-cause auto-promote (so the bad state never arises)', () => {
+  it('promotes an IG Post to Carousel the moment it holds more than one photo', () => {
+    expect(promoteFormatForMedia('instagram', 'post', Array(6).fill(PHOTO))).toBe('carousel')
+    expect(promoteFormatForMedia('instagram', 'post', [PHOTO, PHOTO])).toBe('carousel')
+  })
+
+  it('leaves a still-valid format untouched (returns it by identity)', () => {
+    expect(promoteFormatForMedia('instagram', 'post', [PHOTO])).toBe('post')
+    expect(promoteFormatForMedia('instagram', 'carousel', [PHOTO, PHOTO, PHOTO])).toBe('carousel')
+  })
+
+  it('does NOT promote when no strictly-valid larger format exists (11 photos > carousel max 10)', () => {
+    expect(promoteFormatForMedia('instagram', 'post', Array(11).fill(PHOTO))).toBe('post')
+  })
+
+  it('does NOT rewrite a KIND mismatch — a video on a photo Post stays Post (block handles it)', () => {
+    expect(promoteFormatForMedia('instagram', 'post', [VIDEO])).toBe('post')
+  })
+
+  it('does NOT demote — a Carousel trimmed to one photo stays a Carousel', () => {
+    expect(promoteFormatForMedia('instagram', 'carousel', [PHOTO])).toBe('carousel')
+  })
+
+  it('is a no-op with no explicit format or on a platform with no format registry', () => {
+    expect(promoteFormatForMedia('instagram', null, Array(6).fill(PHOTO))).toBeNull()
+    expect(promoteFormatForMedia('linkedin', 'post', [PHOTO, PHOTO])).toBe('post')
+  })
+
+  it('a Facebook Post that overflows has no larger album format, so it stays put', () => {
+    expect(promoteFormatForMedia('facebook', 'post', Array(11).fill(PHOTO))).toBe('post')
   })
 })

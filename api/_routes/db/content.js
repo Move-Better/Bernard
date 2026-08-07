@@ -31,6 +31,7 @@ import { supabaseRest } from '../../_lib/supabaseRest.js'
 // Shared with the editor client (src/pages/StoryboardPublish.jsx) so the screen
 // and this handler can never disagree about what a committed post may change.
 import { checkPatchAgainstLock, patchNeedsLockCheck } from '../../../src/lib/publishLock.js'
+import { promoteFormatForMedia } from '../../../src/lib/platformFormats.js'
 
 const MAX_LIMIT = 100
 
@@ -297,7 +298,7 @@ export default async function handler(req, res) {
     // round-trip per keystroke-batch is not free.
     let curRow = null
     if (Array.isArray(patch.mediaUrls) || patchNeedsLockCheck(patch)) {
-      const curRes = await sb(`content_items?id=eq.${id}&workspace_id=eq.${ws.id}&select=status,media_urls&limit=1`)
+      const curRes = await sb(`content_items?id=eq.${id}&workspace_id=eq.${ws.id}&select=status,media_urls,platform,format&limit=1`)
       if (!curRes.ok) return dbErr(res, curRes, 'Update failed')
       curRow = (await curRes.json().catch(() => []))[0] || null
     }
@@ -321,6 +322,21 @@ export default async function handler(req, res) {
     if (Array.isArray(patch.mediaUrls) && curRow) {
       const before = Array.isArray(curRow.media_urls) ? curRow.media_urls : []
       mediaOverride = classifyMediaChange(before, patch.mediaUrls)
+    }
+
+    // ── Auto-promote the format when attached media outgrows it ──────────────
+    // A single-photo "Post" that just gained more photos should become a
+    // "Carousel", not fail to publish (feedback 14ba3329). Fires only on a media
+    // write, only for a genuine count overflow (Post → Carousel; never a kind
+    // change like a video on a photo Post — that stays with the editor's
+    // block + message), and never overrides a format the SAME patch set by hand.
+    // media_urls is a frozen field, so the lock check above already 409'd any
+    // scheduled/published edit — this can only run on an unlocked row, exactly
+    // when a format change is legal. Stamped 'bernard' (auto-derived, not human).
+    let autoFormat
+    if (Array.isArray(patch.mediaUrls) && curRow && patch.format === undefined) {
+      const promoted = promoteFormatForMedia(curRow.platform, curRow.format, patch.mediaUrls)
+      if (promoted !== curRow.format) autoFormat = promoted
     }
 
     if (patch.locationId) {
@@ -359,10 +375,14 @@ export default async function handler(req, res) {
       // client-supplied: this route is the human editor's path, so any format
       // set here is a HUMAN choice — that provenance is the raw signal for the
       // format-confidence loop (server-side drafters stamp 'bernard' directly).
-      format:                 patch.format,
+      // When the client didn't set a format but attached media outgrew the
+      // stored one, autoFormat carries the Bernard-derived promotion (above).
+      format:                 patch.format !== undefined ? patch.format : autoFormat,
       // Server-stamped from the classification above; never read from the body.
       media_source:           mediaOverride,
-      format_source:          patch.format !== undefined ? (patch.format === null ? null : 'human') : undefined,
+      format_source:          patch.format !== undefined
+        ? (patch.format === null ? null : 'human')
+        : (autoFormat !== undefined ? 'bernard' : undefined),
       seo_title:              patch.seoTitle,
       meta_description:       patch.metaDescription,
       reject_reason:          patch.status === 'rejected' ? patch.rejectReason : undefined,
