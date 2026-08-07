@@ -52,6 +52,8 @@ The 2026-07-22 UX pain check surfaced `Draft`-button dead clicks on `/week` and 
 
 **Kill criterion:** if by **2026-08-19** (4 weeks) the agent-predrafted share hasn't moved from 17% to **≥60%** of drafts, the window wasn't the constraint — investigate the daily AI-call cap and the `interview_id`/`scheduled_at` eligibility filters before reconsidering any batch-draft UI.
 
+**Resolved early — 2026-08-07 (investigation, #2575, #2580):** the 08-07 weekly check-in read 27% and was trending toward MISS, which triggered the criterion's own investigation step ahead of schedule. Found: neither cap ever bound (`daily_ai_call_cap` peaked at 32/40; `predraft_failed` events: zero), and the eligibility filters correctly narrow the pool rather than wrongly excluding it. The 27% reading itself was a **metric bug** — `reviseContentItem.js`/`regradeContentItem.js` PATCH `voice_audit` by rebuilding it from scratch, silently dropping the `predrafted` provenance flag on any pre-draft that later got revised or auto-repaired. The immutable `agent_actions` ledger (write-once, at draft time) showed the true rate was **64%**, already clearing the bar. Fixed going forward in #2575; the 19 historically-clobbered rows were backfilled same-day (#2580) — ledger and live marker now agree exactly (43/43). **Criterion MET on ground truth; the window widening did its job.** No batch-draft UI needed. Full writeup: `.claude/outcome-reviews/2026-08.md` § "Pre-draft eligibility findings."
+
 ## 2026-07-22 — /week chrome collapses to header controls; amber is pace-aware (#2257, #2260)
 Q: "Half the screen is used up with non-week stuff… could they just be in a dropdown?" Direction chosen via AskUserQuestion: **A — header controls**, with **cadence staying visible as one line**.
 
