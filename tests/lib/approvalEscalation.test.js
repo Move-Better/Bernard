@@ -156,6 +156,50 @@ describe('buildEscalation — the email is a set of one-tap links', () => {
     expect(html.toLowerCase()).not.toContain('e36525')
     expect(html).toContain('#0C7580')
   })
+
+  it('adds a silent-channel callout above the per-item list when both fire', () => {
+    const { html, text } = buildEscalation({
+      workspace, items,
+      silentChannels: [{ platform: 'linkedin', daysSilent: 9.2, readyCount: 4, target: 3 }],
+    })
+    expect(html).toContain('Channel gone quiet')
+    expect(html).toContain('LinkedIn has been quiet for 9 days')
+    expect(html).toContain('4 finished posts waiting')
+    expect(text).toContain('LinkedIn has been quiet for 9 days')
+    // The overdue-items headline is unaffected — silence is additive, not a
+    // replacement for the per-piece list.
+    expect(html).toContain('1 post is waiting on you')
+  })
+
+  it('has its own headline when a channel is silent with no overdue items at all', () => {
+    // The "fell out of planning entirely" case: no atom exists for the
+    // channel, so findOverdueApprovals can never surface it — silence is the
+    // only signal, and "0 posts waiting" would be nonsensical.
+    const { subject, html, text } = buildEscalation({
+      workspace, items: [],
+      silentChannels: [{ platform: 'linkedin', daysSilent: 9.2, readyCount: 4, target: 3 }],
+    })
+    expect(subject).toBe('LinkedIn has gone quiet — Move Better')
+    expect(html).toContain('LinkedIn has gone quiet')
+    expect(html).not.toContain('posts waiting on you')
+    expect(text).toContain('LinkedIn has gone quiet')
+  })
+
+  it('pluralizes the silence-only subject across multiple channels', () => {
+    const { subject } = buildEscalation({
+      workspace, items: [],
+      silentChannels: [
+        { platform: 'linkedin', daysSilent: 9.2, readyCount: 4, target: 3 },
+        { platform: 'facebook', daysSilent: 7.5, readyCount: 2, target: 3 },
+      ],
+    })
+    expect(subject).toBe('2 channels have gone quiet — Move Better')
+  })
+
+  it('has no silent-channel block when nothing is silent', () => {
+    const { html } = buildEscalation({ workspace, items })
+    expect(html).not.toContain('Channel gone quiet')
+  })
 })
 
 describe('overdueLabel', () => {
