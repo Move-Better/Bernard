@@ -16,12 +16,13 @@ import GbpLocationPicker from '@/components/GbpLocationPicker'
 import MediaPicker from '@/components/MediaPicker'
 import { useUpdateContentItem, useMediaSuggestions, useInterview, queryKeys } from '@/lib/queries'
 import { useWorkspace } from '@/lib/WorkspaceContext'
+import { useConfirm } from '@/lib/useConfirm'
 import { resolveGbpLocationIds } from '@/lib/gbpLocations'
 import { BlogStyleSwitcher, BlogGenerationActions } from '@/components/editor/BlogWordsExtras'
 import PostCaptionField from '@/components/editor/PostCaptionField'
 import RegenerateCaptionButton, { canRegenerateCaption } from '@/components/editor/RegenerateCaptionButton'
 import { apiFetch } from '@/lib/api'
-import { clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey, photoSourceUrl, isVideoEntry } from '@/lib/mediaEntry'
+import { clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey, photoSourceUrl, isVideoEntry, slidesHaveText } from '@/lib/mediaEntry'
 import { resolveArchetype, ARCHETYPES, railFor, mediaTierFor, MEDIA_TIER } from '@/lib/editorArchetype'
 import { deriveSeoTitle, deriveMetaDescription, cleanBlogMarkdown, SEO_TITLE_MAX, META_DESC_MAX } from '@/lib/blogOutput'
 import { PLATFORM_META } from '@/lib/contentMeta'
@@ -265,6 +266,7 @@ function SuggestionThumb({ clip, attached, attaching, onAttach }) {
 // correct {url,type,mediaAssetId,…} shape — a raw clip or picker item stores
 // url:null and breaks dedup.
 function MediaPanel({ piece, updateItem }) {
+  const confirm = useConfirm()
   const media = Array.isArray(piece.media_urls) ? piece.media_urls : []
   const optional = mediaTierFor(piece) === MEDIA_TIER.OPTIONAL
   // TikTok/YouTube/Reels (vvideo/lvideo) post exactly ONE video — replace
@@ -300,6 +302,23 @@ function MediaPanel({ piece, updateItem }) {
     }
     const key = mediaEntryKey(entry)
     if (attachedKeys.has(key)) return
+
+    // Attaching a video here routes this piece to the Reel editor, which
+    // never reads `slides` (see slidesHaveText in mediaEntry.js) — if there's
+    // real carousel slide text sitting on this post, that text goes out of
+    // view the moment we save. Confirm first so it's an explicit, cancelable
+    // choice, never a silent vanish.
+    if (isVideoEntry(entry) && slidesHaveText(piece.slides)) {
+      const n = piece.slides.length
+      const ok = await confirm({
+        title: `Switch to Reel and set aside ${n} slide${n === 1 ? '' : 's'} of carousel text?`,
+        description: `This post has ${n} slide${n === 1 ? '' : 's'} of caption text already written for a carousel. Adding a video switches it to the Reel editor, which doesn't show that text — it stays saved on this post, but you'll need to copy anything you want to keep into the Reel's caption or on-screen text.`,
+        confirmLabel: 'Switch to Reel',
+        cancelLabel: 'Keep editing as a carousel',
+      })
+      if (!ok) return
+    }
+
     setAttaching(key)
     try {
       const next = singleMedia ? [entry] : [...media, entry]
