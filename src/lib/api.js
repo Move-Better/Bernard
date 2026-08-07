@@ -321,19 +321,29 @@ export function fetchStaffMemberRecentContent(staffId, limit = 3) {
 }
 
 /**
- * @param {{ staffId: string, topic?: string, kind?: string, point?: string, ownerEmail: string, tone?: string, voiceMode?: string, prototypeId?: string, locationId?: string, audience?: string, storyType?: string, cleanupLevel?: string, topicBacklogId?: string, campaignId?: string, selectedOutputs?: string[] }} opts
+ * @param {{ staffId: string, topic?: string, kind?: string, point?: string, status?: string, ownerEmail: string, tone?: string, voiceMode?: string, prototypeId?: string, locationId?: string, audience?: string, storyType?: string, cleanupLevel?: string, topicBacklogId?: string, campaignId?: string, selectedOutputs?: string[] }} opts
  * @returns {Promise<unknown>}
  */
-export function createInterview({ staffId, topic, kind, point, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, topicBacklogId, campaignId, selectedOutputs }) {
+export function createInterview({ staffId, topic, kind, point, status, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, topicBacklogId, campaignId, selectedOutputs }) {
   // owner_id is derived from the verified Clerk token server-side, never sent
   // from the client. (Fixed 2026-05-21 audit P0 #4.)
   // campaignId + selectedOutputs power the goal-steered "Write a newsletter"
   // flow; both are optional and omitted by the regular interview create path.
+  // status: the only client-selectable value is 'parked' (Phase 3 quick-capture
+  // — a point saved for later). Omitted/anything else creates 'in_progress'.
   return apiFetch('/api/db/interviews', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ staffId, topic, kind, point, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, topicBacklogId, campaignId, selectedOutputs }),
+    body: JSON.stringify({ staffId, topic, kind, point, status, ownerEmail, tone, voiceMode, prototypeId, locationId, audience, storyType, cleanupLevel, topicBacklogId, campaignId, selectedOutputs }),
   })
+}
+
+/** "Points to record" (Phase 3 quick-capture) — parked points waiting to
+ * become a real interview. @returns {Promise<Array<{id:string, point:string, topic:string, staff_id:string, staff:{name:string}, created_at:string}>>} */
+export function fetchParkedPoints() {
+  return /** @type {Promise<Array<{id:string, point:string, topic:string, staff_id:string, staff:{name:string}, created_at:string}>>} */ (
+    apiFetch('/api/db/interviews?parked=1')
+  )
 }
 
 // ── Clinician Recipes ───────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 # "Make a Point" — feature spec
 
-**Status:** Phase 1 LIVE on prod (merged #2565, deployed `b28de351`, verified in Chrome 2026-08-06). Phase 2 built (this PR). Phase 3 designed, not built.
+**Status:** Phase 1 LIVE on prod (merged #2565, deployed `b28de351`, verified in Chrome). Phase 2 LIVE on prod (merged #2569, deployed `313ce70f`). Phase 3 built (this PR).
 **Origin:** design + prototype session 2026-08-06 (Q + Claude). Decisions log entry same date.
 
 ---
@@ -67,14 +67,19 @@ Register is already free: point interviews default to `voice_mode='personal'`, a
 
 **Not built (tracked gap):** the multi-part blog SERIES generator (`getSeriesClusterSystemPrompt`/`getSeriesPartSystemPrompt`) was out of the mapped 8-caller surface and does not yet get the framing — low-risk (a point interview splitting into a multi-part series is an edge case) but real; thread it the same way if that path is used for point content. The **advisory safety flag** (adapting `answerFidelityRubric.js`'s GENERAL TEACHING vs INDIVIDUAL INSTRUCTION dimension, surfaced as an approval-panel chip) is designed but not built — deferred as its own follow-up (needs a mockup for the chip surface, per mockup-first).
 
-## Phase 3 — Quick-capture door (DESIGNED)
+## Phase 3 — Quick-capture door (BUILT)
 
-A parked point *is* an interview row (`kind='point'`, new `status='parked'`, point set, no messages).
-- **Capture:** Home box (type or dictate) → creates a parked interview; voice defaults to I/me, title derived, no mic check/pickers.
-- **"Points to record" list:** `kind='point'` interviews with `status='parked'`.
-- **Record now:** flips `parked → in_progress`, mic check, into the session (runs the host). Completion → `completed`. The row becoming the interview *is* the link — no separate link step.
-- Wiring detail: `interviews.status` likely has a CHECK constraint → a small constraint migration to add `'parked'`, plus an audit that Stories/analytics/content views exclude `parked` (empty-messages rows, should be clean).
-- Fast-follows (not v1): dictate-to-capture; a "N unrecorded points" nudge reusing existing nudge infra.
+A parked point *is* an interview row (`kind='point'`, `status='parked'`, `point` set, no messages). **Correction from the original design**: grounding at build time found `interviews.status` has **no DB CHECK constraint** (unlike assumed) — it's a plain `text` column, so adding `'parked'` was purely an app-layer change (`api/_routes/db/interviews.js`'s status-handling), no migration needed. It also found `staff_id` is hard-required everywhere (POST, and the session route itself is `/interview/:staffId/:interviewId`), so capture **silently auto-resolves the speaker to the logged-in user** (same self-detection `NewInterview.jsx` uses) rather than deferring staff assignment — "no pickers" means no *visible* picker, not no staff.
+
+**Built:**
+- **Capture** (`src/components/home/PointCapture.jsx`, mounted at the top of Home, ahead of the hero cascade): one textarea + Save. `getOrCreateStaff` (self, idempotent — repeat captures never duplicate the staff row) → `createInterview({ kind:'point', point, status:'parked', voiceMode:'personal' })`.
+- **API**: `db/interviews.js` POST accepts `status:'parked'` (only legal client-selectable creation status; guarded to `kind==='point'` only). New GET mode `?parked=1` lists `kind=eq.point&status=eq.parked` rows — the only read path that surfaces them.
+- **Exclusion from every other view, at the single upstream source**: `db/staff.js`'s two `staff?...,interviews(...)` embeds (the shared source behind `useStories`/`useStaffSummaries` → Stories, Home's resume/overdue/topic-gap calcs) both got `&interviews.status=neq.parked`. One fix, every downstream consumer protected — confirmed via grounding that all the polluted-view risks traced to this one query shape.
+- **"Points to record" strip**: renders only when non-empty (hidden otherwise, matching `ResumeStrip`), amber/action palette so it never visually blurs with the primary-teal Resume strip. **Dismiss** (×) added beyond the original spec — PATCHes `status:'abandoned'` (already a valid PATCH target, zero new plumbing).
+- **Record now**: PATCH `status: 'parked' → 'in_progress'` (must happen explicitly and *before* the session starts, not deferred to completion — otherwise the parked-exclusion filter would hide an actively-recording session from Stories/Home too), then navigate to `/interview/:staffId/:interviewId` with **no `micChecked` nav state** — `InterviewSession`'s own in-session mic-check gate already fires for any direct link lacking that state, so this needed zero new mic-check plumbing.
+- Mockup: `.claude/mockups/point-capture.html`, signed off 2026-08-06 (top placement, near the greeting, ahead of the hero cascade).
+
+**Fast-follows (not v1):** dictate-to-capture; a "N unrecorded points" nudge reusing existing nudge infra.
 
 ## Verification approach
 
@@ -82,4 +87,6 @@ Every phase is verified with an **OLD-vs-NEW harness on the real sleep/running t
 
 ## Sequencing & status
 
-Phases 2 and 3 both build on Phase 1's `kind`/`point` schema, so they want Phase 1 **merged first** (stacked-PR avoidance). Order between 2 and 3 is free — recommended **3 before 2** (capture-friction is the likelier adoption blocker; a feature used only at your desk doesn't get used). As of 2026-08-06, Phase 1 is built and CI-clean locally but parked behind a GitHub Actions major outage; it auto-merges + deploys when Actions recovers (auto-merge armed).
+All three phases are built. Shipped in order 1 → 2 → 3 (all three merged and deployed 2026-08-06/07, PRs #2565, #2569, and this one). Phase 1 shipped behind a GitHub Actions major outage — auto-merge carried it through once Actions recovered.
+
+**Remaining open items**, both already flagged in their phase sections above: the Phase 2 advisory safety-flag chip (needs its own mockup), and the multi-part blog series generator not yet getting Phase 2's framing.

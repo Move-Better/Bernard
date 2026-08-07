@@ -30,6 +30,7 @@ import {
   deleteInterview,
   updateInterview,
   fetchInterview,
+  fetchParkedPoints,
   fetchStaffMemberRecipes,
   createStaffRecipe,
   patchStaffRecipe,
@@ -68,6 +69,7 @@ export const queryKeys = {
   interviews: {
     all:    ['interviews'],
     detail: (id) => ['interviews', 'detail', id],
+    parked: ['interviews', 'parked'],
   },
   contentItems: {
     all:      ['contentItems'],
@@ -393,6 +395,16 @@ export function useInterview(id, options = {}) {
     queryKey: queryKeys.interviews.detail(id),
     queryFn: () => fetchInterview(id),
     enabled: !!id,
+    ...options,
+  })
+}
+
+// "Points to record" (Phase 3 quick-capture) — parked points waiting to
+// become a real interview. See .claude/make-a-point-spec.md.
+export function useParkedPoints(options = {}) {
+  return useQuery({
+    queryKey: queryKeys.interviews.parked,
+    queryFn: fetchParkedPoints,
     ...options,
   })
 }
