@@ -170,7 +170,7 @@ export default async function handler(req, res) {
   // Load the source interview.
   const ivRes = await sb(
     `interviews?id=eq.${item.interview_id}&${wsFilter}` +
-    `&select=id,staff_id,topic,tone,voice_mode,prototype_id,verbatim_flags,location_id,messages,outputs,audience,story_type`,
+    `&select=id,staff_id,topic,kind,tone,voice_mode,prototype_id,verbatim_flags,location_id,messages,outputs,audience,story_type`,
   )
   if (!ivRes.ok) {
     await unclaimSource('interview-fetch-failed')
@@ -331,6 +331,7 @@ export default async function handler(req, res) {
         siblingSummaries,
         seriesTitle,
         ownHistoryBlock,
+        interview.kind === 'point',
       ) + buildVerbatimBlock(interview.verbatim_flags)
 
       const { text } = await generateText({

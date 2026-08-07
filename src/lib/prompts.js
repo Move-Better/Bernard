@@ -1162,6 +1162,12 @@ ${resolveBlogLengthLine(lengthPreset, 'TARGET LENGTH: 900–1200 words, but voic
 // CLUSTER PASS — reads the full transcript and returns a JSON plan grouping
 // the interview's material into N coherent blog-post threads. No prose; just
 // a structural brief that the per-part writer can build from.
+//
+// Deliberately does NOT take isPoint / pointContentFraming: this pass emits
+// no reader-facing prose (a title, a brief, a quote list), so there is no
+// mechanism-claim or caveat surface for the point-content guardrail to act
+// on. The write pass (getSeriesPartSystemPrompt) is where that enforcement
+// belongs, and it has it. See .claude/make-a-point-spec.md.
 export function getSeriesClusterSystemPrompt(workspace, staffName, condition, parts, voiceMode = 'practice') {
   const isPersonal = voiceMode === 'personal'
   const isGeneral = isGeneralMode(workspace)
@@ -1251,9 +1257,9 @@ Quote the clinician's own framing in titles where you can — do not invent clin
 // `cluster` is the parts[i] object from the cluster JSON.
 // `siblingSummaries` is an array of { part, title } for the OTHER parts so the
 // writer can add cross-references and avoid stepping on their material.
-export function getSeriesPartSystemPrompt(workspace, staffName, condition, tone = 'smart', voiceMode = 'practice', prototypeId = null, voiceNotes = '', voicePhrases = [], lengthPreset = null, cluster = null, siblingSummaries = [], seriesTitle = '', ownHistoryBlock = '') {
+export function getSeriesPartSystemPrompt(workspace, staffName, condition, tone = 'smart', voiceMode = 'practice', prototypeId = null, voiceNotes = '', voicePhrases = [], lengthPreset = null, cluster = null, siblingSummaries = [], seriesTitle = '', ownHistoryBlock = '', isPoint = false) {
   if (isGeneralMode(workspace)) {
-    return getGeneralSeriesPartSystemPrompt(workspace, staffName, condition, tone, voiceMode, voiceNotes, voicePhrases, lengthPreset, cluster, siblingSummaries, seriesTitle, ownHistoryBlock)
+    return getGeneralSeriesPartSystemPrompt(workspace, staffName, condition, tone, voiceMode, voiceNotes, voicePhrases, lengthPreset, cluster, siblingSummaries, seriesTitle, ownHistoryBlock, isPoint)
   }
   const isPersonal = voiceMode === 'personal'
   const partNum = cluster?.part || 1
@@ -1320,12 +1326,12 @@ ${resolveBlogLengthLine(lengthPreset, 'TARGET LENGTH: 700–950 words. Write lik
 VOICE: ${NO_EM_DASH_RULE}
 
 CRITICAL — stay in your lane: this is Part ${partNum} of the series. Do NOT try to cover everything the interview touched on. Pull the material that belongs to *this thread* (per the brief and anchor moments) and let the sibling parts handle theirs.
-${getToneModifier(tone, workspace)}${PROVENANCE_INSTRUCTION}`
+${getToneModifier(tone, workspace)}${PROVENANCE_INSTRUCTION}${pointContentFraming({ isPoint, format: 'long' })}`
 }
 
 // General-paradigm variant of the series part writer. Parallels
 // getGeneralBlogPostSystemPrompt's voice/structure relaxations.
-function getGeneralSeriesPartSystemPrompt(workspace, expertName, topic, tone, voiceMode, voiceNotes, voicePhrases, lengthPreset, cluster, siblingSummaries, seriesTitle, ownHistoryBlock = '') {
+function getGeneralSeriesPartSystemPrompt(workspace, expertName, topic, tone, voiceMode, voiceNotes, voicePhrases, lengthPreset, cluster, siblingSummaries, seriesTitle, ownHistoryBlock = '', isPoint = false) {
   const isPersonal = voiceMode === 'personal'
   const partNum = cluster?.part || 1
   const partTitle = cluster?.title || `Part ${partNum}`
@@ -1378,7 +1384,7 @@ ${resolveBlogLengthLine(lengthPreset, 'TARGET LENGTH: 900–1200 words. Write li
 ${ctaSection}
 ${seriesTitle ? `\n*${seriesTitle} — Part ${partNum}*\n` : ''}
 CRITICAL — stay in your lane: this is Part ${partNum} of the series. Do NOT try to cover everything the interview touched on. Pull the material that belongs to *this thread* and let the sibling parts handle theirs.
-${getToneModifier(tone, workspace)}${PROVENANCE_INSTRUCTION}`
+${getToneModifier(tone, workspace)}${PROVENANCE_INSTRUCTION}${pointContentFraming({ isPoint, format: 'long' })}`
 }
 
 // =====================================================================
