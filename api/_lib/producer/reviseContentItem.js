@@ -81,7 +81,7 @@ export async function reviseContentItem({ ws, contentItemId, changeRequest, comm
   // Fetch the piece.
   const pieceRes = await sb(
     `content_items?id=eq.${contentItemId}&${wsFilter}` +
-    `&select=id,status,content,platform,topic,interview_id,staff_id,updated_at&limit=1`
+    `&select=id,status,content,platform,topic,interview_id,staff_id,updated_at,voice_audit&limit=1`
   )
   if (!pieceRes.ok) throw new Error(`piece fetch ${pieceRes.status}`)
   const piece = (await pieceRes.json())?.[0]
@@ -192,7 +192,9 @@ export async function reviseContentItem({ ws, contentItemId, changeRequest, comm
       abortSignal: AbortSignal.timeout(60_000),
     })
     const parsed = parseFidelity(judgeRaw, { model: JUDGE_MODEL, rubric: 'faithfulness-v2', scored_at: new Date().toISOString(), source: 'revision' })
-    if (parsed) { score = Math.round(parsed.overall * 10); audit = { ...parsed.breakdown, revised_by: 'bernard-producer' } }
+    // `predrafted` is lane provenance (the pre-draft kill-criterion metric), not a
+    // judge output — a fresh audit object must carry it forward or the marker is lost.
+    if (parsed) { score = Math.round(parsed.overall * 10); audit = { ...parsed.breakdown, revised_by: 'bernard-producer', ...(piece.voice_audit?.predrafted ? { predrafted: true } : {}) } }
   } catch (e) {
     console.warn('[reviseContentItem] judge failed:', e?.message)
   }
