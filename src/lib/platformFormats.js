@@ -212,3 +212,34 @@ export function describeFormatViolation(platform, format, mediaUrls) {
   }
   return { reason: check.reason, message: `This ${pLabel} post ${why}.${suggestion}` }
 }
+
+/**
+ * The format a piece SHOULD carry once `mediaUrls` is attached, auto-promoting
+ * when the media has outgrown the current format — so the invalid state
+ * (a single-photo "Post" holding six photos) never arises in the first place.
+ *
+ * Deliberately narrow: it promotes ONLY a genuine count overflow
+ * (`too_many_items` → the next format that fits, e.g. Instagram Post → Carousel).
+ * It does NOT rewrite a KIND mismatch (a video on a photo Post, a mixed album)
+ * — those are real intent changes, left to the editor's block + message. It also
+ * never demotes (a Carousel trimmed to one photo stays a Carousel; the block
+ * handles that edge), and returns the format unchanged whenever there is no
+ * strictly-valid larger format to move to.
+ *
+ * @param {string} platform
+ * @param {string|null|undefined} format the piece's current explicit format
+ * @param {unknown} mediaUrls the media_urls array being attached
+ * @returns {string|null|undefined} the format to store — the input format when
+ *   nothing should change (so a caller can compare by identity)
+ */
+export function promoteFormatForMedia(platform, format, mediaUrls) {
+  if (!format || formatOptions(platform).length === 0) return format
+  const check = validateFormatMedia(platform, format, mediaUrls)
+  if (check.ok) return format
+  // Only a count overflow is unambiguous enough to rewrite silently.
+  if (check.reason !== 'too_many_items') return format
+  const promoted = formatOptions(platform).find(
+    (id) => id !== format && validateFormatMedia(platform, id, mediaUrls).ok,
+  )
+  return promoted || format
+}
