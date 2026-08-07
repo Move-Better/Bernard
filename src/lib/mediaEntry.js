@@ -159,6 +159,23 @@ export function isVideoEntry(entry) {
   return entry?.kind === 'video' || entry?.type === 'video'
 }
 
+// True when content_items.slides holds real, operator-written carousel text
+// (a non-empty `text` on any block of any slide) — not just an empty scaffold.
+// Used to guard against silently orphaning that text: attaching a video to a
+// piece whose slides still hold real writing routes it to VideoPieceEditor
+// (see StoryboardPublish.jsx), which never reads `slides` at all. The row
+// still has the words after that — they just become invisible to the
+// operator with no warning, which is the thing this predicate exists to catch
+// before it happens. See UnifiedEditor.jsx's MediaPanel.attachEntry.
+export function slidesHaveText(slides) {
+  return (
+    Array.isArray(slides) &&
+    slides.some(
+      (s) => Array.isArray(s?.blocks) && s.blocks.some((b) => typeof b?.text === 'string' && b.text.trim()),
+    )
+  )
+}
+
 // LEGACY derivation: an Instagram piece with any video attached publishes as a
 // Reel. This is the fallback for pieces with NO explicit content_items.format —
 // which is every row written before the format column existed, so it must keep
