@@ -20,7 +20,7 @@ import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { mondayOf, dateForWeekdaySlot } from '../../_lib/strategist.js'
-import { ATOM_DEFINITIONS, defaultFormatForPlatform } from '../../_lib/atomPlan.js'
+import { ATOM_DEFINITIONS, defaultFormatForPlatform, isSpeculativelyDraftableFormat } from '../../_lib/atomPlan.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -62,6 +62,17 @@ export default async function handler(req, res) {
   const { platform, format, weekday, hour, weekMonday } = req.body || {}
   if (!platform || !ATOM_DEFINITIONS[platform]) return err(res, 'Invalid platform', 400)
   const fmt = SLOT_FORMATS.has(format) ? format : defaultFormatForPlatform(platform)
+  // A reel can only exist for a clip that has actually rendered (see
+  // atomPlan.js's PLATFORM_DEFAULT_FORMAT comment and
+  // isSpeculativelyDraftableFormat) — this handler only ever has an interview
+  // transcript to draft from, never a clip. Refusing here, rather than
+  // creating the atom and letting draftAtom.js silently draft carousel
+  // content under a reel label, is what closes 2026-08-07 feedback
+  // a7e996d0-a10c-4144-ae52-c7ef632a3555. A reel-formatted empty slot is
+  // filled by the reel worker once a real clip is ready, or by picking an
+  // already-rendered clip from the backlog (the "Pull from backlog" list on
+  // this same modal) — never by this "draft something new" action.
+  if (!isSpeculativelyDraftableFormat(fmt)) return err(res, 'reel_needs_clip', 422)
   if (!WEEKDAY_CODES.has(weekday)) return err(res, 'Invalid weekday', 400)
   const hourNum = Number.isInteger(hour) ? hour : parseInt(hour, 10)
   if (!Number.isInteger(hourNum) || hourNum < 0 || hourNum > 23) return err(res, 'Invalid hour', 400)
