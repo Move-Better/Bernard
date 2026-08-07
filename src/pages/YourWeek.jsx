@@ -607,6 +607,10 @@ function AddToDayModal({ slot, cadence, weekMonday, heldItems, onClose }) {
         toast.info('Nothing new to draft from', {
           description: 'Every recent capture already has a piece on this channel. Start a new capture to add fresh material.',
         })
+      } else if (e?.payload?.error === 'reel_needs_clip') {
+        toast.info('Reels need a real clip', {
+          description: 'Bernard can\'t write a Reel from scratch — it has to come from a rendered clip. Check the backlog below, or wait for a new clip to render.',
+        })
       } else {
         toast.error('Draft failed', { description: e?.message })
       }

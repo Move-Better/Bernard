@@ -55,6 +55,31 @@ export function contentFormatForAtom(atom) {
   return FORMAT_IDS.includes(fmt) ? fmt : null
 }
 
+// Can an atom of this format be created SPECULATIVELY — i.e. without a real
+// backing artifact already in hand? Every format but reel is: a post/carousel/
+// story atom is drafted straight from the interview transcript by draftAtom.js,
+// no clip required. Reel is the one exception (see PLATFORM_DEFAULT_FORMAT
+// above) — reel atoms may only be created by a path that already HAS a
+// rendered clip (reelFactory.js / clipDraft.js), never by a generic
+// "draft this slot" action, because draftAtom.js has no reel-specific
+// generation at all: handed a reel-formatted atom it drafts the ordinary
+// Instagram carousel prompt (caption + ---SLIDES---) and the caller stamps
+// format='reel' on top of that carousel content anyway (contentFormatForAtom
+// carries a planned format through unconditionally — see
+// plannerFormatInheritance.test.js — because for every OTHER format that's
+// correct; reel is what makes "unconditionally" wrong).
+//
+// Exists because content-plan/create-slot-atom.js (the "Draft something new"
+// button on an empty /week slot) used to accept whatever format the clicked
+// slot carried, including 'reel' — and roughly 5 of every 6 of a workspace's
+// weekly Instagram slots ARE reel-formatted by default (cadenceSlots.js
+// DEFAULT_REEL_SHARE = 0.75), so this was not a rare edge case. The result:
+// a "Reel" badged post with 5 carousel slides, a caption, and no video
+// (in-app feedback, 2026-08-07 — a7e996d0-a10c-4144-ae52-c7ef632a3555).
+export function isSpeculativelyDraftableFormat(format) {
+  return format !== ATOM_FORMATS.REEL
+}
+
 export const ATOM_DEFINITIONS = {
   instagram: [
     {
