@@ -405,6 +405,25 @@ explicit `select=` list; (3) for a small-N query feeding a render path that cons
 `workspaceContext()` shape, prefer `select=*` — an explicit list there is a standing trap where
 one newly-required column silently 400s the whole job.
 
+### Filtering a nested PostgREST embed — `parent.column=op.value`, not inside the parens
+
+A `select=` that embeds a related table (`staff?select=...,interviews(id,status,...)`) returns
+**every** related row by default — there's no way to filter inside the embed's own parens
+(`interviews(status=neq.parked)` is not valid PostgREST syntax and either errors or is silently
+ignored depending on the exact malformation). To filter the embedded rows themselves, prefix the
+filter with the embed's alias as a **top-level** query param: `&interviews.status=neq.parked`.
+PostgREST recognizes the `<relation>.<column>=<op>.<value>` shape and applies it inside the join,
+not to the parent table.
+
+This is a real, load-bearing pattern here, not a one-off — `interviews.workspace_id=eq.<id>` is
+already used this way in `api/_routes/editorial/campaign-spin.js` and
+`api/_routes/concepts/context.js`. It mattered for real when `staff.js`'s two `interviews(...)`
+embeds (the shared source behind `useStories`/`useStaffSummaries`, feeding Stories and Home's
+resume/overdue/topic-gap calcs) needed to exclude parked "Make a point" rows
+(`interviews.status=neq.parked`, #2570) — getting this filter onto the embed rather than trying
+to filter it downstream in JS was the one-line fix that protected every consumer at the single
+upstream source, instead of needing a fix in each of the ~6 places that read through it.
+
 ### Long per-item work: persist as each item lands, never batch to the end
 
 Any `waitUntil`/cron loop doing multi-minute work per item (ffmpeg renders, transcodes, LLM
