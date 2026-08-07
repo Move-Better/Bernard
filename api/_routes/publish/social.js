@@ -8,9 +8,6 @@ export const config = { runtime: 'nodejs' }
 // GBP fans out across the workspace's active locations, one bundle Team each
 // (bundle allows one active Google Business listing per Team). Other platforms
 // post once to the workspace brand Team.
-//
-// The legacy path /api/publish/buffer still resolves here via the alias in
-// ./buffer.js — see that file for when it can be deleted.
 
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 import { requireRole } from '../../_lib/auth.js'
@@ -88,7 +85,6 @@ export async function runBundlePublish(workspace, { platform, content, mediaUrls
         body: {
           success: true,
           postId: first?.postId,
-          bufferId: first?.postId, // legacy alias — drop with ./buffer.js
           scheduledAt: first?.scheduledAt,
           status: first?.status,
           profileCount: posts.length,
@@ -107,7 +103,6 @@ export async function runBundlePublish(workspace, { platform, content, mediaUrls
       body: {
         success: result.success,
         postId: result.postId,
-        bufferId: result.postId, // legacy alias — drop with ./buffer.js
         scheduledAt: result.scheduledAt,
         status: result.status,
         profileCount: result.profileCount,
@@ -145,12 +140,8 @@ async function handler(req, res) {
 // Bundle.social publish path. Request/response contract, unchanged since the
 // Buffer fork was deleted: DELETE { platformPostId }; POST { platform, content,
 // mediaUrls, scheduledAt, locationIds?, locationContents? }; response
-// { success, postId, bufferId, … } where both id fields carry the same bundle
-// post id (stored as content_items.platform_post_id downstream).
-//
-// `bufferId` is retained alongside `postId` only so a browser tab on the
-// previous JS bundle still reads an id back — see ./buffer.js for when both it
-// and the alias route can go.
+// { success, postId, … } where postId carries the bundle post id (stored as
+// content_items.platform_post_id downstream).
 //
 // GBP multi-location fan-out: a Google Business post fans out across each active
 // location that has its own connected bundle Team (one Team per location — bundle
@@ -166,12 +157,7 @@ async function handleBundlePublish(req, res, workspace) {
 
   if (req.method === 'DELETE') {
     const body = (typeof req.body === 'object' && req.body) ? req.body : {}
-    // `bufferUpdateId` is the pre-rename request field. Accepted alongside the
-    // current name because a browser tab on the previous JS bundle still sends
-    // it, and Bernard is a PWA whose service worker can serve a cached shell for
-    // a while after a deploy — cancelling a scheduled post is exactly where a
-    // 400 costs the user a real post going out. Drop with ./buffer.js.
-    const postId = body.platformPostId || body.bufferUpdateId
+    const postId = body.platformPostId
     if (!postId || typeof postId !== 'string') {
       return res.status(400).json({ error: 'Missing platformPostId' })
     }
