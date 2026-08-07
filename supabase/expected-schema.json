@@ -292,6 +292,8 @@
     "photo_treatment",
     "platform",
     "platform_post_id",
+    "point_safety_audit",
+    "point_safety_score",
     "provenance",
     "publish_error",
     "published_at",

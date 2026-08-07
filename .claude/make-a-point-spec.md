@@ -1,6 +1,6 @@
 # "Make a Point" — feature spec
 
-**Status:** Phase 1 LIVE on prod (merged #2565, deployed `b28de351`, verified in Chrome). Phase 2 LIVE on prod (merged #2569, deployed `313ce70f`). Phase 3 built (this PR).
+**Status:** All three phases LIVE on prod — Phase 1 (#2565, `b28de351`), Phase 2 (#2569, `313ce70f`), Phase 3 (#2570, `880f83f3`), the series-generator gap-close (#2571), all verified. Phase 2b — the advisory safety-flag chip — built (this PR).
 **Origin:** design + prototype session 2026-08-06 (Q + Claude). Decisions log entry same date.
 
 ---
@@ -56,7 +56,7 @@ The one flaw (host drifted "ran"→"walked") was the highest-value finding — i
 - New Interview: mode toggle (**Cover a topic** / **Make a point**); point mode swaps the clinical Topic field for a "What's the point you want to make?" seed box, hides clinical chips, defaults voice to personal. Signed-off mockup: `.claude/mockups/make-a-point-mode.html`.
 - Clinical interviews byte-identical; point interviews reuse the whole Storyboard → Publish spine (transcript = grounding, so the no-fabrication moat holds).
 
-## Phase 2 — Publish guardrail (BUILT — framing; safety-flag chip deferred)
+## Phase 2 — Publish guardrail (BUILT)
 
 Register is already free: point interviews default to `voice_mode='personal'`, and the generators already preserve first-person + append a brand signature in that mode (`prompts.js:300-313`) — so the personal story is never rewritten to clinic "we" voice.
 
@@ -67,7 +67,17 @@ Register is already free: point interviews default to `voice_mode='personal'`, a
 
 **Series generator gap — closed.** `isPoint` threaded into `getSeriesPartSystemPrompt` (+ its `getGeneralSeriesPartSystemPrompt` delegate) and its one caller, `content-items/split-into-series.js` (interview SELECT needed `kind` added, same as the other 3 files). **Deliberately excluded**: `getSeriesClusterSystemPrompt` — it emits a JSON plan (title/brief/quote list), no reader-facing prose, so there's no mechanism-claim or caveat surface for the guardrail to act on; documented inline rather than left as a silent gap. 5 new tests in `tests/lib/pointContentFraming.test.js`.
 
-**Remaining open item:** the **advisory safety flag** (surfaced as a content-editor chip) is designed but not built — see the design section below.
+## Phase 2b — Advisory safety-flag chip (BUILT)
+
+An independent verification layer on top of Phase 2's framing — the dynamic host and the generators stay free to be reactive/smart; this checks whether a generated draft actually held the line Phase 2 gave it. Scope: **long-form point content only** (blog/newsletter/series) — short-form is already forbidden from any mechanism claim at generation time, so there's nothing to verify there (Q's call).
+
+**Built:**
+- `src/lib/generalTeachingVsIndividualInstruction.js` — extracts the calibrated GENERAL TEACHING vs INDIVIDUAL INSTRUCTION judgment language out of `answerFidelityRubric.js` (tuned once already, 2026-07-25, at real cost — a false-positive incident) into a shared module both rubrics import, so it can't drift out of calibration a second time. Two exports (ARE/ARE-NOT list + the distinction sentence), not one block, so a caller can insert its own shape-specific bullets between them without string-surgery on prose text. Refactor verified **byte-identical** to the pre-existing `answerFidelityRubric.js` output via a real old-vs-new diff (not just a visual check) before and after the file's relocation.
+- `getPointSafetyAuditSystemPrompt` in `prompts.js` (sibling to `getVoiceAuditSystemPrompt`) — the rubric prompt, explicitly told Phase 2's hedged-mechanism language is *expected*, not a violation; only an assertion stated as fact, or reader-directed instruction, fails. 8 new tests, mutation-verified (stripping the shared judgment block reddened exactly the tests that check for it).
+- `api/_lib/pointSafetyAudit.js` (orchestration) + `api/_routes/content-items/point-safety-audit.js` (HTTP wrapper) — structurally mirrors `voiceAudit.js`/`voice-audit.js` exactly (`generateObject`+zod, fire-and-forget, never throws). Persists to its **own** columns (`content_items.point_safety_score`/`point_safety_audit`, migration 208) — never `voice_audit`, a different axis (overclaim vs. voice fidelity), conflating them would be validator drift.
+- **Trigger scope matches `voiceAudit`'s real coverage**, not an idealized "everywhere": fires alongside it at its actual 2 live call sites (`InterviewSession.jsx` generate, `blog-regen-finalize.js` regen), gated on `isPoint`. Not wired into series generation — same known gap `voiceAudit` itself already has, not a new one introduced here.
+- `SafetyChip.jsx` — sibling to `VoiceChip.jsx` in `EditorWorkflowBar`, gate-based (mirrors F16's `VoiceCheckChip` in `AnswerReview.jsx`: quiet/passed, amber/held, nothing when unscored or not point-sourced). `content_items`'s SELECT got a direct `interview:interviews!interview_id(kind)` embed so the chip can tell whether a piece is point-sourced. Mockup: `.claude/mockups/safety-chip.html`, signed off 2026-08-06 (states + placement).
+- Threshold: 75/100 (7.5-equivalent), matching `ANSWER_GATE` exactly — same calibrated bar, same stakes, no new number invented without evidence (Q's call).
 
 ## Phase 3 — Quick-capture door (BUILT)
 
@@ -89,6 +99,6 @@ Every phase is verified with an **OLD-vs-NEW harness on the real sleep/running t
 
 ## Sequencing & status
 
-All three phases are built. Shipped in order 1 → 2 → 3 (all three merged and deployed 2026-08-06/07, PRs #2565, #2569, and this one). Phase 1 shipped behind a GitHub Actions major outage — auto-merge carried it through once Actions recovered.
+Every phase is built and shipped: 1 (#2565), 2 (#2569), 3 (#2570), the series-generator gap-close (#2571), and Phase 2b (this PR) — 2026-08-06/07. Phase 1 shipped behind a GitHub Actions major outage; auto-merge carried it through once Actions recovered.
 
-**Remaining open items**, both already flagged in their phase sections above: the Phase 2 advisory safety-flag chip (needs its own mockup), and the multi-part blog series generator not yet getting Phase 2's framing.
+**Open, tracked (not silently dropped):** the multi-part blog series generator doesn't get Phase 2b's safety check (matches `voiceAudit`'s own real coverage gap, not a new one). If series generation becomes a real point-content path, thread it the same way.

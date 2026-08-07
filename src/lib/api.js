@@ -484,6 +484,34 @@ export async function runVoiceAuditForInterview(interviewId, platform = 'blog') 
   })
 }
 
+/**
+ * Phase 2b of "Make a point" — fires alongside runVoiceAuditForInterview, but
+ * only for long-form point-sourced content (caller gates on isPoint). Looks
+ * up the just-created content_item the same way, then triggers the safety
+ * judge independently — a failure here must never affect the voice audit or
+ * vice versa, so this is a separate call, not folded into the one above.
+ * @param {string} interviewId @param {string} [platform] @returns {Promise<unknown>}
+ */
+export async function runPointSafetyAuditForInterview(interviewId, platform = 'blog') {
+  /** @type {unknown} */
+  let result
+  try {
+    result = await apiFetch(
+      `/api/db/content?interviewId=${encodeURIComponent(interviewId)}&platform=${encodeURIComponent(platform)}&limit=1`
+    )
+  } catch {
+    return null
+  }
+  const rows = /** @type {Array<{ id?: string }>} */ (Array.isArray(result) ? result : [])
+  const contentItemId = rows[0]?.id
+  if (!contentItemId) return null
+  return apiFetch('/api/content-items/point-safety-audit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contentItemId }),
+  })
+}
+
 /** @param {string} itemId @returns {Promise<unknown>} */
 export function listContentItemDrafts(itemId) {
   return apiFetch(`/api/content-item-drafts?itemId=${encodeURIComponent(itemId)}`)

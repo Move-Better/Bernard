@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { apiFetch, fetchSimilarInterviews, fetchStaffMember, fetchStaffMemberRecentContent, updateInterview, cleanupTranscript, populateContentItemProvenance, runVoiceAuditForInterview } from '@/lib/api'
+import { apiFetch, fetchSimilarInterviews, fetchStaffMember, fetchStaffMemberRecentContent, updateInterview, cleanupTranscript, populateContentItemProvenance, runVoiceAuditForInterview, runPointSafetyAuditForInterview } from '@/lib/api'
 import { buildOwnHistoryBlock, pickPriorInterviews } from '@/lib/practiceMemory'
 import { extractProvenanceBlock } from '@/lib/provenance'
 import { useStaffMember, useInterview, useCampaigns, queryKeys } from '@/lib/queries'
@@ -1507,6 +1507,15 @@ export default function InterviewSession() {
           console.warn('[interview] voice audit failed (non-fatal):', err?.message)
         }
       })
+      // Phase 2b — same fire-and-forget shape, independent of the voice audit
+      // above (a failure in one must never affect the other). Long-form point
+      // content only; short-form atoms never get this check (see
+      // pointSafetyAudit.js for why).
+      if (isPoint) {
+        runPointSafetyAuditForInterview(interviewId, isNewsletter ? 'email' : 'blog').catch((err) => {
+          console.warn('[interview] point safety audit failed (non-fatal):', err?.message)
+        })
+      }
       // Stop mic recording + upload audio for voice clone training.
       // Fire-and-forget — resolve() fires before the upload completes so
       // we don't block the navigation. Any upload failure is silent.

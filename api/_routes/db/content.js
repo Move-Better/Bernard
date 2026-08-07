@@ -55,14 +55,19 @@ async function dbErr(res, r, msg = 'Database error', status = 500) {
 // selected state, the badge, and publishPiece's `piece.format`) got undefined,
 // so the choice was invisible AND never reached the publish payload. Nothing
 // errored; the feature was simply inert. Add both halves together.
-const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,content,overlay_text,slides,text_card,status,publish_error,scheduled_at,published_at,media_urls,platform_post_id,resolved_url,target_locations,location_id,location_overrides,notes,reviewed_by,approved_by,approved_at,reject_reason,reject_note,rejected_at,rejected_by,edit_diff,performed_well,is_model_post,model_reasons,model_note,model_marked_at,archived_at,hashtag_suggestions,provenance,voice_fidelity_score,voice_audit,length_preset,series_id,series_part,series_total,photo_treatment,photo_composite_url,photo_template_id,aspect_ratio,seo_title,meta_description,format,format_source,media_source,created_at,updated_at'
+// interview:interviews!interview_id(kind) — a direct (non-moment-chain) embed
+// off content_items.interview_id, so the editor can tell whether this piece
+// came from a kind='point' interview and render the Phase 2b safety chip
+// only there. Distinct alias path from MOMENT_EMBED's nested
+// moment.interview below — no collision, different attachment point.
+const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,content,overlay_text,slides,text_card,status,publish_error,scheduled_at,published_at,media_urls,platform_post_id,resolved_url,target_locations,location_id,location_overrides,notes,reviewed_by,approved_by,approved_at,reject_reason,reject_note,rejected_at,rejected_by,edit_diff,performed_well,is_model_post,model_reasons,model_note,model_marked_at,archived_at,hashtag_suggestions,provenance,voice_fidelity_score,voice_audit,point_safety_score,point_safety_audit,length_preset,series_id,series_part,series_total,photo_treatment,photo_composite_url,photo_template_id,aspect_ratio,seo_title,meta_description,format,format_source,media_source,created_at,updated_at,interview:interviews!interview_id(kind)'
 
 // Slim shape for the Stories list (Cards / Pipeline / Calendar / Themes views).
 // Drops heavy columns (`content`, `media_urls`, `notes`, etc.) that the list
 // views don't render — full row is still available via id-fetch or the
 // per-piece review screen. See buildStories() in src/lib/stories.js for the
 // consuming shape.
-const SELECT_CARD = 'id,interview_id,brief_id,workspace_id,platform,status,scheduled_at,published_at,updated_at,provenance,series_id,series_part,series_total,voice_fidelity_score,voice_audit,performed_well'
+const SELECT_CARD = 'id,interview_id,brief_id,workspace_id,platform,status,scheduled_at,published_at,updated_at,provenance,series_id,series_part,series_total,voice_fidelity_score,voice_audit,point_safety_score,point_safety_audit,performed_well,interview:interviews!interview_id(kind)'
 
 // Moments IA ① — the detail read (and the PATCH echo that overwrites the
 // client's detail cache) embed the piece's banked moment via its plan atom, so

@@ -6,6 +6,7 @@ import {
   getInterviewSystemPrompt,
   getBlogPostSystemPrompt,
   getVoiceAuditSystemPrompt,
+  getPointSafetyAuditSystemPrompt,
   getThreadDetectionSystemPrompt,
 } from '../../src/lib/prompts.js'
 
@@ -296,6 +297,65 @@ describe('getVoiceAuditSystemPrompt', () => {
     expect(prompt).toContain('suggestion')
     // Typo guard — the final sentence must read "fidelity", not "fidulity".
     expect(prompt).not.toContain('fidulity')
+  })
+})
+
+// Phase 2b of "Make a point" (.claude/make-a-point-spec.md) — the advisory
+// safety-flag chip's judge. Structurally the sibling of
+// getVoiceAuditSystemPrompt above, but a different axis (does the draft
+// overclaim a mechanism / get prescriptive, not does it sound like the
+// clinician). Shares its calibrated judgment language with
+// answerFidelityRubric.js via generalTeachingVsIndividualInstruction.js — see
+// that file's own describe block below for the shared-import guarantee.
+describe('getPointSafetyAuditSystemPrompt', () => {
+  it('injects the draft content and asks for a 0-100 score', () => {
+    const { user } = getPointSafetyAuditSystemPrompt('My deep sleep came back after two short runs.')
+    expect(user).toContain('My deep sleep came back after two short runs.')
+    expect(user).toContain('Score safety 0–100')
+  })
+
+  it('frames the piece as a first-person experience, explicitly not a Q&A answer or clinical guidance', () => {
+    const { instructions } = getPointSafetyAuditSystemPrompt('content')
+    expect(instructions).toContain("first-person account of the AUTHOR'S OWN lived experience")
+    // The template literal wraps mid-phrase, so match across the line break.
+    expect(instructions).toMatch(/not a Q&A\s+answer to a reader's question/)
+    expect(instructions).toContain('not clinical practice guidance')
+  })
+
+  it('states the hedged-mechanism exception — this is what pointContentFraming already told it to do', () => {
+    const { instructions } = getPointSafetyAuditSystemPrompt('content')
+    expect(instructions).toMatch(/hedged mechanism.*is\s*NOT a safety problem/s)
+    expect(instructions).toContain('generally suggests')
+  })
+
+  it('flags an unhedged mechanism claim and reader-directed instruction as the two point-specific problems', () => {
+    const { instructions } = getPointSafetyAuditSystemPrompt('content')
+    expect(instructions).toContain('stating the mechanism itself as settled fact')
+    expect(instructions).toContain("turning the author's personal result into an instruction for the reader")
+  })
+
+  it('includes the shared GENERAL TEACHING vs INDIVIDUAL INSTRUCTION calibrated language', () => {
+    const { instructions } = getPointSafetyAuditSystemPrompt('content')
+    expect(instructions).toContain('GENERAL TEACHING (fine, expected) vs INDIVIDUAL INSTRUCTION (unsafe)')
+    // The calibrated ARE/ARE-NOT examples that fixed the 2026-07-25 false positive.
+    expect(instructions).toContain('short, quick steps tend to keep you over your feet')
+  })
+
+  it('requires a verbatim-quoted red_flag or the literal string "none"', () => {
+    const { instructions } = getPointSafetyAuditSystemPrompt('content')
+    expect(instructions).toContain('red_flag must quote the')
+    expect(instructions).toContain('"none"')
+  })
+
+  it('truncates very long content to a bounded budget', () => {
+    const huge = 'x'.repeat(20000)
+    const { user } = getPointSafetyAuditSystemPrompt(huge)
+    expect(user.length).toBeLessThan(huge.length)
+  })
+
+  it('degrades gracefully on empty/undefined content rather than throwing', () => {
+    expect(() => getPointSafetyAuditSystemPrompt('')).not.toThrow()
+    expect(() => getPointSafetyAuditSystemPrompt(undefined)).not.toThrow()
   })
 })
 
