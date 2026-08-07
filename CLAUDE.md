@@ -884,6 +884,26 @@ Rule: when adding or auditing a platform-specific constraint (length cap, media-
 
 **Writing a new invariant into ARCHITECTURE.md does NOT make existing code comply — sweep for violations in the same PR, or you have documented a bug rather than fixed one.** The two sweeps above both fire when you *change code*. This one fires when you only *write a rule*, which feels like documentation and therefore safe. It is the more dangerous case: the rule now reads as settled, so the next person greps ARCHITECTURE.md, finds the contract stated plainly, and assumes the codebase honors it. (2026-07-22, #2272: the media-suggestion picker started returning videos, and ARCHITECTURE.md gained "a video's `blobUrl` is the raw `.mov`/`.mp4` and is **never** a valid `<img src>` … guard it with `isVideoEntry()`." Correct, and written as a *consequence for any surface that may now receive both* — i.e. framed forward, at new code. Four live sites in `PostPreview.jsx` were already violating it right then: every video post in the product previewed as a black rectangle, because an `<img>` pointed at an `.mp4` fails to load and the `onError` handler hides it. A user reported it **the next day** (#2308); the fix was a shared `VideoFrame` component, and the same PR found a fifth latent hole where a render branch tested `m.type === 'video'` instead of the canonical `isVideoEntry()`.) **Rule: when you add an invariant to a doc, immediately grep for the anti-pattern it forbids and either fix or explicitly inventory the existing violators in that PR.** The grep is usually trivial and mechanical — here, `grep -rn "thumbnailUrl" src/` surfaced all four in one call. **Corollary for reading a bug report: its list of affected sites is a lower bound, not the scope.** This report named three; there were four, and the missing one (`MediaCarousel`, the Facebook/LinkedIn path) was the most-used. Grep the *pattern*, never trust the enumeration.
 
+## bundle.social's `upload/from-url` endpoint — no declared size cap, but a ~100s gateway timeout
+
+Building the Library's YouTube publish lane (#2545), a bundle.social blog post claimed "resumable
+uploads for videos up to 1GB." Their actual API reference page states no number at all — only that
+"platform-specific size limits, codecs, and duration caps still apply at post creation time." The blog
+figure was simply wrong, and would have blocked half the real interview library from a feature that
+had no real size problem.
+
+**Measured directly against the live endpoint 2026-08-03:** a 2.26 GB 4K mp4 POSTed to
+`/api/v1/upload/from-url` returned 200 in 90s, correct metadata, uploaded object confirmed via a
+follow-up `GET /api/v1/upload/`. A 5.9 GB file on the same route returned a Cloudflare 524 at 125s —
+and a follow-up list call confirmed nothing landed; it is a genuine failure, not a slow success. The
+constraint is a **~100s gateway timeout on the endpoint itself**, not a declared byte ceiling — at the
+observed ~25 MB/s ingest that puts the practical wall near **2.5 GB**. If bundle ever moves `from-url`
+ingestion onto the SDK's separate chunked `init`/`finalize` upload path, re-measure — that path is
+architecturally different and may not share this timeout.
+
+`api/_lib/youtubeCopy.js`'s `YOUTUBE_MAX_UPLOAD_BYTES` constant is the canonical value; re-derive it
+from a fresh measurement rather than copying this paragraph's number forward indefinitely.
+
 ## Audit and checkup
 
 **These commands are `bernard-`-prefixed on purpose** (renamed 2026-07-23, Vigil SOP sync). Bernard, Deep Thought and Vigil all define audit/health instruments, and same-named commands across sibling projects can load the **wrong project's body** — a confirmed failure, not a theoretical one: this repo's `checkup.md` was byte-identical to Deep Thought's, so DT's `/checkup` was auditing Bernard's multi-tenancy and Vercel aliases against a single-org Railway app. A unique prefix makes that impossible. Plain `/audit` and `/checkup` still exist as *generic* global skeletons that auto-discover this repo's agents — they work, just less tuned.
