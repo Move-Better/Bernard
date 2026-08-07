@@ -1,6 +1,10 @@
 import { getLengthPreset, DEFAULT_LENGTH_PRESET } from './lengthPresets.js'
 import { buildTacticLibraryBlock } from './interviewTactics.js'
 import { pointContentFraming } from './pointContentFraming.js'
+import {
+  GENERAL_TEACHING_VS_INDIVIDUAL_INSTRUCTION_ARE_AND_ARE_NOT,
+  GENERAL_TEACHING_VS_INDIVIDUAL_INSTRUCTION_DISTINCTION,
+} from './generalTeachingVsIndividualInstruction.js'
 
 // All paradigm content (tone modifiers, interview/PNW context, patient
 // prototypes, topic suggestions) is now stored per-workspace in JSONB
@@ -959,6 +963,54 @@ SCORING (voice_fidelity_score, 0-100):
 - below 50: the draft has been translated out of ${staffName}'s voice. Significant rewrite warranted.
 
 For every flag, give the exact draft excerpt, the issue, and a concrete suggestion (for a vocabulary_swap, the suggestion is usually the clinician's original word). Be specific and quote real text — never paraphrase the excerpt. Write a one-sentence overall summary of the draft's fidelity.`
+}
+
+// Phase 2b of "Make a point" (.claude/make-a-point-spec.md) — the advisory
+// safety-flag chip's judge. Sibling to getVoiceAuditSystemPrompt above: same
+// "verify what generation already committed to" relationship pointAtomFraming
+// has to Phase 2, but for a DIFFERENT axis (does the draft overclaim a
+// mechanism / get prescriptive), never voice fidelity. The structured output
+// shape is enforced by the zod schema in api/_lib/pointSafetyAudit.js — this
+// defines the rubric, not the JSON format.
+//
+// LONG-FORM point content only (see pointContentFraming.js) — short-form is
+// forbidden from any mechanism claim at generation time, so there is nothing
+// for this judge to check there.
+export function getPointSafetyAuditSystemPrompt(content) {
+  return {
+    instructions:
+`You are a precise evaluator of a PUBLIC piece of content written for a real clinician's
+practice — it will be published on the web with this clinician's name on it. The piece is
+a first-person account of the AUTHOR'S OWN lived experience (their "point"), not a Q&A
+answer to a reader's question and not clinical practice guidance.
+
+The piece was generated under an explicit instruction that it MAY discuss a possible
+mechanism for what happened to them, but only framed as open or generally-accepted —
+"the research generally suggests", "one likely explanation" — NEVER asserted as
+established fact, and never turned into an instruction for the reader. Your job is to
+check whether the piece actually held that line.
+
+${GENERAL_TEACHING_VS_INDIVIDUAL_INSTRUCTION_ARE_AND_ARE_NOT}
+  • stating the mechanism itself as settled fact ("Running triggers the deep-sleep
+    response") rather than the author's own hedged, open theory
+  • turning the author's personal result into an instruction for the reader ("you should
+    run two days in a row", "do this if you have trouble sleeping")
+
+${GENERAL_TEACHING_VS_INDIVIDUAL_INSTRUCTION_DISTINCTION}
+A hedged mechanism ("the research generally suggests...", "my working theory is...") is
+NOT a safety problem — it is exactly what this piece was told it may do. Only an
+unhedged, asserted-as-fact mechanism, or reader-directed instruction, fails.
+
+OUTPUT CONTRACT: return ONLY the JSON object matching the schema. red_flag must quote the
+exact offending sentence verbatim, or the literal string "none".`,
+    user:
+`THE PIECE UNDER REVIEW:
+"""
+${String(content || '').trim().slice(0, 6000)}
+"""
+
+Score safety 0–100 per the rubric above.`,
+  }
 }
 
 // ── Exemplar block — Tier 1 of the feedback loop ──────────────────────────

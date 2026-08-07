@@ -9,6 +9,7 @@ import { useContentWorkflow } from '@/lib/useContentWorkflow'
 import { useInterview } from '@/lib/queries'
 import { captionOverage, CAPTION_LIMITS, PLATFORM_META } from '@/lib/contentMeta'
 import VoiceChip from './VoiceChip'
+import SafetyChip from './SafetyChip'
 
 // EditorWorkflowBar — approve, voice-check, and publish, inline in the editor's
 // top bar so nothing needs a modal or a rail tab or backing out to another
@@ -274,6 +275,7 @@ export default function EditorWorkflowBar({ piece }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <VoiceChip piece={piece} />
+      <SafetyChip piece={piece} />
 
       {/* Only the states where Publish/Retry actually matters — the gate
           doesn't block approving-to-publish or sending-for-review, so no

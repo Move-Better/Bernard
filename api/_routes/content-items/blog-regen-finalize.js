@@ -22,6 +22,7 @@ import { enforceLimit } from '../../_lib/ratelimit.js'
 import { extractProvenanceBlock } from '../../../src/lib/provenance.js'
 import { LENGTH_PRESETS } from '../../../src/lib/lengthPresets.js'
 import { auditContentItem } from '../../_lib/voiceAudit.js'
+import { auditPointContentSafety } from '../../_lib/pointSafetyAudit.js'
 
 const VALID_LENGTH_PRESETS = new Set(LENGTH_PRESETS.map((p) => p.id))
 const VALID_GENERATION_STYLES = new Set(['blog_post', 'minimal_edits'])
@@ -89,7 +90,7 @@ export default async function handler(req, res) {
   }
 
   const ivRes = await sb(
-    `interviews?id=eq.${item.interview_id}&${wsFilter}&select=id,outputs,generation_style`,
+    `interviews?id=eq.${item.interview_id}&${wsFilter}&select=id,kind,outputs,generation_style`,
   )
   if (!ivRes.ok) return dbErr(res, ivRes)
   const ivRows = await ivRes.json()
@@ -109,9 +110,13 @@ export default async function handler(req, res) {
     updated_at:          new Date().toISOString(),
     // The body just changed — the prior voice audit no longer describes it.
     // Clear it now (so Story Detail doesn't show a stale score) and re-run the
-    // audit fire-and-forget below.
+    // audit fire-and-forget below. Same staleness argument for the Phase 2b
+    // safety audit — clear both together even though only point interviews
+    // actually populate the point_safety_* pair.
     voice_fidelity_score: null,
     voice_audit:          null,
+    point_safety_score:   null,
+    point_safety_audit:   null,
   }
   if (bodyLengthPreset != null) patch.length_preset = bodyLengthPreset
 
@@ -148,6 +153,10 @@ export default async function handler(req, res) {
   // on Story Detail within a few seconds. Never throws (auditContentItem
   // records its own failure markers).
   waitUntil(auditContentItem(ws, id))
+  // Phase 2b — independent re-audit, long-form point content only.
+  if (interview.kind === 'point') {
+    waitUntil(auditPointContentSafety(ws, id))
+  }
 
   return ok(res, updRows[0] ?? null)
 }
