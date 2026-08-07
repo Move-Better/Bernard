@@ -170,7 +170,9 @@ export async function regradeContentItem({ ws, contentItemId, redFlag, inboxItem
         body: JSON.stringify({
           content: revised,
           voice_fidelity_score: scored100,
-          voice_audit: { ...breakdown, gate: 'passed', producer_attempts: 1, regraded_by: PRODUCER_USER_ID },
+          // `predrafted` is lane provenance (the pre-draft kill-criterion metric), not
+          // a judge output — the fresh audit object must carry it forward or it's lost.
+          voice_audit: { ...breakdown, gate: 'passed', producer_attempts: 1, regraded_by: PRODUCER_USER_ID, ...(audit.predrafted ? { predrafted: true } : {}) },
           updated_at: new Date().toISOString(),
         }),
       }
