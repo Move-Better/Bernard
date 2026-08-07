@@ -99,7 +99,7 @@ export default async function handler(req, res) {
   // Load the interview (everything we might need across both paths).
   const ivRes = await sb(
     `interviews?id=eq.${item.interview_id}&${wsFilter}` +
-    `&select=id,staff_id,topic,tone,voice_mode,prototype_id,verbatim_flags,location_id,messages,cleaned_messages,outputs,created_at,audience,story_type,generation_style`,
+    `&select=id,staff_id,topic,kind,tone,voice_mode,prototype_id,verbatim_flags,location_id,messages,cleaned_messages,outputs,created_at,audience,story_type,generation_style`,
   )
   if (!ivRes.ok) return dbErr(res, ivRes)
   const ivRows = await ivRes.json()
@@ -264,6 +264,7 @@ export default async function handler(req, res) {
       hasPublishedArticle,
       siblingBlock,
       modelExemplarsBlock,
+      interview.kind === 'point',
     )
     if (!systemPrompt) {
       return err(res, 'no_prompt_defined', 422)

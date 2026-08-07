@@ -157,9 +157,11 @@ export function assembleCallSystemPrompt({ workspace, staff, topic, shippedTitle
  * @param {Array}  p.messages       - transcript turns [{ role:'user'|'assistant', content }]
  * @param {object} [p.verbatimFlags]
  * @param {string} [p.ownHistoryBlock]
+ * @param {boolean} [p.isPoint] - true when the source interview is kind='point'
+ *   ("Make a point"); applies the publish-layer non-diagnostic framing.
  * @returns {Promise<{ blogPost: string, generatedAt: string }>}
  */
-export async function generateOutputsFromTranscript({ workspace, staff, topic, messages, verbatimFlags = null, ownHistoryBlock = '' }) {
+export async function generateOutputsFromTranscript({ workspace, staff, topic, messages, verbatimFlags = null, ownHistoryBlock = '', isPoint = false }) {
   if (!process.env.AI_GATEWAY_API_KEY) {
     throw new Error('AI_GATEWAY_API_KEY is not set')
   }
@@ -185,6 +187,7 @@ export async function generateOutputsFromTranscript({ workspace, staff, topic, m
       null, // storyTypeSlot
       null, // lengthPreset
       ownHistoryBlock,
+      isPoint,
     ) + buildVerbatimBlock(verbatimFlags)
 
   const genMessages = [

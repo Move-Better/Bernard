@@ -91,7 +91,7 @@ export default async function handler(req, res) {
 
   const ivRes = await sb(
     `interviews?id=eq.${item.interview_id}&${wsFilter}` +
-    `&select=id,staff_id,topic,tone,voice_mode,prototype_id,verbatim_flags,location_id,messages,outputs,audience,story_type,generation_style`,
+    `&select=id,staff_id,topic,kind,tone,voice_mode,prototype_id,verbatim_flags,location_id,messages,outputs,audience,story_type,generation_style`,
   )
   if (!ivRes.ok) return dbErr(res, ivRes)
   const ivRows = await ivRes.json()
@@ -171,6 +171,7 @@ export default async function handler(req, res) {
         null,
         effectiveLengthPreset,
         ownHistoryBlock,
+        interview.kind === 'point',
       ) + buildVerbatimBlock(interview.verbatim_flags)
 
   const messages = [

@@ -13,6 +13,7 @@
 
 import { lengthLine, leanOf } from './socialLengthTargets.js'
 import { MODEL_REASON_LABEL } from '../../src/lib/modelRating.js'
+import { pointContentFraming } from '../../src/lib/pointContentFraming.js'
 
 // The "came together well" exemplar block — Q's craft signal, distinct from
 // the audience-driven `performed_well` flag (see src/lib/modelRating.js).
@@ -86,7 +87,7 @@ function stripBrandBookNoise(text) {
 // that each used to be generated in isolation against one transcript, which made
 // them converge on its single most vivid story. Built by resolveSiblingCaptionsBlock
 // in producer/draftAtom.js; '' when this is the interview's first atom.
-export function getAtomSystemPrompt(workspace, staffName, condition, platform, angle, voiceMode = 'practice', tone = 'smart', voiceNotes = '', brandGuidelines = '', voicePhrases = [], audienceLabel = null, storyTypeLabel = null, campaignContext = '', ownHistoryBlock = '', hasPublishedArticle = false, siblingBlock = '', modelExemplarsBlock = '') {
+export function getAtomSystemPrompt(workspace, staffName, condition, platform, angle, voiceMode = 'practice', tone = 'smart', voiceNotes = '', brandGuidelines = '', voicePhrases = [], audienceLabel = null, storyTypeLabel = null, campaignContext = '', ownHistoryBlock = '', hasPublishedArticle = false, siblingBlock = '', modelExemplarsBlock = '', isPoint = false) {
   void tone; void audienceLabel; void storyTypeLabel
   const firstName = staffName.split(' ')[0]
   const isPersonal = voiceMode === 'personal'
@@ -369,6 +370,10 @@ Output ONLY the overlay text line, then the LINK_STICKER_TEXT line. No other tex
     : ''
 
   const voicePhrasesBlockStr = buildVoicePhrasesBlock(voicePhrases)
+  // Social atoms are always the "short" surface — see pointContentFraming.js
+  // for why short formats stay strictly experiential (no room to hedge a
+  // mechanism claim responsibly, and a caveat is exactly what gets truncated).
+  const pointFramingBlock = pointContentFraming({ isPoint, format: 'short' })
 
   return `You are turning a real conversation with ${staffName || 'the clinician'} about ${condition} into one ${platform} atom for ${workspace.display_name}.
 
@@ -399,5 +404,5 @@ Your job: pick the moment in the conversation that best fits this platform and a
 PLAIN TEXT ONLY: Do not use markdown formatting — no *asterisks* for emphasis, no **double asterisks** for bold, no --- horizontal rules, no # headers. Social platforms render these as literal characters.
 
 ${instruction}
-${brandVoiceBlock}${brandBlock}${voiceBlock}${voicePhrasesBlockStr}${ownHistoryBlock}${campaignContext ? `\n${campaignContext}\n\nThe CAMPAIGN FOCUS directive above OVERRIDES any default "book a visit" / "link in bio" CTAs in the per-platform instructions. Rewrite the CTA portion of this piece to match the campaign — including the exact URL and button phrasing when provided. Keep platform-specific structural rules (character limits, hashtag counts, overlay format) intact.\n\nCRITICAL — the CTA must flow from the content, not be bolted on: the campaign ask has to grow directly out of the specific point this piece just made. Bridge from the body's idea into the campaign in one continuous voice, so the reader feels a natural turn rather than a hard pivot to a sales line. Never drop the CTA in as a disconnected final sentence, and never let it read as a canned insert pasted after the real content — the last thought and the ask should belong to the same breath.\n` : ''}${siblingBlock}${modelExemplarsBlock}`
+${brandVoiceBlock}${brandBlock}${voiceBlock}${voicePhrasesBlockStr}${ownHistoryBlock}${campaignContext ? `\n${campaignContext}\n\nThe CAMPAIGN FOCUS directive above OVERRIDES any default "book a visit" / "link in bio" CTAs in the per-platform instructions. Rewrite the CTA portion of this piece to match the campaign — including the exact URL and button phrasing when provided. Keep platform-specific structural rules (character limits, hashtag counts, overlay format) intact.\n\nCRITICAL — the CTA must flow from the content, not be bolted on: the campaign ask has to grow directly out of the specific point this piece just made. Bridge from the body's idea into the campaign in one continuous voice, so the reader feels a natural turn rather than a hard pivot to a sales line. Never drop the CTA in as a disconnected final sentence, and never let it read as a canned insert pasted after the real content — the last thought and the ask should belong to the same breath.\n` : ''}${siblingBlock}${modelExemplarsBlock}${pointFramingBlock}`
 }

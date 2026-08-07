@@ -1,6 +1,6 @@
 # "Make a Point" — feature spec
 
-**Status:** Phase 1 built (PR #2565, pending merge behind a GitHub Actions outage 2026-08-06). Phases 2 & 3 designed, not built.
+**Status:** Phase 1 LIVE on prod (merged #2565, deployed `b28de351`, verified in Chrome 2026-08-06). Phase 2 built (this PR). Phase 3 designed, not built.
 **Origin:** design + prototype session 2026-08-06 (Q + Claude). Decisions log entry same date.
 
 ---
@@ -56,14 +56,16 @@ The one flaw (host drifted "ran"→"walked") was the highest-value finding — i
 - New Interview: mode toggle (**Cover a topic** / **Make a point**); point mode swaps the clinical Topic field for a "What's the point you want to make?" seed box, hides clinical chips, defaults voice to personal. Signed-off mockup: `.claude/mockups/make-a-point-mode.html`.
 - Clinical interviews byte-identical; point interviews reuse the whole Storyboard → Publish spine (transcript = grounding, so the no-fabrication moat holds).
 
-## Phase 2 — Publish guardrail (DESIGNED)
+## Phase 2 — Publish guardrail (BUILT — framing; safety-flag chip deferred)
 
 Register is already free: point interviews default to `voice_mode='personal'`, and the generators already preserve first-person + append a brand signature in that mode (`prompts.js:300-313`) — so the personal story is never rewritten to clinic "we" voice.
 
-Build:
-1. **Thread `kind`** into `getAtomSystemPrompt` / `getBlogPostSystemPrompt` (via `draftAtom`) — same shape as `voiceMode` flows today.
-2. **Channel-aware point-content framing block** (only when `kind='point'`): short formats → strictly experiential (no mechanism claim, nothing to hedge/truncate); long formats → experiential + lightly-hedged mechanism + woven (not appended) n=1 caveat. Use the **platform-meta registry** for the short/long split, not a hardcoded list.
-3. **Advisory safety flag**: adapt the existing `answerFidelityRubric.js` safety dimension (GENERAL TEACHING vs INDIVIDUAL INSTRUCTION, #2347) to score a point draft; surface as a chip + reason on the approval panel (reuse F16's advisory-surface component). Non-blocking.
+**Built:**
+1. `src/lib/pointContentFraming.js` — single shared helper, channel-aware: `format:'short'` (social atoms) forbids any mechanism/causal claim outright (nothing to hedge, nothing to truncate); `format:'long'` (blog/newsletter) allows a hedged mechanism ("generally-accepted or open", never asserted as fact) plus a woven — not tacked-on — n=1 caveat. Returns `''` when `isPoint` is false, so every non-point path is byte-identical.
+2. `isPoint` threaded as a trailing optional param (default `false`) through `getAtomSystemPrompt`, `getBlogPostSystemPrompt` (+ its `getGeneralBlogPostSystemPrompt` delegate), and `getNewsletterSystemPrompt` — and into **every one of their 8 call sites**: `draftAtom.js` ×2 (first draft + GBP location variant), `content-items/regenerate.js`, `content-items/blog-regen-prepare.js`, `CaptureReview.jsx`, `InterviewSession.jsx` ×2 (blog + newsletter), and `outboundCall.js`/`twilio-recording.js` (F1 outbound call — always `false` in practice today since that flow never produces `kind='point'`, threaded for correctness/future-proofing). Two interview SELECTs (`regenerate.js`, `blog-regen-prepare.js`, `twilio-recording.js`) needed `kind` added.
+3. `tests/lib/pointContentFraming.test.js` — 12 tests, mutation-verified (a `return ''` mutation reddened exactly the 7 "framing present" tests, left the 5 byte-identical tests green — proves the guard actually guards, not just that it exists).
+
+**Not built (tracked gap):** the multi-part blog SERIES generator (`getSeriesClusterSystemPrompt`/`getSeriesPartSystemPrompt`) was out of the mapped 8-caller surface and does not yet get the framing — low-risk (a point interview splitting into a multi-part series is an edge case) but real; thread it the same way if that path is used for point content. The **advisory safety flag** (adapting `answerFidelityRubric.js`'s GENERAL TEACHING vs INDIVIDUAL INSTRUCTION dimension, surfaced as an approval-panel chip) is designed but not built — deferred as its own follow-up (needs a mockup for the chip surface, per mockup-first).
 
 ## Phase 3 — Quick-capture door (DESIGNED)
 

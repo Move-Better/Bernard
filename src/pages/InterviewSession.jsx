@@ -1417,6 +1417,7 @@ export default function InterviewSession() {
       // blog/minimal-edits ladder is unchanged for every other interview.
       const isNewsletter = Array.isArray(interview.selected_outputs) && interview.selected_outputs.includes('email')
       const isMinimal = !isNewsletter && generationStyle === 'minimal_edits'
+      const isPoint = interview.kind === 'point'
       const systemPrompt = isNewsletter
         ? getNewsletterSystemPrompt(
             overlaidWorkspace, staffMember.name, interview.topic, voiceMode,
@@ -1424,6 +1425,7 @@ export default function InterviewSession() {
             voicePhrases,
             campaignRef.current,
             ownHistoryBlockRef.current,
+            isPoint,
           )
         : isMinimal
         ? getMinimalEditSystemPrompt(staffMember.name, voiceMode, staffMember.voice_notes || '', voicePhrases)
@@ -1435,6 +1437,7 @@ export default function InterviewSession() {
             resolveStoryTypeSlot(interview.story_type, overlaidWorkspace?.story_type_options),
             null, // lengthPreset — not currently surfaced in the in-session generate flow
             ownHistoryBlockRef.current,
+            isPoint,
           ) + buildVerbatimBlock(interview.verbatim_flags)
 
       const streamMessages = [

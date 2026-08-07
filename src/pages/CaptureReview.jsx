@@ -132,6 +132,7 @@ export default function CaptureReview() {
         resolveStoryTypeSlot(interview?.story_type, overlaidWorkspace?.story_type_options),
         null, // lengthPreset
         ownHistoryBlock,
+        interview?.kind === 'point',
       )
 
       // The transcript is the sole user message. We append a generation cue
