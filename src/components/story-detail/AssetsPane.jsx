@@ -283,6 +283,24 @@ function ExportCard({ piece }) {
 //
 // prefsOverride: workspace.schedule_prefs JSONB — replaces the global
 // PLATFORM_SCHEDULE_PREFS for the explainer caption when present.
+// Publish is blocked when the piece's explicit format can't carry its media
+// (e.g. an Instagram Post with 6 photos — bundle validates format BEFORE upload
+// and would reject it). Replaces the scheduling card entirely with the reason +
+// fix: there is nothing here that could succeed until the format changes, so a
+// fully-disabled button set would only be confusing. Copy is single-sourced from
+// describeFormatViolation, the same text the server returns.
+function FormatBlockedNotice({ reason }) {
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+      <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />
+      <div className="space-y-0.5">
+        <p className="font-medium">Can’t publish yet</p>
+        <p className="text-warning/90">{reason}</p>
+      </div>
+    </div>
+  )
+}
+
 function WhenToPublishCard({
   piece, suggested, otherScheduled,
   bufferUseQueue, prefsOverride,
@@ -624,7 +642,9 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
           publish immediately. Blog pieces collapse to a single Publish button
           since the website webhook is synchronous. */}
       {isPublish && piece.status === 'approved' && canReview && (
-        canDirectPublishPlatform(workspace, piece.platform, workspace?.connected_publish_services) ? (
+        !wf.formatValid ? (
+          <FormatBlockedNotice reason={wf.formatBlockReason} />
+        ) : canDirectPublishPlatform(workspace, piece.platform, workspace?.connected_publish_services) ? (
           <WhenToPublishCard
             piece={piece}
             suggested={suggested}

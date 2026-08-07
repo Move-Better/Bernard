@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { FORMAT_IDS, formatOptions, formatMediaRule, validateFormatMedia } from '../../src/lib/platformFormats.js'
+import { FORMAT_IDS, formatOptions, formatMediaRule, validateFormatMedia, describeFormatViolation } from '../../src/lib/platformFormats.js'
 
 // media_urls entries as the normalizers write them (clipToMediaEntry /
 // pickerItemToMediaEntry set both type and kind).
@@ -90,5 +90,42 @@ describe('validateFormatMedia — edges', () => {
     const broken = { type: 'image', kind: 'image' } // no url — never publishable
     expect(validateFormatMedia('instagram', 'carousel', [PHOTO, broken]))
       .toEqual({ ok: false, reason: 'too_few_items' })
+  })
+})
+
+describe('describeFormatViolation — the human "why + fix" copy (feedback 14ba3329)', () => {
+  it('names the count and suggests Carousel for an IG Post with 6 photos', () => {
+    const v = describeFormatViolation('instagram', 'post', Array(6).fill(PHOTO))
+    expect(v.reason).toBe('too_many_items')
+    expect(v.message).toContain('Instagram')
+    expect(v.message).toContain('6 photos')
+    expect(v.message).toContain('Carousel')
+  })
+
+  it('returns null for a valid format+media pair (nothing to block)', () => {
+    expect(describeFormatViolation('instagram', 'carousel', [PHOTO, PHOTO])).toBeNull()
+  })
+
+  it('returns null when the piece has no explicit format (legacy derived behaviour)', () => {
+    expect(describeFormatViolation('instagram', null, Array(6).fill(PHOTO))).toBeNull()
+  })
+
+  it('returns null on a platform with no format registry, even if a format leaked onto the row', () => {
+    // linkedin has no format choice — 'post' is a no-op field there, must NOT block.
+    expect(describeFormatViolation('linkedin', 'post', [PHOTO, PHOTO])).toBeNull()
+  })
+
+  it('explains a Facebook mixed album and omits a suggestion when no other format fits', () => {
+    const v = describeFormatViolation('facebook', 'post', [PHOTO, VIDEO])
+    expect(v.reason).toBe('mixed_not_allowed')
+    expect(v.message).toContain('Facebook')
+    // No facebook format accepts a photo+video pair, so no "Switch to …" is offered.
+    expect(v.message).not.toContain('Switch the format')
+  })
+
+  it('tells a Reel it can’t carry a photo', () => {
+    const v = describeFormatViolation('instagram', 'reel', [PHOTO])
+    expect(v.reason).toBe('image_not_allowed')
+    expect(v.message).toContain('can’t carry')
   })
 })
