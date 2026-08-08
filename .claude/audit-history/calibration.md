@@ -25,6 +25,15 @@ code is later touched in a way that could reintroduce the issue. -->
   or `/85` — all four were checked against the real build this run and all compile.
   (2026-07-31)
 
+- [ui-reviewer] src/pages/Analytics.jsx:284-304 — SEO "Total clicks"/"Branded clicks"
+  rendering smaller than "Non-branded clicks" is DELIBERATE HIERARCHY, confirmed by Q
+  (2026-08-08): non-branded organic traffic is the SEO signal that means something;
+  total and branded are supporting context and are meant to read as secondary. Flagged
+  independently by two audits (07-31, 08-08) before being settled — do not report the
+  size difference again. A finding here is only real if the EMPHASIS INVERTS (branded
+  or total rendered larger than non-branded) or the non-branded stat loses its
+  prominence entirely. (2026-08-08)
+
 ## Chronic / recurring (flagged 2+ audits running, still unresolved)
 
 <!-- Auto-appended by Phase 3 synthesis when a finding matches an entry in "Findings
@@ -32,11 +41,9 @@ snapshot" below and wasn't fixed in between. Format:
 - [agent] file:line — problem — first flagged YYYY-MM-DD, seen again YYYY-MM-DD (Nx)
 Remove an entry once the finding stops appearing (i.e. it got fixed). -->
 
-- [ui] src/pages/Analytics.jsx:284-304 — SEO "Total/Branded clicks" render at text-2xs vs
-  "Non-branded clicks" at text-base — first flagged 2026-07-31, seen again 2026-08-08 (2x).
-  The 08-08 reviewer's own read: plausibly INTENTIONAL emphasis (non-branded organic is the
-  meaningful SEO signal). Escalated per the 2-run rule, but the required action is Q's
-  one-line call, not a blind fix — if intentional, move to "Known false positives."
+_(none — the Analytics.jsx SEO stat-hierarchy item that reached 2x on 2026-08-08 was
+resolved by Q the same day as intentional emphasis and moved to "Known false positives"
+above. Nothing else is carrying forward unresolved.)_
 
 ## Findings snapshot (for next run's recurrence check)
 
@@ -68,10 +75,14 @@ AssetsPane.jsx:791, OnHandTab.jsx:305, VideoEditor.jsx:2107, WordsApproval.jsx:1
   mechanism)
 - [bug] api/_routes/db/interviews.js:434-479 — fan-out re-entrancy guard read-then-insert
   race can duplicate per-platform rows under concurrent completion PATCHes — 2026-08-08
-  (DEFERRED with a design note: a naive unique index on (interview_id, platform) would be
-  WRONG — the planner legitimately creates multiple items per interview+platform; a correct
-  constraint needs a discriminator for fan-out-materialized rows. Don't re-propose the
-  blanket index.)
+  (FIXED same day, migration 209 + per-platform inserts tolerating 23505. The discriminator
+  question was settled by measuring prod, not reasoning: a blanket unique index would have
+  collided with 40 existing groups — 39 content-plan (instagram/linkedin/facebook/gbp,
+  excluded by the platform list) and 1 split-into-series blog group (excluded by
+  `series_id IS NULL`). Zero duplicates in the resulting scope. Note PostgREST's
+  `on_conflict=` CANNOT infer a partial index, which is why the insert loops per platform
+  instead of batching. tests/lib/fanoutUniqueIndexMatchesMap.test.js pins the index
+  predicate to OUTPUT_PLATFORM_MAP — if that guard reddens, the two lists have drifted.)
 - [tenant] api/_routes/db/content.js PATCH media_urls — no per-asset ownership check on
   client-supplied mediaAssetId (pre-existing, informational; blob URLs public by design,
   no DB-row leak) — 2026-08-08 (record-only)
