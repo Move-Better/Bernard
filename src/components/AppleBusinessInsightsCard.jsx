@@ -135,6 +135,19 @@ export default function AppleBusinessInsightsCard({ disabled, onChange, defaultO
         <div className="px-5 pb-5 space-y-4 border-t pt-4">
           {disabled && <p className="text-xs text-muted-foreground">Admins only.</p>}
 
+          {/* Why this card stays expanded when the Google Business card next to
+              it collapses after setup (audit 2026-08-08, Q chose "keep open and
+              say why" over "collapse to match"): Google syncs itself, Apple has
+              to be fed a recap by hand every month. Without this line the two
+              cards just read as inconsistent. Shown only once configured —
+              before that, an open card is ordinary setup state and needs no
+              explanation. */}
+          {configured && (
+            <p className="text-xs text-muted-foreground">
+              Apple doesn&rsquo;t sync &mdash; add each month&rsquo;s recap by hand.
+            </p>
+          )}
+
           {multiLoc && (
             <div>
               <label className="text-xs font-medium text-muted-foreground">Location</label>
