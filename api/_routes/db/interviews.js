@@ -481,16 +481,32 @@ export default async function handler(req, res) {
               }
             })
 
-          if (items.length > 0) {
+          // One INSERT per platform, not one batch. The read above is only a
+          // fast path: two concurrent completion PATCHes can both read "blog is
+          // missing" and both insert it, and no application-level check can
+          // close that window — migration 209's partial unique index
+          // (content_items_fanout_uniq) is what actually does. A batch insert
+          // would lose the whole batch to one loser row's 23505, so each
+          // platform goes on its own and a unique violation is treated as
+          // success-by-another-writer: the row exists, which is all the guard
+          // ever wanted. PostgREST's `on_conflict=` can't express this — it
+          // takes column names only and cannot infer a PARTIAL index.
+          for (const row of items) {
             const insRes = await sb('content_items', {
               method: 'POST',
-              body: JSON.stringify(items),
+              body: JSON.stringify([row]),
               headers: { Prefer: 'return=minimal' },
             })
-            if (!insRes.ok) {
-              const errBody = await insRes.text().catch(() => '')
-              console.error(`[db/interviews] content_items insert ${insRes.status} for interview=${id} ws=${ws.slug}: ${errBody.slice(0, 500)}`)
+            if (insRes.ok) continue
+            const errBody = await insRes.text().catch(() => '')
+            // 23505 = another writer materialised this platform first. Expected
+            // under a race, not a failure — log at info so it stays visible
+            // without paging anyone.
+            if (errBody.includes('23505')) {
+              console.info(`[db/interviews] fan-out ${row.platform} already materialised for interview=${id} ws=${ws.slug} (concurrent completion)`)
+              continue
             }
+            console.error(`[db/interviews] content_items insert ${insRes.status} for interview=${id} platform=${row.platform} ws=${ws.slug}: ${errBody.slice(0, 500)}`)
           }
         }
       } catch (e) {
