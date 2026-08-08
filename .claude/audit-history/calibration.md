@@ -32,8 +32,11 @@ snapshot" below and wasn't fixed in between. Format:
 - [agent] file:line — problem — first flagged YYYY-MM-DD, seen again YYYY-MM-DD (Nx)
 Remove an entry once the finding stops appearing (i.e. it got fixed). -->
 
-_(none yet — the 2026-07-22 snapshot's 3 [bug] items were all confirmed still-fixed this
-run, and its 3 [ui] items were all confirmed fixed too; nothing carried forward chronic)_
+- [ui] src/pages/Analytics.jsx:284-304 — SEO "Total/Branded clicks" render at text-2xs vs
+  "Non-branded clicks" at text-base — first flagged 2026-07-31, seen again 2026-08-08 (2x).
+  The 08-08 reviewer's own read: plausibly INTENTIONAL emphasis (non-branded organic is the
+  meaningful SEO signal). Escalated per the 2-run rule, but the required action is Q's
+  one-line call, not a blind fix — if intentional, move to "Known false positives."
 
 ## Findings snapshot (for next run's recurrence check)
 
@@ -43,22 +46,51 @@ and don't survive into a fresh worktree, so this snapshot — inside the one for
 file — is what the NEXT run diffs against to detect recurrence. After comparing, the next
 run overwrites this section with its own snapshot. -->
 
-Seeded by the 2026-07-31 full sweep (report: 2026-07-31-2325-full.md). Items marked FIXED
-were repaired in-session; if one reappears, that's a regression — report at P1 minimum.
-The entire 2026-07-22 snapshot cleared (3 bug items re-verified still fixed, 3 ui items
-independently confirmed fixed by this run's ui-reviewer) — none carried forward.
+From the 2026-08-08 since-last run (report: 2026-08-08-0912.md, range 8e6b1c9d..17389ed1).
+Items marked FIXED were repaired in-session; if one reappears, that's a regression — report
+at P1 minimum. From the 2026-07-31 snapshot: all 4 FIXED bug/tenant items re-verified holding
+(agent-tick untouched, copy-to-platforms/coaching/opacity guards intact); the teal-Approve
+[ui] item shipped and was confirmed fixed app-wide (EditorWorkflowBar.jsx:412,
+AssetsPane.jsx:791, OnHandTab.jsx:305, VideoEditor.jsx:2107, WordsApproval.jsx:167 — all
+`variant="success"`); Analytics.jsx hierarchy recurred → moved to Chronic.
 
-- [bug+ui] 12 sites across 7 files (VideoEditor.jsx, AdminUsage.jsx, AccessMatrix.jsx, ProducerSettings.jsx, ContentPlanPanel.jsx, PackageCard.jsx, FeedbackResolvedBanner.jsx) — bare Tailwind opacity fractions (/6, /8, /12) compiled to nothing, invisible backgrounds in prod — 2026-07-31 (FIXED same session, bracket syntax + new repo-wide guard test tests/lib/opacityFractionsCompile.test.js)
-- [bug] api/_lib/producer/coachingNoteGenerator.js:45 — workspaces() query missing status=eq.active, billed AI calls + coaching notes for non-active workspaces — 2026-07-31 (FIXED same session)
-- [bug] api/_routes/content-items/copy-to-platforms.js:201 — sibling-fill PATCH had no re-check for a race with a concurrent edit — 2026-07-31 (FIXED same session, mirrors autoAttachMedia's re-read pattern)
-- [tenant] api/_routes/cron/agent-tick.js:156-176,265 — claimItem/finishItem/retry-PATCH missing workspace_id scope (not exploitable — defense-in-depth) — 2026-07-31 (FIXED same session)
-- [bug] api/_lib/aspectVariants.js:107-180 — saveAspectVariant find-then-insert race can create duplicate variant rows — 2026-07-31 (migration 203_aspect_variant_unique.sql PREPARED, not applied to prod — needs manual apply + review; low-probability/non-destructive so deferred rather than shipped unreviewed)
-- [ui] src/components/editor/EditorWorkflowBar.jsx:401-410, src/components/story-detail/AssetsPane.jsx:768-776 — Approve button renders in brand teal (default Button variant → bg-primary), not green — violates the codebase's own documented house rule (comment in VideoEditor.jsx:1992-1993: "approve=green, reject=red, brand teal reads as navigation") and is inconsistent with the correct reference implementation in OnHandTab.jsx's queue Approve button — 2026-07-31 (report-only per policy; near-mechanical fix — add a `success` Button variant matching the existing correct pattern — flagged to Q for fast-track, not a new design decision)
-- [ui] src/pages/Analytics.jsx:283-296 — SEO "Total clicks"/"Branded clicks" render smaller than "Non-branded clicks"; may read as a bug rather than deliberate hierarchy on first view — 2026-07-31 (P2 polish, report-only)
-- [live] agent_actions kind='channel_disconnected' — STILL 0 rows (re-checked 2026-07-31). Could not confirm a currently-disconnected GBP integration exists to test the precondition against (2 workspaces have gbp credentials, neither's config exposes a status/connected field this query could read) — keep watching, don't escalate to P1 without a confirmed live disconnection to test against.
-- [live] T3 slots config (workspaces.cadence_policy ? 'slots') — still 0 workspaces, 9 days later. Genuinely unused, not a bug — a real product-adoption signal worth someone's attention, not an audit finding.
-- [live] T4 video_segments.discard_reasons — 0 rows, but the Deny-verdict feature (#2506) shipped SAME DAY as this audit — expected to be 0, not a concern yet. Re-check next audit.
-- [live] T4 content_items.edit_diff — RESOLVED: 5 rows now (was 0 on 7-22). Drop from watchlist.
+- [bug] src/lib/publish.js:257 — dispatchBrief "Schedule" mode created the row pre-set to
+  status='scheduled', which the publish route's cross-path double-publish guard
+  (social.js:244) read as already-dispatched → returned alreadyDispatched:true and NEVER
+  called runBundlePublish. Silent no-op reported as success — 2026-08-08 (FIXED same
+  session: create at 'draft', server's dispatchCommitFields is the only terminal-status
+  writer)
+- [bug] api/_lib/blogTarget.js:93 — "archived rows don't count" checked
+  status==='archived', a value that doesn't exist in VALID_STATUSES (archiving is the
+  archived_at timestamp); both callers' SELECTs didn't fetch archived_at. Archived blogs
+  still counted toward the monthly target and could suppress the nudge — 2026-08-08
+  (FIXED same session: check archived_at, SELECTs updated, test now uses the real
+  mechanism)
+- [bug] api/_routes/db/interviews.js:434-479 — fan-out re-entrancy guard read-then-insert
+  race can duplicate per-platform rows under concurrent completion PATCHes — 2026-08-08
+  (DEFERRED with a design note: a naive unique index on (interview_id, platform) would be
+  WRONG — the planner legitimately creates multiple items per interview+platform; a correct
+  constraint needs a discriminator for fan-out-materialized rows. Don't re-propose the
+  blanket index.)
+- [tenant] api/_routes/db/content.js PATCH media_urls — no per-asset ownership check on
+  client-supplied mediaAssetId (pre-existing, informational; blob URLs public by design,
+  no DB-row leak) — 2026-08-08 (record-only)
+- [bug] api/_lib/aspectVariants.js:107-180 — saveAspectVariant find-then-insert race —
+  carried from 2026-07-31 (migration 203_aspect_variant_unique.sql PREPARED, not applied
+  to prod — still needs manual apply + review)
+- [ui] WordsApproval.jsx:95 (+ OnboardingInterview.jsx, BrandInterview.jsx) — redundant
+  px-4 py-8 double-pads vs Layout's main padding — 2026-08-08 (report-only per UI policy)
+- [ui] Analytics.jsx:519 vs :680 — Apple card defaultOpen unconditional while adjacent GBP
+  card collapses once configured — 2026-08-08 (report-only)
+- [ui] VideoEditor.jsx:1061 — add-overlay "Text" button only control in its row with no
+  hover state — 2026-08-08 (report-only)
+- [ui] OnHandTab.jsx:74-80 — RowMenu kebab has no resting-state chip; sole Retire/Restore
+  entry point in browse mode — 2026-08-08 (report-only)
+- [live] agent_actions kind='channel_disconnected' — carried: keep watching, don't
+  escalate without a confirmed live disconnection to test against (last checked 07-31)
+- [live] T3 slots config — carried: still a product-adoption signal, not an audit finding
+- [live] T4 video_segments.discard_reasons — carried from 07-31: was 0 rows same-day as
+  the Deny feature shipped; re-check counts next audit
 
 ## Notes for agents
 

@@ -193,7 +193,7 @@ export default async function handler(req, res) {
     // question and PostgREST would apply it in UTC, mis-crediting a blog written
     // late on the last evening of a month to the next one.
     const r = await sb(
-      `content_items?workspace_id=eq.${ws.id}&staff_id=eq.${sf.id}&platform=eq.blog&select=id,platform,status,created_at&order=created_at.desc&limit=200`,
+      `content_items?workspace_id=eq.${ws.id}&staff_id=eq.${sf.id}&platform=eq.blog&select=id,platform,status,archived_at,created_at&order=created_at.desc&limit=200`,
     )
     if (!r.ok) {
       console.error('[week-summary] blog target count failed:', r.status)

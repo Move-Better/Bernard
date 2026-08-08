@@ -90,7 +90,10 @@ export function dayOfMonth(date, timeZone = 'America/Los_Angeles') {
  */
 export function countsTowardMonth(row, month, timeZone) {
   if (!row || row.platform !== 'blog') return false
-  if (row.status === 'rejected' || row.status === 'archived') return false
+  // Archival is the archived_at timestamp, NOT a status value — 'archived' is
+  // not in VALID_STATUSES (requestSchemas/dbContent.js), so a status check for
+  // it can never fire. Callers' SELECTs must fetch archived_at for this to see it.
+  if (row.status === 'rejected' || row.archived_at) return false
   if (!row.created_at) return false
   return monthKey(row.created_at, timeZone) === month
 }

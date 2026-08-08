@@ -67,7 +67,11 @@ describe('countsTowardMonth', () => {
 
   it('does not count a decided-against piece', () => {
     expect(countsTowardMonth(row({ status: 'rejected' }), '2026-08', 'America/Los_Angeles')).toBe(false)
-    expect(countsTowardMonth(row({ status: 'archived' }), '2026-08', 'America/Los_Angeles')).toBe(false)
+    // Archival is archived_at, NOT a status — 'archived' is not a real status
+    // value, so a fixture using it exercises nothing (audit 2026-08-08 P1: the
+    // old status check was dead code and archived blogs still counted). The row
+    // keeps its ordinary status; only the timestamp marks it archived.
+    expect(countsTowardMonth(row({ archived_at: '2026-08-13T09:00:00Z' }), '2026-08', 'America/Los_Angeles')).toBe(false)
   })
 
   // The rule that makes the nudge fair. A clinician's contribution is the
@@ -85,6 +89,7 @@ describe('progressFor', () => {
     const rows = [
       { platform: 'blog', status: 'approved',  created_at: '2026-08-02T17:00:00Z' },
       { platform: 'blog', status: 'rejected',  created_at: '2026-08-03T17:00:00Z' }, // decided against
+      { platform: 'blog', status: 'approved',  archived_at: '2026-08-05T09:00:00Z', created_at: '2026-08-04T17:00:00Z' }, // archived
       { platform: 'blog', status: 'published', created_at: '2026-07-30T17:00:00Z' }, // last month
       { platform: 'instagram', status: 'approved', created_at: '2026-08-04T17:00:00Z' },
     ]

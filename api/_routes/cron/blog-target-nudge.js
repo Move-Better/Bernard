@@ -147,7 +147,7 @@ async function handler(req, res) {
       const ids = clinicians.map((c) => `"${c.id}"`).join(',')
       const blogRes = await sb(
         `content_items?workspace_id=eq.${ws.id}&platform=eq.blog&staff_id=in.(${ids})` +
-        `&select=id,staff_id,platform,status,created_at`
+        `&select=id,staff_id,platform,status,archived_at,created_at`
       )
       if (!blogRes.ok) { results.push({ slug: ws.slug, error: `blogs_${blogRes.status}` }); continue }
       const blogs = await blogRes.json().catch(() => [])

@@ -254,7 +254,12 @@ export async function dispatchBrief({
     body: JSON.stringify([{
       platform: brief.target_platform,
       content: composedContent,
-      status: scheduledAt ? 'scheduled' : 'draft',
+      // Always 'draft': the publish route's dispatch claim treats a stored
+      // 'scheduled'/'published' status as "another path already dispatched
+      // this" and returns alreadyDispatched WITHOUT posting — so a row born
+      // 'scheduled' here made Schedule a silent no-op. The publish route's
+      // claim-and-commit is the only writer of the terminal status.
+      status: 'draft',
       media_urls: mediaUrls,
       scheduled_at: scheduledAt || null,
       notes: `Dispatched from brief ${brief.id}`,
