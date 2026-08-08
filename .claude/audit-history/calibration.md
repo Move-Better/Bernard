@@ -89,14 +89,29 @@ AssetsPane.jsx:791, OnHandTab.jsx:305, VideoEditor.jsx:2107, WordsApproval.jsx:1
 - [bug] api/_lib/aspectVariants.js:107-180 — saveAspectVariant find-then-insert race —
   carried from 2026-07-31 (migration 203_aspect_variant_unique.sql PREPARED, not applied
   to prod — still needs manual apply + review)
-- [ui] WordsApproval.jsx:95 (+ OnboardingInterview.jsx, BrandInterview.jsx) — redundant
-  px-4 py-8 double-pads vs Layout's main padding — 2026-08-08 (report-only per UI policy)
-- [ui] Analytics.jsx:519 vs :680 — Apple card defaultOpen unconditional while adjacent GBP
-  card collapses once configured — 2026-08-08 (report-only)
+- [ui] WordsApproval.jsx:95 — redundant px-4 py-8 double-pads vs Layout's main padding —
+  2026-08-08 (FIXED after mockup sign-off. SCOPE CORRECTION: the report also named
+  OnboardingInterview.jsx and BrandInterview.jsx as "the same pattern" — they are NOT.
+  Both use `px-4 py-5` plus `minHeight: calc(100vh - 4rem)`, i.e. deliberate full-height
+  interview layouts, not document pages. Deliberately left alone; don't sweep them in on
+  a future run without treating it as its own layout change.)
+- [ui] Analytics.jsx:519 vs :680 / AppleBusinessInsightsCard — Apple card defaultOpen
+  unconditional while the adjacent GBP card collapses once configured — 2026-08-08
+  (RESOLVED by design decision, not by removing defaultOpen. Q chose "keep it open and
+  explain why" over "collapse to match": Apple genuinely needs a hand-uploaded recap every
+  month where Google syncs itself. A hint line now renders once `configured`. Do NOT
+  re-flag the open-vs-collapsed asymmetry — it is now deliberate and labelled. A real
+  finding here would be the hint going missing, or Apple gaining real sync.)
 - [ui] VideoEditor.jsx:1061 — add-overlay "Text" button only control in its row with no
-  hover state — 2026-08-08 (report-only)
+  hover state — 2026-08-08 (FIXED: now reuses the row's own `zoomBtn` class)
 - [ui] OnHandTab.jsx:74-80 — RowMenu kebab has no resting-state chip; sole Retire/Restore
-  entry point in browse mode — 2026-08-08 (report-only)
+  entry point in browse mode — 2026-08-08 (FIXED)
+- [ui] OnHandTab.jsx:~270 — MomentExcerpt's "Edit this quote" pencil carries the IDENTICAL
+  bare-until-hover treatment the kebab just lost, and is likewise the only way to edit
+  (the blockquote has no onClick) — 2026-08-08 (OPEN, awaiting its own sign-off; different
+  surface, review-queue cards rather than browse rows). Worth noting how it surfaced: the
+  ui-reviewer's report named only the kebab, and this was found by grepping the class
+  string. A report's list of sites is a lower bound, not the scope.
 - [live] agent_actions kind='channel_disconnected' — carried: keep watching, don't
   escalate without a confirmed live disconnection to test against (last checked 07-31)
 - [live] T3 slots config — carried: still a product-adoption signal, not an audit finding

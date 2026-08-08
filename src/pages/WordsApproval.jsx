@@ -91,8 +91,11 @@ export default function WordsApproval() {
     }
   }
 
+  // No px-/py- on the root: Layout's <main> already supplies the page gutter
+  // (px-4 sm:px-6 lg:px-8 py-8). Adding our own doubled it, so this page started
+  // 16px further in than every sibling — 32px vs 16px of gutter on a phone.
   return (
-    <div className="px-4 py-8 space-y-5">
+    <div className="space-y-5">
       <button
         type="button"
         onClick={goBack}

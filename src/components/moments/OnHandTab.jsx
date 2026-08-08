@@ -70,11 +70,18 @@ function RowMenu({ m, onRetire, onRestore }) {
     'w-full text-left px-3 py-1.5 rounded-md text-sm hover:bg-muted transition-colors'
   return (
     <Popover open={open} onOpenChange={setOpen}>
+      {/* Resting chip (border + fill), not bare-until-hover: in browse mode this
+          kebab is the ONLY way to reach Open story / Retire / Restore, so an
+          invisible control at rest leaves those actions undiscoverable rather
+          than merely quiet. Still deliberately secondary to the quote itself.
+          NOTE: MomentExcerpt's "Edit this quote" pencil (~line 270) is still the
+          bare treatment — same rule, different surface (review queue, not
+          browse); left alone pending its own sign-off. */}
       <PopoverTrigger asChild>
         <button
           type="button"
           aria-label="Moment actions"
-          className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="shrink-0 p-1.5 rounded-md border bg-muted text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         >
           <MoreHorizontal className="h-4 w-4" />
         </button>

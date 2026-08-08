@@ -1058,7 +1058,12 @@ function HorizontalTimeline({ ctx }) {
             style={{ borderColor: atFit ? 'hsl(var(--primary))' : 'hsl(var(--border))', color: atFit ? 'hsl(var(--primary))' : undefined }}
           >Fit</button>
           <span className="w-9 text-right tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{Math.round(zoom * 100)}%</span>
-          <button onClick={addOverlay} className="ml-1 flex items-center gap-0.5 text-primary"><Plus className="h-3 w-3" />Text</button>
+          {/* Reuses zoomBtn (the row's own button class) rather than restating
+              its border/hover, so this can't drift away from its neighbours
+              later. It was the only control in this row with no hover response,
+              which read as a label despite being the one action that edits the
+              clip. Keeps text-primary to mark it as the additive action. */}
+          <button onClick={addOverlay} className={`${zoomBtn} ml-1 gap-0.5 text-primary`}><Plus className="h-3 w-3" />Text</button>
         </div>
       </div>
       <div ref={scrollRef} className="mx-3 mb-3 mt-2 flex-1 overflow-x-auto overflow-y-hidden">
