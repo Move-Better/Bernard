@@ -1,4 +1,5 @@
 ---
+name: bernard-checkup
 description: Structured health check of the Bernard app — static checks, tests, code review of recent changes, optional UI smoke, and prod health. Subcommands: quick / ui / full.
 ---
 
