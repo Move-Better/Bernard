@@ -265,12 +265,16 @@ function MomentExcerpt({ m, onSave, disabled, children }) {
         <blockquote className="text-base leading-relaxed text-foreground max-w-[66ch] flex-1">
           &ldquo;{m.excerpt}&rdquo;
         </blockquote>
+        {/* Same resting-chip fix as RowMenu's kebab (audit 2026-08-08 #4,
+            approved for this surface too): the blockquote has no onClick, so
+            this pencil is the ONLY way to edit — bare-until-hover left it
+            undiscoverable, not merely quiet. */}
         <button
           type="button"
           onClick={startEdit}
           disabled={disabled}
           aria-label="Edit this quote"
-          className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+          className="shrink-0 p-1.5 rounded-md border bg-muted text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
         >
           <Pencil className="h-3.5 w-3.5" />
         </button>
