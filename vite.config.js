@@ -6,6 +6,48 @@ import { execSync } from 'node:child_process'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// Vercel's "Automatically expose System Environment Variables" mirrors every
+// VERCEL_* build var under the framework's public-var prefix — for Vite,
+// VITE_VERCEL_*. That includes prose/identity fields never meant for a
+// client bundle: the full git commit message and the committer's real name
+// and GitHub login. sentry.js needs ONE of these (the commit SHA, for
+// release tagging), so this can't be "just turn off the Vercel toggle."
+//
+// The actual leak path isn't our own code: @clerk/shared's getEnvVariable()
+// helper (bundled transitively through @clerk/react into vendor-clerk.js)
+// does `import.meta.env[name]` — a runtime dynamic key the bundler cannot
+// statically resolve, so Vite falls back to inlining the ENTIRE processed
+// import.meta.env object wherever that helper's chunk lands. Every
+// VITE_-prefixed var present at build time rides along, whether or not our
+// code, or Clerk's, ever actually asks for that specific key. Confirmed
+// against the live prod bundle 2026-08-08: the deployed
+// VITE_VERCEL_GIT_COMMIT_MESSAGE was this repo's own recent commit prose,
+// verbatim, readable by anyone.
+//
+// Deleting the risky keys from process.env HERE — before Vite's env loader
+// ever reads it — is what actually closes this: an absent env var cannot be
+// swept into the fallback object no matter what dynamically indexes it.
+// Narrowing envPrefix instead doesn't work, because our own intentional
+// vars (VITE_CLERK_PUBLISHABLE_KEY etc.) share the same VITE_ prefix Vercel
+// auto-mirrors onto — there is no prefix that separates "ours" from
+// "Vercel's auto-mirrored git metadata" within one shared family.
+//
+// Exported (not just run inline) so this is a pure, directly-testable
+// function rather than an unverifiable module-load side effect — a
+// mutation flipping the key list wrong would otherwise ship silently.
+export const RISKY_VITE_VERCEL_ENV_KEYS = Object.freeze([
+  'VITE_VERCEL_GIT_COMMIT_MESSAGE',
+  'VITE_VERCEL_GIT_COMMIT_AUTHOR_NAME',
+  'VITE_VERCEL_GIT_COMMIT_AUTHOR_LOGIN',
+])
+
+export function stripRiskyVercelGitEnvVars(env) {
+  for (const k of RISKY_VITE_VERCEL_ENV_KEYS) delete env[k]
+  return env
+}
+
+stripRiskyVercelGitEnvVars(process.env)
+
 function resolveBuildSha() {
   if (process.env.VERCEL_GIT_COMMIT_SHA) return process.env.VERCEL_GIT_COMMIT_SHA
   try {
