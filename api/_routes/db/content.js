@@ -13,7 +13,7 @@ import { classifyMediaChange } from '../../_lib/mediaOverride.js'
 import { extractConcepts } from '../../_lib/conceptExtractor.js'
 import { extractVoicePhrases } from '../../_lib/voicePhraseExtractor.js'
 import { indexContentItem } from '../../_lib/practiceMemoryRag.js'
-import { mondayOf } from '../../_lib/strategist.js'
+import { syncAtomSchedule } from '../../_lib/atomSchedule.js'
 import { computeEditDiff } from '../../_lib/editDiffMining.js'
 import { waitUntil } from '@vercel/functions'
 import { uuid, uuidCoerced, isoDateOrTimestamp } from '../../_lib/requestSchemas/primitives.js'
@@ -345,9 +345,9 @@ export default async function handler(req, res) {
     }
 
     // Reject a malformed scheduledAt before it lands in content_items or reaches
-    // mondayOf() below (mondayOf throws RangeError on an Invalid Date, which
-    // would surface a 500 AFTER the row already saved). null/undefined = leave
-    // as-is or unschedule, both allowed.
+    // the atom sync below (its mondayOf() throws RangeError on an Invalid Date,
+    // which would surface a 500 AFTER the row already saved). null/undefined =
+    // leave as-is or unschedule, both allowed.
     if (patch.scheduledAt && !isoDateOrTimestamp.safeParse(patch.scheduledAt).success) return err(res, 'Invalid scheduledAt', 400)
 
     // Map camelCase → snake_case. `archivedAt` accepts an ISO string to
@@ -436,38 +436,18 @@ export default async function handler(req, res) {
     const data = await r.json()
     const updated = attachMoment(data[0])
 
-    // Keep the linked plan atom's schedule in sync. The /week board is driven
-    // entirely by content_plan_atoms.plan_week + scheduled_at (week-summary.js
-    // filters atoms by plan_week and lays them out by the ATOM's scheduled_at);
-    // content_items is joined only for status/thumbnail. So a (re)schedule that
-    // writes only content_items.scheduled_at leaves the atom pinned to its
-    // original plan_week — and an approved, rescheduled post silently vanishes
-    // from Your Week (user feedback 2026-07-13). Mirror the new schedule onto
-    // the atom, recomputing plan_week with the SAME tz-aware mondayOf the board
-    // uses so it lands in the right week bucket. On UNSCHEDULE (scheduledAt ===
-    // null) return the atom to the CURRENT week so the freed draft reappears on
-    // this week's board, rather than staying pinned to the week it was last
-    // scheduled to (audit 2026-07-16). Best-effort: a non-atom piece (one-off
-    // Post) matches zero rows, and a failure here must not fail the user's save
-    // (the content item is already updated).
+    // Keep the linked plan atom's schedule in sync — the /week board renders
+    // from the ATOM, so a (re)schedule that writes only content_items leaves the
+    // post on its old day (user feedback 2026-07-13). This is the editor's
+    // schedule path; the dispatch paths call the same helper. See
+    // api/_lib/atomSchedule.js for the full rationale — one copy on purpose.
     if (updated && patch.scheduledAt !== undefined) {
-      const planWeek = mondayOf(patch.scheduledAt || new Date().toISOString(), ws.cadence_policy?.timezone)
-      await sb(`content_plan_atoms?content_piece_id=eq.${id}&${wsFilter}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          scheduled_at: patch.scheduledAt,
-          plan_week: planWeek,
-          // T3: a piece actively being scheduled can no longer be "held"
-          // backlog — without this, an atom scheduled through this path
-          // (rather than the dedicated /assign-slot endpoint) kept held_at
-          // set, so it stayed on the backlog list even though it now has a
-          // real slot. Only on an actual (non-null) scheduledAt — unscheduling
-          // isn't a hold action, so it leaves held_at untouched.
-          ...(patch.scheduledAt ? { held_at: null } : {}),
-          updated_at: new Date().toISOString(),
-        }),
-        headers: { Prefer: 'return=minimal' },
-      }).catch((e) => console.error('[db/content] atom schedule sync failed:', e?.message))
+      await syncAtomSchedule({
+        pieceId: id,
+        workspaceId: ws.id,
+        scheduledAt: patch.scheduledAt,
+        timezone: ws.cadence_policy?.timezone,
+      })
     }
 
     // Off-request enrichment on approval (positive signal) and change-request

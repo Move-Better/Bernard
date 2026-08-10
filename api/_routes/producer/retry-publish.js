@@ -34,6 +34,7 @@ import { runBundlePublish } from '../publish/social.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
 import { resolveGbpLocationIds } from '../../../src/lib/gbpLocations.js'
+import { syncAtomSchedule } from '../../_lib/atomSchedule.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -166,6 +167,19 @@ export default async function handler(req, res) {
   // blocks a re-post until the stale window elapses, rather than releasing to a
   // still-'failed' row that a retry would immediately re-post.
   if (!upd.ok) return dbErr(res, upd, 'Update after retry failed')
+
+  // Mirror the committed schedule onto the plan atom (/week renders from the
+  // atom, not the item — see api/_lib/atomSchedule.js). Only on the SCHEDULED
+  // branch: a publish-now retry commits status 'published' with published_at,
+  // and that instant is history, not a slot the board should be moved to.
+  if (willBeScheduled) {
+    await syncAtomSchedule({
+      pieceId: contentItemId,
+      workspaceId: ws.id,
+      scheduledAt: result.body.scheduledAt || scheduledAt,
+      timezone: ws.cadence_policy?.timezone,
+    })
+  }
 
   await recordAgentAction({
     workspaceId:    ws.id,

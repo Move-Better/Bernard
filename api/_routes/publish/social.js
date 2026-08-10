@@ -17,6 +17,7 @@ import { YOUTUBE_PRIVACIES } from '../../_lib/social/bundlePublisher.js'
 import { resolveBundleGbpTargets } from '../../_lib/social/gbpTargets.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
+import { syncAtomSchedule } from '../../_lib/atomSchedule.js'
 import { clampToCap, platformCap } from '../../_lib/socialLengthTargets.js'
 import { FORMAT_IDS, describeFormatViolation } from '../../../src/lib/platformFormats.js'
 
@@ -287,6 +288,18 @@ async function handleBundlePublish(req, res, workspace) {
     await releaseDispatch(contentItemId, workspace.id, extra)
 
     if (result.status === 200) {
+      // Mirror the committed schedule onto the plan atom. The client used to do
+      // this implicitly by echoing scheduled_at through /api/db/content (which
+      // syncs the atom); #2553 removed that echo to get past the publish lock
+      // and the sync went with it, leaving /week rendering the post on its
+      // original planned day forever. Awaited, not fire-and-forget: a bare
+      // promise after res.json() is frozen on Vercel's Node runtime.
+      await syncAtomSchedule({
+        pieceId: contentItemId,
+        workspaceId: workspace.id,
+        scheduledAt: extra.scheduled_at,
+        timezone: workspace.cadence_policy?.timezone,
+      })
       // Tell the client the row is already committed so it doesn't overwrite the
       // status with an optimistic 'published' of its own.
       return res.status(200).json({ ...result.body, committedStatus: 'scheduled', scheduledAt: extra.scheduled_at })
