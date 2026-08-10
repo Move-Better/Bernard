@@ -62,3 +62,80 @@ describe('stripAiDashes — leaves legitimate dashes/hyphens alone', () => {
     expect(stripAiDashes('')).toBe('')
   })
 })
+
+// The original rules 2 and 3 required an ASCII LETTER on BOTH sides, so a
+// connector flanked by a digit, emoji or symbol survived; and rule 1 required a
+// preceding non-space, so a string OPENING with a dash survived.
+//
+// Honest scope note: when this was widened, the live incidence of these gaps
+// was ZERO. Across 127 recent content_items rows there were no string-start
+// dashes, no digit-flanked and no symbol-flanked connectors. This is defence in
+// depth against a shape the model has not happened to produce yet, not the fix
+// for the reported complaint (that was the prompt contradiction + the
+// unsanitized interview fan-out).
+describe('stripAiDashes — connectors flanked by a digit or symbol', () => {
+  it('converts a digit on the left, letter on the right', () => {
+    expect(stripAiDashes('Week 1 – rest')).toBe('Week 1, rest')
+    expect(stripAiDashes('2023 – a turning point')).toBe('2023, a turning point')
+  })
+
+  it('converts a letter on the left, digit on the right', () => {
+    expect(stripAiDashes('rest – 3 sets')).toBe('rest, 3 sets')
+  })
+
+  it('converts an emoji/symbol flank', () => {
+    expect(stripAiDashes('Book now 👆 – link in bio')).toBe('Book now 👆, link in bio')
+    expect(stripAiDashes('recovery – 👆 tap here')).toBe('recovery, 👆 tap here')
+  })
+
+  it('converts a digit-flanked spaced ASCII hyphen', () => {
+    expect(stripAiDashes('Week 1 - rest')).toBe('Week 1, rest')
+  })
+})
+
+describe('stripAiDashes — dangling dashes at the string edges', () => {
+  it('removes a leading em-dash rather than commafying it', () => {
+    // ", Book now" would be worse than the tell it replaces.
+    expect(stripAiDashes('— Book your assessment')).toBe('Book your assessment')
+    expect(stripAiDashes('– Book your assessment')).toBe('Book your assessment')
+  })
+
+  it('removes a trailing dangling dash', () => {
+    expect(stripAiDashes('Book your assessment —')).toBe('Book your assessment')
+  })
+
+  it('leaves a leading ASCII hyphen alone (that is a bullet, not a dash)', () => {
+    expect(stripAiDashes('- first point')).toBe('- first point')
+  })
+
+  it('still strips a connector on a string that also opens with a dash', () => {
+    expect(stripAiDashes('— the joint is fine — the pattern is not'))
+      .toBe('the joint is fine, the pattern is not')
+  })
+})
+
+describe('stripAiDashes — the widened rules still protect ranges and markdown', () => {
+  // The one-letter rule is what makes this structural: a numeric range has a
+  // digit on BOTH sides, so neither widened rule can ever match it.
+  it('preserves digit-on-both-sides ranges', () => {
+    expect(stripAiDashes('recovery takes 30–40 minutes')).toBe('recovery takes 30–40 minutes')
+    expect(stripAiDashes('do 3 - 5 reps')).toBe('do 3 - 5 reps')
+    expect(stripAiDashes('a 45–60 second script')).toBe('a 45–60 second script')
+  })
+
+  it('preserves markdown structure (no space-hyphen-space shape)', () => {
+    expect(stripAiDashes('intro\n\n---\n\nbody')).toBe('intro\n\n---\n\nbody')
+    expect(stripAiDashes('Takeaways:\n- first\n- second')).toBe('Takeaways:\n- first\n- second')
+  })
+
+  it('preserves in-word and hashtag hyphens', () => {
+    expect(stripAiDashes('warm-up before a session #Portland-PT'))
+      .toBe('warm-up before a session #Portland-PT')
+  })
+
+  it('is still idempotent across the widened rules', () => {
+    const once = stripAiDashes('— Week 1 – rest, then 30–40 minutes —')
+    expect(stripAiDashes(once)).toBe(once)
+    expect(once).toBe('Week 1, rest, then 30–40 minutes')
+  })
+})

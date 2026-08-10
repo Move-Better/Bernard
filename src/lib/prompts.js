@@ -639,9 +639,12 @@ ${isFirstMessage ? 'Introduce yourself briefly, then ask your first question.' :
 // callers and tests don't have to change in this PR; a follow-up PR will
 // drop them from the signature.
 // Shared across every long-form / blog prose writer below (the two blog writers
-// and the two series-part writers). A single source of truth so the guard can't
-// drift between the copies. Written without an em-dash itself.
-const NO_EM_DASH_RULE = 'No em-dashes or spaced hyphens as connectors between clauses. They are a strong AI tell. Use a comma, a colon, or a new sentence instead.'
+// and the two series-part writers) AND the social atom builder
+// (api/_lib/atomPrompts.js), which used to carry its own copy of this sentence.
+// A single source of truth so the guard can't drift between the copies.
+// Written without an em-dash itself, which is the whole point: a rule that is
+// contradicted by the prose stating it gets copied, not obeyed.
+export const NO_EM_DASH_RULE = 'No em-dashes or spaced hyphens as connectors between clauses. They are a strong AI tell. Use a comma, a colon, or a new sentence instead.'
 
 export function getBlogPostSystemPrompt(workspace, staffName, condition, tone = 'smart', voiceMode = 'practice', prototypeId = null, voiceNotes = '', voicePhrases = [], audienceSlot = null, storyTypeSlot = null, lengthPreset = null, ownHistoryBlock = '', isPoint = false) {
   if (isGeneralMode(workspace)) {

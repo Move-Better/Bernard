@@ -22,6 +22,8 @@ import { recordAgentAction } from '../agentActions.js'
 
 
 import { supabaseRest } from '../supabaseRest.js'
+import { stripAiDashes } from '../stripAiDashes.js'
+import { NO_EM_DASH_RULE } from '../../../src/lib/prompts.js'
 const REGEN_MODEL = 'anthropic/claude-sonnet-4-6'
 const JUDGE_MODEL = 'anthropic/claude-haiku-4-5'
 const GATE = 6.5
@@ -108,10 +110,11 @@ export async function regradeContentItem({ ws, contentItemId, redFlag, inboxItem
     `You are Bernard, the content producer for ${staffName || 'the clinician'} at ${ws.display_name || ws.slug || 'the practice'}.`,
     `A ${piece.platform} caption you drafted was flagged for VOICE DRIFT: "${flag}".`,
     'Rewrite it as a FAITHFULNESS pass, not a style pass:',
-    '- Stay verbatim-close to what the clinician actually said — use their words, phrasing, and register.',
+    '- Stay verbatim-close to what the clinician actually said: use their words, phrasing, and register.',
     '- Do NOT invent claims, numbers, framing, or clinical terms they did not use.',
     '- Do NOT professionalize or smooth it out; warm/personal is fine if that is how they spoke.',
-    '- Keep it tight — every line should trace to the transcript.',
+    '- Keep it tight: every line should trace to the transcript.',
+    `- ${NO_EM_DASH_RULE}`,
     'Return ONLY the revised caption. No preamble, no labels, no explanation.',
     voiceNotes ? `\nVoice notes for ${staffName}:\n${voiceNotes}` : '',
     phraseLines ? `\nHow ${staffName} tends to phrase things (match the rhythm, don't parrot):\n${phraseLines}` : '',
@@ -125,7 +128,7 @@ export async function regradeContentItem({ ws, contentItemId, redFlag, inboxItem
     '',
     clinicianSaid
       ? `WHAT THE CLINICIAN ACTUALLY SAID (the source of truth):\n"""\n${clinicianSaid}\n"""`
-      : '(No transcript on record — tighten toward their known voice without inventing claims.)',
+      : '(No transcript on record: tighten toward their known voice without inventing claims.)',
     '',
     'Rewrite the caption to fix the voice drift and stay faithful.',
   ].join('\n')
@@ -135,7 +138,10 @@ export async function regradeContentItem({ ws, contentItemId, redFlag, inboxItem
     messages: [{ role: 'user', content: userMsg }],
     maxOutputTokens: 1000, maxRetries: 2, abortSignal: AbortSignal.timeout(90_000),
   })
-  const revised = (text || '').trim()
+  // Sanitize BEFORE the judge below, not after: this value is both what gets
+  // scored and what gets stored, so scoring the pre-strip text would grade a
+  // caption we never save.
+  const revised = stripAiDashes((text || '').trim())
 
   // Re-judge the rewrite against the full transcript.
   let newScore = null

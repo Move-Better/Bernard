@@ -36,6 +36,7 @@ import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { clampToCap, platformCap } from '../../_lib/socialLengthTargets.js'
 import { stripAiDashes } from '../../_lib/stripAiDashes.js'
+import { NO_EM_DASH_RULE } from '../../../src/lib/prompts.js'
 import { fixBrokenHashtags } from '../../_lib/fixBrokenHashtags.js'
 import { photoSourceUrl, isVideoEntry } from '../../../src/lib/mediaEntry.js'
 
@@ -103,7 +104,7 @@ async function refitCaption({ ws, sourceCaption, sourcePlatform, targetPlatform,
   try {
     const prompt = `You are rewrapping a social caption that already worked on ${sourcePlatform} so it fits ${targetPlatform} instead, for ${ws.display_name}.
 
-Keep the SAME message, stance, and call to action — do not add new claims, examples, or specifics that aren't in the original. Only adjust voice, structure, and length for ${targetPlatform}'s norms. Stay at or under ${cap} characters. Output ONLY the final caption text, no headers, no quotation marks, no markdown.
+Keep the SAME message, stance, and call to action. Do not add new claims, examples, or specifics that aren't in the original. Only adjust voice, structure, and length for ${targetPlatform}'s norms. ${NO_EM_DASH_RULE} Stay at or under ${cap} characters. Output ONLY the final caption text, no headers, no quotation marks, no markdown.
 
 ORIGINAL (${sourcePlatform}):
 ${sourceCaption}`

@@ -93,7 +93,7 @@ export async function generateCaption({ topic, clip = {}, workspace, staffId = n
   // generic 'warm, expert' fallback that made captions sound machine-generated.
   if (brandVoiceNarrative) {
     systemLines.push(
-      'HOW THIS PRACTICE ACTUALLY TALKS — write in THIS voice (the authority on tone and register):\n' +
+      'HOW THIS PRACTICE ACTUALLY TALKS: write in THIS voice (the authority on tone and register):\n' +
       brandVoiceNarrative.slice(0, 900),
     )
   }
@@ -101,8 +101,8 @@ export async function generateCaption({ topic, clip = {}, workspace, staffId = n
   // captions stop reading as AI marketing and stop inventing specifics.
   systemLines.push(
     'Write like a real person, not AI marketing. No formula openers ("The one thing most people get wrong…", "Here\'s the thing…", "Did you know…"). No X-not-Y antithesis slop ("it\'s not about X, it\'s about Y"). No hollow hype ("game-changer", "unlock", "transform", "the secret to"). Do not bolt the practice name onto the point. No em-dashes or spaced hyphens used as connectors between clauses (a strong AI tell); use a comma, a colon, or a new sentence instead.',
-    'Use ONLY what the clinician actually conveyed. Do NOT invent specifics — no patient histories, timelines, names, numbers, outcomes, dates, or events that are not supported by the material below. If you lack a concrete detail, stay general rather than fabricate one.',
-    'Plain text only — no markdown (no *asterisks*, no **bold**); it renders as literal characters in the caption and subtitles.',
+    'Use ONLY what the clinician actually conveyed. Do NOT invent specifics: no patient histories, timelines, names, numbers, outcomes, dates, or events that are not supported by the material below. If you lack a concrete detail, stay general rather than fabricate one.',
+    'Plain text only, no markdown (no *asterisks*, no **bold**); it renders as literal characters in the caption and subtitles.',
   )
   // Inject the clip transcript FIRST among the grounding signals so it — together
   // with the voice phrases below — dominates over the generic tone descriptors.
@@ -112,7 +112,7 @@ export async function generateCaption({ topic, clip = {}, workspace, staffId = n
   // voice — keep both.
   if (clipSaid) {
     systemLines.push(
-      'What the clinician actually said in this specific clip — use this for the SUBSTANCE of the ' +
+      'What the clinician actually said in this specific clip. Use this for the SUBSTANCE of the ' +
       'caption (anchor to this specific moment; paraphrase, don\'t quote verbatim, and don\'t invent ' +
       'anything not implied here). Still render it in the clinician\'s own voice and clinical framing ' +
       '(see the voice phrases below):\n' +
@@ -121,7 +121,7 @@ export async function generateCaption({ topic, clip = {}, workspace, staffId = n
   }
   if (voicePhrases.length) {
     systemLines.push(
-      'The clinician\'s authentic voice — match this rhythm, cadence, and word choice (don\'t quote verbatim):\n' +
+      'The clinician\'s authentic voice: match this rhythm, cadence, and word choice (don\'t quote verbatim):\n' +
       voicePhrases.map((p) => `- "${p.phrase}"`).join('\n')
     )
   }
@@ -130,7 +130,7 @@ export async function generateCaption({ topic, clip = {}, workspace, staffId = n
   }
   if (priorThinking) {
     systemLines.push(`The practitioner's prior thinking on this topic: ${priorThinking}`)
-    systemLines.push('Echo their specific clinical framing naturally — don\'t copy phrases verbatim.')
+    systemLines.push('Echo their specific clinical framing naturally, without copying phrases verbatim.')
   }
   // Campaign context — tightens the caption to the campaign goal. The
   // content_style flag changes the register:
@@ -144,9 +144,9 @@ export async function generateCaption({ topic, clip = {}, workspace, staffId = n
       systemLines.push(`This caption is part of an active campaign: ${campaign.name}.`)
     }
     if (campaign.content_style === 'promotional') {
-      systemLines.push('Style: promotional. Subtly orient the reader toward an upcoming event — don\'t hard-sell, but make it clear something specific is happening.')
+      systemLines.push('Style: promotional. Subtly orient the reader toward an upcoming event, without hard-selling, but make it clear something specific is happening.')
     } else if (campaign.content_style === 'relationship') {
-      systemLines.push('Style: relationship — warm, community-focused. Do NOT talk about clinical care, assessments, or treatment. Focus on the people, the relationship, the moment.')
+      systemLines.push('Style: relationship, warm and community-focused. Do NOT talk about clinical care, assessments, or treatment. Focus on the people, the relationship, the moment.')
     }
   }
 
