@@ -1254,6 +1254,36 @@ missing from `agent-tick.js`'s `select=`, so `getAtomSystemPrompt`'s facebook/li
 rendered `${workspace.website}` as the string `"undefined"`, which the model dutifully wrote into
 four live captions across one pre-draft batch before a human review caught it.)
 
+### A prompt that dictates literal output punctuation is fighting `stripAiDashes`, and loses
+
+Every path that writes model output into `content_items` runs `stripAiDashes` over it (#2597 closed
+the last gaps: the `db/interviews.js` fan-out, `blog-regen-finalize.js`, `twilio-recording.js`). That
+sanitizer is deliberately blunt — it rewrites an em/en-dash between two non-space characters into a
+comma, and REMOVES one dangling at a string edge. It cannot know why a dash is there.
+
+So an instruction telling the model to emit specific punctuation is not a contract with the reader,
+it is a contract with the sanitizer, and the sanitizer runs last. Five long-form prompts in
+`src/lib/prompts.js` told the model to close a personal-voice piece with a signature line
+`"— Name, Clinic"`. Because `^` in that regex is not multiline, the leading dash is not seen as a
+string-edge dangler; it matches the connector rule against the previous paragraph and welds the
+signature onto the closing sentence:
+
+```
+...where the pattern actually lives.\n\n— Zach Cullen, Move Better, Portland, OR
+                    becomes
+...where the pattern actually lives., Zach Cullen, Move Better, Portland, OR
+```
+
+Measured on the real workspace and interview through the real model, not inferred from the regex
+(2026-08-10, #2602). It had zero live incidence only because the sanitizer reached that path hours
+earlier in #2597 and no personal-voice blog had run in between.
+
+Rule: when a prompt specifies literal output punctuation — a signature marker, a separator glyph, a
+bullet character, a delimiter the parser downstream depends on — round-trip that exact string
+through `stripAiDashes` before shipping the instruction. `tests/lib/promptsHaveNoEmDash.test.js`
+asserts the round trip for every signature the long-form builders instruct, but it only scans the
+files listed in its `BUILDERS` map: **a new prompt module is not covered until it is added there.**
+
 **`draftAtom`'s `angle` param is a fixed per-platform enum key, not free text — the prompt SUBJECT
 comes from `interview.topic`, not `angle`.** A third caller of `draftAtom` (F20, `draftOnTopic.js`,
 PR #2073/#2077) synthesized an ad-hoc atom by setting `atom.angle` to a human-typed topic string,
