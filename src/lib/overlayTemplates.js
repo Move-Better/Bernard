@@ -1489,6 +1489,62 @@ function drawWhoopLayout(ctx, { layout, palette, img, brandStyle, zoom = 1, offs
   }
 }
 
+// Ready a canvas for a full repaint and return its 2D context.
+//
+// Assigning width/height ALWAYS reallocates the bitmap and wipes it to
+// transparent — even when the value is unchanged — and also resets the context
+// state. That is correct but expensive, and on a re-render of the same size it
+// throws away a ~5.8MB buffer (1080x1350 RGBA) on every keystroke.
+//
+// When the size already matches we keep the bitmap and instead restore the
+// context to exactly the state a resize would have produced, then clear. We
+// clear rather than paint straight over the old frame because not every theme's
+// structure provably covers 100% of the canvas, and a partial repaint would
+// leave ghosts of the previous slide.
+//
+// Dropping the resize is only safe because no draw path leaves a clip region or
+// transform behind: every ctx.clip() in this module sits inside a matched
+// save()/restore() pair, and the module performs no transform operations at all.
+// If that ever changes, this must go back to reassigning width/height.
+export function prepareRenderTarget(target, W, H) {
+  const ctx = target.getContext('2d')
+  if (target.width !== W || target.height !== H) {
+    target.width = W
+    target.height = H
+    return ctx
+  }
+  if (typeof ctx.reset === 'function') {
+    // Clears the bitmap and restores all context state — a resize without the
+    // reallocation. Chrome 118+/Safari 16.4+/Firefox 118+.
+    ctx.reset()
+    return ctx
+  }
+  // Fallback for older engines: restore the documented 2D context defaults.
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  ctx.globalAlpha = 1
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.filter = 'none'
+  ctx.fillStyle = '#000000'
+  ctx.strokeStyle = '#000000'
+  ctx.lineWidth = 1
+  ctx.lineCap = 'butt'
+  ctx.lineJoin = 'miter'
+  ctx.miterLimit = 10
+  ctx.setLineDash([])
+  ctx.lineDashOffset = 0
+  ctx.shadowBlur = 0
+  ctx.shadowColor = 'rgba(0, 0, 0, 0)'
+  ctx.shadowOffsetX = 0
+  ctx.shadowOffsetY = 0
+  ctx.font = '10px sans-serif'
+  ctx.textAlign = 'start'
+  ctx.textBaseline = 'alphabetic'
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'low'
+  ctx.clearRect(0, 0, W, H)
+  return ctx
+}
+
 // Render one slide (photo + freeform text blocks) to a canvas. Returns the
 // canvas so callers can either display it directly (DOM canvas preview) or
 // call toBlob() to produce a baked PNG.
@@ -1496,9 +1552,7 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
   const target = canvas || document.createElement('canvas')
   const W = width, H = height
   const square = W === H
-  target.width  = W
-  target.height = H
-  const ctx = target.getContext('2d')
+  const ctx = prepareRenderTarget(target, W, H)
 
   // Before ANY measuring or drawing — see awaitBrandFonts. Cheap after the first
   // call (both promises are already-settled once the fonts are in).
@@ -1633,14 +1687,62 @@ async function drawSlideObject(ctx, obj, W, H) {
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
+// Decoded-image cache, keyed on the resolved URL.
+//
+// Why: renderFreeformSlide wipes the target bitmap and only THEN awaits the
+// photo. Without a cache every call re-fetches and re-decodes, which is a real
+// task (not a microtask), so the browser gets a paint opportunity while the
+// canvas is blank. In the slide editor that runs once per keystroke — the
+// full-screen flash reported on the photo editor. Caching the decode makes a
+// warm re-render resolve on a microtask, so no blank frame can be painted. The
+// carousel publish bake benefits too: it renders many slides off a few photos.
+//
+// Keying on the URL means a photo SWAP is a cache miss by construction (a
+// different blob URL), so a stale bitmap can never be served for a new photo.
+// Entries hold the in-flight promise, so N slides sharing one photo trigger a
+// single load. A rejected load is evicted, so a transient network failure is
+// retried on the next render instead of being remembered for the session.
+//
+// Bounded on BOTH entry count and decoded pixels: originals here can be 45MP
+// (~180MB decoded each), so a count-only cap would be a memory leak in a
+// long-lived SPA. Map preserves insertion order, so eviction is oldest-first.
+const IMAGE_CACHE = new Map() // url -> { promise, pixels }
+const IMAGE_CACHE_MAX_ENTRIES = 24
+const IMAGE_CACHE_MAX_PIXELS = 64e6 // ~256MB of decoded RGBA
+
+function trimImageCache() {
+  let pixels = 0
+  for (const v of IMAGE_CACHE.values()) pixels += v.pixels
+  for (const key of IMAGE_CACHE.keys()) {
+    if (IMAGE_CACHE.size <= IMAGE_CACHE_MAX_ENTRIES && pixels <= IMAGE_CACHE_MAX_PIXELS) break
+    pixels -= IMAGE_CACHE.get(key).pixels
+    IMAGE_CACHE.delete(key)
+  }
+}
+
+// Exposed for tests and for any caller that needs to force a re-fetch.
+export function clearImageCache() { IMAGE_CACHE.clear() }
+
 export async function loadImage(url) {
-  return new Promise((resolve, reject) => {
+  const hit = IMAGE_CACHE.get(url)
+  if (hit) return hit.promise
+  const entry = { pixels: 0, promise: null }
+  entry.promise = new Promise((resolve, reject) => {
     const img = new window.Image()
     img.crossOrigin = 'anonymous'
-    img.onload = () => resolve(img)
+    img.onload = () => {
+      // Record the real decoded cost, then evict oldest until back in budget.
+      entry.pixels = (img.naturalWidth || img.width || 0) * (img.naturalHeight || img.height || 0)
+      trimImageCache()
+      resolve(img)
+    }
     img.onerror = reject
     img.src = url
   })
+  // Never remember a failure — drop it so the next render retries.
+  entry.promise.catch(() => { IMAGE_CACHE.delete(url) })
+  IMAGE_CACHE.set(url, entry)
+  return entry.promise
 }
 
 // Render one slide and return a PNG blob. Used by ReviewPost compose flows.
