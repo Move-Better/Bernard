@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import IconPrim from '@/components/ui/Icon'
 import { useContentPlanAtoms, useDraftAtom, useSkipAtom, useKeystoneBlog, useSetChannelEnabled } from '@/lib/queries'
 import { ATOM_DEFINITIONS, PLATFORM_UI, SLOT_LABELS, formatSlotDate } from '@/lib/atomPlan'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // ContentPlanPanel renders the full 4-week content plan for an interview.
 // Atoms are grouped by platform; each shows its angle, suggested week, and
@@ -222,7 +223,7 @@ export default function ContentPlanPanel({ interviewId, interviewCreatedAt, onSe
 
       {/* Words Validated Switch — shown after keystone is approved or published */}
       {showValidatedSwitch && keystone && (
-        <WordsValidatedSwitch keystoneTitle={keystone.topic} />
+        <WordsValidatedSwitch keystoneTitle={stripStoryDatePrefix(keystone.topic)} />
       )}
 
       {/* Platform groups */}
@@ -333,7 +334,7 @@ function KeystoneHeroCard({ keystone, derivedCounts, interviewId, onSelectPiece,
       {/* Body */}
       <div className={`px-5 flex items-end justify-between gap-4 ${act1 ? 'pb-6' : 'pb-4'}`}>
         <div className="min-w-0 flex-1">
-          <h3 className="text-lg font-semibold leading-snug">{keystone.topic || 'Untitled blog post'}</h3>
+          <h3 className="text-lg font-semibold leading-snug">{stripStoryDatePrefix(keystone.topic) || 'Untitled blog post'}</h3>
           {previewText && (
             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{previewText}</p>
           )}

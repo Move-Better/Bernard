@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, Loader2, ExternalLink } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // Wrap the verbatim excerpt inside the anchored turn so the reviewer's eye
 // lands on the exact words that were banked. Falls back to the whole turn when
@@ -118,7 +119,7 @@ export default function MomentContext({ m, staffName }) {
         <div className="mt-2 w-full overflow-hidden rounded-lg border border-border bg-muted/50">
           <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
             <span className="text-3xs font-bold uppercase tracking-wide text-muted-foreground">
-              Where this came from{data?.topic ? ` · ${data.topic}` : ''}
+              Where this came from{data?.topic ? ` · ${stripStoryDatePrefix(data.topic)}` : ''}
             </span>
             <Link
               to={storyHref}

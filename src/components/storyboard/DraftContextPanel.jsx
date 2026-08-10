@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { mediaKindForDraft, mediaKindLabel } from '@/lib/platformMediaKind'
 import { mediaEntryKey } from '@/lib/mediaEntry'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 function firstHeading(content) {
   if (typeof content !== 'string') return ''
@@ -25,7 +26,7 @@ export default function DraftContextPanel({ piece, onRemoveMedia, removingKey })
   // 'instagram' + a video attached) now reads "Videos only" instead of the
   // platform-level "Photos or video", which no longer matches the candidates.
   const kindHint = mediaKindLabel(mediaKindForDraft(piece))
-  const title = piece?.topic || firstHeading(piece?.content) || 'Untitled draft'
+  const title = stripStoryDatePrefix(piece?.topic) || firstHeading(piece?.content) || 'Untitled draft'
   const media = Array.isArray(piece?.media_urls) ? piece.media_urls : []
   const body = typeof piece?.content === 'string' ? piece.content : ''
 

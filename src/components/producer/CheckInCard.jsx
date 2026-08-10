@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarCheck, ImageOff, Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiFetch } from '@/lib/api'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // The periodic check-in (Phase 4, mockup-approved): "is Bernard still trending
 // right?" — answered in the two halves Q asked for, numbers and taste.
@@ -49,7 +50,7 @@ function Sample({ s }) {
             </div>
           )}
       </div>
-      <p className="mt-1 truncate text-3xs text-muted-foreground" title={s.topic}>{s.topic || '—'}</p>
+      <p className="mt-1 truncate text-3xs text-muted-foreground" title={stripStoryDatePrefix(s.topic)}>{stripStoryDatePrefix(s.topic) || '—'}</p>
     </div>
   )
 }

@@ -5,6 +5,7 @@ import BackLink from '@/components/ui/BackLink'
 import { useSmartBack } from '@/lib/useSmartBack'
 import { postFormat } from '@/lib/mediaEntry'
 import { resolveArchetype } from '@/lib/editorArchetype'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 import LoadingState from '@/components/LoadingState'
 import ErrorState from '@/components/ErrorState'
 import SlideEditor from '@/components/story-detail/SlideEditor'
@@ -86,7 +87,11 @@ export default function StoryboardPublish() {
 
   const meta = PLATFORM_META[piece.platform] || { label: piece.platform || '—' }
   const Icon = meta.icon
-  const title = piece.topic || firstHeading(piece.content) || 'Untitled draft'
+  // The stored topic is the SOURCE STORY's title, and the weekly outbound-call
+  // path bakes a `MM/DD/YY — ` date into it (api/_lib/outboundCall.js). Editor
+  // chrome wants the bare subject — the date is noise here and eats the
+  // truncation budget — so strip it the same way the Stories views do.
+  const title = stripStoryDatePrefix(piece.topic) || firstHeading(piece.content) || 'Untitled draft'
   // Route by editing archetype (the unified-shell resolver) instead of ad-hoc
   // platform/media flags. An Instagram piece with a video is a Reel ('vvideo');
   // a photo Instagram Story ('story') is ALSO just a carousel of one slide —
@@ -120,7 +125,7 @@ export default function StoryboardPublish() {
   // to /week). PostHog showed up to 39 /week↔/publish round-trips in one session.
   const nextPiece = remainingNeedsMedia[0]
   const nextTitle = nextPiece
-    ? (nextPiece.topic || firstHeading(nextPiece.content) || 'Untitled draft')
+    ? (stripStoryDatePrefix(nextPiece.topic) || firstHeading(nextPiece.content) || 'Untitled draft')
     : ''
   const nextMeta = nextPiece
     ? (PLATFORM_META[nextPiece.platform] || { label: nextPiece.platform || '—' })

@@ -15,6 +15,7 @@ import { buildCostView, estimateWindow, fmtUsd, fmtMinutes } from '@/lib/costEst
 import { NumberTicker } from '@/components/ui/number-ticker'
 import { Skeleton } from '@/components/ui/skeleton'
 import TrendBand from '@/components/overview/TrendBand'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // The Overview recap — a workspace-wide snapshot built to be screen-shared in
 // the weekly all-staff meeting, now navigable by calendar week (Mon–Sun, the
@@ -93,7 +94,7 @@ function TopPostCard({ topPost, isCurrentWeek }) {
         <Award className="h-3.5 w-3.5" aria-hidden="true" />
         Top post {isCurrentWeek ? 'this week' : 'that week'}
       </div>
-      <p className="text-sm font-bold">{topPost.topic}</p>
+      <p className="text-sm font-bold">{stripStoryDatePrefix(topPost.topic)}</p>
       <p className="text-xs text-muted-foreground mt-0.5">{topPostMetricLine(topPost)}</p>
       <Link to="/analytics" className="inline-block text-xs font-bold text-primary mt-1.5 hover:underline">
         All performance → Insights
@@ -227,7 +228,7 @@ function RecapBlock({ week, weekOffset, canPrev, onPrev, onNext, onToday, onPres
                         {getInitials(item.staff_name)}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{item.topic}</p>
+                        <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{stripStoryDatePrefix(item.topic)}</p>
                         <p className="text-2xs text-muted-foreground truncate">
                           {item.staff_name || 'Team'}{labels.length ? ` · ${labels.join(', ')}` : ''} · {dayLabel(item.published_at)}
                         </p>
@@ -299,7 +300,7 @@ function NowRow({ scheduled, waiting }) {
             {scheduled.slice(0, 4).map((s, i) => (
               <Link key={`${s.storyId}-${i}`} to={`/stories/${s.storyId}`} className="flex items-center gap-2 text-sm group border-l-2 border-l-info pl-2.5">
                 <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                <span className="font-semibold truncate flex-1 group-hover:text-primary transition-colors">{s.topic}</span>
+                <span className="font-semibold truncate flex-1 group-hover:text-primary transition-colors">{stripStoryDatePrefix(s.topic)}</span>
                 <span className="text-2xs text-muted-foreground shrink-0">{dateTimeLabel(s.scheduledAt)}</span>
               </Link>
             ))}
@@ -318,7 +319,7 @@ function NowRow({ scheduled, waiting }) {
           <div className="space-y-2">
             {waiting.slice(0, 4).map((w) => (
               <Link key={w.storyId} to={`/stories/${w.storyId}`} className="flex items-center gap-2 text-sm group border-l-2 border-l-warning pl-2.5">
-                <span className="font-semibold truncate flex-1 group-hover:text-primary transition-colors">{w.topic}</span>
+                <span className="font-semibold truncate flex-1 group-hover:text-primary transition-colors">{stripStoryDatePrefix(w.topic)}</span>
                 <span className="text-2xs text-muted-foreground shrink-0">{w.staffName}</span>
               </Link>
             ))}

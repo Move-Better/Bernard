@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import EmptyState from '@/components/EmptyState'
 import PipelineKanban from '@/components/PipelineKanban'
 import { useUpdateContentItemStatus } from '@/lib/queries'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 /**
  * StoriesPipelineView — wraps PipelineKanban with story-shaped data.
@@ -28,7 +29,7 @@ export default function StoriesPipelineView({ stories, isLoading }) {
   const items = (stories ?? []).flatMap((story) =>
     (story.pieces ?? []).map((piece) => ({
       ...piece,
-      topic: story.topic,
+      topic: stripStoryDatePrefix(story.topic),
       staff_name: story.staff_name,
     })),
   )

@@ -10,6 +10,7 @@ import { formatRelativeDate } from '@/lib/utils'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { getContentStatusToken } from '@/lib/contentStatusTokens'
 import { useStaff } from '@/lib/queries'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // Five lanes in workflow order. Archived items are intentionally excluded —
 // they don't belong on the active pipeline. Published items DO render here
@@ -220,7 +221,7 @@ function CardContent({ item, dragging, handle, staffList = [] }) {
           {hasMedia && <ImageIcon className="h-3 w-3 text-muted-foreground" />}
         </div>
       </div>
-      <p className="font-semibold leading-snug line-clamp-2 text-foreground">{item.topic}</p>
+      <p className="font-semibold leading-snug line-clamp-2 text-foreground">{stripStoryDatePrefix(item.topic)}</p>
       {snippet && <p className="text-muted-foreground text-2xs line-clamp-2">{snippet}</p>}
       <div className="flex items-center justify-between gap-2 text-3xs text-muted-foreground pt-1 border-t border-border">
         <span className="truncate">

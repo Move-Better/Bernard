@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useTopicSuggestions, useTopPerformers, queryKeys } from '@/lib/queries'
 import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 const PLATFORM_LABELS = {
   facebook: 'Facebook',
@@ -139,7 +140,7 @@ export default function HomeRightRail({ stories = [] }) {
             {topPerformers.map((item) => (
               <li key={item.id} className="px-4 py-2.5 flex flex-col gap-0.5">
                 <span className="text-xs font-medium text-foreground truncate leading-snug">
-                  {item.topic || 'Untitled'}
+                  {stripStoryDatePrefix(item.topic) || 'Untitled'}
                 </span>
                 <div className="flex items-center gap-2 text-2xs text-muted-foreground">
                   <span>{PLATFORM_LABELS[item.platform] || item.platform}</span>

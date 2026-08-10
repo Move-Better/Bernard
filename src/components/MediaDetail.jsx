@@ -34,6 +34,7 @@ import YouTubePublishDialog from './YouTubePublishDialog'
 import { isYouTubeEligible } from '@/lib/youtubeLib'
 import { downloadFromUrl } from '@/lib/download'
 import { useConfirm } from '@/lib/useConfirm'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // "Used in posts" — the reuse counter expanded into the posts behind it.
 //
@@ -128,7 +129,7 @@ function MediaUsageSection({ usage }) {
                   <span className="text-2xs font-medium text-foreground shrink-0">{platform.label}</span>
                   <span className={`text-3xs px-1.5 py-0.5 rounded shrink-0 ${status.color}`}>{status.label}</span>
                   <span className="text-3xs text-muted-foreground truncate">
-                    {p.topic || (when ? new Date(when).toLocaleDateString() : '')}
+                    {stripStoryDatePrefix(p.topic) || (when ? new Date(when).toLocaleDateString() : '')}
                   </span>
                 </Link>
               </li>

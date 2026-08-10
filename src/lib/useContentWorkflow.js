@@ -18,6 +18,7 @@ import { slugifyTitle, deriveSeoTitle, deriveMetaDescription, cleanBlogMarkdown 
 import { canDirectPublishPlatform } from '@/lib/outputChannels'
 import { describeFormatViolation } from '@/lib/platformFormats'
 import { toast, runWithToast } from '@/lib/toast'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // Pull scheduled cross-platform items out of the React Query cache — free when
 // Stories has already loaded, empty otherwise (the suggestion engine simply
@@ -211,7 +212,7 @@ export function useContentWorkflow(piece) {
         // title are derived deterministically so the same article always yields
         // the same URL and a <title> that fits in SERPs.
         const { headline, body } = cleanBlogMarkdown(markdown)
-        const title = headline || (piece.topic || 'Blog Post')
+        const title = headline || (stripStoryDatePrefix(piece.topic) || 'Blog Post')
         const slug = slugifyTitle(title)
         // A manual override (Words > SEO panel) wins; otherwise fall back to
         // the same deterministic derivation the SEO panel shows as a
@@ -225,7 +226,7 @@ export function useContentWorkflow(piece) {
         if (piece.published_at) payload.updatedDate = pubDate
         if (piece.staff_name) payload.author = piece.staff_name
         if (piece.topic) {
-          const topicSlug = piece.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+          const topicSlug = stripStoryDatePrefix(piece.topic).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
           if (topicSlug) payload.topic = topicSlug
         }
         const result = await runWithToast(publishBlogToWebsite(payload), {
@@ -299,7 +300,7 @@ export function useContentWorkflow(piece) {
     try {
       const markdown = typeof piece.content === 'string' ? piece.content : JSON.stringify(piece.content)
       const { headline, body } = cleanBlogMarkdown(markdown)
-      const title = headline || (piece.topic || 'Blog Post')
+      const title = headline || (stripStoryDatePrefix(piece.topic) || 'Blog Post')
       const descLine = body.split('\n').find((l) => l.trim() && !/^#/.test(l) && !/^!\[/.test(l))
       const description = descLine?.trim().slice(0, 200) || title
       const slug = slugifyTitle(title)

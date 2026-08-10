@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { PartyPopper, Image, Play, ChevronRight } from 'lucide-react'
 import { PLATFORM_META } from '@/lib/contentMeta'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // PostsLiveCard — the "close the loop" payoff surface on Home. Shows the
 // current clinician's pieces that went live in the last 7 days, framed as a
@@ -48,7 +49,7 @@ export default function PostsLiveCard({ stories = [], userId }) {
       if (now - new Date(p.published_at).getTime() > LIVE_WINDOW_MS) continue
       const entry = byStory.get(s.id) || {
         storyId: s.id,
-        topic: s.topic,
+        topic: stripStoryDatePrefix(s.topic),
         publishedAt: p.published_at,
         platforms: [],
         hasVideo: false,

@@ -14,6 +14,7 @@ import { photoSourceUrl, clipToMediaEntry, mediaEntryKey, slidePhotos, slideMedi
 import { formatChoicesFor } from '@/lib/platformFormats'
 import { brandStyleForRender } from '@/lib/brandSwatches'
 import { deriveStory } from '@/lib/storyFields'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
@@ -637,7 +638,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
       {/* ── TOP BAR — shared EditorChrome (unified shell) ─────────────────── */}
       <EditorChrome
         onBack={goBack}
-        title={piece?.topic}
+        title={stripStoryDatePrefix(piece?.topic)}
         badge={{ icon: badgeIcon || Instagram, label: formatLabel || 'Instagram Carousel', sub: formatSub || `${slides.length} slides` }}
         note={photoCount != null && photoCount !== slides.length
           ? `${slides.length} slides from ${photoCount} photo${photoCount === 1 ? '' : 's'}`

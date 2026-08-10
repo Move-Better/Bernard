@@ -30,6 +30,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import MediaUsageBadge from '@/components/ui/MediaUsageBadge'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // T3 — format badges shown on cards/slots. Mirrors the atom.format vocabulary
 // (api/_lib/atomPlan.js ATOM_FORMATS): post/reel/story. (Status-color legend
@@ -1364,7 +1365,7 @@ export default function YourWeek() {
           >
             <span className="flex items-center gap-2">
               <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <span className="flex-1 truncate text-2xs font-medium">{item.topic || 'Blog draft'}</span>
+              <span className="flex-1 truncate text-2xs font-medium">{stripStoryDatePrefix(item.topic) || 'Blog draft'}</span>
               <ChevronRight className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
             </span>
             {/* Provenance (Moments IA ①) — "from your words" builds trust right
@@ -1446,7 +1447,7 @@ export default function YourWeek() {
           >
             <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-2xs font-medium">{blog.topic || 'Blog post'}</span>
+              <span className="block truncate text-2xs font-medium">{stripStoryDatePrefix(blog.topic) || 'Blog post'}</span>
               <span className="block text-3xs text-muted-foreground">
                 {[
                   blog.staffName,

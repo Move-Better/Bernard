@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { PLATFORM_META } from '@/lib/contentMeta'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // MyWorkCard — a clinician's own pieces with where each one stands in the
 // pipeline. Replaces the old thin "My recent stories" list (topics + dates
@@ -99,7 +100,7 @@ export default function MyWorkCard({ stories = [], userId }) {
               className={`flex items-center gap-3 px-4 py-3 border-l-2 ${meta.rail} hover:bg-accent/20 transition-colors group`}
             >
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate text-foreground">{s.topic}</p>
+                <p className="text-sm font-semibold truncate text-foreground">{stripStoryDatePrefix(s.topic)}</p>
                 <p className="text-xs text-muted-foreground truncate">{platforms || s.staff_name}</p>
               </div>
               <span className={`nx-pill ${meta.pill} shrink-0`}>{meta.label}</span>

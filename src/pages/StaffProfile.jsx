@@ -39,6 +39,7 @@ import { fetchStaffMemberArc, apiFetch } from '@/lib/api'
 import { useAppMutation } from '@/lib/useAppMutation'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { TONES, getVoiceModes } from '@/lib/prompts'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 
 
@@ -738,7 +739,7 @@ function ChannelBadge({ platform }) {
 // ── Published post row ────────────────────────────────────────────────────────
 
 function PublishedPostRow({ post }) {
-  const title = post.topic
+  const title = stripStoryDatePrefix(post.topic)
     || (post.content ? post.content.slice(0, 60) + (post.content.length > 60 ? '…' : '') : 'Untitled post')
   const date = post.published_at || post.created_at
   const href = post.interview_id ? `/stories/${post.interview_id}` : `/stories/${post.id}`
@@ -1273,7 +1274,7 @@ function InterviewRow({ interview, staffId, currentUserId, staffList, onDelete }
             }
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm text-foreground truncate" title={interview.topic}>{interview.topic}</p>
+            <p className="font-medium text-sm text-foreground truncate" title={stripStoryDatePrefix(interview.topic)}>{stripStoryDatePrefix(interview.topic)}</p>
             <p className="text-xs text-muted-foreground">
               {formatRelativeDate(interview.updated_at)}
               {ownerName && <span className="ml-2 text-muted-foreground/60">· by {ownerName}</span>}
