@@ -150,6 +150,32 @@ describe('cross-channel per-day balance', () => {
     expect(perDay.filter((n) => n === 0).length).toBeLessThanOrEqual(1)
   })
 
+  it('sends a channel to an emptier day rather than doubling up an occupied one', () => {
+    // groovechiro's real shape. gbp's only two tiles are Wed and Sun, and
+    // Instagram borrows Wed on the way to spreading its posts. Scoring on the
+    // channel's own spacing alone leaves gbp choosing Wed too — Wednesday
+    // carrying two while Sunday sits empty. The cross-channel day tally is what
+    // sends it to Sunday. 6 atoms over 7 open days ⇒ a perfect week is max 1.
+    const channels = {
+      gbp: { enabled: true, target_per_week: 2 },
+      facebook: { enabled: true, target_per_week: 3 },
+      instagram: { enabled: true, target_per_week: 4 },
+    }
+    const cadence = mergeSlotsIntoCadence(channels, channels, [], null)
+    const slotsByPlatform = slotsByPlatformFromCadence(cadence)
+    const week = [
+      ...atoms('instagram', 'post', 3),
+      ...atoms('gbp', 'post', 1),
+      ...atoms('facebook', 'post', 2),
+    ]
+    assignSlots(week, WEEK, [], TZ, slotsByPlatform)
+
+    const perDay = [0, 1, 2, 3, 4, 5, 6].map((d) => week.filter((a) => dayOf(a) === d).length)
+    expect(Math.max(...perDay)).toBe(1)
+    const gbpDay = dayOf(week.find((a) => a.platform === 'gbp'))
+    expect(week.filter((a) => dayOf(a) === gbpDay).length).toBe(1)
+  })
+
   it('never produces two atoms of one channel at the same instant', () => {
     const channels = {
       gbp: { enabled: true, target_per_week: 3 },
