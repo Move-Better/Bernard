@@ -832,6 +832,38 @@ re-running is idempotent rather than additive.
 for movebetter — worth remembering when auditing candidate supply, since it
 removed ~30% of otherwise-qualifying segments there.
 
+### A reel atom outlives its draft, and is re-draftable from the clip
+
+`reelFactory` creates a reel atom already linked to a rendered draft, and its
+comment says that keeps it out of the draft paths forever ("they require a null
+`content_piece_id`"). **That invariant is not the factory's to hold.**
+`sweep-past-weeks.js` → `archiveStaleDrafts()` returns a closed week's slots to
+the backlog: it archives the item and clears `content_piece_id`. Its
+rebank-vs-delete split keys on `moment_id`, which reel atoms don't carry, so
+they take the *legacy rebank* branch and land as:
+
+```
+{ interview_id: null, content_piece_id: null, source_segment_id: <set>, status: 'pending' }
+```
+
+`cardState()` offers "Draft" on `!contentPieceId` alone, so the slot reappears
+as draftable. Until #2592 that click hit a bare `!atom.interview_id` guard and
+422'd forever — five atoms on movebetter, one of which a staffer reported
+(feedback e491bb5c). `draft.js` now branches on `resolveDraftSource(atom)`
+(`_lib/producer/draftSource.js`): `interview_id` → transcript path,
+`source_segment_id` → `draftReelAtom`.
+
+**Two rules if you ever touch this recovery.** First, it must NOT re-render —
+`video_segments.rendered_asset_id` still points at the finished mp4 with its
+poster, so the clip, not the caption, is the expensive artifact. Only the
+caption (written for a week that has since closed) is regenerated. Second, and
+more dangerous: **do not "just delete" the orphan the way a moment-composed
+atom is deleted.** That is safe for moments because the bank re-draws them; it
+is destructive here, because `selectReelCandidates` requires
+`status = 'proposed'` **and** `rendered_asset_id IS NULL`. A rendered segment
+can never be re-selected, so deleting the atom strands the clip in the Library
+and loses the slot permanently.
+
 ---
 
 ## Async pipeline patterns
