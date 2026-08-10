@@ -1374,7 +1374,7 @@ ${siblingSummaries.length ? `[Late in the piece, weave in a natural reference to
 [Topic-connected CTA. 3 sentences. Echo back the specific thread this part covered, then invite the reader to take the next step at ${workspace.display_name}. Link to [${workspace.display_name}](${workspace.booking_url}). Conversational. Should feel like the clinician remembered what they just shared in this part, not a generic "book now" pivot.]
 ${isPersonal ? '' : `
 ---
-*${workspace.display_name} · ${workspace.location} · ${seriesTitle ? `${seriesTitle} — ` : ''}Part ${partNum}*
+*${workspace.display_name} · ${workspace.location} · ${seriesTitle ? `${seriesTitle}, ` : ''}Part ${partNum}*
 `}
 ${resolveBlogLengthLine(lengthPreset, 'TARGET LENGTH: 700 to 950 words. Write like a human who genuinely cares about helping people move better, not like a content marketing checklist.')}
 

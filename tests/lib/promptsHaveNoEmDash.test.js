@@ -4,6 +4,12 @@ import { fileURLToPath } from 'node:url'
 import { getAtomSystemPrompt, buildModelExemplarsBlock } from '../../api/_lib/atomPrompts.js'
 import { lengthLine, briefLengthLine } from '../../api/_lib/socialLengthTargets.js'
 import { pointContentFraming } from '../../src/lib/pointContentFraming.js'
+import { stripAiDashes } from '../../api/_lib/stripAiDashes.js'
+import {
+  getBlogPostSystemPrompt,
+  getSeriesPartSystemPrompt,
+  getNewsletterSystemPrompt,
+} from '../../src/lib/prompts.js'
 
 // GUARD — a "never do X" prompt rule is a no-op while the prompt's own text
 // DOES X. The model copies what it is shown far more reliably than what it is
@@ -160,6 +166,12 @@ const BUILDERS = {
   ],
   'api/_routes/content-items/copy-to-platforms.js': [],
   'api/_lib/briefPrompts.js': [],
+  // The blog and long-form builder. #2597 fixed the social path and recorded
+  // this file as a known gap: it exported NO_EM_DASH_RULE while its own
+  // instruction strings carried 302 dashes, so the rule was competing with 302
+  // counter-examples. Cleared in the follow-up. Its 47 remaining dashes all sit
+  // in comments, which the filter below drops, so this needs no allowlist.
+  'src/lib/prompts.js': [],
 }
 
 // Error strings thrown/logged to humans. A dash here is fine; it is never shown
@@ -169,16 +181,43 @@ const HUMAN_FACING = [
   'throw new Error', 'return err(', 'Error(',
 ]
 
+// Strip comments by TRACKING BLOCK STATE, not by guessing from a line's first
+// character. The original filter skipped any line whose trimmed form began with
+// "*", which is right for a JSDoc continuation and wrong for markdown: prompt
+// templates are full of lines like `*${seriesTitle}, Part ${partNum}*` and
+// `**vocabulary_swap**: …`. That hole hid a real em-dash in the clinical
+// series-part footer from every source scan; only the built-string suite below
+// caught it. A guard that silently skips the lines it should read is worse than
+// no guard, so the state machine replaces the heuristic.
+//
+// "//" only counts as a comment at line start or after whitespace, so the "//"
+// in an https:// URL does not truncate the line.
+function codeOnlyLines(src) {
+  const out = []
+  let inBlock = false
+  src.split('\n').forEach((raw, i) => {
+    let line = raw
+    if (inBlock) {
+      const end = line.indexOf('*/')
+      if (end === -1) { out.push([i + 1, '']); return }
+      inBlock = false
+      line = line.slice(end + 2)
+    }
+    // Closed /* … */ pairs on this line.
+    line = line.replace(/\/\*[^*]*\*+([^/*][^*]*\*+)*\//g, '')
+    const open = line.indexOf('/*')
+    if (open !== -1) { inBlock = true; line = line.slice(0, open) }
+    line = line.replace(/(^|\s)\/\/.*$/, '')
+    out.push([i + 1, line])
+  })
+  return out
+}
+
 function modelFacingDashLines(rel) {
   const src = readFileSync(fileURLToPath(new URL(`../../${rel}`, import.meta.url)), 'utf8')
   const allowed = BUILDERS[rel]
-  return src.split('\n').map((line, i) => [i + 1, line])
-    .filter(([, raw]) => {
-      const s = raw.trim()
-      if (s.startsWith('//') || s.startsWith('*') || s.startsWith('/*')) return false
-      // Strip inline comments too: a dash inside `/* … */` or after `//` is
-      // documentation, not model input.
-      const line = raw.replace(/\/\*[^*]*\*+([^/*][^*]*\*+)*\//g, '').replace(/\/\/.*$/, '')
+  return codeOnlyLines(src)
+    .filter(([, line]) => {
       if (!DASHES.test(line)) { DASHES.lastIndex = 0; return false }
       DASHES.lastIndex = 0
       if (HUMAN_FACING.some((h) => line.includes(h))) return false
@@ -200,6 +239,48 @@ describe('every draft-generating prompt builder is dash-free in its model-facing
     expect(modelFacingDashLines(rel)).toEqual([])
   })
 
+  // The comment stripper is the part of this guard most able to fail open: if
+  // it over-matches, whole prompt bodies stop being scanned and every file
+  // passes vacuously. These pin both directions.
+  it('the comment stripper reads markdown lines and drops real comments', () => {
+    const scanned = codeOnlyLines([
+      '/* block — one */',
+      '/** jsdoc',
+      ' * continuation — two',
+      ' */',
+      'const a = 1 // trailing — three',
+      "const url = 'https://movebetter.co/a—b'",
+      '*${seriesTitle}, Part ${partNum}*',
+      '- **vocabulary_swap**: the draft',
+    ].join('\n')).map(([, l]) => l)
+
+    // Comments are gone, in every shape.
+    expect(scanned[0].trim()).toBe('')
+    expect(scanned[1].trim()).toBe('')
+    expect(scanned[2].trim()).toBe('')
+    expect(scanned[3].trim()).toBe('')
+    expect(scanned[4]).toBe('const a = 1')
+    // A URL keeps its "//" and everything after it.
+    expect(scanned[5]).toContain('movebetter.co')
+    // Markdown lines survive: these are model input, not comments. This is the
+    // exact case the old first-character heuristic threw away.
+    expect(scanned[6]).toContain('Part ${partNum}')
+    expect(scanned[7]).toContain('vocabulary_swap')
+  })
+
+  // A stripper that fails open takes this ratio to roughly zero while every
+  // dash assertion above keeps passing. Measured today the builders run from
+  // 0.586 (captionGen, heavily commented) to 0.919 (briefPrompts), so 0.4 has
+  // real headroom for a comment-heavier file and still catches a collapse.
+  it('scans the bulk of each builder (an over-matching stripper would not)', () => {
+    for (const rel of Object.keys(BUILDERS)) {
+      const src = readFileSync(fileURLToPath(new URL(`../../${rel}`, import.meta.url)), 'utf8')
+      const kept = codeOnlyLines(src).filter(([, l]) => l.trim()).length
+      const total = src.split('\n').filter((l) => l.trim()).length
+      expect(kept / total, `${rel}: only ${kept}/${total} lines scanned`).toBeGreaterThan(0.4)
+    }
+  })
+
   it('the two builders that had no em-dash rule now carry the shared one', () => {
     for (const rel of ['api/_lib/producer/regradeContentItem.js',
                        'api/_routes/content-items/copy-to-platforms.js']) {
@@ -208,5 +289,101 @@ describe('every draft-generating prompt builder is dash-free in its model-facing
       // A real interpolation, not just an import someone left unused.
       expect(src, `${rel} imports the rule but never interpolates it`).toMatch(/\$\{NO_EM_DASH_RULE\}/)
     }
+  })
+})
+
+// Source scanning catches a dash typed into prompts.js. It cannot catch one
+// arriving through the interpolation graph (pointContentFraming, the length
+// line, the provenance block). These build the real long-form prompts and
+// assert the string the model is actually handed, the same way the atom suite
+// above does. WS_CLEAN is deliberately dash-free so anything found is template
+// text rather than tenant data.
+const WS_CLEAN = {
+  display_name: 'Move Better',
+  location: 'Portland',
+  location_keyword: 'Portland',
+  website: 'https://movebetter.co',
+  booking_url: 'https://movebetter.co/book',
+  brand_voice: 'Plain, direct, curious. We explain the why.',
+  cta_heading: 'Ready to Move Better?',
+  internal_links_markdown: '[Low back pain](https://movebetter.co/low-back-pain)',
+}
+
+const LONG_FORM = [
+  ['blog', (ws, vm) => getBlogPostSystemPrompt(ws, 'Philip Abraham', 'sciatica', 'smart', vm)],
+  ['newsletter', (ws, vm) => getNewsletterSystemPrompt(ws, 'Philip Abraham', 'sciatica', vm)],
+  ['series-part', (ws, vm) => getSeriesPartSystemPrompt(
+    ws, 'Philip Abraham', 'sciatica', 'smart', vm, null, '', [], null,
+    { title: 'Why the disc is rarely the story', brief: 'One thread.', anchorMoments: ['the soccer player'] },
+    [{ part: 2, title: 'What changes by week four' }], 'The sciatica series',
+  )],
+]
+
+describe('long-form prompts are dash-free in the BUILT string', () => {
+  for (const [label, build] of LONG_FORM) {
+    for (const promptMode of ['clinical', 'general']) {
+      for (const voiceMode of ['practice', 'personal']) {
+        it(`${label} (${promptMode}, ${voiceMode})`, () => {
+          const ws = { ...WS_CLEAN, prompt_mode: promptMode === 'general' ? 'general' : undefined }
+          const prompt = build(ws, voiceMode)
+          expect(prompt, `${label} returned nothing`).toBeTruthy()
+          // Non-vacuity: a short or empty prompt would pass the dash check
+          // while proving nothing about the real instruction text.
+          expect(prompt.length).toBeGreaterThan(800)
+          const found = prompt.match(DASHES) || []
+          expect(
+            found,
+            `${label}/${promptMode}/${voiceMode}: ${found.length} dash(es) in the prompt sent to the model`,
+          ).toEqual([])
+        })
+      }
+    }
+  }
+})
+
+// The personal-voice builders instruct a closing signature line. That line used
+// to be "— Name, Clinic", and stripAiDashes rewrites a leading dash into a
+// comma, which welds the signature onto the end of the previous sentence:
+//   "...moving well.\n\n— Philip Abraham"  ->  "...moving well., Philip Abraham"
+// Every blog write path runs the sanitizer (#2597), so the instruction has to
+// name a signature that survives it. A dash-free instruction is necessary but
+// not sufficient on its own, so this asserts the round trip rather than just
+// the absence of a dash.
+describe('the instructed signature survives the sanitizer', () => {
+  const PERSONAL = [
+    ['blog', (ws) => getBlogPostSystemPrompt(ws, 'Philip Abraham', 'sciatica', 'smart', 'personal')],
+    ['series-part', (ws) => getSeriesPartSystemPrompt(
+      ws, 'Philip Abraham', 'sciatica', 'smart', 'personal', null, '', [], null,
+      { title: 'T', brief: 'B', anchorMoments: [] }, [], 'S',
+    )],
+  ]
+
+  // Not every builder instructs a signature: the clinical series part
+  // deliberately closes with a series footer instead. Collect whatever exists
+  // and assert on that, with a count check so a regex that stops matching
+  // cannot turn this suite into a no-op.
+  const found = []
+  for (const [label, build] of PERSONAL) {
+    for (const promptMode of ['clinical', 'general']) {
+      const ws = { ...WS_CLEAN, prompt_mode: promptMode === 'general' ? 'general' : undefined }
+      const m = build(ws).match(/signature(?: line)?[:,] "([^"]+)"/)
+      if (m) found.push([`${label}/${promptMode}`, m[1]])
+    }
+  }
+
+  it('finds the signature instructions (a rotted regex would pass vacuously)', () => {
+    expect(found.length).toBeGreaterThanOrEqual(3)
+    expect(found.map(([k]) => k)).toContain('blog/clinical')
+  })
+
+  it.each(found)('%s is sanitizer-stable', (_label, signature) => {
+    // Round trip through the real sanitizer, as it would run on the model's
+    // output, with a preceding sentence so a leading dash has something to
+    // weld onto. Unchanged means the signature reaches the reader intact.
+    const asWritten = `The whole point is moving well.\n\n${signature}`
+    expect(
+      stripAiDashes(asWritten),
+      `sanitizer rewrites the instructed signature "${signature}"`,
+    ).toBe(asWritten)
   })
 })
