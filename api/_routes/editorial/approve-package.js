@@ -25,6 +25,7 @@ import { ALL_KNOWN_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { saveBroll } from '../../_lib/saveBroll.js'
 import { groupRendersByPlatform } from '../../_lib/packageChannelPlatform.js'
+import { stripAiDashes } from '../../_lib/stripAiDashes.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -177,6 +178,9 @@ export default async function handler(req, res) {
   }
 
   // --- destination === 'publish': insert one content_items row per platform ---
+  // Package captions are model-written, so they carry the same em-dash tell as
+  // every other AI caption path. Strip once, reuse for both columns.
+  const packageCaption = stripAiDashes(pkg.caption_text)
   const rows = Object.values(byPlatform).map(({ platform, renders: pRenders }) => ({
     workspace_id:   ws.id,
     interview_id:   null,
@@ -184,8 +188,8 @@ export default async function handler(req, res) {
     staff_name:     staffName,
     topic:          pkg.topic,
     platform,
-    content:        pkg.caption_text,
-    overlay_text:   pkg.caption_text,
+    content:        packageCaption,
+    overlay_text:   packageCaption,
     // Canonical media_urls shape is [{url, type, kind}] — NOT bare strings.
     // The publish path (prepareMediaForPublish / buildAssets) keys video
     // detection off `m.type`, and the Drafts UI reads `m.url`. Bare strings

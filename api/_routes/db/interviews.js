@@ -20,6 +20,7 @@ import { markBookStale } from '../../_lib/bookStale.js'
 import { indexInterviewTranscriptFull } from '../../_lib/practiceMemoryRag.js'
 import { extractAndBankMoments } from '../../_lib/momentExtract.js'
 import { selectMissingOutputPlatforms } from '../../_lib/interviewOutputFanout.js'
+import { stripAiDashes } from '../../_lib/stripAiDashes.js'
 import { waitUntil } from '@vercel/functions'
 
 
@@ -461,6 +462,18 @@ export default async function handler(req, res) {
               const initialStatus = isImportedBlog
                 ? 'published'
                 : (platform === 'blog' && blogReviewEnabled ? 'in_review' : 'draft')
+              // This fan-out is the FIRST content a clinician ever sees for
+              // every platform, and it shipped with no dash sanitizer at all
+              // while every other AI-caption writer had one (draftAtom,
+              // regenerate, captionGen, briefs/generate). Proven in prod
+              // 2026-08-10: rows whose ai_original_content still carried an
+              // em-dash AND equalled content, i.e. the model wrote the tell and
+              // nothing stripped it, so a human had to. Sanitize ONCE and use
+              // the same value for both columns, so the voice-memory snapshot
+              // stays byte-equal to content at creation and the later
+              // content-vs-ai_original diff keeps meaning "the human edited
+              // this" rather than "the sanitizer ran".
+              const cleaned = stripAiDashes(o[key])
               return {
                 workspace_id:   ws.id,
                 interview_id:   id,
@@ -468,9 +481,9 @@ export default async function handler(req, res) {
                 staff_name: staffName,
                 topic:          topic ?? '',
                 platform,
-                content:        o[key],
+                content:        cleaned,
                 // Voice-memory snapshot — never overwritten on edit
-                ai_original_content: o[key],
+                ai_original_content: cleaned,
                 status:         initialStatus,
                 // Use original publish date from source if Jina surfaced it;
                 // fall back to import time so the field is always set.

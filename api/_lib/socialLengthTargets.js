@@ -32,18 +32,18 @@ const LANE_SCALE = {
 // surface needs the first sentence to stand on its own.
 export const SOCIAL_LENGTH = {
   instagram: {
-    hook:             { lane: 'short',  unit: 'words', lo: 25,  hi: 50,  cap: 2200, frontLoad: true, shape: 'a punchy scroll-stopper — the carousel carries the depth, so the caption is one sharp thought, not a mini-essay' },
+    hook:             { lane: 'short',  unit: 'words', lo: 25,  hi: 50,  cap: 2200, frontLoad: true, shape: 'a punchy scroll-stopper. The carousel carries the depth, so the caption is one sharp thought, not a mini-essay' },
     quick_win:        { lane: 'medium', unit: 'words', lo: 55,  hi: 95,  cap: 2200, frontLoad: true, shape: 'one useful tip with a line of why' },
-    clinical_insight: { lane: 'long',   unit: 'words', lo: 150, hi: 220, cap: 2200, frontLoad: true, shape: 'the deep-dive — give the clinical reasoning real room' },
+    clinical_insight: { lane: 'long',   unit: 'words', lo: 150, hi: 220, cap: 2200, frontLoad: true, shape: 'the deep-dive: give the clinical reasoning real room' },
     cta:              { lane: 'short',  unit: 'words', lo: 30,  hi: 60,  cap: 2200, frontLoad: true, shape: 'a short, direct invitation' },
   },
   linkedin: {
-    clinical_perspective: { lane: 'long',   unit: 'words', lo: 220, hi: 310, cap: 3000, frontLoad: true, shape: 'a substantive clinical point of view — LinkedIn rewards depth' },
+    clinical_perspective: { lane: 'long',   unit: 'words', lo: 220, hi: 310, cap: 3000, frontLoad: true, shape: 'a substantive clinical point of view. LinkedIn rewards depth' },
     referring_provider:   { lane: 'medium', unit: 'words', lo: 120, hi: 170, cap: 3000, frontLoad: true, shape: 'a focused note to referring peers' },
     movement_principle:   { lane: 'medium', unit: 'words', lo: 140, hi: 190, cap: 3000, frontLoad: true, shape: 'one principle, explained for non-specialists' },
   },
   facebook: {
-    community:   { lane: 'short',  unit: 'words', lo: 25, hi: 50, frontLoad: true, shape: 'warm and neighborly — a couple of sentences, ends on a question' },
+    community:   { lane: 'short',  unit: 'words', lo: 25, hi: 50, frontLoad: true, shape: 'warm and neighborly: a couple of sentences, ends on a question' },
     educational: { lane: 'medium', unit: 'words', lo: 50, hi: 90, frontLoad: true, shape: 'one myth-bust with substance, plainly explained' },
   },
   // GBP sits in the SHORT lane, not medium. A Google Business post is a local
@@ -63,14 +63,14 @@ export const SOCIAL_LENGTH = {
     patient_outcome: { lane: 'short', unit: 'chars', lo: 260, hi: 480, cap: 1500, frontLoad: true, shape: 'lead with the hook in the first ~100 characters, then the recovery/outcome in brief' },
   },
   tiktok: {
-    myth_buster: { lane: 'medium', unit: 'words', lo: 110, hi: 150, shape: 'a 45–60 second spoken script' },
-    process:     { lane: 'medium', unit: 'words', lo: 110, hi: 150, shape: 'a 45–60 second spoken script' },
+    myth_buster: { lane: 'medium', unit: 'words', lo: 110, hi: 150, shape: 'a 45 to 60 second spoken script' },
+    process:     { lane: 'medium', unit: 'words', lo: 110, hi: 150, shape: 'a 45 to 60 second spoken script' },
   },
-  twitter:  { hook:           { lane: 'short',  unit: 'chars', lo: 100, hi: 210, cap: 280, shape: 'a quotable one-liner with room to be shared — vary the length, do not fill to the max' } },
+  twitter:  { hook:           { lane: 'short',  unit: 'chars', lo: 100, hi: 210, cap: 280, shape: 'a quotable one-liner with room to be shared. Vary the length, do not fill to the max' } },
   threads:  { community_take: { lane: 'medium', unit: 'chars', lo: 140, hi: 320, cap: 500, shape: 'conversational, opens a question' } },
   bluesky:  { clinical_share: { lane: 'medium', unit: 'chars', lo: 130, hi: 255, cap: 300, shape: 'precise and technical' } },
   mastodon: { educational:    { lane: 'medium', unit: 'chars', lo: 160, hi: 340, cap: 500, shape: 'plain-language community register' } },
-  instagram_story: { story_teaser: { lane: 'short', unit: 'words', lo: 5, hi: 8, shape: 'a billboard line — 5–8 words, ALL CAPS' } },
+  instagram_story: { story_teaser: { lane: 'short', unit: 'words', lo: 5, hi: 8, shape: 'a billboard line: 5 to 8 words, ALL CAPS' } },
 }
 
 // Brief-broadcast has no angle concept (a brief is one announcement fanned to
@@ -114,7 +114,7 @@ export function lengthLine(platform, angle, lean = DEFAULT_LEAN) {
   const r = resolveRange(platform, angle, lean)
   if (!r) return ''
   const unitWord = r.unit === 'chars' ? 'characters' : 'words'
-  let line = `LENGTH: aim for ~${r.lo}–${r.hi} ${unitWord}${r.shape ? ` — ${r.shape}` : ''}. Match the length to the substance of the point; do NOT pad to reach the top of that range — a sharp point in fewer ${unitWord} beats a padded one.`
+  let line = `LENGTH: aim for ~${r.lo} to ${r.hi} ${unitWord}${r.shape ? `, ${r.shape}` : ''}. Match the length to the substance of the point; do NOT pad to reach the top of that range. A sharp point in fewer ${unitWord} beats a padded one.`
   // cap is always the platform's hard CHARACTER ceiling, regardless of the
   // target unit — never render it as "words".
   if (r.cap) line += ` Never exceed ${r.cap} characters total.`

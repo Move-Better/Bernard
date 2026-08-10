@@ -28,18 +28,18 @@ export function pointContentFraming({ isPoint = false, format = 'short' } = {}) 
   if (format === 'long') {
     return `
 
-POINT CONTENT — this piece is drawn from a personal point the author is making about their OWN lived experience, not clinical guidance:
-- Tell it in the first person — their story, their body, the concrete details, the result. Preserve "I"/"my"; do not convert to clinic voice.
-- You MAY touch the "why" (a possible mechanism), but frame it as generally-accepted or open — "what the research generally suggests", "one likely explanation" — never as established fact for the reader, and never prescriptive.
+POINT CONTENT: this piece is drawn from a personal point the author is making about their OWN lived experience, not clinical guidance:
+- Tell it in the first person: their story, their body, the concrete details, the result. Preserve "I"/"my"; do not convert to clinic voice.
+- You MAY touch the "why" (a possible mechanism), but frame it as generally-accepted or open ("what the research generally suggests", "one likely explanation"), never as established fact for the reader, and never prescriptive.
 - Weave an honest n=1 caveat in naturally (this is one person's experience, not medical advice, results vary). Do NOT tack on a boilerplate disclaimer line.
-- The reader takeaway is an invitation to notice or consider — not an instruction to follow.`
+- The reader takeaway is an invitation to notice or consider, not an instruction to follow.`
   }
 
   return `
 
-POINT CONTENT — this piece is drawn from a personal point the author is making about their OWN lived experience, not clinical guidance:
+POINT CONTENT: this piece is drawn from a personal point the author is making about their OWN lived experience, not clinical guidance:
 - Tell it as first-person lived experience: what happened to them, and the result. Their story, their body. Preserve "I"/"my".
 - Do NOT state a mechanism or causal claim ("X improves Y", "this works because…"). On a short format there's no room to hedge it responsibly, so leave it out entirely.
-- No prescription, no "you should", no dosing or protocol — it's an observation, not advice.
+- No prescription, no "you should", no dosing or protocol. It's an observation, not advice.
 - The hook is the surprising personal result itself, never a health claim.`
 }

@@ -22,6 +22,7 @@ import { recordAgentAction } from '../agentActions.js'
 
 
 import { supabaseRest } from '../supabaseRest.js'
+import { stripAiDashes } from '../stripAiDashes.js'
 const REGEN_MODEL = 'anthropic/claude-sonnet-4-6'
 const JUDGE_MODEL = 'anthropic/claude-haiku-4-5'
 const GATE = 6.5
@@ -135,7 +136,10 @@ export async function regradeContentItem({ ws, contentItemId, redFlag, inboxItem
     messages: [{ role: 'user', content: userMsg }],
     maxOutputTokens: 1000, maxRetries: 2, abortSignal: AbortSignal.timeout(90_000),
   })
-  const revised = (text || '').trim()
+  // Sanitize BEFORE the judge below, not after: this value is both what gets
+  // scored and what gets stored, so scoring the pre-strip text would grade a
+  // caption we never save.
+  const revised = stripAiDashes((text || '').trim())
 
   // Re-judge the rewrite against the full transcript.
   let newScore = null
