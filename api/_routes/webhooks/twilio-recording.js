@@ -32,6 +32,7 @@ import { indexInterviewTranscriptFull } from '../../_lib/practiceMemoryRag.js'
 import { replanWorkspaceWeek } from '../../_lib/strategistPlan.js'
 import { mondayOf } from '../../_lib/strategist.js'
 import { extractAndBankMoments } from '../../_lib/momentExtract.js'
+import { stripAiDashes } from '../../_lib/stripAiDashes.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -196,6 +197,7 @@ async function runCascade({ iv, recordingUrl, authToken, interview, wsId }) {
     const existsRows = exists.ok ? await exists.json() : []
     if (existsRows.length === 0 && outputs.blogPost?.trim()) {
       const status = staff.blog_review_enabled ? 'in_review' : 'draft'
+      const callBlogPost = stripAiDashes(outputs.blogPost)
       const ins = await sb('content_items', {
         method: 'POST',
         headers: { Prefer: 'return=minimal' },
@@ -206,8 +208,11 @@ async function runCascade({ iv, recordingUrl, authToken, interview, wsId }) {
           staff_name: staff.name,
           topic: storyTitle,
           platform: 'blog',
-          content: outputs.blogPost,
-          ai_original_content: outputs.blogPost,
+          // Same shape as the db/interviews.js fan-out: raw model output going
+          // straight into the first draft a clinician sees. Sanitize once so
+          // both columns stay byte-equal at creation.
+          content: callBlogPost,
+          ai_original_content: callBlogPost,
           status,
           published_at: null,
           resolved_url: null,

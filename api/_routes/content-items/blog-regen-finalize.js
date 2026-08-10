@@ -23,6 +23,7 @@ import { extractProvenanceBlock } from '../../../src/lib/provenance.js'
 import { LENGTH_PRESETS } from '../../../src/lib/lengthPresets.js'
 import { auditContentItem } from '../../_lib/voiceAudit.js'
 import { auditPointContentSafety } from '../../_lib/pointSafetyAudit.js'
+import { stripAiDashes } from '../../_lib/stripAiDashes.js'
 
 const VALID_LENGTH_PRESETS = new Set(LENGTH_PRESETS.map((p) => p.id))
 const VALID_GENERATION_STYLES = new Set(['blog_post', 'minimal_edits'])
@@ -97,7 +98,7 @@ export default async function handler(req, res) {
   if (!ivRows.length) return err(res, 'Interview not found', 404)
   const interview = ivRows[0]
 
-  const newContent = extractProvenanceBlock(rawContent.trim()).content
+  const newContent = stripAiDashes(extractProvenanceBlock(rawContent.trim()).content)
   if (!newContent.trim()) return err(res, 'Empty content after provenance strip', 422)
 
   const patch = {
