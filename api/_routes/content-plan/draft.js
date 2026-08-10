@@ -1,7 +1,11 @@
 // POST /api/content-plan/draft  { atom_id }
-// Generates content for one atom from the interview transcript (primary
-// source) with the approved blog post passed in as editorial context.
-// Creates a content_item and marks the atom as drafted.
+// Generates content for one atom and marks it drafted. Two sources, picked by
+// resolveDraftSource():
+//   • interview  — the transcript is the primary source, with the approved blog
+//                  post passed in as editorial context. The original path.
+//   • reel_segment — no transcript exists or is wanted; the atom's clip was
+//                  already rendered, so the draft is composed around the
+//                  existing asset. See _lib/producer/draftSource.js.
 export const config = { runtime: 'nodejs', maxDuration: 120 }
 
 // The generation + voice-judge core AND the GBP per-location fan-out both moved
@@ -17,6 +21,8 @@ import { recordAgentAction } from '../../_lib/agentActions.js'
 import { draftAtom, buildGbpLocationVariants } from '../../_lib/producer/draftAtom.js'
 import { bumpMomentUsage } from '../../_lib/momentPlan.js'
 import { autoAttachMedia } from '../../_lib/autoAttachMedia.js'
+import { resolveDraftSource, DRAFT_SOURCES, NO_SOURCE_MESSAGE } from '../../_lib/producer/draftSource.js'
+import { draftReelAtom } from '../../_lib/producer/draftReelAtom.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -64,7 +70,12 @@ export default async function handler(req, res) {
   if (!atomRows.length) return err(res, 'Atom not found', 404)
   const atom = atomRows[0]
 
-  if (!atom.interview_id) return err(res, 'This atom has no linked interview — backlog atoms must be linked to an interview before drafting', 422)
+  // Which generator this atom belongs to. NOT "does it have an interview" —
+  // a reel atom legitimately has none (migration 179) and is drafted from its
+  // rendered clip instead. See _lib/producer/draftSource.js for why reel atoms
+  // reach this route at all despite reelFactory's comment saying they can't.
+  const draftSource = resolveDraftSource(atom)
+  if (!draftSource) return err(res, NO_SOURCE_MESSAGE, 422)
   if (atom.status === 'drafted') return err(res, 'Already drafted')
   if (atom.status === 'skipped') return err(res, 'Atom is skipped — reset to pending first')
   if (atom.status === 'drafting') return err(res, 'Already in progress', 409)
@@ -82,6 +93,53 @@ export default async function handler(req, res) {
   let insertedContentPieceId = null
 
   try {
+    // REEL: no transcript to generate from, and none needed — the clip this
+    // slot was cut for is already rendered and sitting in the Library. Compose
+    // a fresh draft around it and re-link the atom. Deliberately ahead of the
+    // interview fetch: every step below this is transcript-shaped and would
+    // throw on a null interview_id.
+    if (draftSource === DRAFT_SOURCES.REEL_SEGMENT) {
+      const { contentPieceId, caption: reelCaption, segment } = await draftReelAtom({ ws, atom, sb })
+      insertedContentPieceId = contentPieceId
+
+      // createClipDraft returns only the id; the client needs the row.
+      const pieceRes = await sb(`content_items?id=eq.${contentPieceId}&${wsFilter}&select=*`)
+      if (!pieceRes.ok) throw new Error(`Could not read back reel draft: ${pieceRes.status}`)
+      const pieceRows = await pieceRes.json().catch(() => [])
+      if (!pieceRows.length) throw new Error('Reel draft not found after insert')
+      const contentPiece = pieceRows[0]
+
+      const reelAtomRes = await sb(`content_plan_atoms?id=eq.${atom_id}&${wsFilter}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status:           'drafted',
+          content_piece_id: contentPiece.id,
+          updated_at:       new Date().toISOString(),
+        }),
+      })
+      if (!reelAtomRes.ok) throw new Error(`atom status update failed: ${reelAtomRes.status}`)
+      const reelAtomRows = await reelAtomRes.json()
+      if (!reelAtomRows.length) throw new Error('atom status update matched 0 rows — concurrent modification or workspace filter mismatch')
+
+      waitUntil(recordAgentAction({
+        workspaceId:    ws.id,
+        producerConfig: ws.producer_config,
+        kind:           'draft_created',
+        title:          `Re-drafted a reel from an existing clip for ${atom.platform}`,
+        detail:         { platform: atom.platform, angle: atom.angle, segmentId: segment.id, source: 'reel_segment' },
+        contentItemId:  contentPiece.id,
+        atomId:         atom.id,
+      }))
+
+      // No autoAttachMedia: the draft is born carrying the clip, which is the
+      // whole point. No bumpMomentUsage: reel atoms carry no moment_id.
+      return ok(res, {
+        atom:          reelAtomRows[0] ?? { ...atom, status: 'drafted', content_piece_id: contentPiece.id },
+        content_piece: contentPiece,
+        caption:       reelCaption,
+      })
+    }
+
     // Fetch the interview (transcript = primary source; blog = editorial context)
     const ivRes = await sb(
       `interviews?id=eq.${atom.interview_id}&${wsFilter}&select=outputs,topic,tone,voice_mode,staff_id,location_id,created_at,messages,audience,story_type,region,theme`
