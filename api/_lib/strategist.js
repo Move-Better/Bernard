@@ -213,26 +213,115 @@ export function dateForWeekdaySlot(weekMonday, weekday, hour, timezone) {
   return dateAtLocalHour(dayStr, hour, timezone)
 }
 
-function assignToPinnedSlots(list, pinnedSlots, weekMonday, timezone) {
-  const byFormat = {}
-  for (const s of pinnedSlots) (byFormat[s.format || 'post'] ||= []).push(s)
-  const byWeekdayHour = (a, b) => {
-    const ao = (WEEKDAY.indexOf(a.weekday) + 6) % 7
-    const bo = (WEEKDAY.indexOf(b.weekday) + 6) % 7
-    return ao - bo || a.hour - b.hour
-  }
-  for (const arr of Object.values(byFormat)) arr.sort(byWeekdayHour)
+// Mon-first index (0..6) of a day code, matching cadenceSlots.js's own MONFIRST
+// ordering — the order the /week board is read in.
+const monIndex = (weekday) => (WEEKDAY.indexOf(weekday) + 6) % 7
 
-  list.forEach((a, i) => {
+// Which Mon-first day an already-placed instant falls on, in the workspace's
+// own timezone. Only used to SEED the cross-channel day tally from placements a
+// previous pass made, so this pass can balance against them.
+/**
+ * Key for the occupancy ledger threaded between placement passes.
+ *
+ * Scoped to the PLATFORM on purpose. The collision that actually breaks things
+ * is two atoms of the SAME channel at one instant — that is what the publisher
+ * double-sends or silently drops (see assignEvenSpread's note). Two DIFFERENT
+ * channels at the same instant are separate networks and completely fine, so a
+ * bare-instant ledger would let one channel evict another from its own tile:
+ * with Facebook and Instagram sharing a noon best-hour, Facebook holding Sunday
+ * noon made Instagram's Sunday reel tile look taken and pushed a reel back onto
+ * Monday. Accepts epoch ms or an ISO string.
+ */
+export function occupancyKey(platform, when) {
+  const ms = typeof when === 'number' ? when : Date.parse(when)
+  return `${platform}|${ms}`
+}
+
+export function monIndexOfInstant(ms, timezone) {
+  try {
+    const short = new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'short' }).format(new Date(ms))
+    return monIndex(short.slice(0, 3).toLowerCase())
+  } catch {
+    return monIndex(WEEKDAY[new Date(ms).getUTCDay()])
+  }
+}
+
+/**
+ * Place a channel's atoms into its pinned slots.
+ *
+ * Selection is greedy per atom, choosing the free slot that scores best on, in
+ * order:
+ *   1. FEWEST atoms already on that weekday — counted ACROSS every channel in
+ *      the week (`dayLoad`), which is what actually produces per-day platform
+ *      variety. Slot templates already stagger channels (cadenceSlots.js
+ *      distributeEvenSlots), but nothing previously stopped several channels
+ *      landing on the same day once supply and slot counts diverged.
+ *   2. FURTHEST from this channel's own already-placed days, so one channel
+ *      doesn't clump even while filling otherwise-quiet days.
+ *   3. Earliest instant — a deterministic tiebreak, so a replan is stable.
+ *
+ * Format is a PREFERENCE, not a partition: an atom takes a free tile of its own
+ * format when one exists, and otherwise borrows a free tile of another format
+ * rather than stacking onto its own bucket's first slot. That stacking is what
+ * put every Instagram post on Monday — Instagram seeds ~75% reel tiles
+ * (DEFAULT_REEL_SHARE) but the Strategist only ever emits `post` atoms (see
+ * toAtomRow), so the whole channel funnelled through one Monday post tile.
+ * Reels are the supply-constrained format (each needs a rendered clip), so
+ * their unfilled tiles are exactly the ones worth lending out; `occupied` stops
+ * a later reel pass from landing on top of whatever borrowed one.
+ */
+function assignToPinnedSlots(platform, list, pinnedSlots, weekMonday, timezone, occupied, dayLoad) {
+  const ordered = [...pinnedSlots].sort(
+    (a, b) => monIndex(a.weekday) - monIndex(b.weekday) || a.hour - b.hour,
+  )
+  if (!ordered.length) return // caller only invokes this branch when pinnedSlots is non-empty
+
+  const instants = ordered.map((s) => dateForWeekdaySlot(weekMonday, s.weekday, s.hour, timezone).getTime())
+  const dayOf = ordered.map((s) => monIndex(s.weekday))
+  // A slot is unavailable if an EARLIER pass already gave THIS channel that
+  // instant. composeWeeklyPlan and reelFactory each call assignSlots
+  // separately; without this every pass restarts at slot 0 (Monday) and can
+  // stamp an instant a prior pass already took — observed live as two gbp atoms
+  // at an identical scheduled_at on Monday while Friday's gbp tile sat empty.
+  const free = new Set(
+    ordered.map((_, i) => i).filter((i) => !occupied.has(occupancyKey(platform, instants[i]))),
+  )
+
+  const mine = []      // Mon-first day indices this channel has taken
+  const overflow = []
+  for (const a of list) {
     const fmt = a.format || 'post'
-    const slots = byFormat[fmt]?.length ? byFormat[fmt] : (byFormat.post?.length ? byFormat.post : pinnedSlots)
-    if (!slots.length) return // caller only invokes this branch when pinnedSlots is non-empty
-    const idx = i % slots.length
-    const wrap = Math.floor(i / slots.length)
-    const slot = slots[idx]
-    const d = dateForWeekdaySlot(weekMonday, slot.weekday, slot.hour, timezone)
-    if (wrap > 0) d.setUTCMinutes(d.getUTCMinutes() + wrap * 5)
-    a.scheduled_at = d.toISOString()
+    let pool = [...free].filter((i) => (ordered[i].format || 'post') === fmt)
+    if (!pool.length) pool = [...free]
+    if (!pool.length) { overflow.push(a); continue }
+
+    let best = null
+    for (const i of pool) {
+      const load = dayLoad.get(dayOf[i]) || 0
+      // Cyclic distance so Sunday and Monday read as adjacent, not 6 apart.
+      const gap = mine.length
+        ? Math.min(...mine.map((d) => { const raw = Math.abs(dayOf[i] - d); return Math.min(raw, 7 - raw) }))
+        : Number.MAX_SAFE_INTEGER
+      if (!best || load < best.load || (load === best.load && gap > best.gap)) best = { i, load, gap }
+    }
+
+    free.delete(best.i)
+    occupied.add(occupancyKey(platform, instants[best.i]))
+    dayLoad.set(dayOf[best.i], (dayLoad.get(dayOf[best.i]) || 0) + 1)
+    mine.push(dayOf[best.i])
+    a.scheduled_at = new Date(instants[best.i]).toISOString()
+  }
+
+  // More atoms than the channel has tiles at all: cycle its slots and nudge the
+  // minute until this channel's instant is genuinely unused, so a doubled-up
+  // day still never produces two atoms at an identical scheduled_at.
+  overflow.forEach((a, i) => {
+    const slot = i % instants.length
+    let t = instants[slot]
+    while (occupied.has(occupancyKey(platform, t))) t += 5 * 60 * 1000
+    occupied.add(occupancyKey(platform, t))
+    dayLoad.set(dayOf[slot], (dayLoad.get(dayOf[slot]) || 0) + 1)
+    a.scheduled_at = new Date(t).toISOString()
   })
 }
 
@@ -246,21 +335,62 @@ function assignToPinnedSlots(list, pinnedSlots, weekMonday, timezone) {
  * (assignToPinnedSlots); otherwise they fall back to the legacy even-spread
  * computation (assignEvenSpread) so a caller that doesn't pass slots — or a
  * platform cadenceSlots.js couldn't derive any for — still schedules.
+ *
+ * `occupied` — an optional Set of `occupancyKey(platform, instant)` strings
+ * ALREADY spoken for by a previous placement pass. Pass the SAME Set through
+ * every call targeting one plan week (composeWeeklyPlan threads it across its
+ * this-week and promoted-backlog passes; reelFactory seeds it from the week's
+ * existing atoms) and each pass fills the tiles earlier ones left rather than
+ * restarting at Monday on top of them. Mutated in place as atoms are placed, so
+ * the caller can keep threading it.
  */
-export function assignSlots(atoms, weekMonday, quietDays, timezone = 'UTC', slotsByPlatform = null) {
+export function assignSlots(atoms, weekMonday, quietDays, timezone = 'UTC', slotsByPlatform = null, occupied = new Set()) {
   const quiet = new Set((quietDays || []).map((q) => q.toLowerCase()))
   // Candidate weekday offsets (Mon..Sun = 0..6) that aren't quiet.
   const openOffsets = [0, 1, 2, 3, 4, 5, 6].filter((off) => !quiet.has(WEEKDAY[(off + 1) % 7]))
+  const taken = new Set(occupied)
+  // How many atoms already sit on each Mon-first weekday, across ALL channels.
+  // Seeded from prior passes so this one balances against what they placed, and
+  // shared between channels below so the second channel to run sees the first
+  // channel's days as loaded — that shared view is what yields a mix of
+  // platforms per day rather than several channels piling onto the same one.
+  // (Unlike `taken`, this is deliberately NOT platform-scoped: the whole point
+  // is that a day already carrying another channel's post looks busier.)
+  const dayLoad = new Map()
+  for (const key of taken) {
+    const ms = Number(String(key).split('|')[1])
+    if (!Number.isFinite(ms)) continue
+    const d = monIndexOfInstant(ms, timezone)
+    dayLoad.set(d, (dayLoad.get(d) || 0) + 1)
+  }
   const byChannel = {}
   for (const a of atoms) (byChannel[a.platform] ||= []).push(a)
-  for (const [platform, list] of Object.entries(byChannel)) {
+  // Largest channel first (matching cadenceSlots.js distributeEvenSlots' own
+  // convention). The busiest channel is the most likely to exhaust its own
+  // format's tiles and need to borrow, so it must choose while the week is
+  // still open; the lighter channels then fill whatever days are left quiet.
+  // Name tiebreak keeps a replan deterministic.
+  const channelOrder = Object.entries(byChannel)
+    .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
+  for (const [platform, list] of channelOrder) {
     const pinned = (slotsByPlatform?.[platform] || []).filter((s) => s?.enabled !== false)
     if (pinned.length) {
-      assignToPinnedSlots(list, pinned, weekMonday, timezone)
+      assignToPinnedSlots(platform, list, pinned, weekMonday, timezone, taken, dayLoad)
     } else {
       assignEvenSpread(list, platform, weekMonday, openOffsets, timezone)
+      // The legacy path computes times without consulting `taken`/`dayLoad`,
+      // but a later pass must still not reuse them.
+      for (const a of list) {
+        if (!a.scheduled_at) continue
+        const ms = Date.parse(a.scheduled_at)
+        taken.add(occupancyKey(platform, ms))
+        const d = monIndexOfInstant(ms, timezone)
+        dayLoad.set(d, (dayLoad.get(d) || 0) + 1)
+      }
     }
   }
+  // Reflect everything placed here back into the caller's Set.
+  for (const key of taken) occupied.add(key)
   return atoms
 }
 
@@ -692,7 +822,13 @@ export async function composeWeeklyPlan({
   // every run — a channel with no slots falls back to the legacy even-spread.
   const now = new Date().toISOString()
   const slotsByPlatform = slotsByPlatformFromCadence(cadence)
-  const thisWeekRows = assignSlots(thisWeek.map((c) => toAtomRow(c, { workspaceId, planWeek, palette })), planWeek, quietDays, timezone, slotsByPlatform)
+  // ONE occupancy ledger for both placement passes below. Without it the second
+  // pass (promoted backlog) restarts at each channel's first slot — Monday — and
+  // can stamp an instant the first pass already used: observed live on
+  // movebetter as two gbp atoms at an identical scheduled_at on Monday while
+  // Friday's gbp tile sat empty.
+  const occupied = new Set()
+  const thisWeekRows = assignSlots(thisWeek.map((c) => toAtomRow(c, { workspaceId, planWeek, palette })), planWeek, quietDays, timezone, slotsByPlatform, occupied)
   // Bank mode: surplus candidates are DROPPED, not banked as held atoms — the
   // moments table IS the backlog, and materializing surplus is exactly the
   // pre-generated pile this design retires. Legacy mode keeps held rows.
@@ -704,6 +840,7 @@ export async function composeWeeklyPlan({
     quietDays,
     timezone,
     slotsByPlatform,
+    occupied,
   )
 
   return {
