@@ -55,7 +55,7 @@ async function resolveWorkspaceTemplate(ws) {
 }
 import { saveBroll } from './saveBroll.js'
 import { createClipDraft } from './clipDraft.js'
-import { assignSlots, dateAtLocalHour } from './strategist.js'
+import { assignSlots, dateAtLocalHour, occupancyKey } from './strategist.js'
 import { ATOM_FORMATS } from './atomPlan.js'
 import { classifySegmentVoices, SPEAKER_VOICES } from './speakerVoice.js'
 import { mergeSlotsIntoCadence, slotsByPlatformFromCadence } from './cadenceSlots.js'
@@ -464,13 +464,21 @@ export async function fillReelSlots({ ws, weekMonday }) {
   const target = reelTargetForWorkspace(ws)
   if (target <= 0) return { skipped: 'no_reel_target', target: 0 }
 
-  // Reel slots already filled this week. Skipped atoms don't hold a slot.
+  // Every atom already holding a tile this week. Skipped atoms don't hold one.
+  // Widened from a reel-only id fetch so we get BOTH the reel count (the
+  // idempotency ceiling, unchanged) and every taken scheduled_at — assignSlots
+  // needs the latter or this pass restarts at Monday on top of tiles the
+  // Strategist filled hours earlier.
   const existingRes = await sb(
     `content_plan_atoms?workspace_id=eq.${ws.id}&plan_week=eq.${weekMonday}` +
-      `&format=eq.${ATOM_FORMATS.REEL}&status=neq.skipped&select=id`,
+      `&status=neq.skipped&select=id,platform,format,scheduled_at`,
   )
   if (!existingRes.ok) return { skipped: 'db_error' }
-  const existing = (await existingRes.json().catch(() => [])).length
+  const existingRows = await existingRes.json().catch(() => [])
+  const existing = existingRows.filter((r) => r.format === ATOM_FORMATS.REEL).length
+  const occupied = new Set(
+    existingRows.filter((r) => r.scheduled_at).map((r) => occupancyKey(r.platform, r.scheduled_at)),
+  )
 
   const gap = Math.min(target - existing, MAX_PER_RUN)
   if (gap <= 0) return { target, existing, rendered: 0, failed: 0, shortfall: 0 }
@@ -519,6 +527,7 @@ export async function fillReelSlots({ ws, weekMonday }) {
     quietDays,
     timezone,
     slotsByPlatform,
+    occupied,
   ).map((a) => a.scheduled_at)
 
   // Never hand back a slot that has already happened. assignSlots spreads across
