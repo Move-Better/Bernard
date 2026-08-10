@@ -14,6 +14,12 @@
 //   - Pass `onError` to run extra logic AFTER the toast (logging, state reset)
 //   - Pass `silent: true` to suppress the toast entirely (rare — only when
 //     the call site has a deliberately custom error surface)
+//   - Pass `silent: (err) => boolean` to suppress it for ONE class of failure
+//     while every other error still toasts. Added for the publish lock: a 409
+//     on a scheduled/published row is the server correctly refusing a write the
+//     producer never asked for, so a toast is noise (and an autosaving editor
+//     turns that noise into a storm) — but a 500 on the same mutation still has
+//     to be visible. `silent: true` would have hidden both.
 //
 // All mutations in src/lib/queries.js use this. The custom ESLint rule
 // `bernard/no-raw-use-mutation` prevents new code from bypassing it.
@@ -23,7 +29,7 @@ import { toast } from '@/lib/toast'
 
 /**
  * Wrapper around useMutation that always shows a toast on error.
- * @param {{ errorMessage?: string, silent?: boolean, onError?: (...args: any[]) => any, [key: string]: any }} [options]
+ * @param {{ errorMessage?: string, silent?: boolean | ((err: any, vars: any) => boolean), onError?: (...args: any[]) => any, [key: string]: any }} [options]
  */
 export function useAppMutation({
   errorMessage = 'Something went wrong',
@@ -34,7 +40,8 @@ export function useAppMutation({
   return useMutation({
     ...rest,
     onError: (err, vars, ctx) => {
-      if (!silent) {
+      const suppressed = typeof silent === 'function' ? silent(err, vars) : silent
+      if (!suppressed) {
         const message = err instanceof Error ? err.message : String(err)
         const description = message && message !== errorMessage ? message : undefined
         toast.error(errorMessage, description ? { description } : undefined)

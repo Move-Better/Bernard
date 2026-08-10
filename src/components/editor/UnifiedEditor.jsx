@@ -25,6 +25,7 @@ import RegenerateCaptionButton, { canRegenerateCaption } from '@/components/edit
 import { apiFetch } from '@/lib/api'
 import { clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey, photoSourceUrl, isVideoEntry, slidesHaveText } from '@/lib/mediaEntry'
 import { resolveArchetype, ARCHETYPES, railFor, mediaTierFor, MEDIA_TIER } from '@/lib/editorArchetype'
+import { isPieceLocked } from '@/lib/publishLock'
 import { deriveSeoTitle, deriveMetaDescription, cleanBlogMarkdown, SEO_TITLE_MAX, META_DESC_MAX } from '@/lib/blogOutput'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { frameFor } from '@/lib/postFrames'
@@ -150,6 +151,7 @@ function SeoPanel({ piece, updateItem }) {
   const descPlaceholder = deriveMetaDescription(body, titlePlaceholder)
 
   async function save() {
+    if (isPieceLocked(piece)) return
     if (seoTitle === savedRef.current.seoTitle && metaDescription === savedRef.current.metaDescription) return
     try {
       await updateItem.mutateAsync({ id: piece.id, patch: { seoTitle, metaDescription } })
@@ -297,6 +299,7 @@ function MediaPanel({ piece, updateItem }) {
   // normalized media_urls entry, so the dedupe and the single-media replace
   // semantics can't drift between the two sources.
   async function attachEntry(entry) {
+    if (isPieceLocked(piece)) return
     if (!entry?.url) {
       toast.error('That file has no usable URL')
       return
@@ -349,6 +352,7 @@ function MediaPanel({ piece, updateItem }) {
   }
 
   async function removeAt(idx) {
+    if (isPieceLocked(piece)) return
     const next = media.filter((_, i) => i !== idx)
     try {
       // camelCase — see the note in attachEntry above.
@@ -752,10 +756,13 @@ function GradePanel({ piece, aspect }) {
 function PublishPanel({ piece, remainingNeedsMedia = [], isReel, updateItem }) {
   const workspace = useWorkspace()
   const gbpLocations = (workspace?.locations || []).filter((l) => l.bundle_team_id)
-  const locked = piece.status === 'published' || piece.status === 'scheduled'
+  // Was a hand-rolled copy of the same rule. Routed through the shared module so
+  // a future status joining LOCKED_STATUSES reaches this panel too.
+  const locked = isPieceLocked(piece)
   const selectedGbpIds = new Set(resolveGbpLocationIds(piece) || gbpLocations.map((l) => l.id))
 
   function toggleGbpLocation(id) {
+    if (locked) return
     const next = new Set(selectedGbpIds)
     if (next.has(id)) next.delete(id)
     else next.add(id)
