@@ -1419,10 +1419,35 @@ means **any write to `content_items.scheduled_at` must also update the linked at
 the board reads with, or the piece lands in the wrong week bucket. Otherwise the atom stays pinned to
 its original `plan_week` and an approved, rescheduled post silently vanishes from Your Week (real user
 feedback 2026-07-13; fixed in the `db/content` PATCH handler, #2182 — best-effort, since one-off Posts
-have no atom and match 0 rows). Grep for every writer of `content_items.scheduled_at` when touching
-scheduling — the user-facing path is `PATCH /api/db/content` (via `useContentWorkflow.publish`);
-dispatch-time writes (`buffer.js`, `dispatchContentItem.js`) generally re-write the same value and
-rarely cross a week boundary, but are the next place to check if a same-week desync ever surfaces.
+have no atom and match 0 rows).
+
+**The mirror is `api/_lib/atomSchedule.js` — `syncAtomSchedule()`. There is ONE copy, and every path
+that commits a schedule calls it** (#2599): the editor Publish/Schedule (`publish/social.js`), the
+server-side /week Approve (`dispatchContentItem.js`, **both** release sites), the manual Retry
+(`producer/retry-publish.js`), and the editor (re)schedule (`db/content.js`). Do not re-implement the
+`plan_week` recompute inline — two copies is precisely how this drifted.
+
+**Correction to what this section used to say.** It previously claimed dispatch-time writes "generally
+re-write the same value and rarely cross a week boundary," and named `buffer.js` (deleted in #2488).
+Both were wrong, and that sentence is the belief that let the bug ship. #2553 moved the schedule commit
+server-side into `dispatchCommitFields` and deleted the client echo that had been carrying the atom
+sync — so from 2026-08-04 the dispatch paths were the ONLY writer of `content_items.scheduled_at` on
+that path, wrote a value that genuinely differed from the atom's, and synced nothing. Confirmed live on
+`movebetter` 2026-08-10: an atom read Wed 08:00 PT while its item was queued at bundle.social for Tue
+09:00 PT. **Treat any dispatch-time schedule write as a first-class writer, never an echo of one.**
+
+**Scope — the atom follows the SCHEDULE, never the publish instant.** A published row's `scheduled_at`
+is deliberately overwritten with the real post time by the `post.published` webhook; that is history,
+not a slot. (Verified in prod: all 7 published rows sit within seconds of `published_at`, drifting
+47–473 min from their planned slot, and none crosses a day boundary in PT.) So `retry-publish` syncs
+only on its scheduled branch, and `cron/auto-publish` deliberately does not sync — it commits no
+`scheduled_at` at all, firing at the already-planned time.
+
+Guard: `tests/lib/atomScheduleSync.test.js` pins the per-file **count** of `syncAtomSchedule()` calls
+(a presence check is hollow — `dispatchContentItem.js` has two commit sites, and deleting one left an
+earlier version green), discovers every file committing a terminal `status: 'scheduled'` and fails on
+any in neither the must-sync list nor the documented-exclusions map, and fails if anyone re-implements
+the mirror inline. **Adding a fifth publish path? It must call `syncAtomSchedule()` and bump the count.**
 
 #### Corollary: a published-NOW post has a null atom `scheduled_at`, so board/calendar reads must include published atoms regardless
 
@@ -1448,8 +1473,9 @@ The per-(platform,angle) `cap` in `socialLengthTargets.js` is only a *prose inst
 `draftAtom` (and its GBP per-location variants) runs the returned caption through
 `clampToCap(text, platformCap(platform))` (both in `socialLengthTargets.js`) — a sentence-aware trim
 (last `.!?` under cap → last word boundary → hard slice, no ellipsis) applied AFTER the voice judge so
-fidelity scores the full text. The publish paths (`buffer.js` GBP branches) use the same `clampToCap`
-as a final gate for non-atom sources (manual edits, one-off posts, brief-broadcast). Any NEW caption
+fidelity scores the full text. The publish paths use the same `clampToCap` as a final gate for
+non-atom sources (manual edits, one-off posts, brief-broadcast) — in BOTH GBP branches:
+`publish/social.js` `runBundlePublish` and `dispatchContentItem.js` (`buffer.js` was deleted in #2488). Any NEW caption
 generation path or NEW capped platform must clamp too — don't rely on the prompt or the blind
 `slice(0, N)` that used to be the only enforcement (shipped #2181, user feedback "caption auto
 generated over character limit").
