@@ -15,6 +15,7 @@ import { formatChoicesFor } from '@/lib/platformFormats'
 import { brandStyleForRender } from '@/lib/brandSwatches'
 import { deriveStory } from '@/lib/storyFields'
 import { stripStoryDatePrefix } from '@/lib/storyTitle'
+import { isPieceLocked } from '@/lib/publishLock'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
@@ -170,6 +171,17 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
 
   const updateItem = useUpdateContentItem()
 
+  // Is this piece's content already committed (scheduled/published)?
+  //
+  // StoryboardPublish swaps a locked piece for the read-only receipt before this
+  // editor ever mounts, so in the happy path this is always false. It is not
+  // always the happy path: that gate reads the React Query cache, and the
+  // publish pipeline commits the row via sb() directly without invalidating it.
+  // So the editor can be mounted over a row that is already locked — and then
+  // every write below is refused with a 409 forever. Each write path re-checks
+  // rather than trusting the parent, because the parent's answer can be stale.
+  const locked = isPieceLocked(piece)
+
   // Auto-attach top AI pick per slide on first open when slides have no photos.
   // A ref guards against re-firing; only fires when ALL slides are photo-less (fresh carousel).
   const autoAttachDoneRef = useRef(false)
@@ -178,6 +190,13 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   const { data: photoSuggestions } = useMediaSuggestions(piece?.id, { enabled: !!piece?.id, kind: 'photo', k: 10 })
   useEffect(() => {
     if (autoAttachDoneRef.current) return
+    // Never attach media to a committed post. This is an UNPROMPTED write that
+    // fires on mount, so on a locked row it produced a refusal the moment the
+    // producer opened the page — "error message continually populates screen
+    // when entering post editor" (movebetter, 2026-08-10). Attaching media to a
+    // post that already shipped would also be wrong on its own terms: it edits
+    // our record of what was published without changing what was published.
+    if (locked) return
     // useMediaSuggestions returns the raw suggest-media response — { clips: [...] },
     // NOT a bare array. (The Swap-photo panel reads `sugg.clips` correctly; this
     // effect previously read `photoSuggestions.length`/`[i]`, so the guard always
@@ -288,7 +307,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   // be worthless as the learning signal it exists to be.
   const formatChoices = useMemo(() => formatChoicesFor(piece), [piece])
   async function onPickFormat(next) {
-    if (!piece?.id || next === piece.format) return
+    if (!piece?.id || locked || next === piece.format) return
     try {
       await updateItem.mutateAsync({ id: piece.id, patch: { format: next } })
     } catch {
@@ -303,7 +322,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   // while carouselPublishEntry() substitutes the variant at publish. Swapping
   // the url would make the piece look like it references a different asset.
   async function attachCarouselVariant(variant) {
-    if (!piece?.id || !activeEntry) return
+    if (!piece?.id || locked || !activeEntry) return
     const raw = Array.isArray(piece?.media_urls) ? piece.media_urls : []
     const key = mediaEntryKey(activeEntry)
     const next = raw.map((m) => (mediaEntryKey(m) === key
@@ -322,7 +341,7 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   // attach, recompute the new photo's index in the PHOTO-ONLY filtered list
   // (`photo_idx` indexes that filtered list, not raw media_urls) and bind it.
   async function attachPhoto(entry) {
-    if (!entry || !piece?.id) return
+    if (!entry || !piece?.id || locked) return
     const raw = Array.isArray(piece?.media_urls) ? piece.media_urls : []
     const key = mediaEntryKey(entry)
     const already = raw.some((m) => mediaEntryKey(m) === key)
@@ -402,6 +421,12 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   // slide/theme/aspect patch. Debounced by useAutosave; retries automatically
   // on the next edit if the render step fails (text is saved either way).
   async function saveDraft(next) {
+    // Belt to useAutosave's `enabled` braces: this also runs from the unmount
+    // flush, whose closure can predate the status change (the parent swaps
+    // straight to the receipt, so this component never re-renders as locked).
+    // That is a real window, not a theoretical one — the producer's second
+    // report landed one second after the row's scheduled_at.
+    if (locked) return
     const cleaned = next.slides.map((s) => ({
       photo_idx: typeof s.photo_idx === 'number' ? s.photo_idx : null,
       // media_idx must be in this whitelist or every autosave silently strips
@@ -459,7 +484,13 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     }
   }
 
-  const { status: saveStatus } = useAutosave(draftState, saveDraft, { debounceMs: 1500, resetKey: piece?.id })
+  const { status: saveStatus } = useAutosave(draftState, saveDraft, {
+    debounceMs: 1500,
+    resetKey: piece?.id,
+    // A committed post has nothing to autosave INTO. Disabling here also stops
+    // the unmount flush, which useAutosave gates on the same flag.
+    enabled: !locked,
+  })
   const { undo, redo, canUndo, canRedo } = useUndoHistory(draftState, (snap) => {
     setSlides(snap.slides)
     setThemeId(snap.themeId)
@@ -481,11 +512,14 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
   }
   useEffect(() => {
     if (!piece?.id) return
+    // Also fires unprompted on mount (lastRevRef starts at 0). A committed post
+    // has no draft history worth keeping — there is nothing left to restore to.
+    if (locked) return
     const now = Date.now()
     if (now - lastRevRef.current < 180000) return
     lastRevRef.current = now
     saveRevision('slides', piece.id, draftState).catch(() => {})
-  }, [draftState, piece?.id])
+  }, [draftState, piece?.id, locked])
   async function openHistory() {
     if (historyOpen) { setHistoryOpen(false); return }
     try { const r = await listRevisions('slides', piece.id); setRevisions(r?.revisions || []) } catch { setRevisions([]) }

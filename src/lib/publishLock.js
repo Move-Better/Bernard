@@ -33,6 +33,19 @@ export const LOCKED_STATUSES = Object.freeze(['scheduled', 'published'])
 export const UNSCHEDULE_TARGETS = Object.freeze(['approved', 'draft'])
 
 /**
+ * The `error` key a refused write comes back with in the 409 body. Exported so
+ * the client can RECOGNIZE the server's refusal instead of re-typing these
+ * strings at the call site — they are produced here and consumed here, which is
+ * the same one-copy argument the module header makes about the lock itself.
+ */
+export const LOCK_REJECTION_REASONS = Object.freeze(['locked_scheduled', 'locked_published'])
+
+/** Single place the reason is derived, so the branches below can't drift apart. */
+function lockReasonFor(currentStatus) {
+  return currentStatus === 'published' ? 'locked_published' : 'locked_scheduled'
+}
+
+/**
  * Patch keys (camelCase, as the editor client sends them) that describe WHAT
  * WAS PUBLISHED. Anything here is rejected on a locked row.
  *
@@ -112,29 +125,44 @@ export function checkPatchAgainstLock(currentStatus, patch = {}) {
     // Unscheduling may carry scheduledAt:null, and nothing else.
     if (isUnschedulePatch(patch)) {
       if (fields.length === 0) return { ok: true }
-      return { ok: false, reason: 'locked_scheduled', fields }
+      return { ok: false, reason: lockReasonFor(currentStatus), fields }
     }
     if (patch.scheduledAt !== undefined) {
-      return { ok: false, reason: 'locked_scheduled', fields: [...fields, 'scheduledAt'] }
+      return { ok: false, reason: lockReasonFor(currentStatus), fields: [...fields, 'scheduledAt'] }
     }
   }
 
   if (currentStatus === 'published') {
     // Terminal: no route back to an editable status through this handler.
     if (patch.status !== undefined && patch.status !== 'published') {
-      return { ok: false, reason: 'locked_published', fields: [...fields, 'status'] }
+      return { ok: false, reason: lockReasonFor(currentStatus), fields: [...fields, 'status'] }
     }
     if (patch.scheduledAt !== undefined) {
-      return { ok: false, reason: 'locked_published', fields: [...fields, 'scheduledAt'] }
+      return { ok: false, reason: lockReasonFor(currentStatus), fields: [...fields, 'scheduledAt'] }
     }
   }
 
   if (fields.length > 0) {
-    return {
-      ok: false,
-      reason: currentStatus === 'published' ? 'locked_published' : 'locked_scheduled',
-      fields,
-    }
+    return { ok: false, reason: lockReasonFor(currentStatus), fields }
   }
   return { ok: true }
+}
+
+/**
+ * CLIENT side: is this thrown ApiError the server refusing a write because the
+ * piece is already committed?
+ *
+ * This is the one save failure that is not a problem the producer can act on.
+ * The row is scheduled or published, the write was correctly refused, and the
+ * only honest resolution is to stop showing them an editor — so the caller
+ * treats it as a silent no-op plus a refetch rather than an error toast.
+ *
+ * Matched on the reason key, not the status alone: a future 409 from this route
+ * for some other conflict must NOT be swallowed as if it were the lock.
+ */
+export function isLockRejection(err) {
+  if (!err || typeof err !== 'object') return false
+  if (err.status !== 409) return false
+  const reason = err.payload && typeof err.payload === 'object' ? err.payload.error : undefined
+  return LOCK_REJECTION_REASONS.includes(reason)
 }

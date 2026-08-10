@@ -8,6 +8,7 @@ import PostMetricsRow from '@/components/story-detail/PostMetricsRow'
 import WinnerToggle from '@/components/story-detail/WinnerToggle'
 import { useUpdateContentItem } from '@/lib/queries'
 import { deriveStory } from '@/lib/storyFields'
+import { isPieceLocked } from '@/lib/publishLock'
 import { pickerItemToMediaEntry, isVideoEntry, photoSourceUrl } from '@/lib/mediaEntry'
 import { toast } from '@/lib/toast'
 
@@ -51,10 +52,17 @@ export default function StoryComposer({ piece, remainingNeedsMedia = [] }) {
       ? first.thumbnailUrl || null
       : photoSourceUrl(first) || first.url || first.thumbnailUrl
 
-  const patch = (p) =>
-    update.mutateAsync({ id: piece.id, patch: p }).catch((e) =>
+  // Every write in this composer funnels through here, so the lock check lives
+  // here too — one gate rather than four. The parent route already swaps a
+  // committed piece for the read-only receipt, but it decides that from the
+  // React Query cache, which the publish pipeline does not invalidate (it writes
+  // via sb() directly). So this can be mounted over an already-locked row.
+  const patch = (p) => {
+    if (isPieceLocked(piece)) return Promise.resolve()
+    return update.mutateAsync({ id: piece.id, patch: p }).catch((e) =>
       toast.error("Couldn't save", { description: e?.message }),
     )
+  }
 
   const saveOverlay = () => {
     const v = overlay.trim()

@@ -21,6 +21,7 @@
 import { useQuery, useInfiniteQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { useAppMutation } from './useAppMutation'
 import { isTransientApiError } from './apiError'
+import { isLockRejection } from './publishLock'
 import {
   apiFetch,
   fetchStaff,
@@ -568,6 +569,29 @@ export function useUpdateContentItem() {
     // a 400 validation, a 403) which the server is deliberately rejecting.
     retry: (failureCount, error) => failureCount < 2 && isTransientApiError(error),
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
+    // A 409 publish lock is not a failure the producer can do anything about,
+    // and it is the one save error that can REPEAT FOREVER. The publish pipeline
+    // writes scheduled/published via sb() directly, bypassing this route, so
+    // nothing invalidates the client cache when a piece commits — the editor
+    // keeps rendering (the parent's lock gate reads that stale cache), keeps
+    // autosaving, and every autosave 409s. A failed save never updates the
+    // autosave baseline and, before this, never invalidated anything, so the
+    // cache could not reach the locked status except through a successful save,
+    // which is now impossible. That is the storm a producer reported on
+    // 2026-08-10: a toast per debounce window, unstoppable.
+    //
+    // Refetching here is what breaks it: the detail query reloads the real
+    // status, StoryboardPublish's isPieceLocked gate flips, and the editor is
+    // replaced by the read-only receipt — so the writes stop at their source
+    // instead of being retried against a server that will always refuse them.
+    silent: isLockRejection,
+    onError: (err, { id }) => {
+      if (!isLockRejection(err)) return
+      console.warn('[useUpdateContentItem] write refused — piece is committed; refetching', id)
+      // contentItems.all is a prefix of detail(id), so this covers both the open
+      // editor's row and every list that still shows it as editable.
+      qc.invalidateQueries({ queryKey: queryKeys.contentItems.all })
+    },
     onSuccess: (data, { id, patch }) => {
       // Merge only the columns this patch wrote into the detail cache so a
       // concurrent PATCH's stale echo can't revert a sibling edit (see
