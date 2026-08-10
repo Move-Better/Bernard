@@ -6,6 +6,7 @@
 export const config = { runtime: 'nodejs' }
 
 import { workspaceContext } from '../../_lib/workspaceContext.js'
+import { captureServerException } from '../../_lib/sentry.js'
 import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
@@ -42,11 +43,28 @@ const err = (res, msg, status = 400)  => res.status(status).json({ error: msg })
 
 // Log a Supabase non-ok response body to function logs and return a generic
 // 500 to the client. Public response stays opaque (no schema leak); details
-// land in Vercel logs so the next "Database error" report is one log fetch
-// away from a root cause.
-async function dbErr(res, r, msg = 'Database error', status = 500) {
+// land in Vercel logs AND Sentry so a "Database error" report is diagnosable
+// even after Vercel's short log retention window has already expired — which
+// is exactly what happened to a real 500 here on 2026-08-10 (feedback
+// a680d6c4): by the time the report was read, `vercel logs` covered barely the
+// last hour, so the cause was gone and had to stay unexplained. This route is
+// not withSentry-wrapped (it RETURNS an error response rather than throwing,
+// so nothing would ever reach that wrapper's catch), so it has to report
+// explicitly via the same captureServerException the Express central handler
+// uses for everything else.
+//
+// `req` is required, not optional — every call site already has it in scope
+// (there is exactly one handler in this file) — so a future call site can't
+// silently skip reporting by forgetting to pass it.
+//
+// Exported (only) so tests/lib/dbErrReportsToSentry.test.js can invoke it
+// directly with a mocked Sentry module rather than standing up the whole
+// handler's auth/workspace/Supabase chain just to reach a 500 branch.
+export async function dbErr(res, r, req, msg = 'Database error', status = 500) {
   const body = await r.text().catch(() => '')
-  console.error(`[db/content] ${msg} — supabase ${r.status}: ${body.slice(0, 500)}`)
+  const detail = `supabase ${r.status}: ${body.slice(0, 500)}`
+  console.error(`[db/content] ${msg} — ${detail}`)
+  captureServerException(new Error(`[db/content] ${msg} — ${detail}`), req)
   return res.status(status).json({ error: msg })
 }
 
@@ -114,7 +132,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     if (id) {
       const r = await sb(`content_items?id=eq.${id}&${wsFilter}&select=${SELECT},${MOMENT_EMBED}`)
-      if (!r.ok) return dbErr(res, r)
+      if (!r.ok) return dbErr(res, r, req)
       const data = await r.json()
       return ok(res, attachMoment(data[0] ?? null))
     }
@@ -166,7 +184,7 @@ export default async function handler(req, res) {
     else if (archived !== 'all')  qs += `&archived_at=is.null`
 
     const r = await sb(qs)
-    if (!r.ok) return dbErr(res, r)
+    if (!r.ok) return dbErr(res, r, req)
     return ok(res, await r.json())
   }
 
@@ -182,21 +200,21 @@ export default async function handler(req, res) {
       if (interviewIds.some((iid) => !uuidCoerced.safeParse(iid).success)) return err(res, 'Invalid interview_id', 400)
       if (interviewIds.length > 0) {
         const ck = await sb(`interviews?id=in.(${interviewIds.join(',')})&workspace_id=eq.${ws.id}&select=id`)
-        if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
+        if (!ck.ok) return dbErr(res, ck, req, 'Ownership check failed')
         if ((await ck.json()).length !== interviewIds.length) return err(res, 'Interview not found in workspace', 422)
       }
       const staffIds = [...new Set(body.map((row) => row.staff_id).filter(Boolean))]
       if (staffIds.some((sid) => !uuidCoerced.safeParse(sid).success)) return err(res, 'Invalid staff_id', 400)
       if (staffIds.length > 0) {
         const ck = await sb(`staff?id=in.(${staffIds.join(',')})&workspace_id=eq.${ws.id}&select=id`)
-        if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
+        if (!ck.ok) return dbErr(res, ck, req, 'Ownership check failed')
         if ((await ck.json()).length !== staffIds.length) return err(res, 'Staff not found in workspace', 422)
       }
       const briefIds = [...new Set(body.map((row) => row.brief_id).filter(Boolean))]
       if (briefIds.some((bid) => !uuidCoerced.safeParse(bid).success)) return err(res, 'Invalid brief_id', 400)
       if (briefIds.length > 0) {
         const ck = await sb(`briefs?id=in.(${briefIds.join(',')})&workspace_id=eq.${ws.id}&select=id`)
-        if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
+        if (!ck.ok) return dbErr(res, ck, req, 'Ownership check failed')
         if ((await ck.json()).length !== briefIds.length) return err(res, 'Brief not found in workspace', 422)
       }
       const BULK_ALLOWED = new Set([
@@ -215,7 +233,7 @@ export default async function handler(req, res) {
         method: 'POST',
         body: JSON.stringify(rows),
       })
-      if (!r.ok) return dbErr(res, r, 'Insert failed')
+      if (!r.ok) return dbErr(res, r, req, 'Insert failed')
       return ok(res, await r.json(), 201)
     }
 
@@ -227,12 +245,12 @@ export default async function handler(req, res) {
 
     if (staffId) {
       const sk = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${ws.id}&select=id`)
-      if (!sk.ok) return dbErr(res, sk, 'Staff ownership check failed')
+      if (!sk.ok) return dbErr(res, sk, req, 'Staff ownership check failed')
       if (!(await sk.json()).length) return err(res, 'Staff not found in workspace', 422)
     }
 
     const ck = await sb(`interviews?id=eq.${interviewId}&workspace_id=eq.${ws.id}&select=id`)
-    if (!ck.ok) return dbErr(res, ck, 'Ownership check failed')
+    if (!ck.ok) return dbErr(res, ck, req, 'Ownership check failed')
     if (!(await ck.json()).length) return err(res, 'Interview not found in workspace', 422)
 
     if (status && !statusSchema.safeParse(status).success) return err(res, 'Invalid status', 400)
@@ -242,7 +260,7 @@ export default async function handler(req, res) {
       method: 'POST',
       body: JSON.stringify(row),
     })
-    if (!r.ok) return dbErr(res, r, 'Insert failed')
+    if (!r.ok) return dbErr(res, r, req, 'Insert failed')
     const data = await r.json()
     return ok(res, data[0], 201)
   }
@@ -299,7 +317,7 @@ export default async function handler(req, res) {
     let curRow = null
     if (Array.isArray(patch.mediaUrls) || patchNeedsLockCheck(patch)) {
       const curRes = await sb(`content_items?id=eq.${id}&workspace_id=eq.${ws.id}&select=status,media_urls,platform,format&limit=1`)
-      if (!curRes.ok) return dbErr(res, curRes, 'Update failed')
+      if (!curRes.ok) return dbErr(res, curRes, req, 'Update failed')
       curRow = (await curRes.json().catch(() => []))[0] || null
     }
 
@@ -432,7 +450,7 @@ export default async function handler(req, res) {
       method: 'PATCH',
       body: JSON.stringify(body),
     })
-    if (!r.ok) return dbErr(res, r, 'Update failed')
+    if (!r.ok) return dbErr(res, r, req, 'Update failed')
     const data = await r.json()
     const updated = attachMoment(data[0])
 
@@ -524,7 +542,7 @@ export default async function handler(req, res) {
 
     if (!id) return err(res, 'Missing id')
     const r = await sb(`content_items?id=eq.${id}&${wsFilter}`, { method: 'DELETE' })
-    if (!r.ok) return dbErr(res, r, 'Delete failed')
+    if (!r.ok) return dbErr(res, r, req, 'Delete failed')
     return ok(res, { deleted: true })
   }
 
