@@ -212,7 +212,9 @@ describe('getBlogPostSystemPrompt — general mode', () => {
     const prompt = getBlogPostSystemPrompt(ws, 'Michael Quasney', 'why I built Bernard')
     expect(prompt).toContain('VOICE FIDELITY IS THE ONLY GOAL')
     expect(prompt).toContain('voice fidelity beats length')
-    expect(prompt).toContain('900–1200 words')
+    // "to", not an en-dash: a number-adjacent dash trains the model to produce
+    // the tell it is simultaneously told to avoid. See promptsHaveNoEmDash.
+    expect(prompt).toContain('900 to 1200 words')
   })
 
   it('emits the workspace booking_url as the CTA link when set', () => {
@@ -311,7 +313,7 @@ describe('getPointSafetyAuditSystemPrompt', () => {
   it('injects the draft content and asks for a 0-100 score', () => {
     const { user } = getPointSafetyAuditSystemPrompt('My deep sleep came back after two short runs.')
     expect(user).toContain('My deep sleep came back after two short runs.')
-    expect(user).toContain('Score safety 0–100')
+    expect(user).toContain('Score safety 0 to 100')
   })
 
   it('frames the piece as a first-person experience, explicitly not a Q&A answer or clinical guidance', () => {
