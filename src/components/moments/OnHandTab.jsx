@@ -16,6 +16,7 @@ import MomentRetireReasons from '@/components/moments/MomentRetireReasons'
 import MomentContext from '@/components/moments/MomentContext'
 import { MOMENT_RETIRE_REASON_LABEL } from '@/lib/momentRetire'
 import { MOMENT_SEND_BACK_NOTE_MAX, MOMENT_SEND_BACK_PLACEHOLDER } from '@/lib/momentSendBack'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // Display labels for the scoreMoments.js taxonomy. Local mirror — the api/
 // module can't be imported across the client/server boundary (same note as
@@ -128,7 +129,7 @@ function RowMenu({ m, onRetire, onRestore }) {
 // same wherever you meet it.
 function MomentMeta({ m, staffName, children }) {
   const typeLabel = MOMENT_TYPE_LABELS[m.moment_type] || m.moment_type || 'Moment'
-  const interviewLabel = m.interview?.topic || 'Untitled story'
+  const interviewLabel = stripStoryDatePrefix(m.interview?.topic) || 'Untitled story'
   const interviewDay = fmtDay(m.interview?.created_at)
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs text-muted-foreground">

@@ -10,6 +10,7 @@ import { useUnsavedChanges } from '@/lib/useUnsavedChanges'
 import { useSaveShortcut } from '@/lib/useSaveShortcut'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { apiFetch } from '@/lib/api'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // Channels available for auto-publish configuration.
 // 'live' = wired and active at launch. 'soon' = accepted but not yet executed by the cron.
@@ -264,7 +265,7 @@ export default function AutoPublishSettings() {
                 return (
                   <div key={pkg.id} className="flex items-start justify-between gap-3 px-3 py-2.5">
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-foreground">{pkg.topic || '(no topic)'}</p>
+                      <p className="truncate font-medium text-foreground">{stripStoryDatePrefix(pkg.topic) || '(no topic)'}</p>
                       <p className="text-muted-foreground mt-0.5">
                         {channels.length > 0 ? channels.join(', ') : 'GBP'} · VF {vf} · sim {sim}
                       </p>

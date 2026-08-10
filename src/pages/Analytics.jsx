@@ -26,6 +26,7 @@ import { deriveInsights } from '@/lib/insightsReads'
 import { buildCostView, fmtUsd } from '@/lib/costEstimate'
 import PageSkeleton from '@/components/PageSkeleton'
 import { GRANULARITIES, MAX_OFFSET, periodLabel, periodRelative } from '@/lib/periodMath'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // ── Insights advisor ──────────────────────────────────────────────────────────
 //
@@ -167,7 +168,7 @@ function LandingPageRead({ data }) {
           <ul className="mt-3 space-y-2">
             {data.landingPages.map((p) => (
               <li key={p.path} className="grid grid-cols-[minmax(0,1fr)_4rem_3.5rem_auto] items-center gap-3 text-sm">
-                <span className="truncate text-muted-foreground min-w-0">{p.topic || p.path}</span>
+                <span className="truncate text-muted-foreground min-w-0">{stripStoryDatePrefix(p.topic) || p.path}</span>
                 <span className="text-2xs text-muted-foreground tabular-nums text-right">{(p.sessions || 0).toLocaleString()}</span>
                 <EngagementPill rate={p.engagementRate} />
                 {p.keyEvents > 0 ? (
@@ -241,14 +242,14 @@ function ExitAnalysisRead({ data }) {
           </span>
           <p className="text-sm mt-2 text-muted-foreground">
             These published pages have the most visitors leaving without engaging.
-            The first one to fix is <span className="font-medium text-foreground">{worst.topic || worst.path}</span> — {worstPct}% of visitors leave quickly.
+            The first one to fix is <span className="font-medium text-foreground">{stripStoryDatePrefix(worst.topic) || worst.path}</span> — {worstPct}% of visitors leave quickly.
           </p>
           <ul className="mt-3 space-y-2">
             {data.exitRisks.map((p) => {
               const pct = Math.round((p.bounceRate || 0) * 100)
               return (
                 <li key={p.path} className="grid grid-cols-[minmax(0,1fr)_4rem_3.5rem] items-center gap-3 text-sm rounded-lg border border-border bg-background px-3 py-2">
-                  <span className="truncate font-medium min-w-0">{p.topic || p.path}</span>
+                  <span className="truncate font-medium min-w-0">{stripStoryDatePrefix(p.topic) || p.path}</span>
                   <span className="text-2xs text-muted-foreground tabular-nums text-right">{(p.sessions || 0).toLocaleString()}</span>
                   <span title={`${pct}% bounce`} className="text-2xs font-medium px-1.5 py-0.5 rounded-full bg-warning/10 text-warning text-center tabular-nums">{pct}%</span>
                 </li>
@@ -897,7 +898,7 @@ function TopPostCard({ post, rank }) {
         </span>
       </div>
       <div className="p-3">
-        <p className="text-sm font-semibold leading-snug line-clamp-2 text-foreground">{post.topic}</p>
+        <p className="text-sm font-semibold leading-snug line-clamp-2 text-foreground">{stripStoryDatePrefix(post.topic)}</p>
         <p className="text-2xs font-semibold tabular-nums text-foreground mt-1.5">{topPostMetricLine(post)}</p>
       </div>
     </Link>
@@ -1357,7 +1358,7 @@ export default function Analytics() {
                     <ul className="mt-3 space-y-2">
                       {health.issues.map((it) => (
                         <li key={it.contentItemId} className="text-sm rounded-lg border border-border bg-card px-3 py-2">
-                          <div className="font-medium truncate">{it.topic}</div>
+                          <div className="font-medium truncate">{stripStoryDatePrefix(it.topic)}</div>
                           <div className="text-2xs text-muted-foreground mt-0.5">{it.issue}</div>
                           <a
                             href={it.url}

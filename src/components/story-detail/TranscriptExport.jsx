@@ -1,5 +1,6 @@
 import { Download, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 /**
  * Build a filtered, labeled message array from the story object.
@@ -30,7 +31,7 @@ function buildPlainText(story, messages) {
   const header = [
     'Bernard — Interview Transcript',
     `Staff: ${story.staff_name || 'Unknown'}`,
-    `Topic:     ${story.topic || 'Untitled'}`,
+    `Topic:     ${stripStoryDatePrefix(story.topic) || 'Untitled'}`,
     `Date:      ${fmtDate(story.created_at)}`,
     '',
     '─'.repeat(60),
@@ -73,7 +74,7 @@ function buildPrintHtml(story, messages) {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Transcript — ${escape(story.topic || 'Interview')}</title>
+  <title>Transcript — ${escape(stripStoryDatePrefix(story.topic) || 'Interview')}</title>
   <style>
     body { font-family: Georgia, serif; max-width: 720px; margin: 40px auto; color: #111; line-height: 1.6; }
     h1   { font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
@@ -90,7 +91,7 @@ function buildPrintHtml(story, messages) {
   <h1>Bernard — Interview Transcript</h1>
   <div class="meta">
     <div>Staff: ${escape(story.staff_name || 'Unknown')}</div>
-    <div>Topic: ${escape(story.topic || 'Untitled')}</div>
+    <div>Topic: ${escape(stripStoryDatePrefix(story.topic) || 'Untitled')}</div>
     <div>Date: ${fmtDate(story.created_at)}</div>
   </div>
   <hr />

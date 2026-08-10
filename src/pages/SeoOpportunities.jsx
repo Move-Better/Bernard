@@ -15,6 +15,7 @@ import {
   useSeoOpportunities, useDismissSeoOpportunity,
   useSeoCitations, useCitationQuestionAction,
 } from '@/lib/queries'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // SEO Opportunities (/seo) — search demand → content Bernard makes with you,
 // plus advisory on-site fixes. Built to .claude/mockups/seo-opportunities.html.
@@ -194,7 +195,7 @@ function PostPublishCard({ item }) {
           </div>
           <div className="font-medium text-sm leading-snug flex items-center gap-2">
             <FileCheck2 className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-            <span className="truncate">&ldquo;{item.topic}&rdquo; <span className="text-muted-foreground font-normal">→ {item.query}</span></span>
+            <span className="truncate">&ldquo;{stripStoryDatePrefix(item.topic)}&rdquo; <span className="text-muted-foreground font-normal">→ {item.query}</span></span>
           </div>
           <div className="text-2xs mt-2 inline-flex items-center gap-1 text-muted-foreground">
             {item.confidence === 'exact'

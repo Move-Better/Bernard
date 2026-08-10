@@ -18,6 +18,7 @@ import { useUpdateContentItem, useMediaSuggestions, useInterview, queryKeys } fr
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useConfirm } from '@/lib/useConfirm'
 import { resolveGbpLocationIds } from '@/lib/gbpLocations'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 import { BlogStyleSwitcher, BlogGenerationActions } from '@/components/editor/BlogWordsExtras'
 import PostCaptionField from '@/components/editor/PostCaptionField'
 import RegenerateCaptionButton, { canRegenerateCaption } from '@/components/editor/RegenerateCaptionButton'
@@ -869,7 +870,7 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
       {/* ── TOP BAR — shared EditorChrome (unified shell) ─────────────────── */}
       <EditorChrome
         onBack={onBack}
-        title={piece?.topic || 'Untitled draft'}
+        title={stripStoryDatePrefix(piece?.topic) || 'Untitled draft'}
         badge={{ icon: meta.icon, label: formatLabel || meta.label, sub: formatSub || cfg.label }}
         note={count != null ? (count === 0 ? 'no media' : `${count} ${count === 1 ? 'item' : 'items'}`) : null}
       >

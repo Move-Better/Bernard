@@ -3,6 +3,8 @@
 // referenced in an error report or with a staff member. One source so the name
 // is identical everywhere it appears.
 
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
+
 function firstHeading(content) {
   if (typeof content !== 'string') return ''
   const m = content.match(/^#{1,6}\s+(.+)$/m)
@@ -11,7 +13,7 @@ function firstHeading(content) {
 
 // The piece's title alone (topic, else first markdown heading, else a fallback).
 export function pieceTitle(piece) {
-  return piece?.topic || firstHeading(piece?.content) || 'Untitled draft'
+  return stripStoryDatePrefix(piece?.topic) || firstHeading(piece?.content) || 'Untitled draft'
 }
 
 // Title with the staff member in parens when known: "Sciatica (Zach)".

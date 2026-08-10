@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import ConsentControls from './ConsentControls'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 const CHANNEL_LABEL = {
   linkedin_feed:         'LI',
@@ -346,7 +347,7 @@ export default function PackageCard({ pkg, staffName, triageReason, onApprove, o
             ) : (
               <img
                 src={previewRender.blobUrl}
-                alt={pkg.topic}
+                alt={stripStoryDatePrefix(pkg.topic)}
                 className="absolute inset-0 w-full h-full object-cover"
                 loading="lazy"
               />
@@ -448,7 +449,7 @@ export default function PackageCard({ pkg, staffName, triageReason, onApprove, o
       ) : (
         <div className="flex flex-col gap-1.5 p-3 flex-1">
           {pkg.campaign && <CampaignChip campaign={pkg.campaign} />}
-          <h3 className="text-sm font-semibold leading-snug line-clamp-2">{pkg.topic}</h3>
+          <h3 className="text-sm font-semibold leading-snug line-clamp-2">{stripStoryDatePrefix(pkg.topic)}</h3>
           <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
             {pkg.caption_text}
           </p>

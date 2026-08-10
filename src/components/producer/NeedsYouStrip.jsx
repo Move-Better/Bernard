@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Pencil, Unplug, Mic, AlertTriangle, Video } from 'lucide-react'
 import { useNeedsYou, useRetryPublishFailure } from '@/lib/queries'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // "Needs you" (Standing Producer Phase 4). Bernard clears what he can on his own
 // and surfaces only the dead-ends he can't — each with the one action that
@@ -59,7 +60,7 @@ const TONE = {
 
 function titleFor(item) {
   if (item.title) return item.title
-  const topic = item.topic || item.slot || 'a piece'
+  const topic = stripStoryDatePrefix(item.topic) || item.slot || 'a piece'
   switch (item.type) {
     case 'escalated_caption': return `Couldn’t get “${topic}” to your voice`
     case 'publish_failed':    return `${item.platform ? `${item.platform} ` : ''}publish failed — needs a reconnect`

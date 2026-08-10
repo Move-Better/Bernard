@@ -4,6 +4,7 @@ import { PlayCircle, ChevronRight } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { getInitials, formatRelativeDate } from '@/lib/utils'
 import { resolveOwnerName } from './helpers'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 const RESUME_INITIAL_CAP = 6
 
@@ -83,8 +84,8 @@ function ResumeCard({ interview, currentUserId, staff }) {
           {interview.staffName}
         </p>
       </div>
-      <p className="text-sm font-bold text-foreground truncate leading-snug" title={interview.topic}>
-        {interview.topic}
+      <p className="text-sm font-bold text-foreground truncate leading-snug" title={stripStoryDatePrefix(interview.topic)}>
+        {stripStoryDatePrefix(interview.topic)}
       </p>
       <p className="text-2xs text-muted-foreground mt-1">
         Updated {formatRelativeDate(interview.updated_at)}

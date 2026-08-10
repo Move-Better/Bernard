@@ -33,6 +33,7 @@ import { createTtsPlayer, primeAudioPlayback, onAudioPlaybackFailure } from '@/l
 import { useRegisterBusy } from '@/lib/appBusy'
 import { useInterviewAudioCapture } from '@/hooks/useInterviewAudioCapture'
 import { loadLocalMessages, saveLocalMessages, clearLocalMessages, loadDraft, saveDraft, clearDraft } from '@/lib/interviewLocalBackup'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // Concrete noun list for shallow-answer detection (Feature 2)
 const CONCRETE_NOUNS = ['patient', 'person', 'name', 'case', 'example', 'time', 'moment', 'client', 'athlete', 'runner', 'worker']
@@ -1530,7 +1531,7 @@ export default function InterviewSession() {
       const voicePct = deriveVoicePct(provenanceJson || '')
       if (!mountedRef.current) return
       setIsGenerating(false)
-      setCompletionData({ voicePct, staffName: staffMember.name, topic: interview.topic, isNewsletter })
+      setCompletionData({ voicePct, staffName: staffMember.name, topic: stripStoryDatePrefix(interview.topic), isNewsletter })
       // The completion card now rests here as the primary "See your story →"
       // handoff. Video attach is an optional link on that card, never an
       // auto-advancing gate — so no timer pushes the user into it.
@@ -1601,7 +1602,7 @@ export default function InterviewSession() {
           </Button>
           <div>
             <p className="font-medium text-sm">{staffMember.name}</p>
-            <p className="text-xs text-muted-foreground">{interview.topic}</p>
+            <p className="text-xs text-muted-foreground">{stripStoryDatePrefix(interview.topic)}</p>
           </div>
         </div>
 
@@ -1682,7 +1683,7 @@ export default function InterviewSession() {
         </Avatar>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm leading-none">{staffMember.name}</p>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate" title={interview.topic}>{interview.topic}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate" title={stripStoryDatePrefix(interview.topic)}>{stripStoryDatePrefix(interview.topic)}</p>
         </div>
         {saveStatus && (
           saveStatus === 'error'

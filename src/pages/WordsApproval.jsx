@@ -7,6 +7,7 @@ import { useStory, useUpdateInterview, useStaff } from '@/lib/queries'
 import { useSmartBack } from '@/lib/useSmartBack'
 import { toast } from '@/lib/toast'
 import TranscriptDrawer from '@/components/story-detail/TranscriptDrawer'
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
 
 // WordsApproval — the keystone gate, as a real screen (Phase 3 of the
 // story-monitor redesign; see .claude/story-monitor-redesign-plan.md).
@@ -107,7 +108,7 @@ export default function WordsApproval() {
 
       <div>
         <p className="text-2xs font-semibold uppercase tracking-wide text-primary">
-          Approve the words{story.topic ? ` · ${story.topic}` : ''}
+          Approve the words{story.topic ? ` · ${stripStoryDatePrefix(story.topic)}` : ''}
         </p>
         <h1 className="mt-1 text-xl font-bold text-foreground">Does this sound like you?</h1>
         <p className="mt-1.5 max-w-[62ch] text-sm text-muted-foreground">

@@ -8,6 +8,8 @@
 // can't hallucinate a number. An LLM-polish pass can layer on later without
 // changing these facts.
 
+import { stripStoryDatePrefix } from '@/lib/storyTitle'
+
 const DAY = 24 * 60 * 60 * 1000
 const WEEK = 7 * DAY
 
@@ -57,9 +59,9 @@ export function deriveInsights({ stories = [], performers = [] } = {}) {
   if (withReach.length >= 3) {
     const groups = new Map()
     for (const p of withReach) {
-      const key = norm(p.topic)
+      const key = norm(stripStoryDatePrefix(p.topic))
       if (!key) continue
-      const g = groups.get(key) || { topic: p.topic, items: [] }
+      const g = groups.get(key) || { topic: stripStoryDatePrefix(p.topic), items: [] }
       g.items.push(p)
       groups.set(key, g)
     }
@@ -69,7 +71,7 @@ export function deriveInsights({ stories = [], performers = [] } = {}) {
       if (!best || g.avg > best.avg) best = g
     }
     if (best) {
-      const others = withReach.filter((p) => norm(p.topic) !== norm(best.topic))
+      const others = withReach.filter((p) => norm(stripStoryDatePrefix(p.topic)) !== norm(best.topic))
       if (others.length) {
         const otherAvg = others.reduce((a, p) => a + reachOf(p), 0) / others.length
         const mult = otherAvg > 0 ? best.avg / otherAvg : null
