@@ -136,3 +136,77 @@ describe('prompt fragments that feed the atom prompt are dash-free', () => {
     expect(block.match(DASHES) || [], block).toEqual([])
   })
 })
+
+// The system prompt is only half of what the model is shown. The USER message
+// demonstrates the style just as loudly, and draftAtom/regenerate both carried
+// em-dash connectors there ("from our conversation above — that is the source
+// of truth") on every single draft. Several sibling builders had the same
+// problem, and two of them (regradeContentItem, copy-to-platforms) had no
+// em-dash rule at all while still generating draft text.
+//
+// This scans the model-facing string literals of each builder rather than
+// calling them, because their entry points need a DB and a live model. Comment
+// lines are excluded (they never reach the model) and so are the human-facing
+// error/notification strings listed per file.
+const BUILDERS = {
+  'api/_lib/producer/draftAtom.js': [],
+  'api/_routes/content-items/regenerate.js': [],
+  'api/_lib/captionGen.js': [],
+  'api/_lib/producer/regradeContentItem.js': [
+    // Human-facing producer notifications, not model input.
+    'it clears the voice check now',
+    "couldn't get it over the bar",
+    'needs you',
+  ],
+  'api/_routes/content-items/copy-to-platforms.js': [],
+  'api/_lib/briefPrompts.js': [],
+}
+
+// Error strings thrown/logged to humans. A dash here is fine; it is never shown
+// to the model, so excluding them keeps the guard honest rather than noisy.
+const HUMAN_FACING = [
+  'console.error', 'console.warn', 'console.info', 'console.log',
+  'throw new Error', 'return err(', 'Error(',
+]
+
+function modelFacingDashLines(rel) {
+  const src = readFileSync(fileURLToPath(new URL(`../../${rel}`, import.meta.url)), 'utf8')
+  const allowed = BUILDERS[rel]
+  return src.split('\n').map((line, i) => [i + 1, line])
+    .filter(([, raw]) => {
+      const s = raw.trim()
+      if (s.startsWith('//') || s.startsWith('*') || s.startsWith('/*')) return false
+      // Strip inline comments too: a dash inside `/* … */` or after `//` is
+      // documentation, not model input.
+      const line = raw.replace(/\/\*[^*]*\*+([^/*][^*]*\*+)*\//g, '').replace(/\/\/.*$/, '')
+      if (!DASHES.test(line)) { DASHES.lastIndex = 0; return false }
+      DASHES.lastIndex = 0
+      if (HUMAN_FACING.some((h) => line.includes(h))) return false
+      if (allowed.some((a) => line.includes(a))) return false
+      return true
+    })
+    .map(([n, line]) => `${rel}:${n} ${line.trim().slice(0, 120)}`)
+}
+
+describe('every draft-generating prompt builder is dash-free in its model-facing strings', () => {
+  it('reads all the builders (a bad path would pass vacuously)', () => {
+    for (const rel of Object.keys(BUILDERS)) {
+      const src = readFileSync(fileURLToPath(new URL(`../../${rel}`, import.meta.url)), 'utf8')
+      expect(src.length, `${rel} looks empty`).toBeGreaterThan(1000)
+    }
+  })
+
+  it.each(Object.keys(BUILDERS))('%s', (rel) => {
+    expect(modelFacingDashLines(rel)).toEqual([])
+  })
+
+  it('the two builders that had no em-dash rule now carry the shared one', () => {
+    for (const rel of ['api/_lib/producer/regradeContentItem.js',
+                       'api/_routes/content-items/copy-to-platforms.js']) {
+      const src = readFileSync(fileURLToPath(new URL(`../../${rel}`, import.meta.url)), 'utf8')
+      expect(src, `${rel} does not import the shared rule`).toMatch(/import \{[^}]*NO_EM_DASH_RULE[^}]*\} from/)
+      // A real interpolation, not just an import someone left unused.
+      expect(src, `${rel} imports the rule but never interpolates it`).toMatch(/\$\{NO_EM_DASH_RULE\}/)
+    }
+  })
+})

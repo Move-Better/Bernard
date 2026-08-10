@@ -47,7 +47,7 @@ export function getBriefChannelPrompt(brief, platform, workspace) {
     : ''
   const ctx = briefBlock(brief)
 
-  const VOICE_RULE = `Write in the voice of ${wsName} — warm, direct, human, community-focused. No corporate-speak, no excessive emojis. Keep it genuine. No em-dashes or spaced hyphens as connectors between clauses (a strong AI tell); use a comma, a colon, or a new sentence instead.`
+  const VOICE_RULE = `Write in the voice of ${wsName}: warm, direct, human, community-focused. No corporate-speak, no excessive emojis. Keep it genuine. No em-dashes or spaced hyphens as connectors between clauses (a strong AI tell); use a comma, a colon, or a new sentence instead.`
 
   switch (platform) {
 
@@ -61,8 +61,8 @@ PLAIN TEXT ONLY: no markdown, no asterisks, no headers.`,
 ${briefLengthLine('instagram', lean)}
 ${ctx}
 
-Open with a scroll-stopping hook. Keep it personal and specific — real details, not vague promotion. Do NOT include a URL in the caption body (Instagram links don't work in captions).${ctaLine ? '\nClose with: "Link in bio 👆"' : ''}
-Add a blank line, then 5–8 relevant hashtags ending with${brandTag ? ` ${brandTag} and` : ''} ${locTag}.
+Open with a scroll-stopping hook. Keep it personal and specific: real details, not vague promotion. Do NOT include a URL in the caption body (Instagram links don't work in captions).${ctaLine ? '\nClose with: "Link in bio 👆"' : ''}
+Add a blank line, then 5 to 8 relevant hashtags ending with${brandTag ? ` ${brandTag} and` : ''} ${locTag}.
 Output ONLY the caption and hashtags.`,
       }
 
@@ -73,11 +73,11 @@ ${VOICE_RULE}`,
         user: `Write overlay text for an Instagram Story based on this brief.
 ${ctx}
 
-FORMAT: 5–8 words maximum. ALL CAPS. This text appears printed over a photo or branded card — it must grab attention in under a second.
+FORMAT: 5 to 8 words maximum. ALL CAPS. This text appears printed over a photo or branded card. It must grab attention in under a second.
 Think billboard: short, punchy, no filler words.
 
 After the overlay text, on a new line output:
-LINK_STICKER_TEXT: <2–4 word action phrase for the link sticker label>
+LINK_STICKER_TEXT: <2 to 4 word action phrase for the link sticker label>
 
 Output ONLY those two lines. Nothing else.`,
       }
@@ -91,9 +91,9 @@ PLAIN TEXT ONLY: no markdown, no asterisks.`,
 ${briefLengthLine('facebook', lean)}
 ${ctx}
 
-Facebook allows links in the body — include the CTA URL naturally in the post${brief.cta_label ? ` using the label "${brief.cta_label}"` : ''}.
+Facebook allows links in the body, so include the CTA URL naturally in the post${brief.cta_label ? ` using the label "${brief.cta_label}"` : ''}.
 Be warm and community-focused. Include real details from the brief. Invite people to attend/act.
-At most 2–3 hashtags at the end.
+At most 2 to 3 hashtags at the end.
 Output ONLY the post body.`,
       }
 
@@ -106,8 +106,8 @@ PLAIN TEXT ONLY: no markdown, no asterisks.`,
 ${briefLengthLine('linkedin', lean)}
 ${ctx}
 
-Professional but human — this is an announcement, not a press release. Include the CTA${brief.cta_url ? ` (${brief.cta_url})` : ''} naturally.
-At most 2–3 hashtags.
+Professional but human. This is an announcement, not a press release. Include the CTA${brief.cta_url ? ` (${brief.cta_url})` : ''} naturally.
+At most 2 to 3 hashtags.
 Output ONLY the post body.`,
       }
 
@@ -132,7 +132,7 @@ ${briefLengthLine('twitter', lean)}
 ${ctx}
 
 Punchy and direct. Include the CTA URL${brief.cta_url ? ` (${brief.cta_url})` : ''} if it fits.
-At most 1–2 hashtags.
+At most 1 to 2 hashtags.
 Output ONLY the tweet text.`,
       }
 

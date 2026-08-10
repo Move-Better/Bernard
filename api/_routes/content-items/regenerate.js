@@ -281,10 +281,10 @@ export default async function handler(req, res) {
             role: 'user',
             content:
               `Now write the ${atom.platform} piece (angle: ${atom.angle}) per the instructions in the system prompt. ` +
-              `This piece is built around ONE exact moment from our conversation — my verbatim words:\n\n` +
+              `This piece is built around ONE exact moment from our conversation. My verbatim words:\n\n` +
               `"${moment.excerpt}"\n\n` +
               `That moment is the anchor and the subject: lead with it, unpack it, or build to it. ` +
-              `Draw voice, phrasing, and supporting context ONLY from the conversation excerpt above — ` +
+              `Draw voice, phrasing, and supporting context ONLY from the conversation excerpt above, ` +
               `never from anywhere else, and never invent specifics beyond it.`,
           },
         ]
@@ -296,7 +296,7 @@ export default async function handler(req, res) {
               `Here is the editorial summary that has already been written and approved on this topic:\n\n` +
               `<editorial-summary>\n${blogPost}\n</editorial-summary>\n\n` +
               `Now write the ${atom.platform} piece (angle: ${atom.angle}) per the instructions in the system prompt. ` +
-              `Pull voice, examples, and specifics from our conversation above — that is the source of truth. ` +
+              `Pull voice, examples, and specifics from our conversation above. That is the source of truth. ` +
               `Use the editorial summary only for thematic alignment, not as the source of wording.`,
           },
         ]

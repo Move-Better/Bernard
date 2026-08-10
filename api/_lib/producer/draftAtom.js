@@ -123,13 +123,13 @@ export async function resolveSiblingCaptionsBlock({ workspaceId, interviewId, ex
 
     return `
 
-MOMENTS ALREADY USED — ${rows.length} other post${rows.length === 1 ? ' has' : 's have'} already been written from this SAME conversation. Each excerpt below is a moment, quote, story, or opening line that is already queued or published:
+MOMENTS ALREADY USED: ${rows.length} other post${rows.length === 1 ? ' has' : 's have'} already been written from this SAME conversation. Each excerpt below is a moment, quote, story, or opening line that is already queued or published:
 
 ${list}
 
-Do NOT build this piece around any of the moments above. Do not reuse their central anecdote, their hero quote, or their opening framing — a reader who follows more than one of our channels will see these back to back. Go find a DIFFERENT part of the conversation to build on.
+Do NOT build this piece around any of the moments above. Do not reuse their central anecdote, their hero quote, or their opening framing. A reader who follows more than one of our channels will see these back to back. Go find a DIFFERENT part of the conversation to build on.
 
-If the conversation genuinely contains only ONE usable story, you may still touch it — but enter from a different angle, lead with a different line, and do not repeat the same quote verbatim. Never invent new material to avoid an overlap: staying faithful to what was actually said outranks novelty.`
+If the conversation genuinely contains only ONE usable story, you may still touch it, but enter from a different angle, lead with a different line, and do not repeat the same quote verbatim. Never invent new material to avoid an overlap: staying faithful to what was actually said outranks novelty.`
   } catch (e) {
     console.error(`[draftAtom] resolveSiblingCaptionsBlock threw: ${e?.message}`)
     return ''
@@ -332,7 +332,7 @@ export async function draftAtom({ ws, atom, interview }) {
   // it re-widens the source the fidelity judge can't see.
   const editorialBlock = blogPost
     ? `\n\nHere is the editorial summary that has already been written on this topic:\n\n` +
-      `<editorial-summary>\n${blogPost}\n</editorial-summary>\n\nUse it only for thematic alignment — pull voice, examples, and specifics from our conversation above.`
+      `<editorial-summary>\n${blogPost}\n</editorial-summary>\n\nUse it only for thematic alignment. Pull voice, examples, and specifics from our conversation above.`
     : ''
   const aiMessages = momentWin
     ? [
@@ -341,10 +341,10 @@ export async function draftAtom({ ws, atom, interview }) {
           role: 'user',
           content:
             `Now write the ${atom.platform} piece (angle: ${atom.angle}) per the instructions in the system prompt. ` +
-            `This piece is built around ONE exact moment from our conversation — my verbatim words:\n\n` +
+            `This piece is built around ONE exact moment from our conversation. My verbatim words:\n\n` +
             `"${moment.excerpt}"\n\n` +
             `That moment is the anchor and the subject: lead with it, unpack it, or build to it. ` +
-            `Draw voice, phrasing, and supporting context ONLY from the conversation excerpt above — ` +
+            `Draw voice, phrasing, and supporting context ONLY from the conversation excerpt above, ` +
             `never from anywhere else, and never invent specifics beyond it.`,
         },
       ]
@@ -354,7 +354,7 @@ export async function draftAtom({ ws, atom, interview }) {
           role: 'user',
           content:
             `Now write the ${atom.platform} piece (angle: ${atom.angle}) per the instructions in the system prompt. ` +
-            `Pull voice, examples, and specifics from our conversation above — that is the source of truth.` +
+            `Pull voice, examples, and specifics from our conversation above. That is the source of truth.` +
             editorialBlock,
         },
       ]
@@ -409,7 +409,7 @@ export async function draftAtom({ ws, atom, interview }) {
   if (voiceScore && (voiceScore.overall < GATE || isFabricated(voiceScore))) {
     const invented = isFabricated(voiceScore) ? voiceScore.breakdown.invented_claims : []
     const redFlag = invented.length
-      ? `You invented details that were NOT in our conversation: ${invented.join('; ')}. Remove them entirely — use only what was actually said.`
+      ? `You invented details that were NOT in our conversation: ${invented.join('; ')}. Remove them entirely. Use only what was actually said.`
       : (voiceScore.breakdown?.red_flag || 'voice drift from transcript')
     try {
       const { text: rawText2 } = await generateText({
@@ -420,7 +420,7 @@ export async function draftAtom({ ws, atom, interview }) {
           { role: 'assistant', content: rawText1.trim() },
           {
             role: 'user',
-            content: `That draft was flagged: "${redFlag}". Please rewrite it, staying much closer to the actual words and speaking style from our conversation. Don't smooth or professionalize — capture what was actually said.`,
+            content: `That draft was flagged: "${redFlag}". Please rewrite it, staying much closer to the actual words and speaking style from our conversation. Don't smooth or professionalize. Capture what was actually said.`,
           },
         ],
         maxOutputTokens: 1000,
