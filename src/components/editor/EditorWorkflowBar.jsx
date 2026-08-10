@@ -299,6 +299,24 @@ export default function EditorWorkflowBar({ piece }) {
         </Link>
       )}
 
+      {/* Format block (a real one — the false-positive pool-count case is fixed
+          in useContentWorkflow via publishMediaForFormat): an explicit format the
+          shipped media can't satisfy — an 11+ card
+          carousel, a mixed Facebook album. The PublishControl below disables
+          itself for this, but a disabled button with only a hover tooltip is a
+          dead end (feedback a473c03a). Show the reason inline, same as the words
+          and caption gates above. Only in the states where publishing is the
+          operative action, so it isn't noise on a scheduled/published row. */}
+      {!wf.formatValid && (status === 'approved' || status === 'failed') && (
+        <span
+          className="inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1.5 text-xs font-medium text-warning"
+          title={wf.formatBlockReason || undefined}
+        >
+          <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+          {wf.formatBlockReason || 'This post’s format doesn’t fit its media'}
+        </span>
+      )}
+
       {/* Published — terminal state */}
       {status === 'published' && (
         <span className="inline-flex items-center gap-1.5 rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-xs font-semibold text-success">
@@ -339,10 +357,14 @@ export default function EditorWorkflowBar({ piece }) {
       {status === 'failed' && (
         <Button
           size="sm"
-          disabled={wf.publishing || wordsGateBlocked}
+          disabled={wf.publishing || wordsGateBlocked || !wf.formatValid}
           loading={wf.publishing}
           onClick={() => wf.publish({})}
-          title={wordsGateBlocked ? "Approve the story's words before retrying" : (piece.publish_error || 'Retry publishing')}
+          title={
+            wordsGateBlocked ? "Approve the story's words before retrying"
+              : !wf.formatValid ? (wf.formatBlockReason || 'This post’s format doesn’t fit its media')
+              : (piece.publish_error || 'Retry publishing')
+          }
           className="bg-action text-action-foreground hover:bg-action/90"
         >
           {!wf.publishing && <RotateCcw className="mr-1.5 h-3.5 w-3.5" />}

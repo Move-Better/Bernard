@@ -190,6 +190,33 @@ export function isInstagramReel(mediaUrls) {
   return Array.isArray(mediaUrls) && mediaUrls.some(isVideoEntry)
 }
 
+// The media list the FORMAT gate should validate — mirroring what
+// publishPieceToSocial actually SHIPS, not the raw media_urls pool.
+//
+// A carousel with a slide deck ships one baked card PER SLIDE
+// (buildPublishMediaUrls), so the item count the platform sees is slides.length.
+// The media_urls array on such a piece is a larger CANDIDATE POOL the operator
+// draws photos from, not the cards that post — so validating the pool made a
+// 4-slide carousel with a 12-photo pool read as "12 items, over the 10 max" and
+// disabled Schedule with no way forward (feedback a473c03a, 2026-08-10). This is
+// the same "slides are the output unit" rule the header badge already uses
+// (postFormat: slideCount || media.length).
+//
+// The reel guard mirrors publishPieceToSocial EXACTLY: it bakes slides only when
+// `!isInstagramReel(media_urls) && slides.length`. Because that guard skips the
+// deck path whenever ANY video sits in the pool, a piece that DOES take the deck
+// path has no video anywhere — so every slide is a photo/text card, and the
+// synthetic entries are all images. (A video-bound slide implies a video in the
+// pool implies the reel guard already returned raw above.) The synthetic entries
+// carry only url + kind: the real baked photo URL isn't known until publish, but
+// count + kind is all validateFormatMedia needs.
+export function publishMediaForFormat(piece) {
+  const media = Array.isArray(piece?.media_urls) ? piece.media_urls : []
+  const slides = Array.isArray(piece?.slides) ? piece.slides : []
+  if (!slides.length || isInstagramReel(media)) return media
+  return slides.map(() => ({ url: 'slide', type: 'image', kind: 'image' }))
+}
+
 // Single source of truth for "what format is this piece?" — consumed by both the
 // page chrome and the preview so they can never disagree (the header used to
 // count SOURCE PHOTOS while the editor rendered one card per SLIDE, so "1 media
