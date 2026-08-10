@@ -12,6 +12,7 @@ import {
 } from '@/lib/queries'
 import { publishBlogToWebsite, sendBlogToBeehiiv, cancelScheduledPost } from '@/lib/publish'
 import { publishPieceToSocial } from '@/lib/publishPiece'
+import { publishMediaForFormat } from '@/lib/mediaEntry'
 import { suggestScheduleTime } from '@/lib/scheduleHeuristics'
 import { buildImagesManifest } from '@/lib/publishImageMirror'
 import { slugifyTitle, deriveSeoTitle, deriveMetaDescription, cleanBlogMarkdown } from '@/lib/blogOutput'
@@ -95,9 +96,19 @@ export function useContentWorkflow(piece) {
   // so block it here with an actionable reason instead of letting it fail out.
   // null (valid) whenever the piece has no explicit format or the platform has
   // no format choice at all, so nothing else is affected.
+  //
+  // Validate what actually SHIPS, not the raw media_urls pool: a carousel with a
+  // slide deck posts one card per SLIDE, so a 4-slide deck drawing from a 12-photo
+  // pool is a valid 4-item carousel, not an over-cap "12 items" one. Counting the
+  // pool disabled Schedule on exactly that shape (feedback a473c03a). See
+  // publishMediaForFormat — it mirrors publishPieceToSocial's own media choice.
   const formatViolation = useMemo(
-    () => describeFormatViolation(piece.platform, piece.format, piece.media_urls),
-    [piece.platform, piece.format, piece.media_urls],
+    () => describeFormatViolation(
+      piece.platform,
+      piece.format,
+      publishMediaForFormat({ media_urls: piece.media_urls, slides: piece.slides }),
+    ),
+    [piece.platform, piece.format, piece.media_urls, piece.slides],
   )
   const formatValid = !formatViolation
   const formatBlockReason = formatViolation?.message || null
