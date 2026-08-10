@@ -29,6 +29,7 @@ import { unpostedTargets, mergePostedLocations } from './autoPublishRetry.js'
 import { isInstagramReel } from '../../src/lib/mediaEntry.js'
 import { checkWordsApproved } from './wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from './dispatchClaim.js'
+import { syncAtomSchedule } from './atomSchedule.js'
 import { clampToCap, platformCap } from './socialLengthTargets.js'
 
 import { supabaseRest } from './supabaseRest.js'
@@ -137,6 +138,11 @@ export async function dispatchContentItem({ ws, piece }) {
   // one way to re-trigger the cross-path double-post race. (audit P2)
   if (todo.length === 0) {
     await releaseClaim({ status: 'scheduled', scheduled_at: scheduledAt || null })
+    // Mirror onto the plan atom — /week renders from the atom, not the item.
+    await syncAtomSchedule({
+      pieceId: piece.id, workspaceId: ws.id,
+      scheduledAt: scheduledAt || null, timezone: ws.cadence_policy?.timezone,
+    })
     return { dispatched: true, alreadyDispatched: true }
   }
 
@@ -191,6 +197,14 @@ export async function dispatchContentItem({ ws, piece }) {
     status: 'scheduled',
     platform_post_id: firstResult?.postId ?? null,
     scheduled_at: firstResult?.scheduledAt ?? scheduledAt ?? null,
+  })
+  // Mirror the committed schedule onto the plan atom, or /week keeps rendering
+  // this post on the day it was originally planned for rather than the day it
+  // actually goes out. See api/_lib/atomSchedule.js.
+  await syncAtomSchedule({
+    pieceId: piece.id, workspaceId: ws.id,
+    scheduledAt: firstResult?.scheduledAt ?? scheduledAt ?? null,
+    timezone: ws.cadence_policy?.timezone,
   })
   return {
     dispatched: true,
