@@ -19,6 +19,9 @@
 //       time. Locked decision (.claude/decisions.md 2026-07-27): return-to-
 //       bank + archive, never roll-forward — a draft composed for a dead
 //       week's context is stale by construction and regeneration is cheap.
+//   (c) never-week-planned drafts (no atom, or atom with plan_week null) that
+//       have sat untouched in draft/in_review for STALE_DRAFT_DAYS → archive,
+//       re-bank/delete any week-less atom. Blog excluded (see const comment).
 //
 // Published rows, and anything scheduled in the future, are never touched —
 // both the atom-side query (plan_week < this week) and a belt-and-suspenders
@@ -48,6 +51,18 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 // far smaller. If a workspace ever hits the cap, the run logs it and the
 // remainder clears on the next weekly invocation — no silent truncation.
 const MAX_DRAFTED_PER_WORKSPACE = 500
+
+// Case (c): how long a draft that was NEVER planned into a week (no atom, or
+// atom with plan_week null — the pre-moment-bank pile, one-off drafts, orphan
+// stories) may sit in draft/in_review before the sweep archives it. Cases (a)
+// and (b) key on plan_week < current Monday, and PostgREST's lt never matches
+// a null — so without this case those rows are permanently invisible to the
+// janitor (2026-08-10: 9 such posts, oldest from May, nagging every weekly
+// digest). 14d matches the digest's own staleness bar. Blog is excluded:
+// stale in_review blog drafts are finished pieces awaiting publish, and
+// archiving them would destroy the thing the digest wants shipped (Q,
+// 2026-08-10).
+const STALE_DRAFT_DAYS = 14
 
 // eslint-disable-next-line bernard/require-workspace-scope -- Cron — iterates all workspaces; every query below is scoped by workspace_id from the loop.
 function sb(path, init = {}) {
@@ -178,21 +193,113 @@ async function archiveStaleDrafts(wsId, currentMonday, now) {
   return { archived: archivedItems.length, rebanked: rebanked.length, deletedMomentAtoms: deletedMoment.length, capped, error: false }
 }
 
+// Case (c): stale drafts that were never planned into a week → archive the
+// draft, re-bank (or delete, for moment-composed) any week-less atom pointing
+// at it. Only rows untouched for STALE_DRAFT_DAYS qualify — both created_at
+// AND updated_at must be past the cutoff, so a post someone edited yesterday
+// is never swept out from under them — and anything scheduled in the future
+// is left alone. Items whose atom carries a real plan_week are explicitly
+// skipped: past weeks are case (b)'s job, current/future weeks are live.
+async function archiveWeeklessStale(wsId, now) {
+  const cutoff = new Date(Date.now() - STALE_DRAFT_DAYS * 24 * 60 * 60 * 1000).toISOString()
+  const candRes = await sb(
+    `content_items?workspace_id=eq.${wsId}` +
+      `&status=in.(draft,in_review)` +
+      `&platform=neq.blog` +
+      `&created_at=lt.${cutoff}` +
+      `&updated_at=lt.${cutoff}` +
+      `&or=(scheduled_at.is.null,scheduled_at.lt.${now})` +
+      `&select=id` +
+      `&limit=${MAX_DRAFTED_PER_WORKSPACE}`,
+  )
+  if (!candRes.ok) {
+    console.error(`[sweep-past-weeks] ${wsId} weekless-stale candidate fetch failed:`, candRes.status)
+    return { archived: 0, rebanked: 0, deletedMomentAtoms: 0, error: true }
+  }
+  const candidates = await candRes.json().catch(() => [])
+  if (!candidates.length) return { archived: 0, rebanked: 0, deletedMomentAtoms: 0, error: false }
+
+  const candIds = candidates.map((c) => c.id)
+  const quotedCandIds = candIds.map((id) => `"${id}"`).join(',')
+
+  // Any atom with a non-null plan_week disqualifies its item from this case.
+  const atomRes = await sb(
+    `content_plan_atoms?workspace_id=eq.${wsId}&content_piece_id=in.(${quotedCandIds})` +
+      `&plan_week=not.is.null&select=content_piece_id`,
+  )
+  if (!atomRes.ok) {
+    console.error(`[sweep-past-weeks] ${wsId} weekless-stale atom fetch failed:`, atomRes.status)
+    return { archived: 0, rebanked: 0, deletedMomentAtoms: 0, error: true }
+  }
+  const planned = new Set((await atomRes.json().catch(() => [])).map((a) => a.content_piece_id))
+  const targetIds = candIds.filter((id) => !planned.has(id))
+  if (!targetIds.length) return { archived: 0, rebanked: 0, deletedMomentAtoms: 0, error: false }
+  const quotedTargetIds = targetIds.map((id) => `"${id}"`).join(',')
+
+  const archiveRes = await sb(
+    `content_items?workspace_id=eq.${wsId}&id=in.(${quotedTargetIds})&status=in.(draft,in_review)` +
+      `&or=(scheduled_at.is.null,scheduled_at.lt.${now})`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'archived', archived_at: now, updated_at: now }),
+    },
+  )
+  if (!archiveRes.ok) {
+    console.error(`[sweep-past-weeks] ${wsId} weekless-stale archive PATCH failed:`, archiveRes.status, await archiveRes.text().catch(() => ''))
+    return { archived: 0, rebanked: 0, deletedMomentAtoms: 0, error: true }
+  }
+  const archivedItems = await archiveRes.json().catch(() => [])
+  if (!archivedItems.length) return { archived: 0, rebanked: 0, deletedMomentAtoms: 0, error: false }
+  const quotedArchivedIds = archivedItems.map((it) => `"${it.id}"`).join(',')
+
+  const rebankRes = await sb(
+    `content_plan_atoms?workspace_id=eq.${wsId}&content_piece_id=in.(${quotedArchivedIds})&moment_id=is.null`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        held_at: now, plan_week: null, scheduled_at: null, status: 'pending', content_piece_id: null, updated_at: now,
+      }),
+    },
+  )
+  if (!rebankRes.ok) {
+    console.error(`[sweep-past-weeks] ${wsId} weekless-stale rebank PATCH failed:`, rebankRes.status, await rebankRes.text().catch(() => ''))
+    return { archived: archivedItems.length, rebanked: 0, deletedMomentAtoms: 0, error: true }
+  }
+  const rebanked = await rebankRes.json().catch(() => [])
+  const delRes = await sb(
+    `content_plan_atoms?workspace_id=eq.${wsId}&content_piece_id=in.(${quotedArchivedIds})&moment_id=not.is.null`,
+    { method: 'DELETE' },
+  )
+  if (!delRes.ok) {
+    console.error(`[sweep-past-weeks] ${wsId} weekless-stale moment-atom DELETE failed:`, delRes.status, await delRes.text().catch(() => ''))
+    return { archived: archivedItems.length, rebanked: rebanked.length, deletedMomentAtoms: 0, error: true }
+  }
+  const deletedMoment = await delRes.json().catch(() => [])
+  return { archived: archivedItems.length, rebanked: rebanked.length, deletedMomentAtoms: deletedMoment.length, error: false }
+}
+
 async function sweepWorkspace(ws, now) {
   const currentMonday = mondayOf(now, ws.cadence_policy?.timezone)
   const [undrafted, stale] = await Promise.all([
     returnUndraftedToBacklog(ws.id, currentMonday, now),
     archiveStaleDrafts(ws.id, currentMonday, now),
   ])
+  // Runs AFTER case (b) so a past-week atom's item is archived+detached there
+  // first, never double-counted here (case (c) skips any item whose atom still
+  // carries a plan_week).
+  const weekless = await archiveWeeklessStale(ws.id, now)
   return {
     slug: ws.slug,
     currentMonday,
     returnedToBacklog: undrafted.patched,
     archivedDrafts: stale.archived,
     rebanked: stale.rebanked,
-    deletedMomentAtoms: (undrafted.deletedMomentAtoms || 0) + (stale.deletedMomentAtoms || 0) || undefined,
+    archivedWeekless: weekless.archived,
+    rebankedWeekless: weekless.rebanked,
+    deletedMomentAtoms:
+      (undrafted.deletedMomentAtoms || 0) + (stale.deletedMomentAtoms || 0) + (weekless.deletedMomentAtoms || 0) || undefined,
     cappedThisRun: stale.capped || undefined,
-    error: undrafted.error || stale.error || undefined,
+    error: undrafted.error || stale.error || weekless.error || undefined,
   }
 }
 
@@ -220,10 +327,11 @@ async function handler(req, res) {
       returnedToBacklog: acc.returnedToBacklog + (s.returnedToBacklog || 0),
       archivedDrafts: acc.archivedDrafts + (s.archivedDrafts || 0),
       rebanked: acc.rebanked + (s.rebanked || 0),
+      archivedWeekless: acc.archivedWeekless + (s.archivedWeekless || 0),
     }),
-    { returnedToBacklog: 0, archivedDrafts: 0, rebanked: 0 },
+    { returnedToBacklog: 0, archivedDrafts: 0, rebanked: 0, archivedWeekless: 0 },
   )
-  console.info(`[sweep-past-weeks] ${workspaces.length} workspaces — returned ${totals.returnedToBacklog} undrafted, archived ${totals.archivedDrafts} stale drafts`)
+  console.info(`[sweep-past-weeks] ${workspaces.length} workspaces — returned ${totals.returnedToBacklog} undrafted, archived ${totals.archivedDrafts} stale drafts, archived ${totals.archivedWeekless} week-less stale`)
 
   return res.status(200).json({ workspaces: workspaces.length, totals, summary })
 }
