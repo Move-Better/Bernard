@@ -19,9 +19,10 @@
 //       time. Locked decision (.claude/decisions.md 2026-07-27): return-to-
 //       bank + archive, never roll-forward — a draft composed for a dead
 //       week's context is stale by construction and regeneration is cheap.
-//   (c) never-week-planned drafts (no atom, or atom with plan_week null) that
-//       have sat untouched in draft/in_review for STALE_DRAFT_DAYS → archive,
-//       re-bank/delete any week-less atom. Blog excluded (see const comment).
+//   (c) never-week-planned posts (no atom, or atom with plan_week null) that
+//       have sat untouched in draft/in_review/approved for STALE_DRAFT_DAYS →
+//       archive, re-bank/delete any week-less atom. Blog excluded, and see
+//       SWEEPABLE_STALE_STATUSES for why `approved` belongs in that list.
 //
 // Published rows, and anything scheduled in the future, are never touched —
 // both the atom-side query (plan_week < this week) and a belt-and-suspenders
@@ -64,6 +65,26 @@ const MAX_DRAFTED_PER_WORKSPACE = 500
 // archiving them would destroy the thing the digest wants shipped (Q,
 // 2026-08-10).
 const STALE_DRAFT_DAYS = 7
+
+// Statuses case (c) will archive. `approved` is here deliberately, added
+// 2026-08-11 after Q found an Instagram post approved 2026-06-01 still sitting
+// in the queue 72 days later — it survived every earlier sweep because
+// `approved` was simply never in this list, and it carries no atom, so cases
+// (a) and (b) could not see it either.
+//
+// Why archiving an approved post is safe rather than destroying a human's
+// yes: the same locked decision that governs the rest of this sweep
+// (.claude/decisions.md 2026-07-27) — "a draft composed for a dead week's
+// context is stale by construction and regeneration is cheap." An approval
+// from ten weeks ago is stale by exactly that argument, and the atom returns
+// to the bank so the slot re-drafts fresh rather than being lost.
+//
+// The existing scheduled_at guard already reads correctly for this status
+// with no special case: approved + no schedule is the stalled state (all 8
+// such rows on movebetter had scheduled_at null), approved + a FUTURE
+// schedule is live and excluded, and approved + a past schedule that never
+// published is stuck and should be swept like any other.
+const SWEEPABLE_STALE_STATUSES = 'draft,in_review,approved'
 
 // eslint-disable-next-line bernard/require-workspace-scope -- Cron — iterates all workspaces; every query below is scoped by workspace_id from the loop.
 function sb(path, init = {}) {
@@ -205,7 +226,7 @@ async function archiveWeeklessStale(wsId, now) {
   const cutoff = new Date(Date.now() - STALE_DRAFT_DAYS * 24 * 60 * 60 * 1000).toISOString()
   const candRes = await sb(
     `content_items?workspace_id=eq.${wsId}` +
-      `&status=in.(draft,in_review)` +
+      `&status=in.(${SWEEPABLE_STALE_STATUSES})` +
       `&platform=neq.blog` +
       `&created_at=lt.${cutoff}` +
       `&updated_at=lt.${cutoff}` +
@@ -238,7 +259,10 @@ async function archiveWeeklessStale(wsId, now) {
   const quotedTargetIds = targetIds.map((id) => `"${id}"`).join(',')
 
   const archiveRes = await sb(
-    `content_items?workspace_id=eq.${wsId}&id=in.(${quotedTargetIds})&status=in.(draft,in_review)` +
+    // Same status list as the candidate fetch above — this is the conditional
+    // re-check that makes the PATCH safe against a concurrent approve/publish,
+    // so the two MUST stay in step. A test pins both sites for that reason.
+    `content_items?workspace_id=eq.${wsId}&id=in.(${quotedTargetIds})&status=in.(${SWEEPABLE_STALE_STATUSES})` +
       `&or=(scheduled_at.is.null,scheduled_at.lt.${now})`,
     {
       method: 'PATCH',
