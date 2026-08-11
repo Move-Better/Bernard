@@ -82,12 +82,25 @@ const MIN_SCORE = 75
 const MIN_DURATION_S = 8
 const MAX_DURATION_S = 60
 
-// Never render more than this in one cron tick regardless of the gap. Each
-// render is a full ffmpeg pass (~90s on real footage) inside a 300s function,
-// so 3 sequential renders genuinely raced the wall on the first live run: two
-// finished, the third was still going when the function was killed. 2 leaves
-// headroom, and the hourly schedule fills a backlog soon enough anyway.
-const MAX_PER_RUN = 2
+// Never render more than this in one cron tick regardless of the gap.
+//
+// 1, not 2 — "2 leaves headroom" was written before anyone measured a 4K
+// source, and it is false for the library this actually serves. Measured
+// 2026-08-10 against the two candidates then wedging the queue: the windowed
+// large-source ingest alone (29s window of a 605 MB 3840x2160 master → 1920
+// proxy) costs ~68s wall / 130s CPU on a fast multicore Mac — more on Fluid —
+// before the render pass, two AI calls (caption + headline), and the upload.
+// Two of those sequentially cannot fit a 300s function; every auto-reel-week
+// run 504'd at the wall for 19 straight days (Jul 22 → Aug 10), the sweep
+// reset the same two claimed segments to 'proposed' ten minutes later, and the
+// score-ordered queue re-picked them the next hour: 5 reels ever produced,
+// then none. One render fits; the hourly schedule still clears a backlog at
+// 24/day, which is ~5x the weekly target.
+//
+// Raising this again is a measurement question, not a judgment call: it is
+// only safe once the per-asset render intermediate exists (see the 2026-08-10
+// decisions entry) and a two-render tick has been TIMED under the wall.
+const MAX_PER_RUN = 1
 
 // Every non-quiet day of the plan week at Instagram's best local hour, as epoch
 // ms ascending. Used only to re-point an already-elapsed slot forward.
