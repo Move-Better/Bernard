@@ -18,7 +18,7 @@
 // So: their words first, verbatim; then what changed, clamped with a
 // Show more; then a way back to the page they reported it from.
 
-import { useState } from 'react'
+import { useState, useRef, useLayoutEffect } from 'react'
 import { CheckCircle2, X } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
@@ -47,7 +47,26 @@ function formatDay(iso) {
 
 function Notice({ notice, onDismiss, dismissing }) {
   const [expanded, setExpanded] = useState(false)
+  const [clamped, setClamped] = useState(false)
+  const noteRef = useRef(null)
   const note = (notice.resolved_note || '').trim()
+
+  // Only offer "Show more" when the text is ACTUALLY being cut off. Rendering
+  // it unconditionally gives a short note a control that visibly does nothing
+  // when clicked — a dead affordance, and most notes on a wide screen fit.
+  // Measured rather than guessed from character count, because whether three
+  // lines overflow depends on the viewport, not the string length.
+  useLayoutEffect(() => {
+    const el = noteRef.current
+    if (!el) return setClamped(false)
+    const measure = () => setClamped(el.scrollHeight > el.clientHeight + 1)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+    // Re-measure when the clamp is lifted so the control can flip back to
+    // "Show less" correctly, and when a different note renders into this row.
+  }, [note, expanded])
   const backTo = inAppPath(notice.page_url)
   const reported = formatDay(notice.created_at)
   const fixed = formatDay(notice.resolved_at)
@@ -70,14 +89,17 @@ function Notice({ notice, onDismiss, dismissing }) {
         )}
 
         {note && (
-          <p className={`text-sm leading-relaxed text-foreground ${expanded ? '' : 'line-clamp-3'}`}>
+          <p
+            ref={noteRef}
+            className={`text-sm leading-relaxed text-foreground ${expanded ? '' : 'line-clamp-3'}`}
+          >
             <span className="font-semibold">What changed. </span>
             {note}
           </p>
         )}
 
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs text-muted-foreground">
-          {note && (
+          {note && (clamped || expanded) && (
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
@@ -86,7 +108,7 @@ function Notice({ notice, onDismiss, dismissing }) {
               {expanded ? 'Show less' : 'Show more'}
             </button>
           )}
-          {note && (reported || fixed) && <span aria-hidden="true">·</span>}
+          {note && (clamped || expanded) && (reported || fixed) && <span aria-hidden="true">·</span>}
           {reported && <span>Reported {reported}</span>}
           {reported && fixed && <span aria-hidden="true">·</span>}
           {fixed && <span>fixed {fixed}</span>}
