@@ -689,6 +689,7 @@ Path conventions (always use `ws.id`, never `ws.slug` — slugs are mutable):
   old ones by moving them)
 - Originals: `media/raw/<workspace-id>/...`
 - Web-resolution photo variant (2000px long edge): `media/web/<workspace-id>/<uuid>.<ext>`
+- Video render proxy (whole-asset 1080-class re-encode): `media/proxy/<workspace-id>/<asset-id>.mp4`
 
 **Large-file downloads must stream to disk**, not buffer with `arrayBuffer()`. `arrayBuffer()`
 materializes the full file in RAM and OOMs on anything over ~500 MB:
@@ -702,6 +703,50 @@ if (!r.ok) throw new Error(`download failed: ${r.status}`)
 await pipeline(Readable.fromWeb(r.body), createWriteStream(localPath))
 ```
 Reference: `api/_lib/thumbnail.js`, `api/_lib/tagAsset.js`.
+
+---
+
+## Video render proxy — pay the 4K decode once per asset, not once per segment (`api/_lib/videoRenderProxy.js`, 2026-08-11)
+
+A reel render extracts one ~15-60s window from a source video via ffmpeg reading directly off
+the Blob URL (`acquireSourceFile` in `brandRenderVideo.js`). A source over `MAX_VIDEO_BYTES`
+(500MB — exported from `brandRenderVideo.js`, imported everywhere else that needs to agree on
+what counts as "large") takes a windowed downscale-and-decode path costing real CPU (~130s for a
+605MB 3840×2160 source, measured). A single source video commonly holds several detected
+moments — that decode cost was being paid **once per segment**, not once per asset.
+
+`media_assets.render_proxy_url` (migration 211) is a persisted, WHOLE-ASSET 1080-class re-encode,
+generated once via `ensureRenderProxy({ asset, ws })` and reused by every later segment from that
+same asset, by any caller. The proxy (tens of MB, always under `MAX_VIDEO_BYTES`) makes
+`acquireSourceFile` take its existing fast path — a raw copy, no re-encode — automatically; there
+is no separate "proxy-aware" branch in `brandRenderVideo.js` at all. `resolveRenderSourceUrl(asset)`
+(`asset.render_proxy_url || asset.blob_url`) is what a render call site actually feeds into
+`videoUrl`.
+
+**Generation is lazy, not proactive** — no backfill cron. The first render of a never-proxied
+asset still pays the full decode (generating the proxy IS that decode); every later render of
+ANY segment from that asset is fast from then on. No lock around generation: two concurrent
+renders of different segments from the same never-proxied asset can both generate — wasted
+duplicate compute, last-write-wins on the DB patch, never corruption (each writes its own `/tmp`
+path; Blob `PUT` is per-object atomic). Accepted, not built around.
+
+**Scope — wired into exactly one shared function**, `renderSegmentToReel()` in `reelFactory.js`,
+called by both the auto cron (`auto-reel-week`) and the manual trigger
+(`api/editorial/render-segments.js`). NOT wired into ad export (`api/ads/render-video.js`),
+longform chunked rendering (`longformEngine.js`), multi-channel package rendering
+(`renderPackageChannels.js` — reached through 3 further callers, one layer removed via a bare
+`sourceUrl` string param, not an `asset` object), or the manual multi-channel clip export
+(`renderClipCore.js`). Before wiring a 6th render path into this, grep for how it acquires its
+`asset` row — some of these take a bare URL string with the asset already one layer removed,
+which is why they weren't done in the same pass.
+
+`brandRenderVideo.js`'s `transcodeRemoteToLocal()` is the one shared ffmpeg invocation both the
+existing windowed per-render ingest and the new whole-asset proxy generator call — parameterized
+so a `clipDur` omission transcodes the entire input instead of a window. Any change to encode
+settings (scale, crf, audio-map handling) belongs there, not duplicated at either call site.
+
+Reference: `api/_lib/videoRenderProxy.js`, `tests/lib/videoRenderProxy.test.js`. Full incident +
+design rationale: `.claude/decisions.md` 2026-08-10/11 (the reel outage that led here).
 
 ---
 
