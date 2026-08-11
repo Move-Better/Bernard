@@ -60,10 +60,24 @@ export function buildResolutionEmail(row, resolvedNote) {
 // system trigger, which keys on the (unguessable) feedback id alone.
 //
 // Returns { status, id?, notified, alreadyResolved }:
-//   status: 'ok' | 'invalid_id' | 'not_found' | 'lookup_failed' | 'update_failed'
+//   status: 'ok' | 'invalid_id' | 'note_required' | 'not_found' | 'lookup_failed' | 'update_failed'
+
+// A resolution note is REQUIRED (2026-08-11). It was optional, so a row could
+// be resolved with nothing to say, and both the email and the in-app banner
+// then fell back to a bare "the issue you reported is resolved" — which tells
+// the reporter nothing about whether it's safe to go back to what broke.
+// Enforced here rather than in each route so the Clerk endpoint and the
+// headless cron trigger cannot drift.
+//
+// The floor is length, not quality: it stops an empty string and a shrugged
+// "done", and can't judge plain language. Recent real notes run 300–1500
+// characters, so 15 blocks the degenerate case without being a hurdle.
+const MIN_NOTE_LEN = 15
+
 /** @param {{ id?: string, note?: string, workspaceId?: string | null }} args */
 export async function resolveFeedbackRow({ id, note, workspaceId = null }) {
   if (!UUID_RE.test(id || '')) return { status: 'invalid_id' }
+  if ((note ?? '').trim().length < MIN_NOTE_LEN) return { status: 'note_required' }
   const scope = workspaceId ? `&workspace_id=eq.${workspaceId}` : ''
 
   const getR = await sb(`feedback?id=eq.${id}${scope}&select=*`)
@@ -76,7 +90,7 @@ export async function resolveFeedbackRow({ id, note, workspaceId = null }) {
   // Idempotent: a row already resolved is a no-op — never re-send the email.
   if (row.resolved_at) return { status: 'ok', id: row.id, notified: !!row.resolved_notified_at, alreadyResolved: true }
 
-  const resolvedNote = note?.trim() || null
+  const resolvedNote = note.trim()
   /** @type {FeedbackUpdate} */
   const patch = { resolved_at: new Date().toISOString(), resolved_note: resolvedNote }
 

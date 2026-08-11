@@ -12,7 +12,10 @@
 //
 // Body (JSON):
 //   id     string  required — feedback row id (uuid)
-//   note   string  optional — what was fixed, shown to the reporter
+//   note   string  required — what was fixed, in plain language, shown verbatim
+//                             to the reporter in the email and the Home banner.
+//                             Write it for the person who filed it: what was
+//                             wrong, what changed, whether it's safe to go back.
 
 import { requireRole }         from '../../_lib/auth.js'
 import { workspaceContext }    from '../../_lib/workspaceContext.js'
@@ -33,6 +36,7 @@ export default async function handler(req, res) {
   if (!UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
 
   const r = await resolveFeedbackRow({ id, note, workspaceId: wsCtx.id })
+  if (r.status === 'note_required') return res.status(400).json({ error: 'note_required' })
   if (r.status === 'not_found')     return res.status(404).json({ error: 'not_found' })
   if (r.status === 'lookup_failed') return res.status(500).json({ error: 'lookup_failed' })
   if (r.status === 'update_failed') return res.status(500).json({ error: 'update_failed' })
