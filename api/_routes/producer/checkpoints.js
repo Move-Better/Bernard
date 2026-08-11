@@ -92,6 +92,35 @@ async function postApprovals(wsId) {
   return { count: rows.length, staleCount: stale.length }
 }
 
+// Approved but never committed to a slot — the stall nothing surfaced.
+//
+// postApprovals above covers draft/in_review ("say go"). Once a producer says
+// go, approving is supposed to schedule the post in the same motion ("there is
+// no second step"). When that second step silently doesn't happen the row
+// lands on `approved` with no scheduled_at and no checkpoint anywhere claims
+// it: not this route, and not Your week, which plans forward.
+//
+// Found 2026-08-11 — an Instagram post approved 2026-06-01 had sat 72 days,
+// and all 8 approved rows on movebetter had scheduled_at null. The weekly
+// sweep now archives these after a week, so without this card the only thing
+// a producer would ever learn is that their approved posts quietly vanished.
+// Surfacing beats silent archival: this is the week they can still act.
+//
+// Blog IS included here, unlike postApprovals and unlike the sweep's own blog
+// exclusion. Both of those are about not destroying / not misrouting a
+// clinician's in-review piece. An APPROVED blog post is past review and
+// waiting on someone to publish it, which is operational work — and it is
+// exactly the case the sweep deliberately won't clean up, so a human has to.
+async function approvedUnscheduled(wsId) {
+  const rows = await jsonRows(
+    `content_items?workspace_id=eq.${wsId}&status=eq.approved&scheduled_at=is.null` +
+    `&select=id,platform,approved_at&order=approved_at.asc&limit=500`,
+  )
+  const now = Date.now()
+  const stale = rows.filter((r) => now - (Date.parse(r.approved_at || '') || now) > STALE_APPROVAL_MS)
+  return { count: rows.length, staleCount: stale.length, firstId: rows[0]?.id || null }
+}
+
 async function videoPackagesComplete(wsId) {
   return exactCount(`story_packages?workspace_id=eq.${wsId}&status=eq.complete`)
 }
@@ -251,10 +280,11 @@ export default async function handler(req, res) {
     callerStaffId = selfRows[0]?.id || null
   }
 
-  let posts, packages, clips, failures, escalated, consent, clinician, health
+  let posts, stalled, packages, clips, failures, escalated, consent, clinician, health
   try {
-    [posts, packages, clips, failures, escalated, consent, clinician, health] = await Promise.all([
+    [posts, stalled, packages, clips, failures, escalated, consent, clinician, health] = await Promise.all([
       postApprovals(ws.id),
+      approvedUnscheduled(ws.id),
       videoPackagesComplete(ws.id),
       clipsProposed(ws.id),
       publishFailures7d(ws.id),
@@ -321,6 +351,27 @@ export default async function handler(req, res) {
       gate: 'You are the checkpoint — nothing publishes until you approve it.',
       count: posts.count, staleCount: posts.staleCount,
       ctaHref: '/week', ctaLabel: 'Review on Your week →',
+    })
+  }
+  // Approved but never scheduled. Sits directly after post_approvals because
+  // it is the next beat of the same flow — you said go, and it didn't go.
+  // Amber once anything has been stalled past the stale window, since the
+  // weekly sweep will archive it and the producer loses the chance to act.
+  if (stalled.count > 0) {
+    queue.push({
+      type: 'approved_unscheduled', tier: stalled.staleCount > 0 ? 2 : 3,
+      title: `${stalled.count} approved post${stalled.count === 1 ? '' : 's'} never went out`,
+      why: stalled.staleCount > 0
+        ? 'You approved these, but they were never scheduled, so nothing published. The oldest have been waiting over two weeks and the weekly cleanup will archive them.'
+        : 'You approved these, but they were never scheduled, so nothing published. They need a slot or a re-approve.',
+      gate: 'You are the checkpoint — approved is not published.',
+      count: stalled.count, staleCount: stalled.staleCount,
+      // One click to the post itself when there's a single one, exactly like
+      // the failed-publish row; the pre-filtered list otherwise.
+      ctaHref: stalled.count === 1 && stalled.firstId
+        ? `/publish/${stalled.firstId}`
+        : '/stories?status=approved',
+      ctaLabel: stalled.count === 1 ? 'Open the post →' : 'Review approved →',
     })
   }
   if (packages > 0) {
