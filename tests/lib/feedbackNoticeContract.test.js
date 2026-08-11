@@ -96,7 +96,18 @@ describe('GUARD — the banner can only render fields my-notices actually select
     expect(selected.has('message')).toBe(true)
   })
 
-  it('renders the reported message, not just the note', () => {
-    expect(BANNER).toMatch(/notice\.message/)
+  it('renders the reported message as visible content, not just the note', () => {
+    // A bare /notice\.message/ grep passes on a MENTION — proven by mutation:
+    // rewriting the guard to `{false && (` left the identifier in the file and
+    // the assertion still passed while the message stopped rendering entirely.
+    // So this pins the structure instead: the quote is conditioned on the
+    // message AND emits it as the blockquote's own children.
+    //
+    // Limit worth stating plainly: this reads SOURCE, so it proves the JSX is
+    // written, not that React paints it. The stronger version needs jsdom +
+    // testing-library, which the repo doesn't carry today.
+    expect(BANNER).toMatch(
+      /\{notice\.message\s*&&[\s\S]{0,240}?<blockquote[\s\S]{0,240}?\{notice\.message\}[\s\S]{0,120}?<\/blockquote>/,
+    )
   })
 })
