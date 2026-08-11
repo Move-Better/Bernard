@@ -77,9 +77,16 @@ async function askedRecently(wsId) {
         `&kind=eq.footage_needed&created_at=gte.${since}&select=id&limit=1`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
     )
-    if (!r.ok) return true // can't tell → stay quiet rather than risk spamming
+    if (!r.ok) {
+      // can't tell → stay quiet rather than risk spamming, but LOG it — this
+      // branch fails open forever with zero trace otherwise, and "the ask
+      // never fires" then reads identically to "there was never a shortfall."
+      console.error(`[cron/auto-reel-week] ${wsId} askedRecently check failed: ${r.status}`)
+      return true
+    }
     return ((await r.json().catch(() => [])) || []).length > 0
-  } catch {
+  } catch (e) {
+    console.error(`[cron/auto-reel-week] ${wsId} askedRecently threw:`, e?.message)
     return true
   }
 }
@@ -133,17 +140,18 @@ async function handler(req, res) {
     const weekMonday = mondayOf(new Date().toISOString(), ws.cadence_policy?.timezone)
     try {
       const stats = await fillReelSlots({ ws, weekMonday })
-      summary.push({ slug: ws.slug, ...stats })
+      const entry = { slug: ws.slug, ...stats }
 
       // Workday ledger — narrate only real work, never a quiet no-op tick.
       if (stats.rendered > 0) {
-        await recordAgentAction({
+        const r = await recordAgentAction({
           workspaceId: ws.id,
           producerConfig: ws.producer_config,
           kind: 'reels_drafted',
           title: `Cut ${stats.rendered} Reel${stats.rendered === 1 ? '' : 's'} from your videos — ready for your approval`,
           detail: { ...stats, weekMonday },
         })
+        if (!r.ok) console.error(`[cron/auto-reel-week] ${ws.slug} reels_drafted ledger skipped: ${r.skipped || r.status || r.error}`)
       }
 
       // The footage-ask. A shortfall means the week WANTS reels and the clip
@@ -151,16 +159,36 @@ async function handler(req, res) {
       // on its own, because it needs someone to point a camera at themselves.
       // Recorded (deduped per week) so /week can turn it into a concrete "film
       // this" ask rather than silently under-filling the week.
-      if (stats.shortfall > 0 && !(await askedRecently(ws.id))) {
-        const topics = await suggestFootageTopics(ws.id)
-        await recordAgentAction({
-          workspaceId: ws.id,
-          producerConfig: ws.producer_config,
-          kind: 'footage_needed',
-          title: `Need ${stats.shortfall} more short video${stats.shortfall === 1 ? '' : 's'} to fill this week's Reels`,
-          detail: { ...stats, weekMonday, topics },
-        })
+      //
+      // recordAgentAction() no-ops for a workspace that hasn't hired the
+      // Standing Producer (producer_config.enabled) — by design, since /week's
+      // "needs you" surface is itself producer-gated, so an ask nobody's
+      // producer view will ever show is not worth writing. But a REAL shortfall
+      // getting silently dropped there looked, from the outside, identical to
+      // "the whole mechanism is broken" — this is the exact silent-failure this
+      // cron burned a day debugging (2026-08-11: agent_actions had zero
+      // footage_needed rows ever, including runs that reported shortfall:1 for
+      // 4 workspaces — all 4 turned out to have never enabled the producer).
+      // `entry.footageAsk` makes that outcome visible in the cron's own JSON
+      // response instead of requiring a fresh SQL investigation every time.
+      if (stats.shortfall > 0) {
+        if (await askedRecently(ws.id)) {
+          entry.footageAsk = 'skipped_recent'
+        } else {
+          const topics = await suggestFootageTopics(ws.id)
+          const r = await recordAgentAction({
+            workspaceId: ws.id,
+            producerConfig: ws.producer_config,
+            kind: 'footage_needed',
+            title: `Need ${stats.shortfall} more short video${stats.shortfall === 1 ? '' : 's'} to fill this week's Reels`,
+            detail: { ...stats, weekMonday, topics },
+          })
+          entry.footageAsk = r.ok ? 'recorded' : `skipped_${r.skipped || r.status || 'error'}`
+          if (!r.ok) console.error(`[cron/auto-reel-week] ${ws.slug} footage_needed ledger skipped: ${r.skipped || r.status || r.error}`)
+        }
       }
+
+      summary.push(entry)
     } catch (e) {
       console.error(`[cron/auto-reel-week] ${ws.slug} threw: ${e?.message}\n${e?.stack || ''}`)
       summary.push({ slug: ws.slug, error: 'failed' })
