@@ -43,6 +43,43 @@
 
 // Pixel dimensions per ratio. Rendering targets the ratio; the pixel pair is the
 // master size we rasterise at.
+//
+// WHY 1080-CLASS, AND NOT 4K (Q's call, 2026-08-10). Unlike the ratios below,
+// these numbers are OURS — they are not a platform requirement, and nothing
+// here was ever verified against a provider. Recording the reasoning because
+// the file previously carried the ceiling with no justification at all, which
+// reads like a researched constraint and isn't one.
+//
+// The library's real footage is 4K at ~96 Mbps (Lumix masters, ~678 MB average,
+// one at 3.1 GB). Rendering above 1080 would cost render time and upload bytes
+// on every clip. The judgement is that it buys no visible gain today:
+//
+//   • Short-form vertical (reel / short / tiktok / story) is delivered at
+//     1080x1920. ASSUMPTION, not verified: platforms accept larger uploads but
+//     re-encode short-form back down, so the extra pixels are re-compressed
+//     away. Nobody has measured this end-to-end — see the revisit trigger.
+//   • The one lane where 4K provably reaches a viewer is YouTube long-form, and
+//     it does NOT come through this table: the YouTube copy lane ships the
+//     ORIGINAL asset rather than a render, bounded only by
+//     YOUTUBE_MAX_UPLOAD_BYTES (api/_lib/youtubeCopy.js). So the 4K master
+//     already gets there untouched, at full resolution.
+//   • 4K still earns its keep at CAPTURE: it gives the reframe/crop pass real
+//     latitude to punch in without softening a 1080 output. We downscale on the
+//     way out, not on the way in — do not "fix" this by asking anyone to film
+//     smaller.
+//
+// RAISING THIS IS TWO EDITS, NOT ONE. brandRenderVideo.js caps the large-source
+// ingest proxy independently (`scale=w=1920:h=1920`, applied to any source over
+// MAX_VIDEO_BYTES before the render runs). Changing only the table below moves
+// nothing for exactly the 4K sources you would be doing it for.
+//
+// REVISIT IF: a platform starts serving short-form above 1080 in a way a viewer
+// can actually see; a clip is reported as soft or over-compressed; or we add a
+// lane that COMPOSITES for a surface known to serve 4K (compositing for YouTube
+// long-form rather than passing the original through would be exactly that).
+// The honest test is empirical — push one 4K render through bundle.social and
+// compare what comes back down — so treat the assumption above as unproven
+// until someone runs it.
 export const FRAME_PIXELS = {
   '4:5':  [1080, 1350],
   '9:16': [1080, 1920],

@@ -15,7 +15,12 @@
 // own dimensions alone when they already fit.
 //
 // Ratios verified against current platform guidance 2026-07-22.
-
+//
+// The RATIOS are platform-driven and verified. The PIXEL SIZES below are not —
+// they are our own 1080-class ceiling, deliberately kept there (Q, 2026-08-10)
+// because 4K buys no visible gain on any lane this table feeds. Full reasoning,
+// including why raising it takes two edits and not one, is in the client copy:
+// src/lib/postFrames.js.
 export const FRAME_PIXELS = {
   '4:5':  [1080, 1350],
   '9:16': [1080, 1920],
