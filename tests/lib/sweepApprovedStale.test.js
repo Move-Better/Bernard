@@ -46,8 +46,17 @@ describe('the sweep can see approved posts', () => {
   it('still guards on scheduled_at so a live post is never swept', () => {
     // approved + a FUTURE schedule is live, not stalled. This guard is what
     // makes adding `approved` safe, so it must survive alongside it.
-    const guards = SWEEP.match(/scheduled_at\.is\.null,scheduled_at\.lt\./g) || []
-    expect(guards.length).toBeGreaterThanOrEqual(2)
+    //
+    // Scoped to archiveWeeklessStale — a whole-file count was hollow, proven
+    // by mutation: the file carries THREE of these (case (b) has one), so a
+    // `>= 2` assertion stayed green while one of case (c)'s two was deleted.
+    // Both of case (c)'s queries need it: the candidate fetch to avoid
+    // selecting a live post, the PATCH to avoid archiving one that went live
+    // in between.
+    const fn = SWEEP.match(/async function archiveWeeklessStale[\s\S]*?\n}\n/)?.[0]
+    expect(fn, 'archiveWeeklessStale not found — did it get renamed?').toBeTruthy()
+    const guards = fn.match(/scheduled_at\.is\.null,scheduled_at\.lt\./g) || []
+    expect(guards.length).toBe(2)
   })
 
   it('still excludes blog from the destructive sweep', () => {
