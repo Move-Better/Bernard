@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveVideoEditSource, shouldUseSourceWindow } from '../../src/lib/videoEditSource.js'
+import { resolveVideoEditSource, shouldUseSourceWindow, isRenderedClipUrl } from '../../src/lib/videoEditSource.js'
 
 // The invariant these lock: a caption-baked auto-reel (asset.source_clip present)
 // is edited from its RAW un-captioned source + source window, never the baked blob
@@ -23,6 +23,17 @@ const manualClip = {
   id: 'raw-upload-id',
   blob_url: 'https://blob/media/raw/upload.mov',
   transcript_words: [{ word: 'up', start: 0, end: 1 }],
+  source_clip: null,
+}
+
+// A manually-exported broll re-attached to a post: a rendered OUTPUT
+// (media/renders or media/clips) with captions burned in, and NO source_clip
+// (manual export records no source window). Editing it from its own blob would
+// double-bake, so captions must lock.
+const bakedBrollNoSource = {
+  id: 'baked-broll-id',
+  blob_url: 'https://blob/media/renders/ws/asset/instagram_reel-clip.mp4',
+  transcript_words: [{ word: 'x', start: 0, end: 1 }],
   source_clip: null,
 }
 
@@ -62,7 +73,36 @@ describe('resolveVideoEditSource', () => {
 
   it('tolerates a null asset', () => {
     const r = resolveVideoEditSource(null, 'x')
-    expect(r).toEqual({ videoUrl: null, transcriptWords: null, assetId: 'x', window: null })
+    expect(r).toEqual({ videoUrl: null, transcriptWords: null, assetId: 'x', window: null, captionsBaked: false })
+  })
+})
+
+describe('captionsBaked fallback (manual broll gap)', () => {
+  it('LOCKS captions for a baked broll with no clean source', () => {
+    const r = resolveVideoEditSource(bakedBrollNoSource, bakedBrollNoSource.id)
+    // No window (edits from its own blob) AND the blob is a rendered output.
+    expect(r.captionsBaked).toBe(true)
+    expect(r.videoUrl).toBe(bakedBrollNoSource.blob_url)
+    expect(r.assetId).toBe(bakedBrollNoSource.id)
+    expect(r.window).toBeNull()
+  })
+
+  it('does NOT lock an auto-reel — it has a clean raw source instead', () => {
+    // The primary path wins: source_clip resolves a media/raw source + window,
+    // so captions stay editable and are never locked.
+    expect(resolveVideoEditSource(bakedReel, bakedReel.id).captionsBaked).toBe(false)
+  })
+
+  it('does NOT lock a raw upload (media/raw is un-captioned)', () => {
+    expect(resolveVideoEditSource(manualClip, manualClip.id).captionsBaked).toBe(false)
+  })
+
+  it('isRenderedClipUrl distinguishes baked outputs from raw uploads', () => {
+    expect(isRenderedClipUrl('https://blob/media/clips/a/b/c.mp4')).toBe(true)
+    expect(isRenderedClipUrl('https://blob/media/renders/a/b/c.mp4')).toBe(true)
+    expect(isRenderedClipUrl('https://blob/media/raw/x.mov')).toBe(false)
+    expect(isRenderedClipUrl('https://blob/media/capture/x.mp4')).toBe(false)
+    expect(isRenderedClipUrl(null)).toBe(false)
   })
 })
 

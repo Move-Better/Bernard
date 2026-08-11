@@ -146,7 +146,7 @@ function normCaptionText(s) {
 
 // ── CANVAS ───────────────────────────────────────────────────────────────────
 function Canvas({ ctx }) {
-  const { videoRef, asset, editVideoUrl, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, dragging, snap, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap, logCaptionCorrection, alignGuidesOn } = ctx
+  const { videoRef, asset, editVideoUrl, captionsBaked, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, dragging, snap, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap, logCaptionCorrection, alignGuidesOn } = ctx
   // Original caption text captured when inline editing starts, so we can log the
   // (heard → fixed) correction once on commit — activeLine mutates on each
   // keystroke (editLine re-splits), so it can't be read at blur time.
@@ -218,8 +218,10 @@ function Canvas({ ctx }) {
             />
           ) : <div className="flex h-full items-center justify-center text-sm text-white/60">No video</div>}
 
-          {/* caption — karaoke; click to edit the active line inline (pauses playback) */}
-          {activeLine && caption.preset !== 'off' && (
+          {/* caption — karaoke; click to edit the active line inline (pauses playback).
+              Suppressed when captionsBaked: the video already carries a burned-in
+              track, so a live overlay on top would be the double we're preventing. */}
+          {activeLine && caption.preset !== 'off' && !captionsBaked && (
             <div
               onClick={(e) => { e.stopPropagation(); videoRef.current?.pause(); selectKey('caption'); setEditingCap(true) }}
               className="pointer-events-auto absolute left-1/2 -translate-x-1/2 cursor-text text-center font-extrabold leading-tight"
@@ -491,7 +493,21 @@ function PostCaptionInspector({ ctx }) {
 }
 
 function CaptionInspector({ ctx }) {
-  const { asset, caption, setCaption, lines, genCaptions, genCaptionsPending, captionsEdited, resetCaptions, openSaveTemplate } = ctx
+  const { asset, caption, setCaption, lines, genCaptions, genCaptionsPending, captionsEdited, resetCaptions, openSaveTemplate, captionsBaked } = ctx
+  // A caption-baked clip with no clean source (a manually-exported broll) is
+  // edited from its own already-captioned blob, so restyling here would double
+  // the track. The controls are replaced with a plain explanation instead of
+  // silently doing nothing. Trim/reframe/grade/music still apply (they don't
+  // touch the caption pixels), and the true fix is re-exporting from the source.
+  if (captionsBaked) {
+    return (
+      <InspectorShell icon={Captions} title="Karaoke captions" right="baked in">
+        <div className="rounded-md border border-dashed p-3 text-2xs leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
+          This clip&rsquo;s captions are <span className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>baked into the video</span>, so they can&rsquo;t be restyled here. Trim, reframe, grade, and music still apply. To change the words, re-export the clip from its original source.
+        </div>
+      </InspectorShell>
+    )
+  }
   // The workspace's own brand primary — the SAME value the hydration effect
   // (workspaceCaptionAccent(asset.workspace), above) already seeds caption.accent
   // with, and what the server bake falls back to when no explicit accent is
@@ -1192,6 +1208,11 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   const editSource = useMemo(() => resolveVideoEditSource(asset, assetId), [asset, assetId])
   const editVideoUrl = editSource.videoUrl
   const editAssetId = editSource.assetId
+  // A caption-baked clip with no resolvable clean source (a manually-exported
+  // broll re-attached to a post) is edited from its own baked blob — so LOCK
+  // captions: no live overlay, no re-bake on save, so the already-baked track
+  // shows once and can't double. See videoEditSource.js.
+  const captionsBaked = editSource.captionsBaked
 
   // Embedded from a post (the publish flow) opens on the post caption — the
   // text that publishes below the video, and what users came here to review.
@@ -1730,7 +1751,9 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     // editAssetId is the RAW source for a baked auto-reel (else the asset itself),
     // and startSec/endSec are its source-relative window — so the bake renders the
     // un-captioned source once with these captions, never re-caption the baked clip.
-    assetId: editAssetId, channels: [channelFor(format, piece?.platform)], startSec, durationSec, subtitles: caption.preset !== 'off',
+    // captionsBaked (a baked broll with no clean source) forces subtitles off so a
+    // re-render doesn't burn a SECOND track over the already-baked one.
+    assetId: editAssetId, channels: [channelFor(format, piece?.platform)], startSec, durationSec, subtitles: !captionsBaked && caption.preset !== 'off',
     overlayPosition: caption.position, overlaySize: caption.size, captionAccent: caption.accent,
     captionAnim: caption.anim, captionStyle: caption.style,
     grade, reframe, speed, cuts,
@@ -2008,7 +2031,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   const anyDest = dest.broll || dest.ad
 
   const ctx = {
-    videoRef, asset, editVideoUrl, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
+    videoRef, asset, editVideoUrl, captionsBaked, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
     format, setFormat, formatCss: (FORMATS[format] || FORMATS.reel).css, formatDim: (FORMATS[format] || FORMATS.reel).dim,
     reframe, setReframe: setReframeKey, autoReframe, autoReframing, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
     setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, editWord, logCaptionCorrection, resetCaptions, captionsEdited, cuts, toggleWordCut, addCuts, clearCuts, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
