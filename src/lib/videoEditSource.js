@@ -13,16 +13,35 @@
 // ?withSourceClip=1). When present, edit from the raw source: play/transcribe/render
 // it windowed to [startSec,endSec], so captions apply exactly once. A manual clip or
 // raw upload has no source_clip and edits from its own blob, exactly as before.
+// A render-pipeline OUTPUT (auto-reel → media/clips, manual clip export →
+// media/renders) has its captions baked into the pixels. A raw upload
+// (media/raw) or realtime capture (media/capture) does not. Used only as the
+// fallback signal below — the primary path resolves a clean raw source instead.
+export function isRenderedClipUrl(url) {
+  return /\/media\/(clips|renders)\//.test(String(url || ''))
+}
+
 export function resolveVideoEditSource(asset, fallbackAssetId) {
   const sc = asset?.source_clip || null
   const hasWindow = sc && Number.isFinite(sc.startSec) && Number.isFinite(sc.endSec) && sc.endSec > sc.startSec
+  const window = hasWindow ? { startSec: sc.startSec, endSec: sc.endSec } : null
+  const videoUrl = sc?.blobUrl || asset?.blob_url || null
   return {
     // The <video> src, the transcript sliced for captions, and the render target.
-    videoUrl: sc?.blobUrl || asset?.blob_url || null,
+    videoUrl,
     transcriptWords: sc?.transcriptWords || asset?.transcript_words || null,
     assetId: sc?.assetId || fallbackAssetId,
     // Source-relative trim window for a baked reel; null for a normal clip.
-    window: hasWindow ? { startSec: sc.startSec, endSec: sc.endSec } : null,
+    window,
+    // FALLBACK for a caption-baked clip whose clean raw source can't be resolved
+    // (a manually-exported broll re-attached to a post — it carries no source
+    // window, unlike an auto-reel's video_segment). Editing it from its own baked
+    // blob would re-caption an already-captioned video, the exact double this whole
+    // file exists to stop. So when we're about to edit a rendered OUTPUT directly
+    // (no window resolved), the editor LOCKS captions: it neither draws a live
+    // caption overlay nor re-bakes captions on save, so the baked track shows once
+    // and never doubles. captions stay editable only where a clean source exists.
+    captionsBaked: !window && isRenderedClipUrl(videoUrl),
   }
 }
 
