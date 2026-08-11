@@ -33,9 +33,13 @@ export default async function handler(req, res) {
   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
   if (!auth.userId) return res.status(200).json({ notices: [] })
 
+  // `message` (the reporter's own words), `created_at` (when they hit it) and
+  // `page_url` (where) were already stored but never surfaced — the banner said
+  // only "the issue you reported is resolved", which is useless to someone who
+  // has filed six reports. Quoting them back is the point (Q, 2026-08-11).
   const q = `feedback?workspace_id=eq.${wsCtx.id}&user_id=eq.${encodeURIComponent(auth.userId)}` +
     `&resolved_at=not.is.null&acknowledged_at=is.null` +
-    `&select=id,message,resolved_note,resolved_at&order=resolved_at.desc&limit=10`
+    `&select=id,message,page_url,created_at,resolved_note,resolved_at&order=resolved_at.desc&limit=10`
 
   const r = await sb(q)
   if (!r.ok) {

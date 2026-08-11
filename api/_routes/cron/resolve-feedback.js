@@ -14,7 +14,8 @@
 // Auth: Bearer CRON_SECRET.
 // Body (JSON):
 //   id     string  required — feedback row id (uuid)
-//   note   string  optional — what was fixed, shown to the reporter
+//   note   string  required — what was fixed, in plain language, shown verbatim
+//                             to the reporter in the email and the Home banner.
 
 import { verifyCronSecret }   from '../../_lib/auth.js'
 import { resolveFeedbackRow } from '../../_lib/resolveFeedback.js'
@@ -29,6 +30,7 @@ export default async function handler(req, res) {
   if (!UUID_RE.test(id || '')) return res.status(400).json({ error: 'invalid_id' })
 
   const r = await resolveFeedbackRow({ id, note })
+  if (r.status === 'note_required') return res.status(400).json({ error: 'note_required' })
   if (r.status === 'not_found') return res.status(404).json({ error: 'not_found' })
   if (r.status === 'lookup_failed' || r.status === 'update_failed') return res.status(500).json({ error: r.status })
 

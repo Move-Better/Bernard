@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronRight, Mic2, AlertTriangle, Inbox } from 'lucide-react'
+import { Mic2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
 import ErrorState from '@/components/ErrorState'
@@ -25,8 +25,10 @@ import PostsLiveCard from '@/components/home/PostsLiveCard'
 import RelationshipCard from '@/components/home/RelationshipCard'
 import PageHelp from '@/components/PageHelp'
 import InstallBanner from '@/components/home/InstallBanner'
-import ChannelHealthBanner from '@/components/home/ChannelHealthBanner'
+import AttentionQueue from '@/components/home/AttentionQueue'
 import FeedbackResolvedBanner from '@/components/home/FeedbackResolvedBanner'
+import { buildAttentionItems } from '@/lib/attentionItems'
+import { useChannelHealth } from '@/lib/channelHealth'
 
 const RESUME_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -168,32 +170,11 @@ export default function Home({ embedded = false }) {
     [existingTopics, runtimeWorkspace, topicFilterPrototype]
   )
 
-  // ── Attention strip counts ──────────────────────────────────────────────────
-  const readyForContent = useMemo(
-    () => stories.filter((s) => s.story_stage === 'drafting' && (s.pieces_count || 0) === 0),
-    [stories]
-  )
-  const reviewCount = useMemo(
-    () => (canReview ? stories.filter((s) => s.story_stage === 'review').length : 0),
-    [stories, canReview]
-  )
-  const readyToDistribute = useMemo(
-    () => (isEditor ? stories.filter((s) => (s.pieces_by_status?.approved ?? 0) > 0) : []),
-    [stories, isEditor]
-  )
-  const overdueCount = useMemo(() => {
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
-    return staff.filter((c) => {
-      const interviews = c.interviews || []
-      if (interviews.length === 0) return true
-      const mostRecent = interviews.reduce((latest, i) => {
-        const t = new Date(i.updated_at || i.created_at || 0).getTime()
-        return t > latest ? t : latest
-      }, 0)
-      return mostRecent < thirtyDaysAgo
-    }).length
-  }, [staff])
-
+  // ── Attention queue ─────────────────────────────────────────────────────────
+  // Everything that needs a human, as ITEMS rather than counts. The rules live
+  // in @/lib/attentionItems (pure, tested); Home only supplies the data and
+  // renders the result.
+  //
   // Blog review nudge — clinicians who opted in and have posts awaiting their read.
   //
   // NOT gated on isEditor, for the same reason the answer-review queue below
@@ -214,7 +195,7 @@ export default function Home({ embedded = false }) {
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   })
-  const yourReview = weekData?.yourReview || []
+  const yourReview = weekData?.yourReview
 
   // Answer-review queue — its own fetch (NOT gated on isEditor / week-summary):
   // an editor who is also a clinician owns answers and must see their queue.
@@ -224,7 +205,7 @@ export default function Home({ embedded = false }) {
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   })
-  const yourAnswerReview = answerReviewData?.answers || []
+  const yourAnswerReview = answerReviewData?.answers
 
   // Words approval + practice-memory supersessions — the two clinical
   // checkpoints that had NO aggregate surface anywhere before ProducerHome
@@ -238,46 +219,38 @@ export default function Home({ embedded = false }) {
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   })
-  const wordsApprovalsPending = myClinicalData?.wordsApprovals || 0
-  const supersessionsPending = myClinicalData?.supersessions || 0
+  // The route returns ids + titles now, not bare counts, so each checkpoint can
+  // name itself and deep-link.
+  const wordsApprovalItems = myClinicalData?.wordsApprovalItems
+  const supersessionItems = myClinicalData?.supersessionItems
 
-  // Each part links to where its detail actually lives, so the strip is a real
-  // jump-list rather than a count that dead-ends on a page that doesn't show it.
-  // Blog-review and answer-review nudges fold in here too — they're structurally
-  // identical to the other parts ("N items need review, link to X") and don't
-  // warrant their own full-width card (2026-07-03 audit: too many stacked amber
-  // surfaces dilute the "act now" signal).
-  const attentionParts = useMemo(() => {
-    const parts = []
-    if (readyForContent.length > 0) parts.push({ label: `${readyForContent.length} to draft`, to: '/stories?stage=drafting' })
-    if (reviewCount > 0) parts.push({ label: `${reviewCount} to review`, to: '/stories?stage=review' })
-    if (readyToDistribute.length > 0) parts.push({ label: `${readyToDistribute.length} to publish`, to: '/publish' })
-    if (yourReview.length > 0) parts.push({ label: `${yourReview.length} blog to review`, to: '/week' })
-    if (yourAnswerReview.length > 0) parts.push({ label: `${yourAnswerReview.length} answers to review`, to: '/answers-review' })
-    if (wordsApprovalsPending > 0) parts.push({ label: `${wordsApprovalsPending} to approve your words`, to: '/stories', urgent: true })
-    if (supersessionsPending > 0) parts.push({ label: `${supersessionsPending} thinking update${supersessionsPending === 1 ? '' : 's'} to confirm`, to: '/settings/practice-brain' })
-    if (overdueCount > 0) parts.push({ label: `${overdueCount} overdue`, to: '/new', urgent: true })
-    return parts
-  }, [readyForContent, reviewCount, readyToDistribute, yourReview.length, yourAnswerReview.length, wordsApprovalsPending, supersessionsPending, overdueCount])
+  // Disconnected channels. Admin-only inside the hook, so a clinician gets an
+  // empty list rather than an alarm they can't act on.
+  const brokenChannels = useChannelHealth()
 
-  const attentionTotal =
-    readyForContent.length +
-    reviewCount +
-    readyToDistribute.length +
-    yourReview.length +
-    yourAnswerReview.length +
-    wordsApprovalsPending +
-    supersessionsPending +
-    overdueCount
-
-  // Failed posts — a publish bundle.social rejected. A distribution concern, so
-  // it's gated to editors like readyToDistribute. Surfaced as its OWN banner
-  // (below) rather than folded into the attention strip: a dead post is more
-  // urgent than a to-do and must not get buried in the comma list.
-  const failedPieces = useMemo(
-    () => (isEditor ? stories.flatMap((s) => (s.pieces || []).filter((p) => p.status === 'failed')) : []),
-    [stories, isEditor]
+  // The whole queue, in one pure call. Failed posts and dead channels are the
+  // `blocked` tier — they used to render as separate banners bracketing this
+  // strip and were excluded from its count, which is why the headline number
+  // was never actually the total.
+  //
+  // Every `?? []` lives INSIDE the callback on purpose: a `|| []` at the
+  // destructuring site mints a fresh array each render, so it can never be a
+  // stable dependency and the memo would recompute on every single render.
+  const queue = useMemo(
+    () => buildAttentionItems({
+      stories,
+      staff,
+      isEditor,
+      canReview,
+      yourReview: yourReview ?? [],
+      yourAnswerReview: yourAnswerReview ?? [],
+      wordsApprovals: wordsApprovalItems ?? [],
+      supersessions: supersessionItems ?? [],
+      brokenChannels,
+    }),
+    [stories, staff, isEditor, canReview, yourReview, yourAnswerReview, wordsApprovalItems, supersessionItems, brokenChannels]
   )
+  const attentionTotal = queue.total
 
   const isLoading = storiesLoading || staffLoading
 
@@ -361,66 +334,17 @@ export default function Home({ embedded = false }) {
           CTA doesn't appear twice. */}
       {heroState === 'call' && <WeeklyCallHero lastOwnCallAt={lastOwnCallAt} restock={restock} />}
 
-      {/* Failed-publish alert — a post bundle.social rejected. Rendered above the
-          amber attention strip because a dead post is more urgent than a to-do and
-          must not get buried in the comma list. Links straight to the failed
-          piece (single) so the fix is one click away; multiple failures land on
-          Stories pre-filtered to status=failed so it isn't a needle-in-a-haystack
-          hunt through the full list. */}
-      {failedPieces.length > 0 && (
-        <Link
-          to={failedPieces.length === 1 ? `/publish/${failedPieces[0].id}` : '/stories?status=failed'}
-          className="nx-alert nx-alert-crit hover:brightness-[0.98] transition"
-        >
-          <span className="nx-alert-chip nx-alert-chip-crit">
-            <AlertTriangle className="h-4 w-4" />
-          </span>
-          <span className="text-sm font-medium text-foreground">
-            {failedPieces.length} {failedPieces.length === 1 ? 'post' : 'posts'} failed to publish
-          </span>
-          <span className="ml-auto inline-flex items-center gap-0.5 text-sm font-medium text-destructive">
-            Review <ChevronRight className="h-3.5 w-3.5" />
-          </span>
-        </Link>
-      )}
-
-      {/* Compact attention strip — work before reward: the queue sits directly
-          under the greeting so pending items are seen before the celebratory
-          cards below. Detail lives in Overview; this is just the count + a link. */}
-      {attentionTotal > 0 && (
-        <div
-          className="nx-alert nx-alert-act gap-x-3 gap-y-1.5 flex-wrap"
-        >
-          <span className="nx-alert-chip nx-alert-chip-act">
-            <Inbox className="h-4 w-4" />
-          </span>
-          <span className="text-sm font-medium text-foreground">
-            {attentionTotal} {attentionTotal === 1 ? 'item needs' : 'items need'} your attention
-          </span>
-          {attentionParts.length > 0 && (
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
-              {attentionParts.map((part) => (
-                <span key={part.to} className="flex items-center gap-1.5">
-                  <span aria-hidden="true">·</span>
-                  <Link
-                    to={part.to}
-                    className={`font-medium transition-colors inline-flex items-center gap-0.5 ${part.urgent ? 'text-destructive hover:text-destructive/80' : 'text-primary hover:text-primary/80'}`}
-                  >
-                    {part.urgent && <Mic2 className="h-3 w-3" aria-hidden="true" />}
-                    {part.label} <ChevronRight className="h-3 w-3" />
-                  </Link>
-                </span>
-              ))}
-            </span>
-          )}
-        </div>
-      )}
+      {/* Attention queue — work before reward: it sits directly under the
+          greeting so pending items are seen before the celebratory cards below.
+          One card now, not three: the failed-publish and channel-health banners
+          used to bracket a count strip and were excluded from its total, so the
+          headline number understated the real workload (Q, 2026-08-11). They
+          are the `blocked` tier here. Every row deep-links to the item itself. */}
+      <AttentionQueue queue={queue} />
 
       <InstallBanner />
 
       <FeedbackResolvedBanner />
-
-      <ChannelHealthBanner />
 
       {/* F18 — the disclosure beat: what Bernard has quietly noticed about how
           this clinician's interviews have evolved, plus a receipt of what

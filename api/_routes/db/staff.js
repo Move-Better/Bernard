@@ -43,7 +43,7 @@ async function countRefs(table, query) {
 }
 
 const CLINICIAN_RECIPE_FIELDS = 'default_audience,default_story_type,default_tone,default_voice_mode'
-const CLINICIAN_BASE_FIELDS = `id,name,user_id,created_by_id,created_by_email,created_at,voice_notes,voice_notes_refreshed_at,voice_notes_edits_analyzed,preferred_length,tts_settings,eleven_voice_id,voice_clone_consent_at,voice_clone_revoked_at,voice_clone_opt_out,blog_review_enabled,interview_style_memory,${CLINICIAN_RECIPE_FIELDS}`
+const CLINICIAN_BASE_FIELDS = `id,name,user_id,created_by_id,created_by_email,created_at,archived_at,voice_notes,voice_notes_refreshed_at,voice_notes_edits_analyzed,preferred_length,tts_settings,eleven_voice_id,voice_clone_consent_at,voice_clone_revoked_at,voice_clone_opt_out,blog_review_enabled,interview_style_memory,${CLINICIAN_RECIPE_FIELDS}`
 const INTERVIEW_FIELDS = 'id,topic,status,capture_mode,created_at,updated_at,owner_id,owner_email,verbatim_flags,messages,session_state,location_id,prototype_id,campaign_id,campaign:campaigns(id,name),summary_text,summary_generated_at'
 
 // Slim shape for the Stories list. Drops the heavy `messages` and `session_state`
@@ -53,7 +53,10 @@ const INTERVIEW_FIELDS = 'id,topic,status,capture_mode,created_at,updated_at,own
 // per-card campaign badge without a second hop.
 // capture_mode included so the "Real moments" filter chip can work client-side.
 const INTERVIEW_FIELDS_CARD = 'id,workspace_id,topic,status,capture_mode,session_state,created_at,updated_at,owner_id,owner_email,location_id,prototype_id,pull_quote_candidates,campaign_id,campaign:campaigns(id,name)'
-const CLINICIAN_FIELDS_CARD = 'id,workspace_id,name,user_id,created_at'
+// archived_at drives Home's attention queue, which filters archived people out
+// of the "slipping" tier (migration 210) — the card view is what Home reads,
+// so omitting it here would make the filter a silent no-op.
+const CLINICIAN_FIELDS_CARD = 'id,workspace_id,name,user_id,created_at,archived_at'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 

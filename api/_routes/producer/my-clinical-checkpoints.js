@@ -33,13 +33,26 @@ function sb(path, init = {}) {
   })
 }
 
-async function countRows(path) {
-  const r = await sb(`${path}${path.includes('?') ? '&' : '?'}select=id`, {
-    headers: { Prefer: 'count=exact', Range: '0-0' },
-  })
-  if (!r.ok) { console.error('[producer/my-clinical-checkpoints] count failed:', path, r.status); return 0 }
-  const cr = r.headers.get('content-range') || ''
-  return Number(cr.split('/')[1]) || 0
+// Return the ROWS, not just how many there are.
+//
+// This route used to answer with two bare integers, which is why Home could
+// only ever render "N to approve your words" pointing at an unfiltered
+// /stories. Home's attention queue names every item and deep-links it
+// (2026-08-11), so each checkpoint has to arrive with enough identity to
+// render itself: an id to link to and a title to show.
+//
+// Capped at 25 per category — the queue is a to-do list, not a report, and a
+// clinician with more than 25 pending words-approvals has a different problem
+// than a longer list would solve.
+const MAX_ITEMS = 25
+
+async function fetchRows(path, select) {
+  const r = await sb(`${path}&select=${select}&limit=${MAX_ITEMS}`)
+  if (!r.ok) {
+    console.error('[producer/my-clinical-checkpoints] fetch failed:', path, r.status)
+    return []
+  }
+  return (await r.json().catch(() => [])) || []
 }
 
 export default async function handler(req, res) {
@@ -53,20 +66,49 @@ export default async function handler(req, res) {
 
   if (!(await enforceLimit(req, res, 'generic', ws.id))) return
 
+  const empty = { wordsApprovals: 0, supersessions: 0, wordsApprovalItems: [], supersessionItems: [] }
+
   const clerkUserId = auth.userId || auth.user?.id || null
-  if (!clerkUserId) return res.status(200).json({ wordsApprovals: 0, supersessions: 0 })
+  if (!clerkUserId) return res.status(200).json(empty)
 
   const staffRes = await sb(`staff?workspace_id=eq.${ws.id}&user_id=eq.${encodeURIComponent(clerkUserId)}&select=id&limit=1`)
   const staffRows = staffRes.ok ? await staffRes.json().catch(() => []) : []
   const staffId = staffRows[0]?.id || null
-  if (!staffId) return res.status(200).json({ wordsApprovals: 0, supersessions: 0 })
+  if (!staffId) return res.status(200).json(empty)
 
   try {
-    const [wordsApprovals, supersessions] = await Promise.all([
-      countRows(`interviews?workspace_id=eq.${ws.id}&staff_id=eq.${staffId}&status=eq.completed&summary_text=not.is.null&words_approved_at=is.null`),
-      countRows(`practice_memory_supersessions?workspace_id=eq.${ws.id}&staff_id=eq.${staffId}&status=eq.pending`),
+    const [wordsRows, supersessionRows] = await Promise.all([
+      fetchRows(
+        `interviews?workspace_id=eq.${ws.id}&staff_id=eq.${staffId}&status=eq.completed&summary_text=not.is.null&words_approved_at=is.null&order=created_at.asc`,
+        'id,topic,created_at',
+      ),
+      fetchRows(
+        `practice_memory_supersessions?workspace_id=eq.${ws.id}&staff_id=eq.${staffId}&status=eq.pending&order=detected_at.asc`,
+        'id,new_excerpt,new_source_label,detected_at',
+      ),
     ])
-    return res.status(200).json({ wordsApprovals, supersessions })
+
+    const wordsApprovalItems = wordsRows.map((r) => ({
+      id: r.id,
+      topic: r.topic || '',
+      created_at: r.created_at,
+    }))
+
+    // `new_excerpt` is the changed teaching itself, which is what the person
+    // actually has to recognize; the source label is a weaker fallback.
+    const supersessionItems = supersessionRows.map((r) => ({
+      id: r.id,
+      summary: (r.new_excerpt || r.new_source_label || '').trim(),
+      created_at: r.detected_at,
+    }))
+
+    return res.status(200).json({
+      // Counts kept alongside the items so an older cached client keeps working.
+      wordsApprovals: wordsApprovalItems.length,
+      supersessions: supersessionItems.length,
+      wordsApprovalItems,
+      supersessionItems,
+    })
   } catch (e) {
     console.error('[producer/my-clinical-checkpoints] failed:', e?.message)
     return res.status(500).json({ error: 'fetch_failed' })
