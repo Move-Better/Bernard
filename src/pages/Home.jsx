@@ -32,6 +32,22 @@ import { useChannelHealth } from '@/lib/channelHealth'
 
 const RESUME_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 
+// Section label when Home is embedded in CombinedHome, which stacks
+// ProducerHome's queue above it. Naming the hat is the point (Q, 2026-08-11):
+// two lists of work on one page read as one list disagreeing with itself
+// unless each says which role it speaks to.
+//
+// Shared by the skeleton and the loaded page on purpose — they used to carry
+// separate copies of this string, so changing one alone made the label flicker
+// mid-load.
+function PracticeSectionLabel() {
+  return (
+    <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+      Your practice <span className="text-muted-foreground/70">· as a clinician</span>
+    </h2>
+  )
+}
+
 // Greeting ribbon — depends only on user + workspace (not the stories/staff
 // queries), so it renders immediately, including during load.
 function GreetingRibbon({ greeting, callFirst }) {
@@ -70,7 +86,7 @@ function HomeSkeleton({ greeting, callFirst, embedded }) {
     <div className="flex flex-col gap-6" role="status" aria-busy="true">
       <span className="sr-only">Loading your home…</span>
       {embedded ? (
-        <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Your practice</h2>
+        <PracticeSectionLabel />
       ) : (
         <GreetingRibbon greeting={greeting} callFirst={callFirst} />
       )}
@@ -247,8 +263,13 @@ export default function Home({ embedded = false }) {
       wordsApprovals: wordsApprovalItems ?? [],
       supersessions: supersessionItems ?? [],
       brokenChannels,
+      // `embedded` means CombinedHome stacked ProducerHome above us, so the
+      // producer already has its own queue and the operational rows belong
+      // there, not here. Standalone (a clinician-only workspace has no
+      // ProducerHome) Home stays the only home and keeps everything.
+      producerSurfaceShown: embedded,
     }),
-    [stories, staff, isEditor, canReview, yourReview, yourAnswerReview, wordsApprovalItems, supersessionItems, brokenChannels]
+    [stories, staff, isEditor, canReview, yourReview, yourAnswerReview, wordsApprovalItems, supersessionItems, brokenChannels, embedded]
   )
   const attentionTotal = queue.total
 
@@ -317,7 +338,7 @@ export default function Home({ embedded = false }) {
           embedded inside CombinedHome, which owns the single page-level
           greeting; a section label stands in its place instead. */}
       {embedded ? (
-        <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Your practice</h2>
+        <PracticeSectionLabel />
       ) : (
         <GreetingRibbon greeting={greeting} callFirst={callFirst} />
       )}

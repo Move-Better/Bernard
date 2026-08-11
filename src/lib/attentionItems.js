@@ -25,6 +25,38 @@ import { stripStoryDatePrefix } from '@/lib/storyTitle'
 /** Severity tiers, most urgent first. Render order is exactly this order. */
 export const TIERS = /** @type {const} */ (['blocked', 'waiting', 'slipping'])
 
+/**
+ * Which hat you wear to act on each kind of item.
+ *
+ * CombinedHome stacks ProducerHome ("Your queue") above Home ("Your practice")
+ * for an owner who is also a clinician. Both surfaces list work, and without a
+ * rule they drift into listing the SAME work under two different definitions
+ * with two different numbers — which is how a queue stops being believed.
+ *
+ * The rule (Q, 2026-08-11): an item appears in exactly one region, chosen by
+ * which hat you wear to act on it. Distribution and operations are the
+ * producer's; capture and your own clinical judgment are the clinician's.
+ *
+ * Only applied when the producer surface is actually on screen — a
+ * clinician-only workspace has no ProducerHome, so Home is the only home and
+ * must keep everything.
+ */
+export const KIND_OWNER = /** @type {const} */ ({
+  // Producer — ProducerHome's checkpoints already own these:
+  channel: 'producer',      // → health.channels + publish_failed
+  failed: 'producer',       // → publish_failed
+  publish: 'producer',      // → approved_unscheduled
+  review: 'producer',       // → post_approvals (non-blog); blog goes to the
+                            //   clinician ledger, "not on your queue"
+  draft: 'producer',        // → post_approvals
+  // Clinician — nothing on ProducerHome claims these, by design:
+  words: 'clinician',
+  blog: 'clinician',
+  answer: 'clinician',
+  supersession: 'clinician',
+  overdue: 'clinician',
+})
+
 /** A person is "slipping" once this long has passed since their last interview. */
 export const OVERDUE_MS = 30 * 24 * 60 * 60 * 1000
 
@@ -108,6 +140,7 @@ export function buildAttentionItems({
   wordsApprovals = [],
   supersessions = [],
   brokenChannels = [],
+  producerSurfaceShown = false,
   now = Date.now(),
 } = {}) {
   const items = []
@@ -290,14 +323,27 @@ export function buildAttentionItems({
 
   // Severity first, then oldest first inside a tier — the thing that has been
   // waiting longest is the thing most likely to be forgotten.
-  items.sort((a, b) => (TIER_RANK[a.tier] - TIER_RANK[b.tier]) || (a.sortAt - b.sortAt))
+  // Hand producer-owned work to the producer surface when it's on screen, so
+  // the same job is never listed twice under two different counts. Filtered
+  // AFTER building rather than gated at each push, so KIND_OWNER stays the one
+  // place the boundary is written down — a per-push `if` in ten places is how
+  // the rule rots. A kind missing from the map is kept, so a new kind can
+  // never silently vanish from Home by omission.
+  const visible = producerSurfaceShown
+    ? items.filter((i) => KIND_OWNER[i.kind] !== 'producer')
+    : items
+
+  visible.sort((a, b) => (TIER_RANK[a.tier] - TIER_RANK[b.tier]) || (a.sortAt - b.sortAt))
 
   const byTier = { blocked: [], waiting: [], slipping: [] }
-  for (const item of items) byTier[item.tier].push(item)
+  for (const item of visible) byTier[item.tier].push(item)
 
   return {
-    items,
-    total: items.length,
+    // `visible`, not `items` — the headline count must equal the rows on
+    // screen. Returning the unfiltered total here would recreate the exact
+    // dishonesty this card was built to remove.
+    items: visible,
+    total: visible.length,
     byTier,
     counts: {
       blocked: byTier.blocked.length,

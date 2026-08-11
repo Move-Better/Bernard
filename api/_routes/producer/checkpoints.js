@@ -135,7 +135,7 @@ async function publishFailures7d(wsId) {
     `agent_actions?workspace_id=eq.${wsId}&kind=eq.publish_failed&created_at=gte.${since}` +
     `&select=id,content_item_id,created_at&order=created_at.desc&limit=200`,
   )
-  if (!failures.length) return 0
+  if (!failures.length) return { count: 0, firstItemId: null }
   const oks = await jsonRows(
     `agent_actions?workspace_id=eq.${wsId}&kind=eq.published&created_at=gte.${since}` +
     `&select=content_item_id,created_at&limit=200`,
@@ -146,11 +146,18 @@ async function publishFailures7d(wsId) {
     const t = Date.parse(o.created_at || '') || 0
     if (t > (latestOk.get(o.content_item_id) || 0)) latestOk.set(o.content_item_id, t)
   }
-  return failures.filter((f) => {
+  const unresolved = failures.filter((f) => {
     if (!f.content_item_id) return true
     const failedAt = Date.parse(f.created_at || '') || 0
     return (latestOk.get(f.content_item_id) || 0) < failedAt
-  }).length
+  })
+  // Return the first failed item's id alongside the count so a single failure
+  // can deep-link to the post itself. The card used to send every case to
+  // /settings/integrations — a guess at the cause, and the wrong page whenever
+  // the failure wasn't a dead connection (a rejected format, an oversized
+  // media set). Home's attention queue already linked to /publish/:id; this
+  // brings the producer surface up to the same standard.
+  return { count: unresolved.length, firstItemId: unresolved.find((f) => f.content_item_id)?.content_item_id || null }
 }
 
 async function escalatedCaptions(wsId) {
@@ -323,13 +330,20 @@ export default async function handler(req, res) {
   const queue = []
 
   // Tier 1 — broken.
-  if (failures > 0) {
+  if (failures.count > 0) {
     queue.push({
       type: 'publish_failed', tier: 1,
-      title: `Fix ${failures} failed publish${failures === 1 ? '' : 'es'}`,
+      title: `Fix ${failures.count} failed publish${failures.count === 1 ? '' : 'es'}`,
       why: 'A post didn’t go out. It stays here until you reconnect the channel or retry.',
       gate: 'You are the checkpoint — this post is stuck until you act.',
-      count: failures, ctaHref: '/settings/integrations', ctaLabel: 'Check connections →',
+      count: failures.count,
+      // One click to the post that failed when there is a single one; the
+      // pre-filtered list otherwise. Only fall back to the integrations page
+      // when no failure carries an item id at all.
+      ctaHref: failures.count === 1 && failures.firstItemId
+        ? `/publish/${failures.firstItemId}`
+        : (failures.firstItemId ? '/stories?status=failed' : '/settings/integrations'),
+      ctaLabel: failures.count === 1 && failures.firstItemId ? 'Open the post →' : 'Review failures →',
     })
   }
   if (escalated > 0) {
@@ -430,12 +444,44 @@ export default async function handler(req, res) {
 
   queue.sort((a, b) => a.tier - b.tier)
 
+  // Honest headline numbers (Q, 2026-08-11).
+  //
+  // The page used to say "You're the gate for N things today" where N was
+  // queue.length — the number of CARDS. One of those cards routinely holds 157
+  // proposed clips, so the producer headline understated the real workload by
+  // an order of magnitude while looking like the calmer number, sitting next
+  // to Home's card which counts individual items. The two read as
+  // contradictory when they were simply measuring different units.
+  //
+  // `decisions` is items, not cards — but a naive sum over `count` would be
+  // dishonest the other way, because learning_checkin's count is how many
+  // posts there are to REVIEW (62), not how many decisions are pending (one:
+  // do the check-in). So each card declares `items` explicitly, and the sum
+  // uses that.
+  //
+  // Backlog is split out rather than folded in: tier-4 cards say in their own
+  // gate line that nothing is blocked by them, so adding a 157-clip pile to
+  // the "waiting on you" number would overstate urgency as badly as the old
+  // headline understated volume.
+  const DECISION_ITEMS = {
+    // One review action, regardless of how much there is to look at.
+    learning_checkin: () => 1,
+  }
+  for (const card of queue) {
+    card.items = DECISION_ITEMS[card.type] ? DECISION_ITEMS[card.type]() : (card.count || 0)
+  }
+  const summary = {
+    checkpoints: queue.length,
+    decisions: queue.filter((c) => c.tier <= 3).reduce((s, c) => s + c.items, 0),
+    backlog: queue.filter((c) => c.tier >= 4).reduce((s, c) => s + c.items, 0),
+  }
+
   const ledger = {
     yours: [
       { type: 'post_approvals', label: 'Post approvals', count: posts.count },
       { type: 'clips_proposed', label: 'Clip review', count: clips },
       { type: 'video_packages_complete', label: 'Video packages', count: packages },
-      { type: 'publish_failed', label: 'Publish failures', count: failures },
+      { type: 'publish_failed', label: 'Publish failures', count: failures.count },
       { type: 'escalated_caption', label: 'Escalated captions', count: escalated },
       { type: 'consent_pending', label: 'Media consent', count: consent },
     ],
@@ -449,8 +495,9 @@ export default async function handler(req, res) {
 
   return res.status(200).json({
     queue,
+    summary,
     ledger,
     waitingOnClinicians: clinician.perStaff,
-    health: { channels: health, publishFailures7d: failures },
+    health: { channels: health, publishFailures7d: failures.count },
   })
 }

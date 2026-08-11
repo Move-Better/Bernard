@@ -125,6 +125,26 @@ export default function ProducerHome({ embedded = false }) {
   const waiting = data?.waitingOnClinicians || []
   const channels = data?.health?.channels || []
 
+  // Honest headline (Q, 2026-08-11). This line used to count CARDS — "you're
+  // the gate for 5 things today" — while one of those cards held 157 proposed
+  // clips, so it understated the real workload by an order of magnitude and
+  // read as contradicting Home's card, which counts individual items.
+  //
+  // `decisions` and `backlog` are computed server-side in
+  // /api/producer/checkpoints, where the tier definitions live, so this line
+  // and the ranking can never drift apart. A stale cached payload without
+  // `summary` falls back to the old card count rather than rendering NaN.
+  const summary = data?.summary
+  const decisions = summary ? summary.decisions : queue.length
+  const backlog = summary ? summary.backlog : 0
+  const headline = decisions > 0
+    ? `You're the gate for ${decisions} thing${decisions === 1 ? '' : 's'} today — here they are, in order.`
+    : backlog > 0
+      // Tier-4 cards say in their own words that nothing is blocked by them,
+      // so a backlog-only queue is genuinely "nothing blocking", not "clear".
+      ? 'Nothing is blocking publishing right now.'
+      : 'Nothing is waiting on you right now.'
+
   if (error) {
     return <ErrorState message="Couldn't load your queue." onRetry={refetch} />
   }
@@ -133,15 +153,20 @@ export default function ProducerHome({ embedded = false }) {
     <div className={embedded ? 'flex flex-col gap-6' : 'flex flex-col gap-6 py-6'}>
       <div>
         {embedded ? (
-          <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Your queue</h2>
+          // Name the hat. CombinedHome stacks this queue above Home's practice
+          // card, and without saying which role each section speaks to, two
+          // lists of work on one page read as one list that disagrees with
+          // itself (Q, 2026-08-11).
+          <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            Your queue <span className="text-muted-foreground/70">· as the producer</span>
+          </h2>
         ) : (
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground">{greeting}</h1>
         )}
         {!isLoading && (
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {queue.length > 0
-              ? `You're the gate for ${queue.length} thing${queue.length === 1 ? '' : 's'} today — here they are, in order.`
-              : 'Nothing is waiting on you right now.'}
+            {headline}
+            {backlog > 0 && ` A further ${backlog} sit in the backlog below.`}
             {waiting.length > 0 && ` Your clinicians are sitting on ${waiting.reduce((s, w) => s + w.answersToReview + w.wordsApprovals + w.blogDrafts + w.supersessions, 0)} more.`}
           </p>
         )}
