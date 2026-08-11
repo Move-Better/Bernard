@@ -100,7 +100,7 @@ export default async function handler(req, res) {
       // Disambiguate the embed: video_segments has TWO FKs to media_assets
       // (source_asset_id + rendered_asset_id from migration 113), so PostgREST
       // needs the explicit FK constraint or it 500s with PGRST201 (ambiguous).
-      `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status,transcript_words)`,
+      `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status,transcript_words,size_bytes,render_proxy_url)`,
   )
   if (!segRes.ok) return res.status(500).json({ error: 'db_error' })
   const segments = await segRes.json()

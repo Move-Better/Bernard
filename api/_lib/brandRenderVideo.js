@@ -37,7 +37,11 @@ import { channelSpec } from './postFrames.js'
 
 // Fast-path threshold: sources at/below this stream to /tmp untouched (the
 // original is preserved for the render). ZV-1F 4K clips can be large.
-const MAX_VIDEO_BYTES = 500 * 1024 * 1024
+//
+// Exported: this is also the threshold videoRenderProxy.js uses to decide
+// whether an asset needs a persisted proxy — the two must never drift apart,
+// or a source could be "large" for one purpose and "small" for the other.
+export const MAX_VIDEO_BYTES = 500 * 1024 * 1024
 // Absolute ingest ceiling. Sources between MAX_VIDEO_BYTES and this are
 // downscaled-on-ingest straight from the URL (the full original never lands on
 // the function's ephemeral /tmp); beyond this we refuse rather than spend
@@ -51,6 +55,46 @@ const MAX_INGEST_BYTES = 4 * 1024 * 1024 * 1024 // 4GB
 // `url:start:dur` for the large-source proxy (window-specific). Value =
 // { tmpPath, downstreamStart, refCount, promise }.
 const _sourceCache = new Map()
+
+/**
+ * Transcode a REMOTE video URL directly to a local 1080-class file via
+ * ffmpeg's own URL input — no separate full download first. The one shared
+ * ffmpeg invocation for BOTH acquireSourceFile's large-source ingest
+ * (windowed to a single clip, `clipDur` always a real number) and
+ * videoRenderProxy.js's whole-asset proxy generator (unwindowed — omit
+ * `clipDur` to transcode the entire input, since a persisted proxy has to
+ * cover every future segment's window, not just one). One definition so the
+ * encode settings can never drift between the two callers.
+ *
+ * Probes the remote source for the first DECODABLE audio stream BEFORE the
+ * downscale re-encode. ffmpeg's default stream selection picks the audio
+ * track with the most channels — on an iPhone spatial-audio source that's the
+ * undecodable `apac` track (4ch) over the real `aac` stereo (2ch), so a bare
+ * `-c:a aac` would crash with exit 234 before the file is ever written (same
+ * class as the render-step bug, #1208). Maps video + the one good audio
+ * stream explicitly (or `-an` when none decodes).
+ *
+ * ORIENTATION: `-map 0:v:0` + a simple `-vf` does NOT disable autorotation
+ * (that's `-noautorotate`, which we never add) — the filtergraph input is
+ * still auto-rotated, so portrait sources stay upright exactly as before.
+ */
+export async function transcodeRemoteToLocal({ videoUrl, outPath, clipStart = 0, clipDur = null }) {
+  const audioMap = await probeUsableAudioMap(videoUrl)
+  const args = []
+  if (clipStart > 0) args.push('-ss', String(clipStart))
+  if (clipDur != null) args.push('-t', String(clipDur))
+  args.push(
+    '-i', videoUrl,
+    '-map', '0:v:0',                             // first video stream (then -vf applies)
+    ...(audioMap ? ['-map', audioMap] : []),      // the one decodable audio stream, if any
+    '-vf', 'scale=w=1920:h=1920:force_original_aspect_ratio=decrease:flags=lanczos',
+    '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '26',
+    ...(audioMap ? ['-c:a', 'aac', '-b:a', '128k'] : ['-an']),
+    '-movflags', '+faststart',
+    '-y', outPath,
+  )
+  await runFfmpeg(args)
+}
 
 async function acquireSourceFile({ videoUrl, declaredLen, clipStart, clipDur, id }) {
   // Mirror the original branching: fast path only when size is known and ≤ threshold.
@@ -90,33 +134,11 @@ async function acquireSourceFile({ videoUrl, declaredLen, clipStart, clipDur, id
       if (!fetchRes.ok) throw new Error(`Source video fetch failed: ${fetchRes.status}`)
       await pipeline(Readable.fromWeb(fetchRes.body), createWriteStream(tmpPath))
     } else {
-      // Probe the remote source for the first DECODABLE audio stream BEFORE the
-      // downscale re-encode. ffmpeg's default stream selection picks the audio
-      // track with the most channels — on an iPhone spatial-audio source that's
-      // the undecodable `apac` track (4ch) over the real `aac` stereo (2ch), so a
-      // bare `-c:a aac` would crash this ingest with exit 234 before the proxy is
-      // ever written (same class as the render-step bug, #1208). Map video + the
-      // one good audio stream explicitly (or `-an` when none decodes) so the proxy
-      // the render step later probes is always clean.
-      //
-      // ORIENTATION: `-map 0:v:0` + simple `-vf` does NOT disable autorotation
-      // (that's `-noautorotate`, which we never add) — the filtergraph input is
-      // still auto-rotated, so portrait sources stay upright exactly as before.
-      const ingestAudioMap = await probeUsableAudioMap(videoUrl)
-      const ingestArgs = []
-      if (clipStart > 0) ingestArgs.push('-ss', String(clipStart))
-      ingestArgs.push(
-        '-t', String(clipDur),
-        '-i', videoUrl,
-        '-map', '0:v:0',                                     // first video stream (then -vf applies)
-        ...(ingestAudioMap ? ['-map', ingestAudioMap] : []), // the one decodable audio stream, if any
-        '-vf', 'scale=w=1920:h=1920:force_original_aspect_ratio=decrease:flags=lanczos',
-        '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '26',
-        ...(ingestAudioMap ? ['-c:a', 'aac', '-b:a', '128k'] : ['-an']),
-        '-movflags', '+faststart',
-        '-y', tmpPath,
-      )
-      await runFfmpeg(ingestArgs)
+      // Shared with videoRenderProxy.js's whole-asset proxy generator — see
+      // transcodeRemoteToLocal for the audio-map / orientation rationale. This
+      // call always passes a real clipDur (the per-render window), unchanged
+      // from before the extraction.
+      await transcodeRemoteToLocal({ videoUrl, outPath: tmpPath, clipStart, clipDur })
     }
   })().catch((err) => {
     // On failure, evict the cache entry so the next attempt retries fresh.

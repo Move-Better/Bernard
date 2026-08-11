@@ -26,6 +26,7 @@
 
 import { put as blobPut } from '@vercel/blob'
 import { renderVideoChannel } from './brandRenderVideo.js'
+import { ensureRenderProxy } from './videoRenderProxy.js'
 import { sliceWordsToWindow } from './karaokeCaptions.js'
 import { generateCaption } from './captionGen.js'
 import { generateHeadline } from './headlineGen.js'
@@ -254,12 +255,20 @@ export async function renderSegmentToReel({ ws, seg, asset, staffName, createDra
       ? sliceWordsToWindow(asset.transcript_words, startSec, durationSec)
       : null
 
+    // A large (4K) source gets a persisted, whole-asset 1080-class proxy on
+    // first use — see videoRenderProxy.js. Every later render of ANY segment
+    // from this same asset then hits acquireSourceFile's fast path (a raw
+    // copy of the already-small proxy) instead of re-decoding the 4K master.
+    // Best-effort: falls back to asset.blob_url on any failure, so a proxy
+    // problem is never why a reel didn't get made.
+    const videoUrl = await ensureRenderProxy({ asset, ws })
+
     // Render the ≤60s window as a reel-format clip.
     // No captionText → no brand band (brandRender.js draws it only when there is
     // text for it). Captions sit in the lower third so they never collide with
     // the hook card, which the old top-positioned default did on every reel.
     const { buffer, width, height } = await renderVideoChannel({
-      videoUrl: asset.blob_url,
+      videoUrl,
       channel: CLIP_CHANNEL,
       workspace: ws,
       staffName,
@@ -418,7 +427,7 @@ export async function selectReelCandidates({ ws, limit }) {
       `&rendered_asset_id=is.null&order=score.desc&limit=120` +
       `&select=id,source_asset_id,staff_id,start_sec,end_sec,hook,transcript_excerpt,score,` +
       `speaker_voice,speaker_voice_confidence,` +
-      `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status,transcript_words)`,
+      `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status,transcript_words,size_bytes,render_proxy_url)`,
   )
   if (!res.ok) {
     console.error('[reelFactory] candidate fetch failed:', res.status)
