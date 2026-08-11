@@ -16,6 +16,7 @@ import { apiFetch } from '@/lib/api'
 import { buildTemplateFromEditor, suggestTemplateName } from '@/lib/videoTemplateCapture'
 import { posthogCapture } from '@/lib/posthog'
 import { getMediaAsset, updateMediaAsset } from '@/lib/mediaLib'
+import { resolveVideoEditSource, shouldUseSourceWindow } from '@/lib/videoEditSource'
 import { getSegments, renderWholeVideo, findClips, updateSegment, exportClipToBroll } from '@/lib/clipsLib'
 import { updateBrandStyle } from '@/lib/brandKitLib'
 import AdVideoExportModal from '@/components/AdVideoExportModal'
@@ -145,7 +146,7 @@ function normCaptionText(s) {
 
 // ── CANVAS ───────────────────────────────────────────────────────────────────
 function Canvas({ ctx }) {
-  const { videoRef, asset, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, dragging, snap, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap, logCaptionCorrection, alignGuidesOn } = ctx
+  const { videoRef, asset, editVideoUrl, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, dragging, snap, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap, logCaptionCorrection, alignGuidesOn } = ctx
   // Original caption text captured when inline editing starts, so we can log the
   // (heard → fixed) correction once on commit — activeLine mutates on each
   // keystroke (editLine re-splits), so it can't be read at blur time.
@@ -205,9 +206,9 @@ function Canvas({ ctx }) {
           style={{ containerType: 'inline-size', ...(clipSelRing ? { boxShadow: '0 0 0 2px hsl(var(--primary))' } : null) }}
           onClick={togglePlay}
         >
-          {asset?.blob_url ? (
+          {editVideoUrl ? (
             <video
-              ref={videoRef} src={asset.blob_url} poster={asset.thumbnail_url || undefined} preload="metadata" playsInline
+              ref={videoRef} src={editVideoUrl} poster={asset.thumbnail_url || undefined} preload="metadata" playsInline
               className="absolute inset-0 h-full w-full object-cover"
               style={{ filter: gradeToCanvasFilter(grade), transform: kbTransform || `scale(${z})`, transformOrigin: kbTransform ? 'center' : `${reframe.x}% ${reframe.y}%` }}
               onLoadedMetadata={(e) => ctx.setVideoDuration(e.target.duration)}
@@ -1172,8 +1173,25 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     return v && UUID_RE.test(v) ? v : null
   }, [location.search])
 
-  const { data: asset, isLoading, error } = useQuery({ queryKey: ['media-asset', assetId], queryFn: () => getMediaAsset(assetId), enabled: !!assetId, retry: 1 })
+  // Distinct query key ('src') so the source_clip-enriched asset the editor needs
+  // can't be clobbered by MediaDetail's plain ['media-asset', id] cache entry.
+  const { data: asset, isLoading, error } = useQuery({ queryKey: ['media-asset', assetId, 'src'], queryFn: () => getMediaAsset(assetId, { withSourceClip: true }), enabled: !!assetId, retry: 1 })
   const { data: segData } = useQuery({ queryKey: ['video-segments', assetId], queryFn: () => getSegments(assetId), enabled: !!assetId, staleTime: 30_000 })
+
+  // A caption-baked auto-reel's editable source is the RAW un-captioned interview
+  // + this segment's source window (server resolves it as asset.source_clip via
+  // video_segments.rendered_asset_id). Editing the baked blob directly would
+  // re-caption an already-captioned clip — double karaoke in the preview and a
+  // double-baked track on save. resolveVideoEditSource points the <video>, the
+  // caption transcript, and the render at the raw source; the source window is
+  // applied to startSec/endSec on hydrate below, and the existing trim/playback/
+  // timeline machinery (already source-relative for manual clips cut from a long
+  // interview) handles the rest unchanged. A manual clip / raw upload has no
+  // source_clip and edits from its own blob exactly as before. Pure logic lives in
+  // videoEditSource.js (tested) so this invariant can't silently regress.
+  const editSource = useMemo(() => resolveVideoEditSource(asset, assetId), [asset, assetId])
+  const editVideoUrl = editSource.videoUrl
+  const editAssetId = editSource.assetId
 
   // Embedded from a post (the publish flow) opens on the post caption — the
   // text that publishes below the video, and what users came here to review.
@@ -1257,6 +1275,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     if (!asset || restoredRef.current) return
     restoredRef.current = true
     let draftAccent = null
+    let draftStartSec = null
     try {
       const server = asset.video_edit_draft
       let local = null
@@ -1285,7 +1304,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
         if (Array.isArray(d.overlays)) setOverlays(d.overlays)
         if (d.speed) setSpeedState(d.speed)
         if (d.caption) { setCaptionState((c) => ({ ...c, ...d.caption })); draftAccent = d.caption.accent }
-        if (Number.isFinite(d.startSec)) setStartSec(d.startSec)
+        if (Number.isFinite(d.startSec)) { setStartSec(d.startSec); draftStartSec = d.startSec }
         if (Number.isFinite(d.endSec)) setEndSec(d.endSec)
         if (Array.isArray(d.cuts)) setCuts(d.cuts)
         if (d.music) setMusic(d.music)
@@ -1305,6 +1324,18 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
         seededRef.current = true // a restored trim wins over the proposal seed
       }
     } catch { /* corrupt draft — open fresh */ }
+    // A caption-baked auto-reel edits from its RAW source (asset.source_clip): the
+    // draft's stored trim is CLIP-relative (0..N, from when the entry pointed at
+    // the baked clip), so replace it with the true SOURCE window here — otherwise
+    // the raw <video> would play/render the wrong region (the interview's start,
+    // not the moment). seededRef stops the proposal seed from clobbering it. A
+    // genuine source-relative re-trim (startSec >= the window start) is preserved.
+    const srcWindow = resolveVideoEditSource(asset, assetId).window
+    if (shouldUseSourceWindow(draftStartSec, srcWindow)) {
+      setStartSec(srcWindow.startSec)
+      setEndSec(srcWindow.endSec)
+      seededRef.current = true
+    }
     // Seed the caption accent from the workspace brand when the draft didn't
     // bring a valid one. The bake always receives caption.accent (renderBody),
     // and the server resolves a missing/invalid accent via resolveBrandColors —
@@ -1417,7 +1448,12 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     if (videoDuration > 0) setEndSec((e) => Math.min(e, videoDuration))
   }, [videoDuration])
 
-  const rawWords = useMemo(() => sliceWords(asset?.transcript_words, startSec, durationSec), [asset, startSec, durationSec])
+  // For a baked auto-reel, editTranscriptWords is the RAW source's word track;
+  // slicing it to the source window [startSec,endSec] rebases to 0 and yields the
+  // exact words reelFactory baked — so the live caption preview matches the clip
+  // (and the un-captioned raw video underneath), WYSIWYG. For a manual clip it is
+  // the asset's own transcript, unchanged.
+  const rawWords = useMemo(() => sliceWords(editSource.transcriptWords, startSec, durationSec), [editSource, startSec, durationSec])
   // Apply per-word corrections (keyed by absolute start time). A corrected word
   // carries `edited: true` so the Script list can mark it. Text-only change —
   // timings are untouched, so cut ranges and karaoke timing stay valid.
@@ -1691,7 +1727,10 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   })
   const captionSummary = () => lines.map((l) => l.text).join(' ').slice(0, 500)
   const renderBody = () => ({
-    assetId, channels: [channelFor(format, piece?.platform)], startSec, durationSec, subtitles: caption.preset !== 'off',
+    // editAssetId is the RAW source for a baked auto-reel (else the asset itself),
+    // and startSec/endSec are its source-relative window — so the bake renders the
+    // un-captioned source once with these captions, never re-caption the baked clip.
+    assetId: editAssetId, channels: [channelFor(format, piece?.platform)], startSec, durationSec, subtitles: caption.preset !== 'off',
     overlayPosition: caption.position, overlaySize: caption.size, captionAccent: caption.accent,
     captionAnim: caption.anim, captionStyle: caption.style,
     grade, reframe, speed, cuts,
@@ -1969,7 +2008,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   const anyDest = dest.broll || dest.ad
 
   const ctx = {
-    videoRef, asset, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
+    videoRef, asset, editVideoUrl, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
     format, setFormat, formatCss: (FORMATS[format] || FORMATS.reel).css, formatDim: (FORMATS[format] || FORMATS.reel).dim,
     reframe, setReframe: setReframeKey, autoReframe, autoReframing, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
     setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, editWord, logCaptionCorrection, resetCaptions, captionsEdited, cuts, toggleWordCut, addCuts, clearCuts, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,

@@ -33,8 +33,14 @@ import { resolveVideoTemplate, headlineHoldSeconds, isCustomTemplateId } from '.
 
 /**
  * The look this workspace's reels render with: its pin, else its default custom
- * template, else the built-in hook_card. Custom rows are fetched only when the
- * pin is a uuid or no pin is set, so the common built-in case costs no query.
+ * template, else the built-in captions_only. Custom rows are fetched only when
+ * the pin is a uuid or no pin is set, so the common built-in case costs no query.
+ *
+ * The built-in floor is captions_only (no headline), NOT hook_card: Q's call
+ * 2026-08-10 after a clinician flagged the top hook-card graphic as unnecessary
+ * clutter. Auto-reels now ship clean captions-only by default; a workspace that
+ * wants the headline card opts back in by pinning `hook_card` (reel_preset) or
+ * setting a custom default template.
  */
 async function resolveWorkspaceTemplate(ws) {
   const pin = ws?.reel_preset || null
@@ -51,7 +57,7 @@ async function resolveWorkspaceTemplate(ws) {
   }
   if (pin) return resolveVideoTemplate(pin, customs)
   const dflt = customs.find((t) => t.is_default)
-  return resolveVideoTemplate(dflt?.id || 'hook_card', customs)
+  return resolveVideoTemplate(dflt?.id || 'captions_only', customs)
 }
 import { saveBroll } from './saveBroll.js'
 import { createClipDraft } from './clipDraft.js'

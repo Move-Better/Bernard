@@ -109,6 +109,51 @@ async function handler(req, res) {
       console.error('[media/[id]] usage lookup failed:', e?.message)
     }
 
+    // Caption-baked auto-reels: surface the RAW un-captioned source + this clip's
+    // source-relative window so the video editor can edit from it instead of the
+    // baked blob. Editing the baked clip directly re-captions an already-captioned
+    // video — double karaoke in the preview, and a double-baked track if it is
+    // re-rendered on save (feedback 2a1e68c0, 2026-08-10). reelFactory records the
+    // source_asset_id + [start_sec,end_sec] window on the video_segment when it
+    // renders a moment into a reel, so rendered_asset_id = this clip is the link.
+    // Opt-in (?withSourceClip=1) so the common getMediaAsset — MediaDetail's poll,
+    // dedup lookups — never pays for the extra reads or the source transcript
+    // payload. Best-effort: any failure just omits source_clip and the editor
+    // falls back to the baked blob (prior behaviour, double preview and all).
+    row.source_clip = null
+    if (row.kind === 'video' && url.searchParams.get('withSourceClip') === '1') {
+      try {
+        const segRes = await sb(
+          `video_segments?rendered_asset_id=eq.${id}&${scope.column}=eq.${scope.id}` +
+          `&select=source_asset_id,start_sec,end_sec&limit=1`
+        )
+        const seg = segRes.ok ? (await segRes.json())[0] : null
+        if (seg?.source_asset_id && UUID_RE.test(seg.source_asset_id)) {
+          const srcRes = await sb(
+            `media_assets?id=eq.${seg.source_asset_id}&${scope.column}=eq.${scope.id}` +
+            `&select=id,blob_url,transcript_words,width,height,duration_s`
+          )
+          const src = srcRes.ok ? (await srcRes.json())[0] : null
+          const startSec = Number(seg.start_sec)
+          const endSec = Number(seg.end_sec)
+          if (src?.blob_url && Number.isFinite(startSec) && Number.isFinite(endSec) && endSec > startSec) {
+            row.source_clip = {
+              assetId: src.id,
+              blobUrl: src.blob_url,
+              startSec,
+              endSec,
+              transcriptWords: Array.isArray(src.transcript_words) ? src.transcript_words : [],
+              width: src.width ?? null,
+              height: src.height ?? null,
+              durationS: src.duration_s != null ? Number(src.duration_s) : null,
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[media/[id]] source_clip lookup failed:', e?.message)
+      }
+    }
+
     return res.status(200).json(row)
   }
 

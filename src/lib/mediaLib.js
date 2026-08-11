@@ -51,8 +51,13 @@ export function listMedia({ kind, status, q, tag, purpose, collectionId, limit, 
   return api(`/api/media/list${qs ? `?${qs}` : ''}`)
 }
 
-export function getMediaAsset(id) {
-  return api(`/api/media/${encodeURIComponent(id)}`)
+// `withSourceClip` asks the server to resolve a caption-baked auto-reel's RAW
+// un-captioned source + window (row.source_clip), so the video editor can edit
+// from it instead of the baked blob. Opt-in — only the editor's initial load
+// needs it; polls/dedup callers omit it to keep the payload lean.
+export function getMediaAsset(id, { withSourceClip = false } = {}) {
+  const qs = withSourceClip ? '?withSourceClip=1' : ''
+  return api(`/api/media/${encodeURIComponent(id)}${qs}`)
 }
 
 export function updateMediaAsset(id, patch) {
