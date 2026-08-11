@@ -1,12 +1,32 @@
 import { withSentry } from '../../_lib/sentry.js'
 // maxDuration 800, not 300: a SINGLE 4K reel render measured >300s on Fluid in
 // prod (2026-08-11 manual trigger — one claimed segment, 308 MB 3840x2160
-// source, died at the wall with MAX_PER_RUN already 1). 300 is Vercel's
-// DEFAULT, not the ceiling; Fluid on Pro accepts higher. Empirical: if the
-// plan ever clamps this back to 300, the symptom returns as hourly 504s with
-// segments stuck at 'rendering' — check the runtime logs' timeout value, not
-// this comment. The real fix that makes this headroom stop mattering is the
-// per-asset render intermediate (2026-08-10 decisions entry).
+// source, died at the wall with MAX_PER_RUN already 1).
+//
+// THIS LINE ALONE IS NOT ENOUGH. Vercel projects have a SEPARATE, PROJECT-WIDE
+// ceiling (`defaultResourceConfig.functionDefaultTimeout`, set in the dashboard
+// under Settings → Functions → Function Max Duration) that a route's own
+// `maxDuration` can never exceed — only ever undercut. Shipping 800 here first
+// deployed clean and still 504'd at exactly 300s in prod, with no warning
+// anywhere in the build or deploy output: the project ceiling silently clamped
+// it. Confirmed via the Vercel API (`GET /v13/deployments/:id` →
+// `config.functionTimeout`), then raised via `PATCH /v9/projects/:id` with
+// `{"resourceConfig":{"functionDefaultTimeout":800}}` — Q approved 2026-08-11,
+// since it's a project-wide setting affecting every function, not scoped to
+// this route. A straight redeploy/alias-promote of the already-built
+// deployment does NOT pick up a raised ceiling; it needs a fresh BUILD
+// (confirmed: the new deployment's own `config.functionTimeout` read the
+// raised value only after a forced rebuild).
+//
+// If this route (or any other) 504s at exactly 300s again despite its own
+// `maxDuration` reading higher: don't re-edit this number. Check
+// `GET /v13/deployments/:id` → `config.functionTimeout` on the LIVE
+// deployment first — that is the actual enforced value, and this comment is
+// not proof of it.
+//
+// The real fix that makes this headroom stop mattering is the per-asset
+// render intermediate (2026-08-10 decisions entry) — it caps render cost at
+// the resolution we output, not the resolution we film.
 export const config = { runtime: 'nodejs', maxDuration: 800 }
 // GET /api/cron/auto-reel-week
 //
