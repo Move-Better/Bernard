@@ -58,11 +58,12 @@ const MAX_DRAFTED_PER_WORKSPACE = 500
 // and (b) key on plan_week < current Monday, and PostgREST's lt never matches
 // a null — so without this case those rows are permanently invisible to the
 // janitor (2026-08-10: 9 such posts, oldest from May, nagging every weekly
-// digest). 14d matches the digest's own staleness bar. Blog is excluded:
+// digest). 7d matches the weekly cadence — one full week untouched and the
+// draft is stale (Q, 2026-08-11; was 14d at first ship). Blog is excluded:
 // stale in_review blog drafts are finished pieces awaiting publish, and
 // archiving them would destroy the thing the digest wants shipped (Q,
 // 2026-08-10).
-const STALE_DRAFT_DAYS = 14
+const STALE_DRAFT_DAYS = 7
 
 // eslint-disable-next-line bernard/require-workspace-scope -- Cron — iterates all workspaces; every query below is scoped by workspace_id from the loop.
 function sb(path, init = {}) {
