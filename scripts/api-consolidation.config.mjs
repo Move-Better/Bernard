@@ -35,6 +35,12 @@ export const KEEP_FILES = [
   'editorial/render-segments.js',
   'editorial/repurpose-video.js',
   'editorial/rerender-package.js',
+  // Own function so it can own its own maxDuration (800s) — this cron renders
+  // real video via fillReelSlots/renderVideoChannel and 504'd at 300s for
+  // weeks while it lived in the consolidated app, because api/index.js's own
+  // maxDuration governs every route mounted inside it regardless of that
+  // route's own `config` export. See api/cron/auto-reel-week.js.
+  'cron/auto-reel-week.js',
   // streaming responses (SSE / long-lived / WebSocket)
   'stream.js',
   'realtime-session.js',
