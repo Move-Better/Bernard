@@ -1,5 +1,13 @@
 import { withSentry } from '../../_lib/sentry.js'
-export const config = { runtime: 'nodejs', maxDuration: 300 }
+// maxDuration 800, not 300: a SINGLE 4K reel render measured >300s on Fluid in
+// prod (2026-08-11 manual trigger — one claimed segment, 308 MB 3840x2160
+// source, died at the wall with MAX_PER_RUN already 1). 300 is Vercel's
+// DEFAULT, not the ceiling; Fluid on Pro accepts higher. Empirical: if the
+// plan ever clamps this back to 300, the symptom returns as hourly 504s with
+// segments stuck at 'rendering' — check the runtime logs' timeout value, not
+// this comment. The real fix that makes this headroom stop mattering is the
+// per-asset render intermediate (2026-08-10 decisions entry).
+export const config = { runtime: 'nodejs', maxDuration: 800 }
 // GET /api/cron/auto-reel-week
 //
 // T2 (reel spine) — fill each workspace's open Reel slots for the current week
