@@ -22,7 +22,7 @@
 //
 // Alias-free imports only — this module is cross-imported by the serverless
 // API (same rule as mediaEntry.js / platformMediaKind.js).
-import { isVideoEntry } from './mediaEntry.js'
+import { isVideoEntry, publishMediaForFormat } from './mediaEntry.js'
 
 export const FORMAT_IDS = ['post', 'carousel', 'reel', 'story']
 
@@ -93,12 +93,21 @@ const REASON_COPY = {
  * actually offers, and the tooltip says what to change. Hiding "Reel" from a
  * photo carousel would leave a producer with no way to learn it exists.
  *
- * @param {{platform?: string, media_urls?: unknown}|null} piece
+ * Validates what actually SHIPS, not the raw media_urls pool: a carousel with a
+ * slide deck posts one card per SLIDE, so a 4-slide deck drawing from a 12-photo
+ * pool is a valid 4-item carousel, not an over-cap "12 items" one. Counting the
+ * pool disabled the Carousel option on exactly that shape — the picker's twin of
+ * the publish-gate bug (feedback a473c03a). publishMediaForFormat is
+ * format-independent (it mirrors publishPieceToSocial's own media choice from
+ * slides + video presence), so one effective-media computation gates every
+ * option, exactly as the publish gate does via describeFormatViolation.
+ *
+ * @param {{platform?: string, media_urls?: unknown, slides?: unknown}|null} piece
  * @returns {Array<{id:string,label:string,disabled:boolean,title:string|null}>}
  */
 export function formatChoicesFor(piece) {
   const platform = piece?.platform || ''
-  const media = Array.isArray(piece?.media_urls) ? piece.media_urls : []
+  const media = publishMediaForFormat(piece)
   return formatOptions(platform).map((id) => {
     const check = validateFormatMedia(platform, id, media)
     const rule = formatMediaRule(platform, id) || {}
