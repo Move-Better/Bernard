@@ -304,6 +304,18 @@ Challenge gate run on P5 at Q's request, one day after the moment bank (P1–P4)
 
 **Kill criterion.** If, after the first video interview works end to end, the three checks above don't yield a usable time anchor — or the footage isn't reel-grade — Lane A dies and the "Open clip" / "clip attached" affordances in `OnHandTab` get deleted rather than left dormant (they are marked DORMANT BY DESIGN today, #2512). If the video-interview build slips past **2026-09-30** without a first run, revisit whether Lane A belongs on the roadmap at all rather than letting it sit indefinitely.
 
+### Addendum 2026-08-10 — re-verified; decision unchanged; trigger confirmed live
+
+Re-checked on prod for a wrap-flagged "moments aren't linked to clips" gap. **Nothing has changed and nothing should be built.** The bank grew (208 → **228** moments, 29 → **32** interviews) and the gap grew with it: still **0** moments carrying `clip_asset_id`, still **0** time-anchored (228/228 `anchor.msg_idx`), still **0** interviews with `video_media_asset_id`. Confirms the event trigger above has not fired.
+
+**Q confirmed the same day that the video-interview build is actively in progress** — so the zeros remain the expected state, not a stalled roadmap item. The 2026-09-30 slip-check stays as written but is not yet in play.
+
+**One thing the 7-31 entry predates:** the attach affordance now has a second, reachable route. `InterviewSession.jsx` gained a "Recorded a video too? Attach it" reveal on the realtime-wrap path, added precisely because the chat-completion card that hosts `VideoAttachPrompt` is gated on `!fromRealtimeWrap` — so a clinician who ran the interview on an iPad while a phone filmed them, the exact migration-114 workflow, previously had **no route to attaching the recording at all**. That was a genuine dead end in the composition chain above, not an adoption problem, and it is now closed. Offset detection (`detect-video-offset`, ffmpeg silencedetect) is wired to that prompt and live. So stages 1–2 are done and reachable; the two missing middle stages are unchanged.
+
+**New design finding, worth deciding before the build lands rather than after:** all 228 existing moments are anchored to a message index, not a timestamp. When per-turn clip cutting ships, the back catalogue will not match footage — only moments created *after* the change could carry a time anchor. If the existing bank is meant to become clip-linked too, moments need to start recording `anchor.t_start` at extraction time; retrofitting is far more expensive than deciding now.
+
+**Process note.** This session re-derived the same wrong inference the entry above explicitly warns against ("nobody films themselves") before Q corrected it — because the analysis was run without reading `decisions.md` first. The warning in that paragraph is doing real work; **read this entry before re-investigating any moments↔video zero.**
+
 ## 2026-08-06 — "Make a point": a second interviewer mode with a dynamic podcast-host
 
 **Job.** Let Q make a *specific point he already has* (from his own experience) instead of answering a preset clinical topic — canonical case: "months of broken deep sleep, then two 10-minute runs fixed it; specifically running, a hard hike didn't." The person has the thesis; the interviewer's job is to **sharpen** it, not extract it. Full spec: `.claude/make-a-point-spec.md`.
