@@ -1,32 +1,32 @@
-import { withSentry } from '../../_lib/sentry.js'
-// maxDuration 800, not 300: a SINGLE 4K reel render measured >300s on Fluid in
-// prod (2026-08-11 manual trigger — one claimed segment, 308 MB 3840x2160
-// source, died at the wall with MAX_PER_RUN already 1).
+import { withSentry } from '../_lib/sentry.js'
+// STANDALONE Vercel function — deliberately NOT in api/_routes/ (see
+// scripts/api-consolidation.config.mjs KEEP_FILES). This cron used to live in
+// the consolidated Express app (api/index.js) and declared its own
+// maxDuration:800 right here — which did NOTHING, because every route mounted
+// into that app is served by ONE function whose OWN top-level `export const
+// config = { maxDuration: 300 }` (api/index.js:1) is what Vercel actually
+// enforces. Raising the project-wide `functionDefaultTimeout` ceiling
+// (2026-08-11, see docs commit) does not help either: it only raises the
+// DEFAULT for functions that don't set their own maxDuration, and
+// api/index.js sets one explicitly. So this route 504'd at exactly 300s on
+// every real render, in prod, for weeks, despite two separate "fixes" that
+// both looked like they should have worked (raising this comment's own
+// maxDuration; raising the project ceiling) — because neither one touched
+// the function that was actually executing this code.
 //
-// THIS LINE ALONE IS NOT ENOUGH. Vercel projects have a SEPARATE, PROJECT-WIDE
-// ceiling (`defaultResourceConfig.functionDefaultTimeout`, set in the dashboard
-// under Settings → Functions → Function Max Duration) that a route's own
-// `maxDuration` can never exceed — only ever undercut. Shipping 800 here first
-// deployed clean and still 504'd at exactly 300s in prod, with no warning
-// anywhere in the build or deploy output: the project ceiling silently clamped
-// it. Confirmed via the Vercel API (`GET /v13/deployments/:id` →
-// `config.functionTimeout`), then raised via `PATCH /v9/projects/:id` with
-// `{"resourceConfig":{"functionDefaultTimeout":800}}` — Q approved 2026-08-11,
-// since it's a project-wide setting affecting every function, not scoped to
-// this route. A straight redeploy/alias-promote of the already-built
-// deployment does NOT pick up a raised ceiling; it needs a fresh BUILD
-// (confirmed: the new deployment's own `config.functionTimeout` read the
-// raised value only after a forced rebuild).
+// The real fix is this file's location: matching every other ffmpeg/heavy
+// render handler (api/media/*.js, api/editorial/render-*.js), a route that
+// needs real render time gets its OWN Vercel function with its OWN
+// maxDuration, outside the shared Express app. Vercel's filesystem routing
+// wins over the vercel.json `/api/(.*)` rewrite (same reason those handlers
+// already work), so this file is reachable at /api/cron/auto-reel-week with
+// no vercel.json change needed — confirm with
+// `GET /v13/deployments/:id` → `functions['api/cron/auto-reel-week.js'].maxDuration`
+// on the LIVE deployment before trusting this comment.
 //
-// If this route (or any other) 504s at exactly 300s again despite its own
-// `maxDuration` reading higher: don't re-edit this number. Check
-// `GET /v13/deployments/:id` → `config.functionTimeout` on the LIVE
-// deployment first — that is the actual enforced value, and this comment is
-// not proof of it.
-//
-// The real fix that makes this headroom stop mattering is the per-asset
-// render intermediate (2026-08-10 decisions entry) — it caps render cost at
-// the resolution we output, not the resolution we film.
+// If this route 504s at exactly 300s again: check THIS file's own
+// maxDuration first, not the project-wide ceiling — that class of bug is
+// closed now that the route owns its own function.
 export const config = { runtime: 'nodejs', maxDuration: 800 }
 // GET /api/cron/auto-reel-week
 //
@@ -51,14 +51,14 @@ export const config = { runtime: 'nodejs', maxDuration: 800 }
 // nothing once the week is full.
 //
 // Schedule: hourly. Rendering is capped at MAX_PER_RUN per workspace per tick so
-// a backlog fills in over a few ticks rather than racing the 300s function wall.
+// a backlog fills in over a few ticks rather than racing the function wall.
 //
 // Auth: Bearer CRON_SECRET.
 
-import { fillReelSlots } from '../../_lib/reelFactory.js'
-import { mondayOf } from '../../_lib/strategist.js'
-import { recordAgentAction } from '../../_lib/agentActions.js'
-import { verifyCronSecret } from '../../_lib/auth.js'
+import { fillReelSlots } from '../_lib/reelFactory.js'
+import { mondayOf } from '../_lib/strategist.js'
+import { recordAgentAction } from '../_lib/agentActions.js'
+import { verifyCronSecret } from '../_lib/auth.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
