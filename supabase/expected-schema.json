@@ -684,6 +684,7 @@
   ],
   "staff": [
     "answer_review_enabled",
+    "archived_at",
     "blog_review_enabled",
     "blog_target_nudged_month",
     "campaign_settings",
