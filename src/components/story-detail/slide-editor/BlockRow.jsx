@@ -1,19 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { X, Move } from 'lucide-react'
-import { useWorkspace } from '@/lib/WorkspaceContext'
-import { ColorPickerPopover } from '@/components/ColorPickerPopover'
-import { brandSwatches } from '@/lib/brandSwatches'
 import { BLOCK_ROLES } from '@/lib/overlayTemplates'
 import { ROLE_META, richRunsToHTML, serializeRichCE, runsHaveStyle, sanitizeRun } from './shared'
 
 // ── Block row ─────────────────────────────────────────────────────────────────
+//
+// The left-panel Text box is a NEUTRAL words editor — it never paints the chosen
+// display colour onto its own text. That's the way mature editors (Canva, Figma,
+// Google Slides) handle it: colour is only ever shown against its true background,
+// so it lives on the canvas (double-click a block → the on-canvas rich editor) and
+// in the Style panel's swatches, never on a stand-in field that can happen to match
+// the colour and swallow the text. Painting colour here white-on-white made typed
+// text vanish (Feedback 8727193a).
+//
+// IMPORTANT: per-word colour is still RENDERED into the DOM (richRunsToHTML emits
+// the inline `color:` spans) so that colours set on the canvas survive a text edit
+// here — serializeRichCE reads them back off `node.style.color`. Only the *display*
+// is neutralised, via `[&_*]:!text-foreground` (a stylesheet !important rule, which
+// overrides the inline colour for painting but leaves `el.style.color` intact for
+// serialization). Strip the colour from the DOM instead and every text edit would
+// silently wipe the block's per-word colours.
 
 export default function BlockRow({ block, onChange, onRemove }) {
   const meta = ROLE_META[block.role] || ROLE_META.body
-  const workspace = useWorkspace()
   const ceRef = useRef(null)
-  const [toolbarPos, setToolbarPos] = useState(null)
-  const savedRangeRef = useRef(null)
   const initRef = useRef(false)
   const suppressRef = useRef(false)
 
@@ -39,8 +49,8 @@ export default function BlockRow({ block, onChange, onRemove }) {
     const el = ceRef.current
     if (!el) return
     // Rich serialize (all per-word dims), so editing text here NEVER drops
-    // per-word size/weight/italic/underline/strike/case set on the canvas — the
-    // old colour-only serialize would have silently clobbered them.
+    // per-word colour/size/weight/italic/underline/strike/case set on the canvas
+    // — the old colour-only serialize would have silently clobbered them.
     const runs = serializeRichCE(el)
     const text = runs.map((r) => r.text).join('')
     const result = { ...block, text }
@@ -48,40 +58,6 @@ export default function BlockRow({ block, onChange, onRemove }) {
     else delete result.runs
     onChange(result)
   }
-
-  function checkSelection() {
-    const sel = window.getSelection()
-    const el = ceRef.current
-    if (!sel || sel.isCollapsed || !sel.toString().trim() || !el?.contains(sel.anchorNode)) {
-      setToolbarPos(null); return
-    }
-    const rect = sel.getRangeAt(0).getBoundingClientRect()
-    const mid = rect.left + rect.width / 2
-    setToolbarPos({ top: rect.top - 52, left: Math.max(8, Math.min(mid - 130, window.innerWidth - 268)) })
-  }
-
-  function applyColor(color) {
-    const sel = window.getSelection()
-    if (savedRangeRef.current) { sel.removeAllRanges(); sel.addRange(savedRangeRef.current.cloneRange()) }
-    ceRef.current?.focus()
-    document.execCommand('styleWithCSS', false, true) // emit <span style="color:…">, which serializeRichCE reads
-    document.execCommand('foreColor', false, color)
-    savedRangeRef.current = null
-    serializeAndSync()
-    setToolbarPos(null)
-  }
-
-  function clearColor() {
-    const sel = window.getSelection()
-    if (savedRangeRef.current) { sel.removeAllRanges(); sel.addRange(savedRangeRef.current.cloneRange()) }
-    ceRef.current?.focus()
-    document.execCommand('removeFormat', false, null)
-    savedRangeRef.current = null
-    serializeAndSync()
-    setToolbarPos(null)
-  }
-
-  const bSwatches = useMemo(() => brandSwatches(workspace), [workspace])
 
   return (
     <div className="flex items-start gap-2 rounded-lg border bg-background/50 p-3">
@@ -102,73 +78,24 @@ export default function BlockRow({ block, onChange, onRemove }) {
           </button>
         </div>
 
-        {/* Floating colour toolbar — fixed above the text selection */}
-        {toolbarPos && (
-          <div
-            className="fixed z-50 flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2 py-1.5 shadow-xl"
-            style={{ top: toolbarPos.top, left: toolbarPos.left }}
-            onMouseDown={(e) => {
-              const sel = window.getSelection()
-              if (sel && sel.rangeCount > 0 && sel.toString().trim()) {
-                savedRangeRef.current = sel.getRangeAt(0).cloneRange()
-              }
-              // Prevent focus steal for all children except the ColorPickerPopover trigger
-              if (!e.target.closest('[data-picker-trigger]')) e.preventDefault()
-            }}
-          >
-            {bSwatches.length > 0 && (
-              <span className="pr-0.5 text-3xs font-semibold uppercase tracking-wider text-zinc-500">Brand</span>
-            )}
-            {bSwatches.slice(0, 5).map((color) => (
-              <button
-                key={color} type="button" aria-label={color} onClick={() => applyColor(color)}
-                className="h-5 w-5 rounded-full border border-zinc-600 transition-all hover:ring-2 hover:ring-white/40 hover:ring-offset-1"
-                style={{ background: color }}
-              />
-            ))}
-            {bSwatches.length > 0 && <span className="mx-0.5 h-4 w-px bg-zinc-700" />}
-            {['#FFFFFF', '#000000'].map((c) => (
-              <button
-                key={c} type="button" aria-label={c === '#FFFFFF' ? 'White' : 'Black'} onClick={() => applyColor(c)}
-                className="h-5 w-5 rounded-full border border-zinc-600 transition-all hover:ring-2 hover:ring-white/40 hover:ring-offset-1"
-                style={{ background: c }}
-              />
-            ))}
-            <span className="mx-0.5 h-4 w-px bg-zinc-700" />
-            <button
-              type="button" onClick={clearColor}
-              className="px-1 text-3xs font-medium text-zinc-400 transition-colors hover:text-white"
-            >Clear</button>
-            <span data-picker-trigger>
-              <ColorPickerPopover
-                value="#888888"
-                onChange={applyColor}
-                swatches={bSwatches}
-                swatchClassName="h-5 w-5 rounded-full"
-                ariaLabel="Custom colour"
-              />
-            </span>
-          </div>
-        )}
-
         <div
           ref={ceRef}
           contentEditable
           suppressContentEditableWarning
           onInput={serializeAndSync}
-          onMouseUp={checkSelection}
-          onKeyUp={checkSelection}
-          onBlur={() => { setTimeout(() => setToolbarPos(null), 150) }}
           onPaste={(e) => {
             e.preventDefault()
             document.execCommand('insertText', false, e.clipboardData.getData('text/plain'))
           }}
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/50 empty:before:text-muted-foreground/50 empty:before:content-[attr(data-placeholder)]"
+          // [&_*]:!text-foreground neutralises the DISPLAY colour of every run so
+          // the words stay legible regardless of the chosen colour — the colour is
+          // still in the DOM (see the header note) and shown truthfully on the canvas.
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm leading-relaxed text-foreground [&_*]:!text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 empty:before:text-muted-foreground/50 empty:before:content-[attr(data-placeholder)]"
           style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: '2.5rem' }}
           data-placeholder={`${meta.label} text…`}
         />
         <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Move className="h-4 w-4 shrink-0" /> Drag the text on the canvas to place it. Highlight text to pick a colour.
+          <Move className="h-4 w-4 shrink-0" /> Drag the text on the canvas to place it. Pick colours on the canvas or in Style below.
         </p>
       </div>
     </div>
