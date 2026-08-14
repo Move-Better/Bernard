@@ -6,7 +6,7 @@ import {
   Play, Pause, Film, Sparkles, Captions, Type,
   Plus, Trash2, Check, Loader2, AlertCircle, Move,
   FolderOpen, Megaphone, ChevronDown, Scissors, ChevronLeft, ChevronRight, FileText, History,
-  Music, Volume2, LayoutTemplate, ThumbsDown, MessageSquareText,
+  Music, Volume2, LayoutTemplate, ThumbsDown, MessageSquareText, Repeat,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
@@ -24,6 +24,7 @@ import EditorChrome from '@/components/editor/EditorChrome'
 import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
 import EditorIconRail from '@/components/editor/IconRail'
 import PostCaptionField from '@/components/editor/PostCaptionField'
+import SwapAddVideo from '@/components/editor/SwapAddVideo'
 import RegenerateCaptionButton, { canRegenerateCaption } from '@/components/editor/RegenerateCaptionButton'
 import { useContentItem, useUpdateContentItem, useUpdateContentItemStatus } from '@/lib/queries'
 import { GRADE_SLIDERS, GRADE_VIBES, NEUTRAL_GRADE, gradeToCanvasFilter } from '@/lib/gradeParams'
@@ -920,8 +921,49 @@ function TranscriptInspector({ ctx }) {
   )
 }
 
+// ── MEDIA inspector — swap the reel's source video ──────────────────────────
+// Embedded (a video content piece) only: a reel has one video, so this REPLACES
+// it. The pick is written back through the normal content PATCH (ctx.swapVideo →
+// updateItem), which the server reads as a human overriding Bernard's clip
+// choice — feeding the media-confidence loop. The piece's new video assetId then
+// changes, which remounts the editor (StoryboardPublish keys it on that id) so
+// the timeline, transcript and grade re-hydrate cleanly on the new clip.
+function MediaInspector({ ctx }) {
+  const { piece, pieceVideoEntry, swapVideo, swapping } = ctx
+  const cur = pieceVideoEntry || null
+  const durS = cur?.duration_s
+  const dur = Number.isFinite(durS) && durS > 0
+    ? `${Math.floor(durS / 60)}:${String(Math.round(durS % 60)).padStart(2, '0')}`
+    : null
+  return (
+    <InspectorShell icon={Repeat} title="This reel's video">
+      {cur && (
+        <div className="mb-3 flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-2.5">
+          <div className="relative aspect-[9/16] w-11 shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-slate-700 to-slate-900">
+            {cur.thumbnailUrl && <img src={cur.thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+            <span className="absolute inset-0 flex items-center justify-center"><Play className="h-4 w-4 text-white/80" fill="currentColor" /></span>
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground">{cur.name || 'Current clip'}</p>
+            <p className="text-xs text-muted-foreground">{dur ? `${dur} · on this reel` : 'On this reel'}</p>
+          </div>
+        </div>
+      )}
+
+      {piece?.id
+        ? <SwapAddVideo pieceId={piece.id} currentAssetId={cur?.mediaAssetId || null} onSwap={swapVideo} swapping={swapping} />
+        : <p className="text-sm text-muted-foreground">Open this reel from its post to swap the video.</p>}
+
+      <p className="mt-3 flex items-start gap-2 rounded-xl border border-dashed border-muted-foreground/30 px-3 py-2.5 text-xs leading-snug text-muted-foreground">
+        <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        Swapping loads the new clip fresh — trim, captions and grade start over. Your edits stay saved on the old clip if you swap back.
+      </p>
+    </InspectorShell>
+  )
+}
+
 function IconRail({ ctx }) {
-  const { sel, selectKey, overlays, addOverlay, captionPiece } = ctx
+  const { sel, selectKey, overlays, addOverlay, captionPiece, piece } = ctx
   const selKey = isOverlaySel(sel) ? 'overlay' : sel
   // 'overlay' selection lights the 'text' tool (overlays ARE the text layer).
   const active = selKey === 'overlay' ? 'text' : selKey
@@ -932,6 +974,10 @@ function IconRail({ ctx }) {
     ...(captionPiece ? [{ key: 'postcaption', icon: MessageSquareText, label: 'Caption' }] : []),
     { key: 'moments', icon: Scissors, label: 'Clips' },
     { key: 'clip', icon: Film, label: 'Clip' },
+    // Swap the source video — only when embedded on a post (a piece to repoint).
+    // Standalone clip editing (Moment Miner / Slate) edits an asset directly and
+    // has no media_urls to swap.
+    ...(piece ? [{ key: 'media', icon: Repeat, label: 'Media' }] : []),
     { key: 'grade', icon: Sparkles, label: 'Grade' },
     // On-screen karaoke words burned into the frame — distinct from the post
     // caption above (labeled to avoid the collision that lost users the caption).
@@ -1801,6 +1847,21 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     onSuccess: () => toast('Video saved to this post — approve & schedule when ready'),
   })
 
+  // Swap the reel's SOURCE video. Writes the picked clip to media_urls through
+  // the normal content PATCH so classifyMediaChange stamps media_source:'human'
+  // — the same override signal that already trains Bernard's photo picking, now
+  // for video. The new clip's assetId then differs, and StoryboardPublish keys
+  // the editor on that id, so the whole editor remounts and re-hydrates cleanly
+  // on the new source (the restore effect is one-shot per mount by design and
+  // would otherwise strand the old clip's trim/captions on the new video).
+  const swapVideoMutation = useAppMutation({
+    errorMessage: 'Could not swap the video on this post.',
+    mutationFn: (entry) => piece?.id
+      ? updateItem.mutateAsync({ id: piece.id, patch: { mediaUrls: [entry] } })
+      : Promise.resolve(),
+    onSuccess: () => toast('Swapped — the new clip is loaded'),
+  })
+
   // ONE render → every selected destination. Post + b-roll share the single reel
   // render; ad export is its own (interactive) modal flow opened afterward.
   // Export = the non-post destinations (Library b-roll + ad sizes). The post
@@ -2048,6 +2109,11 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     // Post caption: prefer the live-refetched content item, fall back to the
     // prop so the field is editable immediately (embedded) before `post` loads.
     captionPiece: post || piece || null, updateItem,
+    // Media swap (embedded reels): the piece to repoint, its current video
+    // entry, and the swap handler that writes it back through the content PATCH.
+    piece, pieceVideoEntry,
+    swapVideo: (entry) => swapVideoMutation.mutate(entry),
+    swapping: swapVideoMutation.isPending,
   }
 
   if (isLoading) return <div role="status" className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" /><span className="sr-only">Loading video…</span></div>
@@ -2267,6 +2333,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
               {sel === 'postcaption' && <PostCaptionInspector ctx={ctx} />}
               {sel === 'moments' && <MomentsInspector ctx={ctx} />}
               {sel === 'clip' && <ClipInspector ctx={ctx} />}
+              {sel === 'media' && <MediaInspector ctx={ctx} />}
               {sel === 'grade' && <GradeInspector ctx={ctx} />}
               {sel === 'caption' && <CaptionInspector ctx={ctx} />}
               {sel === 'music' && <MusicInspector ctx={ctx} />}

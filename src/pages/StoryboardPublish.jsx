@@ -242,7 +242,11 @@ export default function StoryboardPublish() {
     return (
       <div className="-mx-4 -my-8 sm:-mx-6 lg:-mx-8 h-[100dvh] overflow-hidden">
         <Suspense fallback={<LoadingState />}>
-          <VideoPieceEditor piece={piece} embedded onBack={goBack} />
+          {/* Key on the source video asset: swapping the reel's video (the Media
+              tab) repoints media_urls to a new asset, and the editor's restore
+              effect is one-shot per mount — so remount it fresh on the new clip
+              rather than stranding the old clip's trim/captions on it. */}
+          <VideoPieceEditor key={videoAssetId} piece={piece} embedded onBack={goBack} />
         </Suspense>
       </div>
     )
