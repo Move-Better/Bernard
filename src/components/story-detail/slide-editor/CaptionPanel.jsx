@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { Type, AlertTriangle } from 'lucide-react'
+import { Type, AlertTriangle, Sparkles, Loader2 } from 'lucide-react'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { CAPTION_LIMITS, PLATFORM_META } from '@/lib/contentMeta'
+import { useGenerateSlideHook } from '@/lib/queries'
 import RegenerateCaptionButton, { canRegenerateCaption } from '@/components/editor/RegenerateCaptionButton'
 
 // ── Caption panel (the "Words" rail tool) ─────────────────────────────────────
@@ -43,6 +44,31 @@ export default function CaptionPanel({ piece, onUseAsHook, updateItem }) {
   const overLimit = limit ? draft.length > limit : false
   const nearLimit = limit ? !overLimit && draft.length > limit * 0.9 : false
 
+  // "Generate slide hook" — ask the model for a short (≤8-word) scroll-stopper
+  // built from the caption, and drop it into slide 1. Falls back to the
+  // caption's first line when the model can't produce a usable hook (or the
+  // call fails), so the button always does something — that first-line copy is
+  // exactly the old behavior this replaces.
+  const generateHook = useGenerateSlideHook()
+  async function handleGenerateHook() {
+    const caption = (draft || '').trim()
+    if (!caption) return
+    const firstLine = caption.split('\n')[0].trim()
+    try {
+      const { hook } = await generateHook.mutateAsync({ caption, platform: piece?.platform })
+      if (hook) {
+        onUseAsHook(hook)
+      } else if (firstLine) {
+        toast.message('Couldn’t shorten this into a hook — used the caption’s first line.')
+        onUseAsHook(firstLine)
+      }
+    } catch {
+      // useAppMutation already surfaces the error toast; still give the user
+      // the first-line fallback so the click isn't wasted.
+      if (firstLine) onUseAsHook(firstLine)
+    }
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="shrink-0 border-b px-4 py-3">
@@ -82,16 +108,19 @@ export default function CaptionPanel({ piece, onUseAsHook, updateItem }) {
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={() => {
-                  const firstLine = (draft || '').split('\n')[0].trim()
-                  if (firstLine) onUseAsHook(firstLine)
-                }}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
+                onClick={handleGenerateHook}
+                disabled={!draft.trim() || generateHook.isPending}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                ↑ Use as slide hook
+                {generateHook.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+                {generateHook.isPending ? 'Writing hook…' : 'Generate slide hook'}
               </button>
             </TooltipTrigger>
-            <TooltipContent>Copy the first line of the caption into slide 1&apos;s hook text block</TooltipContent>
+            <TooltipContent>Write a short attention-drawing hook from this caption and drop it into slide 1</TooltipContent>
           </Tooltip>
           <span className={`text-sm ${overLimit ? 'text-destructive font-semibold' : nearLimit ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>
             {limit ? `${draft.length} / ${limit}` : `${draft.length} chars`}
