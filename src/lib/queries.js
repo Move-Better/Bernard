@@ -1307,6 +1307,22 @@ export function useRegenerateContentItem() {
   })
 }
 
+// Generate a short (≤8-word) slide-1 overlay hook from the current caption.
+// Stateless — no DB write, so no cache invalidation. Returns { hook } where
+// hook is a string or null (the caller falls back to the caption's first line
+// on null). See api/_routes/content-items/slide-hook.js.
+export function useGenerateSlideHook() {
+  return useAppMutation({
+    errorMessage: 'Hook generation failed',
+    mutationFn: ({ caption, platform }) =>
+      apiFetch('/api/content-items/slide-hook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ caption, ...(platform != null ? { platform } : {}) }),
+      }),
+  })
+}
+
 // Streamed blog-piece regeneration. Splits the old single-shot
 // /api/content-items/regenerate call into three steps so the long-running
 // Opus blog generation goes through /api/stream (which has its own 300s cap

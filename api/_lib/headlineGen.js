@@ -104,6 +104,70 @@ export async function generateHeadline({ hook, clipTranscript = '', workspace = 
 }
 
 /**
+ * Generate a ≤8-word slide-1 overlay hook from a post caption.
+ *
+ * Same "scroll-stopper, never invent, no truncation" contract as
+ * generateHeadline — a carousel's first slide earns the next swipe the way a
+ * reel's hook card earns the next two seconds — but the SOURCE is the caption
+ * the author already wrote, not a clip transcript, and the framing is a static
+ * carousel slide rather than a video. Reuses tidy/wordCount/isUsableHeadline so
+ * the two paths share one length contract.
+ *
+ * Returns a usable hook string, or null when the model can't produce one within
+ * the limit. The caller (the "Generate slide hook" button) falls back to the
+ * caption's first line on null, so the button always does something — but a
+ * null here means "don't dress up an overshoot as a hook", same as headlines.
+ *
+ * @param {Object} p
+ * @param {string} p.caption        — the post caption (source of the hook)
+ * @param {string} [p.platform]     — platform key, for light framing
+ * @param {Object} [p.workspace]    — workspace row, for brand voice
+ * @returns {Promise<string|null>}
+ */
+export async function generateSlideHook({ caption, platform = '', workspace = null }) {
+  const source = String(caption || '').trim()
+  if (!source) return null
+
+  // A caption that is already ≤8 words IS a hook — no model call needed.
+  if (isUsableHeadline(source)) return tidy(source)
+
+  const brandVoice = workspace?.brand_voice ? String(workspace.brand_voice).slice(0, 600) : ''
+
+  const systemLines = [
+    'You write the on-screen hook for the first slide of a social carousel.',
+    '',
+    'The hook sits over slide 1 and earns the next swipe. It is a scroll-stopper,',
+    'NOT a summary and NOT the caption repeated. It draws attention to what the',
+    'post is about and makes someone want to keep reading.',
+    '',
+    'Rules:',
+    `- HARD LIMIT: at most ${HEADLINE_MAX_WORDS} words and ${HEADLINE_MAX_CHARS} characters.`,
+    '- No trailing period. No quotation marks. No emoji. No hashtags.',
+    '- Plain spoken language. No clinical jargon unless the caption used it.',
+    '- Concrete over clever. Name the specific idea, not the topic.',
+    '- Never invent a fact that is not in the caption below.',
+    '',
+    'Reply with the hook text only — nothing else.',
+  ]
+  if (brandVoice) systemLines.push('', `Brand voice: ${brandVoice}`)
+
+  const userLines = []
+  if (platform) userLines.push(`Platform: ${platform}`)
+  userLines.push(`Caption:\n${source.slice(0, 4000)}`)
+  userLines.push('', `Write the slide-1 hook (≤${HEADLINE_MAX_WORDS} words).`)
+
+  const { text } = await generateText({
+    model: 'anthropic/claude-sonnet-4-6',
+    instructions: systemLines.join('\n'),
+    messages: [{ role: 'user', content: userLines.join('\n') }],
+    maxOutputTokens: 64,
+  })
+
+  const candidate = tidy(text)
+  return isUsableHeadline(candidate) ? candidate : null
+}
+
+/**
  * How long the hook card stays on screen, in seconds.
  *
  * Hook-then-drop: the card is on at frame 0 and gone once the speaker is going.
