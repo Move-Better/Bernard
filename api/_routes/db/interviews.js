@@ -7,6 +7,7 @@ export const config = { runtime: 'nodejs' }
 
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
+import { allowsNonOwnerStoryWrite } from '../../_lib/storyWriteAccess.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { buildPlanRows } from '../../_lib/atomPlan.js'
 import { replanWorkspaceWeek } from '../../_lib/strategistPlan.js'
@@ -285,20 +286,14 @@ export default async function handler(req, res) {
     if (!chk.ok) return dbErr(res, chk)
     const rows = await chk.json()
     if (!rows.length) return err(res, 'Not found', 404)
-    if (rows[0].owner_id !== userId) {
-      // Workspace owners can edit any story in their workspace (mirrors DELETE path).
-      //
-      // Ownership is a CLERK fact (auth.isOrgAdmin), not a staff.permission_tier
-      // value — nothing in the product writes 'owner' to that column, so the
-      // tier-only check denied genuine owners on every workspace except the one
-      // where a row had been set by hand. The tier check is kept as a UNION so
-      // that hand-set row still works. isOrgAdmin comes from requireRole's own
-      // return value (line ~106), not from req.clerk, so it is not spoofable.
-      if (!auth.isOrgAdmin) {
-        const tierChk = await sb(`staff?user_id=eq.${encodeURIComponent(userId)}&${wsFilter}&select=permission_tier&limit=1`)
-        const tierRows = tierChk.ok ? await tierChk.json() : []
-        if (tierRows[0]?.permission_tier !== 'owner') return err(res, 'Forbidden', 403)
-      }
+    if (rows[0].owner_id !== userId && !allowsNonOwnerStoryWrite(auth)) {
+      // Non-owner, and not a fast-path admin — see allowsNonOwnerStoryWrite
+      // (api/_lib/storyWriteAccess.js) for the full rationale. Consult the
+      // hand-set owner-tier row before denying. This is the only path that
+      // needs a DB lookup, so it runs only when the cheap flags fail.
+      const tierChk = await sb(`staff?user_id=eq.${encodeURIComponent(userId)}&${wsFilter}&select=permission_tier&limit=1`)
+      const tierRows = tierChk.ok ? await tierChk.json() : []
+      if (tierRows[0]?.permission_tier !== 'owner') return err(res, 'Forbidden', 403)
     }
 
     const body = req.body || {}
@@ -741,14 +736,15 @@ export default async function handler(req, res) {
     if (!chk.ok) return dbErr(res, chk)
     const rows = await chk.json()
     if (!rows.length) return err(res, 'Not found', 404)
-    if (rows[0].owner_id !== userId) {
-      // Workspace owners can delete any story in their workspace.
-      // Clerk org admin OR an explicit owner-tier row — see the PATCH path above.
-      if (!auth.isOrgAdmin) {
-        const tierChk = await sb(`staff?user_id=eq.${encodeURIComponent(userId)}&${wsFilter}&select=permission_tier&limit=1`)
-        const tierRows = tierChk.ok ? await tierChk.json() : []
-        if (tierRows[0]?.permission_tier !== 'owner') return err(res, 'Forbidden', 403)
-      }
+    if (rows[0].owner_id !== userId && !allowsNonOwnerStoryWrite(auth)) {
+      // Same non-owner allowance as the PATCH path above (shared via
+      // allowsNonOwnerStoryWrite). Q confirmed 2026-08-14 that delete should
+      // match the approve-words rule for consistency; the "has published
+      // content" guard below further limits the blast radius of a producer
+      // deleting another member's story.
+      const tierChk = await sb(`staff?user_id=eq.${encodeURIComponent(userId)}&${wsFilter}&select=permission_tier&limit=1`)
+      const tierRows = tierChk.ok ? await tierChk.json() : []
+      if (tierRows[0]?.permission_tier !== 'owner') return err(res, 'Forbidden', 403)
     }
 
     // Block deletion if any content items from this interview have been
