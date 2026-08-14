@@ -277,21 +277,26 @@ function BacklogRow({ item, onDraft, drafting, draftBusy, onNavigate }) {
 
   if (needsDraft) {
     // Dashed neutral border = the same "needs draft" status language the board
-    // uses (STATUS_LEGEND / cardState). No navigate-hover: this row doesn't go
-    // anywhere until it has a draft; Draft is the only action.
+    // uses (STATUS_LEGEND / cardState). This row doesn't navigate — it has no
+    // draft yet — so the WHOLE row is the Draft button (inset-0 overlay), the
+    // same fix the board's PlanCard uses, so a click anywhere on the row drafts
+    // rather than dead-clicking the label/title. The visible "Draft" chip stays
+    // as the affordance.
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-dashed border-muted-foreground/40 px-2 py-1.5">
+      <div className="relative flex items-center gap-2 rounded-lg border border-dashed border-muted-foreground/40 px-2 py-1.5 hover:bg-muted">
         {inner}
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold">
+          {drafting ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3 w-3" aria-hidden="true" />}
+          Draft
+        </span>
         <button
           type="button"
           disabled={drafting || draftBusy}
           title={!drafting && draftBusy ? 'Already drafting another post — please wait' : undefined}
           onClick={() => onDraft(item)}
-          className="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold hover:bg-muted disabled:opacity-50"
-        >
-          {drafting ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3 w-3" aria-hidden="true" />}
-          Draft
-        </button>
+          aria-label={`Draft ${contentLabel(item)}`}
+          className="absolute inset-0 z-10 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-default"
+        />
       </div>
     )
   }
@@ -478,21 +483,30 @@ function PlanCard({ item, tz, onDraft, drafting, draftBusy, readOnly }) {
 
   // A "needs draft" atom has nothing to review yet — Draft is the only
   // action, not a navigation. drillTo() would just fall back to the source
-  // interview, which isn't useful here.
+  // interview, which isn't useful here. So the WHOLE tile is the Draft
+  // button (a transparent inset-0 overlay, the same pattern DayPlanCard uses
+  // for its stretched link): clicking the card body used to be a dead click —
+  // this week's top /week dead-click cluster — because the body looked
+  // clickable (it lifts on hover) but only the small button acted. The visible
+  // "Draft" label stays as the affordance so the action is never hidden; it's
+  // kept neutral (not amber) so it doesn't compete with the amber "in review"
+  // state that actually needs a human's eye.
   if (needsDraft) {
     return (
-      <div className={cardCls}>
+      <div className={`${cardCls} hover:bg-muted`}>
         {body}
+        <span className="mt-1.5 inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold">
+          {drafting ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3 w-3" aria-hidden="true" />}
+          Draft
+        </span>
         <button
           type="button"
           disabled={drafting || draftBusy}
           title={!drafting && draftBusy ? 'Already drafting another post — please wait' : undefined}
           onClick={() => onDraft(item)}
-          className="mt-1.5 inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold hover:bg-muted disabled:opacity-50"
-        >
-          {drafting ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3 w-3" aria-hidden="true" />}
-          Draft
-        </button>
+          aria-label={`Draft ${contentLabel(item)}`}
+          className="absolute inset-0 z-10 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-default"
+        />
       </div>
     )
   }
