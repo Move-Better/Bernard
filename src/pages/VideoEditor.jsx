@@ -152,6 +152,10 @@ function Canvas({ ctx }) {
   // (heard → fixed) correction once on commit — activeLine mutates on each
   // keystroke (editLine re-splits), so it can't be read at blur time.
   const capOrigRef = useRef('')
+  // Set when the <video> can't decode its source (a .mov / 4K camera-original).
+  // Keyed on editVideoUrl so swapping to a playable source clears it for free.
+  const [errorUrl, setErrorUrl] = useState(null)
+  const videoError = errorUrl === editVideoUrl
   const activeIdx = lines.findIndex((l) => playClipT >= l.start && playClipT < l.end)
   const activeLine = activeIdx >= 0 ? lines[activeIdx] : null
   const capCss = captionCss(caption.style, caption.accent)
@@ -213,11 +217,21 @@ function Canvas({ ctx }) {
               className="absolute inset-0 h-full w-full object-cover"
               style={{ filter: gradeToCanvasFilter(grade), transform: kbTransform || `scale(${z})`, transformOrigin: kbTransform ? 'center' : `${reframe.x}% ${reframe.y}%` }}
               onLoadedMetadata={(e) => ctx.setVideoDuration(e.target.duration)}
+              onError={() => setErrorUrl(editVideoUrl)}
               onPlay={() => ctx.setPlaying(true)}
               onPause={() => ctx.setPlaying(false)}
               onTimeUpdate={(e) => ctx.handleTimeUpdate(e.target.currentTime)}
             />
           ) : <div className="flex h-full items-center justify-center text-sm text-white/60">No video</div>}
+          {/* Undecodable source → a scrim over the poster with an explanation,
+              so the dead play button has a reason instead of failing silently.
+              Only appears on the error path; playable videos never see it. */}
+          {videoError && (
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/60 px-4 text-center text-xs text-white/85">
+              <AlertCircle className="h-5 w-5" />
+              <span>Preview unavailable — this video format can&rsquo;t play in the editor.</span>
+            </div>
+          )}
 
           {/* caption — karaoke; click to edit the active line inline (pauses playback).
               Suppressed when captionsBaked: the video already carries a burned-in
@@ -1642,7 +1656,10 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   const togglePlay = useCallback(() => {
     const v = videoRef.current; if (!v) return
     if (playing) v.pause()
-    else { if (v.currentTime < startSec || v.currentTime >= endSec) v.currentTime = startSec; v.playbackRate = speed; v.play() }
+    // .catch swallows the promise rejection an undecodable source (a .mov / 4K
+    // camera-original) throws — NotSupportedError — which was surfacing in prod
+    // as an unhandled rejection. The <video>'s onError paints the fallback.
+    else { if (v.currentTime < startSec || v.currentTime >= endSec) v.currentTime = startSec; v.playbackRate = speed; v.play().catch(() => {}) }
   }, [playing, startSec, endSec, speed])
   useEffect(() => { const v = videoRef.current; if (v) v.playbackRate = speed }, [speed])
   const seekClip = useCallback((clipT) => { const v = videoRef.current; if (!v) return; v.currentTime = startSec + clamp(clipT, 0, durationSec) }, [startSec, durationSec])
