@@ -73,9 +73,25 @@ function mediaSrc(m) {
 // in prod, because media_urls is snapshotted when the draft is created and the
 // asset's thumbnail is generated asynchronously some time after that.
 function VideoFrame({ video, className = '' }) {
+  // An undecodable source (a .mov / 4K camera-original the browser can't play)
+  // fires the element's error event; unhandled, it surfaces in prod as a
+  // NotSupportedError. Degrade to the poster image — or a labelled tile when
+  // there's no poster — instead of a broken native player. Keyed on `src` so a
+  // carousel advancing to a playable clip clears the prior failure for free
+  // (this instance is reused across items). Playable videos never hit it.
+  const [errorSrc, setErrorSrc] = React.useState(null)
   const src = mediaSrc(video)
   if (!src) return null
   const poster = video?.thumbnailUrl || undefined
+  if (errorSrc === src) {
+    return poster ? (
+      <img src={poster} className={className} alt={video?.name || 'Video preview'} />
+    ) : (
+      <div className={`flex items-center justify-center bg-black text-xs text-white/60 ${className}`}>
+        Preview unavailable
+      </div>
+    )
+  }
   return (
     <video
       src={poster ? src : `${src}#t=0.1`}
@@ -85,6 +101,7 @@ function VideoFrame({ video, className = '' }) {
       playsInline
       preload="metadata"
       aria-label={video.name || 'Attached video'}
+      onError={() => setErrorSrc(src)}
     />
   )
 }
