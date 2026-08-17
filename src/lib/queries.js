@@ -22,6 +22,7 @@ import { useQuery, useInfiniteQuery, useQueryClient, keepPreviousData } from '@t
 import { useAppMutation } from './useAppMutation'
 import { isTransientApiError } from './apiError'
 import { isLockRejection } from './publishLock'
+import { toast } from './toast'
 import {
   apiFetch,
   fetchStaff,
@@ -555,42 +556,85 @@ export function mergePatchedContentRow(prev, echo, patch) {
   return next
 }
 
+// ── Content-save retry / toast policy ────────────────────────────────────────
+// Extracted from the hook so the tuning and error-routing decisions are unit
+// testable without standing up a QueryClient (CLAUDE.md: logic inline behind a
+// hook is untestable, and its tests silently test a copy). Guarded by
+// tests/lib/contentSaveRetryPolicy.test.js.
+
+// A content save is an idempotent PATCH (it sets fields to fixed values), so a
+// transient backend blip is safe to auto-retry rather than dead-ending the
+// producer with a scary "Update failed" they then retry by hand. Two real
+// reports drove this: movebetter 2026-08-05 (a ~minutes-long window where every
+// content_items write 5xx'd, and the editor gave up on the first failure), then
+// movebetter/Philip 2026-08-17 (feedback 9b080c3e) — a single caption PATCH on
+// an unlocked draft hit a transient Supabase/PostgREST 5xx whose window
+// outlasted the old 2-retry (~9s) budget, surfacing a hard "Update failed" for a
+// blip that self-recovered ~3.5 min later (the post approved + published fine).
+//
+// `failureCount < 4` = 4 retries (5 attempts total). Retry ONLY transient
+// 5xx/network errors — never a 4xx (409 publish lock, 400 validation, 403 auth),
+// which the server is deliberately rejecting.
+export const CONTENT_SAVE_MAX_RETRIES = 4
+export function shouldRetryContentSave(failureCount, error) {
+  return failureCount < CONTENT_SAVE_MAX_RETRIES && isTransientApiError(error)
+}
+
+// retryDelay is called with attempt = 0,1,2,3, so the backoff is
+// 1s + 2s + 4s + 8s = 15s of waiting (plus five request round-trips). The 8s
+// ceiling clears the common several-second blip; a genuine multi-minute outage
+// still surfaces after ~15s — as the calm warning below, not a red error.
+export function contentSaveRetryDelay(attempt) {
+  return Math.min(1000 * 2 ** attempt, 8000)
+}
+
+// Suppress useAppMutation's default red "Couldn't update content" toast for the
+// two error classes handled explicitly in the hook's onError: a lock rejection
+// (noise) and a transient 5xx/network failure that has already burned the retry
+// budget (a self-recovering blip deserves a calm warning, not a persistent red
+// error the producer reads as data loss). Every OTHER error — a real 400/403, an
+// unexpected bug — still gets the default toast.
+export function suppressContentSaveToast(err) {
+  return isLockRejection(err) || isTransientApiError(err)
+}
+
 export function useUpdateContentItem() {
   const qc = useQueryClient()
   return useAppMutation({
     errorMessage: "Couldn't update content",
     mutationFn: ({ id, patch }) => updateContentItem(id, patch),
-    // A content save is an idempotent PATCH (it sets fields to fixed values), so
-    // a transient backend blip is safe to auto-retry rather than dead-ending the
-    // producer with a scary "Update failed" they then retry by hand. This was a
-    // real report (movebetter, 2026-08-05): a ~minutes-long window where every
-    // content_items write 5xx'd, and the editor gave up on the first failure.
-    // Retry ONLY transient 5xx/network errors — never a 4xx (a 409 publish lock,
-    // a 400 validation, a 403) which the server is deliberately rejecting.
-    retry: (failureCount, error) => failureCount < 2 && isTransientApiError(error),
-    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
-    // A 409 publish lock is not a failure the producer can do anything about,
-    // and it is the one save error that can REPEAT FOREVER. The publish pipeline
-    // writes scheduled/published via sb() directly, bypassing this route, so
-    // nothing invalidates the client cache when a piece commits — the editor
-    // keeps rendering (the parent's lock gate reads that stale cache), keeps
-    // autosaving, and every autosave 409s. A failed save never updates the
-    // autosave baseline and, before this, never invalidated anything, so the
-    // cache could not reach the locked status except through a successful save,
-    // which is now impossible. That is the storm a producer reported on
-    // 2026-08-10: a toast per debounce window, unstoppable.
-    //
-    // Refetching here is what breaks it: the detail query reloads the real
-    // status, StoryboardPublish's isPieceLocked gate flips, and the editor is
-    // replaced by the read-only receipt — so the writes stop at their source
-    // instead of being retried against a server that will always refuse them.
-    silent: isLockRejection,
+    retry: shouldRetryContentSave,
+    retryDelay: contentSaveRetryDelay,
+    silent: suppressContentSaveToast,
     onError: (err, { id }) => {
-      if (!isLockRejection(err)) return
-      console.warn('[useUpdateContentItem] write refused — piece is committed; refetching', id)
-      // contentItems.all is a prefix of detail(id), so this covers both the open
-      // editor's row and every list that still shows it as editable.
-      qc.invalidateQueries({ queryKey: queryKeys.contentItems.all })
+      // A 409 publish lock is not a failure the producer can do anything about,
+      // and it is the one save error that can REPEAT FOREVER. The publish
+      // pipeline writes scheduled/published via sb() directly, bypassing this
+      // route, so nothing invalidates the client cache when a piece commits — the
+      // editor keeps rendering (the parent's lock gate reads that stale cache),
+      // keeps autosaving, and every autosave 409s. Refetching here breaks it: the
+      // detail query reloads the real status, StoryboardPublish's isPieceLocked
+      // gate flips, and the editor is replaced by the read-only receipt — so the
+      // writes stop at their source. (Storm reported 2026-08-10: a toast per
+      // debounce window, unstoppable.)
+      if (isLockRejection(err)) {
+        console.warn('[useUpdateContentItem] write refused — piece is committed; refetching', id)
+        // contentItems.all is a prefix of detail(id), so this covers both the open
+        // editor's row and every list that still shows it as editable.
+        qc.invalidateQueries({ queryKey: queryKeys.contentItems.all })
+        return
+      }
+      if (isTransientApiError(err)) {
+        // Retries are exhausted, so this save didn't land — but the draft is
+        // untouched in the editor, and any further edit re-fires the save (a
+        // failed save never advances the autosave baseline), so the copy stays
+        // honest without promising a background timer that isn't running.
+        console.warn('[useUpdateContentItem] transient save failure after retries:', err?.message)
+        toast.warning("Couldn't save just now", {
+          description:
+            'The server was briefly unreachable — your changes are still here and will save as you keep editing.',
+        })
+      }
     },
     onSuccess: (data, { id, patch }) => {
       // Merge only the columns this patch wrote into the detail cache so a
