@@ -147,11 +147,7 @@ function normCaptionText(s) {
 
 // ── CANVAS ───────────────────────────────────────────────────────────────────
 function Canvas({ ctx }) {
-  const { videoRef, asset, editVideoUrl, captionsBaked, captionSizeFactor, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, dragging, snap, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap, logCaptionCorrection, alignGuidesOn } = ctx
-  // Original caption text captured when inline editing starts, so we can log the
-  // (heard → fixed) correction once on commit — activeLine mutates on each
-  // keystroke (editLine re-splits), so it can't be read at blur time.
-  const capOrigRef = useRef('')
+  const { videoRef, asset, editVideoUrl, captionsBaked, captionSizeFactor, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, dragging, snap, startSec, durationSec, dragOverlay, alignGuidesOn } = ctx
   // Set when the <video> can't decode its source (a .mov / 4K camera-original).
   // Keyed on editVideoUrl so swapping to a playable source clears it for free.
   const [errorUrl, setErrorUrl] = useState(null)
@@ -233,13 +229,17 @@ function Canvas({ ctx }) {
             </div>
           )}
 
-          {/* caption — karaoke; click to edit the active line inline (pauses playback).
-              Suppressed when captionsBaked: the video already carries a burned-in
-              track, so a live overlay on top would be the double we're preventing. */}
+          {/* caption — karaoke; READ-ONLY preview of the active line. Editing the
+              words moved to the Caption-lines list in the Karaoke inspector, so
+              the on-frame text is no longer a click target (it used to open an
+              oversized, frame-sized input that clipped a full line at the edges —
+              Philip's report). pointer-events-none so the click falls through to
+              togglePlay. Suppressed when captionsBaked: the video already carries
+              a burned-in track, so a live overlay on top would be the double
+              we're preventing. */}
           {activeLine && caption.preset !== 'off' && !captionsBaked && (
             <div
-              onClick={(e) => { e.stopPropagation(); videoRef.current?.pause(); selectKey('caption'); setEditingCap(true) }}
-              className="pointer-events-auto absolute left-1/2 -translate-x-1/2 cursor-text text-center font-extrabold leading-tight"
+              className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-center font-extrabold leading-tight"
               style={{
                 maxWidth: '86%',
                 top: caption.position === 'top' ? '11%' : caption.position === 'center' ? '46%' : 'auto',
@@ -255,30 +255,15 @@ function Canvas({ ctx }) {
                 // customized subtitle size previews the size it exports.
                 fontSize: `${(CAPTION_BASE_FS_PCT * (CAPTION_SIZE_SCALE[caption.size] ?? 1) * captionSizeFactor).toFixed(2)}cqw`,
                 color: '#fff', textShadow: '0 2px 10px rgba(0,0,0,.6)',
-                outline: sel === 'caption' ? '1.5px dashed #fff' : 'none', outlineOffset: '4px',
+                outline: sel === 'caption' ? '1.5px dashed rgba(255,255,255,.7)' : 'none', outlineOffset: '4px',
               }}
             >
-              {editingCap && sel === 'caption' && activeIdx >= 0 ? (
-                <input
-                  autoFocus
-                  defaultValue={activeLine.words.map((w) => w.word).join(' ')}
-                  onClick={(e) => e.stopPropagation()}
-                  onFocus={(e) => { capOrigRef.current = e.target.value }}
-                  onChange={(e) => editLine(activeIdx, e.target.value)}
-                  onBlur={(e) => { logCaptionCorrection?.(capOrigRef.current, e.target.value, 'line'); setEditingCap(false) }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur() } }}
-                  className="w-full bg-transparent text-center outline-none"
-                  style={{ color: '#fff', font: 'inherit', textShadow: 'inherit' }}
-                  aria-label="Edit caption line"
-                />
-              ) : (
-                <span style={{ display: 'inline-block', ...capCss.wrap }}>
-                  {activeLine.words.map((w, i) => {
-                    const spoken = playClipT >= w.start
-                    return <span key={i} style={spoken ? capCss.active : capCss.base}>{w.word}{' '}</span>
-                  })}
-                </span>
-              )}
+              <span style={{ display: 'inline-block', ...capCss.wrap }}>
+                {activeLine.words.map((w, i) => {
+                  const spoken = playClipT >= w.start
+                  return <span key={i} style={spoken ? capCss.active : capCss.base}>{w.word}{' '}</span>
+                })}
+              </span>
             </div>
           )}
 
@@ -511,7 +496,7 @@ function PostCaptionInspector({ ctx }) {
 }
 
 function CaptionInspector({ ctx }) {
-  const { asset, caption, setCaption, lines, genCaptions, genCaptionsPending, captionsEdited, resetCaptions, openSaveTemplate, captionsBaked } = ctx
+  const { asset, caption, setCaption, lines, genCaptions, genCaptionsPending, captionsEdited, resetCaptions, openSaveTemplate, captionsBaked, displayClipT, editLine, editCaptionLine, logCaptionCorrection } = ctx
   // A caption-baked clip with no clean source (a manually-exported broll) is
   // edited from its own already-captioned blob, so restyling here would double
   // the track. The controls are replaced with a plain explanation instead of
@@ -599,12 +584,49 @@ function CaptionInspector({ ctx }) {
           {genCaptionsPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Transcribing…</> : <><Sparkles className="h-3.5 w-3.5" />Generate captions</>}
         </button>
       ) : (
-        <>
-          <p className="mt-1 rounded-md px-2 py-1.5 text-3xs" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}>Tap the caption on the video to fix a word.</p>
+        <div className="mt-2">
+          {/* Caption-lines list — every spoken line as a readable, editable row,
+              beside the preview instead of an oversized input on the video frame
+              (Philip's report: on-frame text clipped a full line at the edges).
+              Each row edits text only for v1; it commits through the existing
+              editLine(idx, text), so the bake/publish path is unchanged. The row
+              at the playhead is highlighted (displayClipT, same test the timeline
+              caption lane uses); tapping a row seeks there via editCaptionLine. */}
+          <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Caption lines · tap to edit</p>
+          <div className="flex max-h-60 flex-col gap-1 overflow-auto rounded-md border p-1" style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--muted)/0.4)' }}>
+            {lines.map((l, i) => {
+              const active = displayClipT >= l.start && displayClipT < l.end
+              return (
+                // key includes the text so a programmatic change (reset / regen /
+                // a committed edit) remounts the uncontrolled input with the fresh
+                // value, while in-progress typing (text unchanged until blur)
+                // keeps a stable key and doesn't lose the caret.
+                <div
+                  key={`${i}:${l.text}`}
+                  onClick={() => editCaptionLine(i)}
+                  className="flex cursor-text items-start gap-1.5 rounded-md border px-1.5 py-1 transition-colors"
+                  style={active
+                    ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.08)' }
+                    : { borderColor: 'transparent', background: 'hsl(var(--card))' }}
+                >
+                  <span className="shrink-0 pt-px font-mono text-3xs tabular-nums" style={{ color: active ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>{fmt(l.start)}</span>
+                  <input
+                    defaultValue={l.text}
+                    aria-label={`Caption line at ${fmt(l.start)}`}
+                    onBlur={(e) => { const v = e.target.value; if (v.trim() && v !== l.text) { editLine(i, v); logCaptionCorrection?.(l.text, v, 'line') } }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
+                    className="w-full min-w-0 bg-transparent text-2xs outline-none"
+                    style={{ color: 'hsl(var(--foreground))', fontWeight: active ? 600 : 400 }}
+                  />
+                  {l.userEdited && <span className="shrink-0 pt-px text-3xs font-bold" title="Edited" style={{ color: 'hsl(var(--action))' }}>·</span>}
+                </div>
+              )
+            })}
+          </div>
           {captionsEdited && (
             <button onClick={resetCaptions} className="mt-1.5 w-full rounded-md py-1.5 text-3xs text-muted-foreground underline-offset-2 hover:underline">Reset captions to transcript</button>
           )}
-        </>
+        </div>
       )}
       {/* Mirrors "Save as Brand look" in the Grade inspector — dial the look in
           on a real clip, then promote it. */}
@@ -2116,7 +2138,6 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     },
   })
 
-  const [editingCap, setEditingCap] = useState(false)
   const [alignGuidesOn, setAlignGuidesOn] = useState(false)
   const alignGuideTimerRef = useRef(null)
   function flashAlignGuides() {
@@ -2126,10 +2147,11 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   }
   // Clear the flash timer on unmount so it can't fire setAlignGuidesOn after teardown.
   useEffect(() => () => { if (alignGuideTimerRef.current) clearTimeout(alignGuideTimerRef.current) }, [])
-  // Tap a caption box on the timeline → jump the playhead onto that spoken line
-  // and open the SAME inline caption editor the on-video tap uses (Canvas input →
-  // editLine). We turn captions on first so tapping a box can't be a dead click
-  // when the preset is off — you can't edit words you can't see.
+  // Tap a caption box on the timeline (or a row in the Caption-lines list) →
+  // jump the playhead onto that spoken line and open the Karaoke inspector,
+  // whose Caption-lines list is where the words are edited (list → editLine).
+  // We turn captions on first so tapping a box can't be a dead click when the
+  // preset is off — you can't edit words you can't see.
   const editCaptionLine = useCallback((i) => {
     const l = lines[i]
     if (!l) return
@@ -2140,7 +2162,6 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     setCurrentTime(startSec + mid)
     setScrubT(mid)
     selectKey('caption')
-    setEditingCap(true)
   }, [lines, caption.preset, startSec, durationSec, selectKey, setCaption])
   const busy = exportMutation.isPending || wholeMutation.isPending || finalizeToPost.isPending || saveVideoToPiece.isPending
   const anyDest = dest.broll || dest.ad
@@ -2163,7 +2184,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
     brandGrade, saveBrandGrade: () => saveBrandMutation.mutate(), savingBrand: saveBrandMutation.isPending,
     openSaveTemplate,
-    editingCap, setEditingCap, editCaptionLine,
+    editCaptionLine,
     music, setMusic,
     alignGuidesOn, flashAlignGuides,
     proposals, selectedSegmentId, applySegment, discardSegment,
