@@ -41,10 +41,12 @@ function formatWhen(dateStr) {
 
 // The Schedule / Add to queue / Publish now split-button. Disabled (but visible)
 // until the piece is approved — that's the deliberate two-step gate.
-function PublishControl({ wf, piece, enabled }) {
+// `publish` is the bar's commit-wrapped publisher (runs onBeforeCommit — the
+// video-editor bake — before dispatching), and `busy` folds in that pre-commit
+// step so the button spins through the render, not just the network call.
+function PublishControl({ wf, piece, enabled, publish, busy }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const isBlog = piece.platform === 'blog'
-  const busy = wf.publishing
 
   // Export-only channel (no wired integration): approve still works here, but
   // the export affordances live in the full Publish panel (rail / modal).
@@ -68,7 +70,7 @@ function PublishControl({ wf, piece, enabled }) {
         size="sm"
         disabled={!enabled || busy}
         loading={busy}
-        onClick={() => wf.publish({})}
+        onClick={() => publish({})}
         className="bg-action text-action-foreground hover:bg-action/90"
         title={enabled ? 'Publish to your website' : 'Approve first'}
       >
@@ -95,7 +97,7 @@ function PublishControl({ wf, piece, enabled }) {
           size="sm"
           disabled={!publishEnabled || busy}
           loading={busy}
-          onClick={() => wf.publish({ scheduledAt: wf.suggested })}
+          onClick={() => publish({ scheduledAt: wf.suggested })}
           className="rounded-r-none bg-action text-action-foreground hover:bg-action/90"
           title={scheduleTitle}
         >
@@ -127,20 +129,20 @@ function PublishControl({ wf, piece, enabled }) {
               icon={CalendarClock}
               title={slotLabel ? `Schedule for ${slotLabel}` : 'Schedule'}
               sub="Bernard’s suggested slot for this channel"
-              onClick={() => { setMenuOpen(false); wf.publish({ scheduledAt: wf.suggested }) }}
+              onClick={() => { setMenuOpen(false); publish({ scheduledAt: wf.suggested }) }}
             />
             <MenuItem
               icon={ListPlus}
               title="Add to queue"
               sub="Drop into the next open posting slot"
-              onClick={() => { setMenuOpen(false); wf.publish({ useQueue: true }) }}
+              onClick={() => { setMenuOpen(false); publish({ useQueue: true }) }}
             />
             <div className="my-1 h-px bg-border" />
             <MenuItem
               icon={Send}
               title="Publish now"
               sub="Send it live immediately"
-              onClick={() => { setMenuOpen(false); wf.publish({}) }}
+              onClick={() => { setMenuOpen(false); publish({}) }}
             />
           </div>
         </>
@@ -254,9 +256,40 @@ function MenuItem({ icon: Icon, title, sub, onClick }) {
   )
 }
 
-export default function EditorWorkflowBar({ piece }) {
+// onBeforeCommit (optional): an async fn run right before Approve / Send-for-
+// review / Schedule / Publish / Retry. The embedded video editor supplies it to
+// bake the current trim/caption edit into this piece's media_urls FIRST, so the
+// committed post is what the operator sees — not the untouched auto-reel
+// (feedback f46a0eec). It resolves to the freshly-baked media_urls (threaded
+// into publish as mediaUrlsOverride) or null when nothing needed baking. Every
+// other editor omits it, so their behavior is unchanged.
+export default function EditorWorkflowBar({ piece, onBeforeCommit }) {
   const wf = useContentWorkflow(piece)
   const status = piece?.status || 'draft'
+  // True while the pre-commit bake + the workflow action run, so buttons spin
+  // through the whole sequence (a reel render can take several seconds).
+  const [committing, setCommitting] = useState(false)
+
+  // Run onBeforeCommit (if any), then the workflow action with whatever media it
+  // baked. If the bake throws we do NOT run the action — approving/publishing a
+  // stale reel is the exact failure this guards against; the bake and the wf.*
+  // handlers surface their own error toasts, so swallow here.
+  const runCommit = async (action) => {
+    if (committing) return
+    setCommitting(true)
+    try {
+      const baked = onBeforeCommit ? await onBeforeCommit() : null
+      await action(Array.isArray(baked) && baked.length ? baked : null)
+    } catch {
+      /* onBeforeCommit + wf.* already toasted */
+    } finally {
+      setCommitting(false)
+    }
+  }
+  // Commit-wrapped publisher: bake first, then dispatch the fresh media so a
+  // same-click edit→schedule can't publish the pre-bake reel.
+  const publish = (opts = {}) =>
+    runCommit((baked) => wf.publish({ ...opts, mediaUrlsOverride: baked || undefined }))
 
   const canApproveNow =
     (status === 'draft' && wf.skipReview && wf.canReview) ||
@@ -357,9 +390,9 @@ export default function EditorWorkflowBar({ piece }) {
       {status === 'failed' && (
         <Button
           size="sm"
-          disabled={wf.publishing || wordsGateBlocked || !wf.formatValid}
-          loading={wf.publishing}
-          onClick={() => wf.publish({})}
+          disabled={wf.publishing || committing || wordsGateBlocked || !wf.formatValid}
+          loading={wf.publishing || committing}
+          onClick={() => publish({})}
           title={
             wordsGateBlocked ? "Approve the story's words before retrying"
               : !wf.formatValid ? (wf.formatBlockReason || 'This post’s format doesn’t fit its media')
@@ -367,7 +400,7 @@ export default function EditorWorkflowBar({ piece }) {
           }
           className="bg-action text-action-foreground hover:bg-action/90"
         >
-          {!wf.publishing && <RotateCcw className="mr-1.5 h-3.5 w-3.5" />}
+          {!wf.publishing && !committing && <RotateCcw className="mr-1.5 h-3.5 w-3.5" />}
           Retry
         </Button>
       )}
@@ -413,7 +446,7 @@ export default function EditorWorkflowBar({ piece }) {
               undo
             </button>
           </span>
-          <PublishControl wf={wf} piece={piece} enabled={!wordsGateBlocked} />
+          <PublishControl wf={wf} piece={piece} enabled={!wordsGateBlocked} publish={publish} busy={committing || wf.publishing} />
         </>
       )}
 
@@ -433,16 +466,16 @@ export default function EditorWorkflowBar({ piece }) {
           <Button
             variant="success"
             size="sm"
-            disabled={wf.statusPending || captionOver > 0}
-            loading={wf.statusPending}
-            onClick={wf.approve}
+            disabled={wf.statusPending || committing || captionOver > 0}
+            loading={wf.statusPending || committing}
+            onClick={() => runCommit(() => wf.approve())}
             title={captionOver > 0 ? `Shorten the caption by ${captionOver} characters to approve` : undefined}
           >
-            {!wf.statusPending && <Check className="mr-1.5 h-3.5 w-3.5" />}
+            {!wf.statusPending && !committing && <Check className="mr-1.5 h-3.5 w-3.5" />}
             Approve
           </Button>
           <RejectControl wf={wf} />
-          <PublishControl wf={wf} piece={piece} enabled={false} />
+          <PublishControl wf={wf} piece={piece} enabled={false} publish={publish} busy={committing || wf.publishing} />
         </>
       )}
 
@@ -453,14 +486,14 @@ export default function EditorWorkflowBar({ piece }) {
           <Button
             size="sm"
             variant="outline"
-            disabled={wf.statusPending}
-            loading={wf.statusPending}
-            onClick={wf.sendForReview}
+            disabled={wf.statusPending || committing}
+            loading={wf.statusPending || committing}
+            onClick={() => runCommit(() => wf.sendForReview())}
           >
-            {!wf.statusPending && <Send className="mr-1.5 h-3.5 w-3.5" />}
+            {!wf.statusPending && !committing && <Send className="mr-1.5 h-3.5 w-3.5" />}
             Send for review
           </Button>
-          <PublishControl wf={wf} piece={piece} enabled={false} />
+          <PublishControl wf={wf} piece={piece} enabled={false} publish={publish} busy={committing || wf.publishing} />
         </>
       )}
     </div>

@@ -147,7 +147,7 @@ function normCaptionText(s) {
 
 // ── CANVAS ───────────────────────────────────────────────────────────────────
 function Canvas({ ctx }) {
-  const { videoRef, asset, editVideoUrl, captionsBaked, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, dragging, snap, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap, logCaptionCorrection, alignGuidesOn } = ctx
+  const { videoRef, asset, editVideoUrl, captionsBaked, captionSizeFactor, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, dragging, snap, startSec, durationSec, dragOverlay, editLine, editingCap, setEditingCap, logCaptionCorrection, alignGuidesOn } = ctx
   // Original caption text captured when inline editing starts, so we can log the
   // (heard → fixed) correction once on commit — activeLine mutates on each
   // keystroke (editLine re-splits), so it can't be read at blur time.
@@ -250,7 +250,10 @@ function Canvas({ ctx }) {
                 // with a hard ceiling — so on a tall display Medium and Large
                 // previewed IDENTICALLY while baking 1.0× vs 1.35×. The control
                 // appeared to do nothing and then changed the export.
-                fontSize: `${(CAPTION_BASE_FS_PCT * (CAPTION_SIZE_SCALE[caption.size] ?? 1)).toFixed(2)}cqw`,
+                // captionSizeFactor mirrors the bake's per-workspace
+                // (subtitle_font_size ?? 10)/10 multiplier so a tenant that
+                // customized subtitle size previews the size it exports.
+                fontSize: `${(CAPTION_BASE_FS_PCT * (CAPTION_SIZE_SCALE[caption.size] ?? 1) * captionSizeFactor).toFixed(2)}cqw`,
                 color: '#fff', textShadow: '0 2px 10px rgba(0,0,0,.6)',
                 outline: sel === 'caption' ? '1.5px dashed #fff' : 'none', outlineOffset: '4px',
               }}
@@ -1440,6 +1443,22 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     [format, piece?.id, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited, wordEdits],
   )
 
+  // Publish-fidelity guard (embedded reel). Approve/Schedule/Publish must bake the
+  // CURRENT edit into media_urls, or they ship the untouched auto-reel — the
+  // trim/caption style the operator sees would differ from the scheduled post
+  // (feedback f46a0eec). We can't prove the pre-existing auto-reel matches the
+  // hydrated editor state (its baked caption style/trim may already differ from
+  // the editor's), so the edit starts DIRTY: the first commit always bakes. Each
+  // in-editor bake records the exact draft it rendered, so a redundant
+  // Save→Approve (draft unchanged since) doesn't re-render. JSON.stringify is
+  // stable because draftDoc is a fixed-key object literal. State, not a ref, so
+  // clearing dirty after a bake re-renders the workflow bar.
+  const [lastBakedDoc, setLastBakedDoc] = useState(null)
+  const videoEditDirty = useMemo(
+    () => !!(embedded && piece?.id) && JSON.stringify(draftDoc) !== lastBakedDoc,
+    [embedded, piece?.id, draftDoc, lastBakedDoc],
+  )
+
   // localStorage mirror — immediate, undebounced offline copy. The server
   // PATCH below is debounced via useAutosave, which also flushes any pending
   // save on unmount so navigating away mid-edit doesn't drop the change.
@@ -1849,6 +1868,10 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   const saveVideoToPiece = useAppMutation({
     errorMessage: 'Could not save the video to this post.',
     mutationFn: async () => {
+      // Snapshot the draft we're about to render BEFORE the async work, so a mid-
+      // render edit isn't wrongly marked as already-baked. Committed to
+      // lastBakedDocRef only after the persist succeeds.
+      const bakedDoc = JSON.stringify(draftDoc)
       const render = await doRenderClip()
       const baked = {
         url: render.blobUrl,
@@ -1859,10 +1882,24 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
         ...(pieceVideoEntry?.name ? { name: pieceVideoEntry.name } : {}),
       }
       await updateItem.mutateAsync({ id: piece.id, patch: { mediaUrls: [baked] } })
-      return true
+      setLastBakedDoc(bakedDoc)
+      // Return the fresh media_urls so an auto-bake-on-commit can dispatch THESE
+      // (the parent's piece query can't have refetched yet in the same click).
+      return [baked]
     },
     onSuccess: () => toast('Video saved to this post — approve & schedule when ready'),
   })
+
+  // Bake the current edit into the post before a commit (Approve / Schedule /
+  // Publish / Retry), but only when it differs from what was last baked — a
+  // redundant Save→Approve won't re-render. Returns the freshly-baked media_urls
+  // for the publish override, or null when nothing needed baking. Wired to the
+  // embedded EditorWorkflowBar as onBeforeCommit; a throw (render failure)
+  // propagates so the commit is aborted rather than shipping a stale reel.
+  const bakeVideoIfDirty = useCallback(async () => {
+    if (!embedded || !piece?.id || !videoEditDirty) return null
+    return await saveVideoToPiece.mutateAsync()
+  }, [embedded, piece?.id, videoEditDirty, saveVideoToPiece])
 
   // Swap the reel's SOURCE video. Writes the picked clip to media_urls through
   // the normal content PATCH so classifyMediaChange stamps media_source:'human'
@@ -2108,8 +2145,16 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   const busy = exportMutation.isPending || wholeMutation.isPending || finalizeToPost.isPending || saveVideoToPiece.isPending
   const anyDest = dest.broll || dest.ad
 
+  // Workspace caption-size multiplier — the bake applies it
+  // (brandRenderVideo.js karaoke fontSizePx: × (subtitle_font_size ?? 10)/10),
+  // so the on-canvas preview must too or a workspace that customized subtitle
+  // size sees a caption that doesn't match the exported reel. Mirror of the
+  // server factor; 1.0 for the default (10). See the client/server caption
+  // mirror-pair note in CLAUDE.md.
+  const captionSizeFactor = (asset?.workspace?.brand_style?.subtitle_font_size ?? 10) / 10
+
   const ctx = {
-    videoRef, asset, editVideoUrl, captionsBaked, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
+    videoRef, asset, editVideoUrl, captionsBaked, captionSizeFactor, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
     format, setFormat, formatCss: (FORMATS[format] || FORMATS.reel).css, formatDim: (FORMATS[format] || FORMATS.reel).dim,
     reframe, setReframe: setReframeKey, autoReframe, autoReframing, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
     setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, editWord, logCaptionCorrection, resetCaptions, captionsEdited, cuts, toggleWordCut, addCuts, clearCuts, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
@@ -2236,7 +2281,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
               </TooltipTrigger>
               <TooltipContent>Renders your edits and saves the finished clip to this post</TooltipContent>
             </Tooltip>
-            {post && <EditorWorkflowBar piece={post} />}
+            {post && <EditorWorkflowBar piece={post} onBeforeCommit={bakeVideoIfDirty} />}
           </>
         ) : post ? (
           <EditorWorkflowBar piece={post} />

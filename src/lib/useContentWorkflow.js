@@ -182,7 +182,16 @@ export function useContentWorkflow(piece) {
   //   { useQueue: true }    — add to Buffer's queue (shareNext)
   //   {}                    — publish immediately (shareNow)
   // Blog publishes ignore both args and go to the website webhook synchronously.
-  const publish = async ({ scheduledAt: scheduledDate, useQueue, bypassMediaCheck } = {}) => {
+  // mediaUrlsOverride — dispatch THESE media instead of piece.media_urls, for the
+  // one case where the piece prop can't have refreshed yet: the embedded video
+  // editor bakes the current edit into a fresh reel and, in the SAME click, asks
+  // to schedule/publish it. `piece` here still holds the pre-bake media (the
+  // parent's useContentItem hasn't re-rendered mid-handler), so without the
+  // override the just-baked trim/captions would be persisted to the row but the
+  // dispatched post would carry the stale reel — the preview-vs-published
+  // divergence this whole path exists to prevent (feedback f46a0eec). Undefined
+  // for every other caller, so the normal path is unchanged.
+  const publish = async ({ scheduledAt: scheduledDate, useQueue, bypassMediaCheck, mediaUrlsOverride } = {}) => {
     // Hard format gate (block): an explicit format the attached media can't
     // satisfy would be rejected server-side after a round-trip. Stop here with
     // the reason + the fix (usually "switch to Carousel"). Covers every publish
@@ -195,13 +204,14 @@ export function useContentWorkflow(piece) {
     // Soft media gate (warn, don't block): a draft with no photo/video can still
     // ship — but media usually helps. Warn once with an override; "Add media"
     // routes to Storyboard. A confirmed publish re-runs with bypassMediaCheck.
-    const hasMedia = Array.isArray(piece.media_urls) && piece.media_urls.length > 0
+    const effectiveMediaUrls = mediaUrlsOverride || piece.media_urls
+    const hasMedia = Array.isArray(effectiveMediaUrls) && effectiveMediaUrls.length > 0
     if (!hasMedia && !bypassMediaCheck) {
       toast.warning('This post has no photo or video', {
         description: 'Posts with media usually perform better.',
         action: {
           label: 'Publish anyway',
-          onClick: () => publish({ scheduledAt: scheduledDate, useQueue, bypassMediaCheck: true }),
+          onClick: () => publish({ scheduledAt: scheduledDate, useQueue, bypassMediaCheck: true, mediaUrlsOverride }),
         },
         cancel: {
           label: 'Add media',
@@ -262,7 +272,7 @@ export function useContentWorkflow(piece) {
         // freshly-baked slides itself (pre-lock, before dispatch); we own only the
         // toast and the approver audit.
         const { scheduling } = await runWithToast(
-          publishPieceToSocial(piece, {
+          publishPieceToSocial(mediaUrlsOverride ? { ...piece, media_urls: mediaUrlsOverride } : piece, {
             scheduledAt: effectiveScheduledAt,
             useQueue: usingQueue,
             userEmail,
