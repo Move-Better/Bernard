@@ -17,6 +17,7 @@ import { buildTemplateFromEditor, suggestTemplateName } from '@/lib/videoTemplat
 import { posthogCapture } from '@/lib/posthog'
 import { getMediaAsset, updateMediaAsset } from '@/lib/mediaLib'
 import { resolveVideoEditSource, shouldUseSourceWindow } from '@/lib/videoEditSource'
+import { applyCaptionWindow, nearestWithin } from '@/lib/captionTimeline'
 import { getSegments, renderWholeVideo, findClips, updateSegment, exportClipToBroll } from '@/lib/clipsLib'
 import { updateBrandStyle } from '@/lib/brandKitLib'
 import AdVideoExportModal from '@/components/AdVideoExportModal'
@@ -1039,7 +1040,7 @@ function IconRail({ ctx }) {
 // the grab point) and resize via their edges. Dragging (or clicking) anywhere
 // on the track scrubs the red playhead, same as CapCut's timeline.
 function HorizontalTimeline({ ctx }) {
-  const { startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, overlays, selectKey, sel, setOverlayWindow, displayClipT, setScrubT, addOverlay, seekClip, lines, editCaptionLine } = ctx
+  const { startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, overlays, selectKey, sel, setOverlayWindow, displayClipT, setScrubT, addOverlay, seekClip, lines, editCaptionLine, trimSnaps } = ctx
   const span = videoDuration > 0 ? videoDuration : Math.max(endSec, 1)
   const trackRef = useRef(null)
   const scrollRef = useRef(null)
@@ -1059,9 +1060,14 @@ function HorizontalTimeline({ ctx }) {
     const move = (ev) => {
       const r = trackRef.current?.getBoundingClientRect(); if (!r || span <= 0) return
       let s = clamp((ev.clientX - r.left) / r.width, 0, 1) * span
-      // Snap to the playhead / clip edges when within SNAP_PX so trims land clean.
+      // Snap (within SNAP_PX) to the playhead / clip edges AND to transcript word
+      // boundaries so a trim lands cleanly BETWEEN words — the in-handle to word
+      // STARTS, the out-handle to word ENDS — instead of slicing a word in half and
+      // mistiming the first/last caption. Nearest candidate within tolerance wins;
+      // a silent gap has no boundaries, so trims there stay free.
       const tol = (SNAP_PX / r.width) * span
-      for (const t of [startSec + displayClipT, 0, span]) if (Math.abs(s - t) < tol) { s = t; break }
+      const wordCands = which === 'in' ? (trimSnaps?.starts || []) : (trimSnaps?.ends || [])
+      s = nearestWithin(s, [startSec + displayClipT, 0, span, ...wordCands], tol)
       // Clamp to a ≤MAX_CLIP_SECONDS window so the clip can't exceed what the
       // server will render (else the export silently truncates the tail).
       if (which === 'in') setStartSec(clamp(s, Math.max(0, endSec - MAX_CLIP_SECONDS), endSec - 1))
@@ -1359,6 +1365,15 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   // the edits). "Reset captions to transcript" clears this to re-derive.
   const captionsEditedRef = useRef(false)
   const [captionsEdited, setCaptionsEdited] = useState(false)
+  // The startSec that captionLines' word timings are currently clip-relative to
+  // (their 0:00 == this source second). It EQUALS startSec at every (re)seed and
+  // restore; it only LAGS startSec when a trim moves the window while captions are
+  // hand-edited (the seed effect then leaves the edited lines frozen). The `lines`
+  // memo translates by (captionWin - startSec) so those frozen captions re-align to
+  // the trimmed audio instead of baking misaligned — the "trimming messed up caption
+  // timing" report. State (not a ref) so the `lines` memo can depend on it cleanly.
+  // See applyCaptionWindow in src/lib/captionTimeline.js.
+  const [captionWin, setCaptionWin] = useState(0)
   // Per-word transcript corrections (Script tab): fix a mis-transcribed word
   // ("that's" → "Yes") without re-cutting it. Keyed by the word's ABSOLUTE start
   // time (clip-relative start + trim offset) so a correction survives re-trims;
@@ -1422,6 +1437,10 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
           setCaptionLines(d.captionLines)
           setCaptionsEdited(true)
           captionsEditedRef.current = true
+          // The restored lines are clip-relative to the window they were saved in.
+          // Prefer the persisted captionWin (correct even when the draft was left
+          // FROZEN mid-trim); fall back to the saved startSec for older drafts.
+          setCaptionWin(Number.isFinite(d.captionWin) ? d.captionWin : (Number.isFinite(draftStartSec) ? draftStartSec : 0))
         }
         // Restore per-word transcript corrections (Script tab).
         if (d.wordEdits && typeof d.wordEdits === 'object' && !Array.isArray(d.wordEdits)) {
@@ -1441,6 +1460,9 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
       setStartSec(srcWindow.startSec)
       setEndSec(srcWindow.endSec)
       seededRef.current = true
+      // Trim just became source-relative; treat any restored captions as belonging
+      // to the new window (no translation) — matches the pre-fix as-is behavior.
+      setCaptionWin(srcWindow.startSec)
     }
     // Seed the caption accent from the workspace brand when the draft didn't
     // bring a valid one. The bake always receives caption.accent (renderBody),
@@ -1460,9 +1482,12 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   // shapePieceId records WHICH piece the current `format` was chosen for, so a
   // deliberate per-post shape override sticks on reopen (see the restore gate
   // above) without leaking to a different piece that reuses the same b-roll.
+  // captionWin travels with the snapshot so a draft left FROZEN mid-trim (edited
+  // captions, then re-trimmed) restores with its caption timings still aligned —
+  // captionLines are clip-relative to captionWin, which can lag startSec.
   const draftDoc = useMemo(
-    () => ({ format, shapePieceId: piece?.id ?? null, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited, wordEdits }),
-    [format, piece?.id, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited, wordEdits],
+    () => ({ format, shapePieceId: piece?.id ?? null, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited, captionWin, wordEdits }),
+    [format, piece?.id, grade, reframe, kenBurns, overlays, speed, caption, startSec, endSec, cuts, music, captionLines, captionsEdited, captionWin, wordEdits],
   )
 
   // Publish-fidelity guard (embedded reel). Approve/Schedule/Publish must bake the
@@ -1513,6 +1538,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     setCaptionLines(snap.captionLines || [])
     setCaptionsEdited(!!snap.captionsEdited)
     captionsEditedRef.current = !!snap.captionsEdited
+    setCaptionWin(Number.isFinite(snap.captionWin) ? snap.captionWin : (Number.isFinite(snap.startSec) ? snap.startSec : 0))
     setWordEdits(snap.wordEdits || {})
   }, { enabled: hydrated })
   useUndoRedoShortcut(undo, redo)
@@ -1534,6 +1560,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     if (Array.isArray(d.captionLines)) setCaptionLines(d.captionLines)
     setCaptionsEdited(!!d.captionsEdited)
     captionsEditedRef.current = !!d.captionsEdited
+    setCaptionWin(Number.isFinite(d.captionWin) ? d.captionWin : (Number.isFinite(d.startSec) ? d.startSec : 0))
   }, [])
   // Auto-snapshot the draft at most every ~3 min of editing (pruned to 30 server-side).
   useEffect(() => {
@@ -1576,6 +1603,22 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   // (and the un-captioned raw video underneath), WYSIWYG. For a manual clip it is
   // the asset's own transcript, unchanged.
   const rawWords = useMemo(() => sliceWords(editSource.transcriptWords, startSec, durationSec), [editSource, startSec, durationSec])
+  // Source-relative word boundaries the trim handles soft-snap to, so a cut lands
+  // BETWEEN words instead of slicing one in half — a straddling word gets clamped to
+  // 0:00 by sliceWords and mistimes the first caption line (the "shrunk / messed up
+  // caption timing" report). In-handle snaps to word STARTS, out-handle to word ENDS;
+  // silent gaps carry no boundaries, so trims there stay free. transcriptWords are
+  // absolute source seconds — the same space as startSec / span.
+  const trimSnaps = useMemo(() => {
+    const ws = Array.isArray(editSource.transcriptWords) ? editSource.transcriptWords : []
+    const starts = [], ends = []
+    for (const wd of ws) {
+      const a = Number(wd?.start), b = Number(wd?.end)
+      if (Number.isFinite(a)) starts.push(a)
+      if (Number.isFinite(b)) ends.push(b)
+    }
+    return { starts, ends }
+  }, [editSource])
   // Apply per-word corrections (keyed by absolute start time). A corrected word
   // carries `edited: true` so the Script list can mark it. Text-only change —
   // timings are untouched, so cut ranges and karaoke timing stay valid.
@@ -1633,12 +1676,14 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     seedSigRef.current = sig
     if (captionsEditedRef.current) return
     setCaptionLines(derivedLines)
+    setCaptionWin(startSec) // derivedLines are clip-relative to this window
   }, [derivedLines, startSec, durationSec])
   const resetCaptions = useCallback(() => {
     captionsEditedRef.current = false
     setCaptionsEdited(false)
     setCaptionLines(derivedLines)
-  }, [derivedLines])
+    setCaptionWin(startSec)
+  }, [derivedLines, startSec])
   const editLine = useCallback((i, text) => {
     captionsEditedRef.current = true
     setCaptionsEdited(true)
@@ -1673,25 +1718,10 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   // a rewritten line's words across the ORIGINAL line span, so its first word
   // always starts exactly at the first transcript word's start and would collide
   // with that word's correction key.
-  const lines = useMemo(() => {
-    if (!wordEdits || !Object.keys(wordEdits).length) return captionLines
-    const s = Math.max(0, startSec || 0)
-    let anyChanged = false
-    const next = captionLines.map((l) => {
-      if (l?.userEdited || !Array.isArray(l?.words)) return l
-      let lineChanged = false
-      const w = l.words.map((word) => {
-        const fix = wordEdits[(word.start + s).toFixed(2)]
-        if (fix == null || fix === word.word) return word
-        lineChanged = true
-        return { ...word, word: fix, edited: true }
-      })
-      if (!lineChanged) return l
-      anyChanged = true
-      return { ...l, words: w, text: w.map((x) => x.word).join(' ') }
-    })
-    return anyChanged ? next : captionLines
-  }, [captionLines, wordEdits, startSec])
+  const lines = useMemo(
+    () => applyCaptionWindow(captionLines, { wordEdits, captionWin, startSec, durationSec }),
+    [captionLines, wordEdits, captionWin, startSec, durationSec],
+  )
 
   // playback: keep <video> within the trim window
   const togglePlay = useCallback(() => {
@@ -2179,7 +2209,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     format, setFormat, formatCss: (FORMATS[format] || FORMATS.reel).css, formatDim: (FORMATS[format] || FORMATS.reel).dim,
     reframe, setReframe: setReframeKey, autoReframe, autoReframing, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
     setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, editWord, logCaptionCorrection, resetCaptions, captionsEdited, cuts, toggleWordCut, addCuts, clearCuts, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
-    startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, dragging, snap, trimToLine,
+    startSec, endSec, durationSec, videoDuration, setStartSec, setEndSec, dragging, snap, trimToLine, trimSnaps,
     setVideoDuration, setPlaying, handleTimeUpdate,
     genCaptions: () => genCaptionsMutation.mutate(), genCaptionsPending: genCaptionsMutation.isPending,
     brandGrade, saveBrandGrade: () => saveBrandMutation.mutate(), savingBrand: saveBrandMutation.isPending,
