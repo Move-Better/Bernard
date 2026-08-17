@@ -22,8 +22,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // recognizing it refetches instead of shouting.
 
 const toastError = vi.fn()
+const toastWarning = vi.fn()
 vi.mock('@/lib/toast', () => ({
-  toast: { error: toastError, success: vi.fn(), warning: vi.fn(), message: vi.fn() },
+  toast: { error: toastError, success: vi.fn(), warning: toastWarning, message: vi.fn() },
 }))
 
 let capturedMutationOptions = null
@@ -51,6 +52,7 @@ const { useAppMutation } = await import('@/lib/useAppMutation')
 
 beforeEach(() => {
   toastError.mockClear()
+  toastWarning.mockClear()
   invalidateQueries.mockClear()
   setQueryData.mockClear()
   capturedMutationOptions = null
@@ -170,7 +172,12 @@ describe('useAppMutation suppresses one class of error, not all of them', () => 
 
 describe('useUpdateContentItem heals the stale cache that caused the storm', () => {
   const lockErr = { status: 409, payload: { error: 'locked_scheduled' } }
-  const serverErr = Object.assign(new Error('Update failed'), { status: 500 })
+  // A transient 5xx that has already burned the retry budget. This is the
+  // self-recovering blip from feedback 9b080c3e (movebetter/Philip, 2026-08-17):
+  // a caption PATCH 5xx'd for minutes, then the row saved + published fine.
+  const transientErr = Object.assign(new Error('Update failed'), { status: 500 })
+  // A genuine client-side rejection (bad request) — not a lock, not transient.
+  const clientErr = Object.assign(new Error('invalid_id'), { status: 400 })
 
   async function mountUpdateContentItem() {
     const { useUpdateContentItem } = await import('@/lib/queries')
@@ -186,9 +193,9 @@ describe('useUpdateContentItem heals the stale cache that caused the storm', () 
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['contentItems'] })
   })
 
-  it('leaves other failures alone — a 500 is still the producer\'s problem', async () => {
+  it('only a lock refetches — a transient 5xx does not touch the cache', async () => {
     const opts = await mountUpdateContentItem()
-    opts.onError(serverErr, { id: 'piece-1' })
+    opts.onError(transientErr, { id: 'piece-1' })
     expect(invalidateQueries).not.toHaveBeenCalled()
   })
 
@@ -196,16 +203,35 @@ describe('useUpdateContentItem heals the stale cache that caused the storm', () 
     const opts = await mountUpdateContentItem()
     opts.onError(lockErr, { id: 'piece-1' })
     expect(toastError).not.toHaveBeenCalled()
+    expect(toastWarning).not.toHaveBeenCalled()
   })
 
-  it('still shows a real save failure', async () => {
+  it('surfaces a transient 5xx as a CALM warning, never a red error', async () => {
     const opts = await mountUpdateContentItem()
-    opts.onError(serverErr, { id: 'piece-1' })
-    expect(toastError).toHaveBeenCalledWith("Couldn't update content", { description: 'Update failed' })
+    opts.onError(transientErr, { id: 'piece-1' })
+    expect(toastError).not.toHaveBeenCalled()
+    expect(toastWarning).toHaveBeenCalledWith(
+      "Couldn't save just now",
+      expect.objectContaining({ description: expect.stringContaining('still here') }),
+    )
+  })
+
+  it('still shows a red error for a genuine 4xx — a real failure stays visible', async () => {
+    const opts = await mountUpdateContentItem()
+    opts.onError(clientErr, { id: 'piece-1' })
+    expect(toastError).toHaveBeenCalledWith("Couldn't update content", { description: 'invalid_id' })
+    expect(toastWarning).not.toHaveBeenCalled()
   })
 
   it('never retries a refusal the server will repeat', async () => {
     const opts = await mountUpdateContentItem()
     expect(opts.retry(0, lockErr)).toBe(false)
+  })
+
+  it('retries a transient 5xx across the widened budget, then stops', async () => {
+    const opts = await mountUpdateContentItem()
+    expect(opts.retry(0, transientErr)).toBe(true)
+    expect(opts.retry(3, transientErr)).toBe(true)
+    expect(opts.retry(4, transientErr)).toBe(false)
   })
 })
