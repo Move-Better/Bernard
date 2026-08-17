@@ -148,7 +148,7 @@ function normCaptionText(s) {
 
 // ── CANVAS ───────────────────────────────────────────────────────────────────
 function Canvas({ ctx }) {
-  const { videoRef, asset, editVideoUrl, captionsBaked, captionSizeFactor, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, dragging, snap, startSec, durationSec, dragOverlay, alignGuidesOn } = ctx
+  const { videoRef, editVideoUrl, editPoster, captionsBaked, captionSizeFactor, grade, reframe, kenBurns, caption, overlays, lines, playClipT, playing, togglePlay, sel, selectKey, dragging, snap, startSec, durationSec, dragOverlay, alignGuidesOn } = ctx
   // Set when the <video> can't decode its source (a .mov / 4K camera-original).
   // Keyed on editVideoUrl so swapping to a playable source clears it for free.
   const [errorUrl, setErrorUrl] = useState(null)
@@ -210,7 +210,7 @@ function Canvas({ ctx }) {
         >
           {editVideoUrl ? (
             <video
-              ref={videoRef} src={editVideoUrl} poster={asset.thumbnail_url || undefined} preload="metadata" playsInline
+              ref={videoRef} src={editVideoUrl} poster={editPoster} preload="metadata" playsInline
               className="absolute inset-0 h-full w-full object-cover"
               style={{ filter: gradeToCanvasFilter(grade), transform: kbTransform || `scale(${z})`, transformOrigin: kbTransform ? 'center' : `${reframe.x}% ${reframe.y}%` }}
               onLoadedMetadata={(e) => ctx.setVideoDuration(e.target.duration)}
@@ -1304,6 +1304,15 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   // captions: no live overlay, no re-bake on save, so the already-baked track
   // shows once and can't double. See videoEditSource.js.
   const captionsBaked = editSource.captionsBaked
+  // <video> poster. asset.thumbnail_url is the BAKED clip's thumbnail — it carries
+  // the burned-in karaoke. When editing a baked auto-reel from its RAW source
+  // (window resolved), the <video> src is clean but that poster is NOT: on the
+  // paused/undecoded frame it shows the baked captions UNDER the live overlay —
+  // the exact double #2609 removed from the src but left on the poster. Drop it so
+  // the paused frame decodes clean from the raw source. Keep it for a normal clip/
+  // upload and for the captionsBaked fallback (there the video IS the baked blob,
+  // so the thumbnail matches and no live overlay is drawn).
+  const editPoster = editSource.window ? undefined : (asset?.thumbnail_url || undefined)
 
   // Embedded from a post (the publish flow) opens on the post caption — the
   // text that publishes below the video, and what users came here to review.
@@ -2205,7 +2214,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   const captionSizeFactor = (asset?.workspace?.brand_style?.subtitle_font_size ?? 10) / 10
 
   const ctx = {
-    videoRef, asset, editVideoUrl, captionsBaked, captionSizeFactor, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
+    videoRef, asset, editVideoUrl, editPoster, captionsBaked, captionSizeFactor, sel, selectKey, railMode, setRailMode, grade, setGradeKey, applyVibe, resetGrade,
     format, setFormat, formatCss: (FORMATS[format] || FORMATS.reel).css, formatDim: (FORMATS[format] || FORMATS.reel).dim,
     reframe, setReframe: setReframeKey, autoReframe, autoReframing, kenBurns, setKenBurns, speed, setSpeed, caption, setCaption, overlays, addOverlay, setOverlay,
     setOverlayTime, setOverlayWindow, delOverlay, curOverlay, dragOverlay, lines, words, editLine, editWord, logCaptionCorrection, resetCaptions, captionsEdited, cuts, toggleWordCut, addCuts, clearCuts, playClipT, displayClipT, scrubT, setScrubT, playing, togglePlay, seekClip,
