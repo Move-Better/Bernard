@@ -31,16 +31,16 @@ function SlideThumb({ entry, idx, isActive, hasTemplate, onSelect }) {
       }`}
     >
       {thumb
-        ? <img src={thumb} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        : <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-500" />
+        ? <img src={thumb} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
+        : <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-500" />
       }
-      <div className="absolute inset-0 bg-black/15" />
-      <span className="absolute left-0.5 top-0.5 rounded bg-black/55 px-1 text-3xs font-semibold leading-tight text-white">{idx + 1}</span>
+      <div className="pointer-events-none absolute inset-0 bg-black/15" />
+      <span className="pointer-events-none absolute left-0.5 top-0.5 rounded bg-black/55 px-1 text-3xs font-semibold leading-tight text-white">{idx + 1}</span>
       {hasTemplate && !video && (
-        <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full" style={{ background: 'hsl(var(--action))' }} />
+        <span className="pointer-events-none absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full" style={{ background: 'hsl(var(--action))' }} />
       )}
       {video && (
-        <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-0.5 bg-black/60 py-0.5 text-3xs font-semibold text-white">
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center gap-0.5 bg-black/60 py-0.5 text-3xs font-semibold text-white">
           <Play className="h-2 w-2 fill-current" aria-hidden="true" />
           {Number.isFinite(secs) && secs > 0 ? `${Math.round(secs)}s` : 'Video'}
         </span>
