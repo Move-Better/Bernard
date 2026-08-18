@@ -115,13 +115,13 @@ export default function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, at
             }`}
             aria-label="Replace this photo"
           >
-            <img src={photoUrl || photoThumb} alt="Photo on this slide" className="absolute inset-0 h-full w-full object-cover" />
-            <span className={`absolute inset-0 flex items-center justify-center gap-2 text-base font-semibold text-white transition-opacity ${replacing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} style={{ background: 'rgba(12,17,29,.42)' }}>
+            <img src={photoUrl || photoThumb} alt="Photo on this slide" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
+            <span className={`pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-base font-semibold text-white transition-opacity ${replacing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} style={{ background: 'rgba(12,17,29,.42)' }}>
               <Repeat className="h-5 w-5" />
               {replacing ? 'Choose below…' : 'Click to replace'}
             </span>
             {graded && (
-              <span className="absolute bottom-2.5 left-2.5 rounded-md bg-primary/90 px-2 py-0.5 text-xs font-semibold text-primary-foreground">Graded</span>
+              <span className="pointer-events-none absolute bottom-2.5 left-2.5 rounded-md bg-primary/90 px-2 py-0.5 text-xs font-semibold text-primary-foreground">Graded</span>
             )}
           </button>
           <button

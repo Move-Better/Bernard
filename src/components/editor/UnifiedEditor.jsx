@@ -227,9 +227,9 @@ function SuggestionThumb({ clip, attached, attaching, onAttach }) {
       }`}
     >
       {thumb ? (
-        <img src={thumb} alt="" className="h-full w-full object-cover" />
+        <img src={thumb} alt="" className="pointer-events-none h-full w-full object-cover" />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-muted">
+        <div className="pointer-events-none flex h-full w-full items-center justify-center bg-muted">
           {isVideo ? (
             <Video className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           ) : (
@@ -237,17 +237,17 @@ function SuggestionThumb({ clip, attached, attaching, onAttach }) {
           )}
         </div>
       )}
-      <span className="absolute left-1 top-1 rounded bg-primary px-1 text-3xs font-bold leading-tight text-primary-foreground">AI</span>
+      <span className="pointer-events-none absolute left-1 top-1 rounded bg-primary px-1 text-3xs font-bold leading-tight text-primary-foreground">AI</span>
       {/* Photo and video candidates now sit side by side, so the kind has to be
           readable at a glance — a poster frame alone looks like a still. */}
       {isVideo && (
-        <span className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded bg-black/70 px-1 text-3xs font-medium leading-tight text-white">
+        <span className="pointer-events-none absolute bottom-1 left-1 flex items-center gap-0.5 rounded bg-black/70 px-1 text-3xs font-medium leading-tight text-white">
           <Video className="h-2.5 w-2.5" aria-hidden="true" />
           {clip.durationS != null ? `${Math.round(clip.durationS)}s` : 'Video'}
         </span>
       )}
       <span
-        className={`absolute inset-0 flex items-center justify-center bg-black/40 text-white transition-opacity ${
+        className={`pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 text-white transition-opacity ${
           attaching ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         }`}
       >

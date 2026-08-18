@@ -41,18 +41,18 @@ function VideoTile({ clip, current, swapping, onPick }) {
       }`}
     >
       {thumb
-        ? <img src={thumb} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        : <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-900" />}
-      <span className="absolute inset-0 flex items-center justify-center">
+        ? <img src={thumb} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
+        : <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-900" />}
+      <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
         {swapping
           ? <Loader2 className="h-7 w-7 animate-spin text-white" />
           : <Play className="h-6 w-6 text-white/85" fill="currentColor" />}
       </span>
       {dur && !current && (
-        <span className="absolute bottom-1.5 right-1.5 rounded bg-black/60 px-1.5 py-0.5 text-3xs font-bold text-white">{dur}</span>
+        <span className="pointer-events-none absolute bottom-1.5 right-1.5 rounded bg-black/60 px-1.5 py-0.5 text-3xs font-bold text-white">{dur}</span>
       )}
       {current && (
-        <span className="absolute inset-x-0 bottom-0 bg-success py-1 text-center text-3xs font-bold uppercase tracking-wide text-success-foreground">
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-success py-1 text-center text-3xs font-bold uppercase tracking-wide text-success-foreground">
           On this reel now
         </span>
       )}
