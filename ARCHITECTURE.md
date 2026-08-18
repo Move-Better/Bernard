@@ -632,6 +632,43 @@ Pre-existing good examples: `Home.jsx` (`HomeSkeleton`), `MediaHub.jsx` (`MediaG
 
 ---
 
+## Clickable thumbnails — decorative overlays must be `pointer-events-none` (and what to skip)
+
+A thumbnail whose click target is a `<button onClick>`/`<Link>` (media tiles, slide picker, theme
+tiles, candidate cards, size-grid tiles) stacks decorative children on top of that target: a fill
+`<img>`, a full-cover dimmer/gradient/hover/selected overlay, corner badges. Without
+`pointer-events-none`, the browser's hit-test — and PostHog `$dead_click` autocapture — attributes a
+click to the topmost decorative child instead of the button. The click still *works* (it bubbles to
+the parent), so it's invisible to lint/build/tests; the only symptom is an inflated dead-click metric
+on the weekly UX check, reported against a text-less `div.absolute.inset-0.*` element. (PRs #2643 the
+editor dirs, #2644 the app-wide sweep — SlidePickerStrip, MediaGrid, MediaPicker, ClipFinder,
+MediaHub, AdExportModal, ThemeTile, PhotoTemplates, CandidateCard, VideoEditor, YourWeek.)
+
+**The rule — mark a decorative child `pointer-events-none` ONLY when it has no interactive OR
+hover-informative behavior of its own.** The trap is over-applying: `pointer-events-none` also
+disables a native `title` tooltip and a Radix `<Tooltip>`/`TooltipTrigger` (both need the element to
+receive the hover), so blanket-applying it to every overlay silently kills tooltips. Concretely:
+
+- **Apply** to: fill `<img>` (`object-cover`), full-cover `absolute inset-0` dimmer/gradient/hover/
+  selected overlays, and pure-decoration badges (a number, a play icon, a duration) with no
+  `title`/`Tooltip`/`onClick`.
+- **Skip** (leave interactive): anything carrying a `title` attr or wrapped in a `Tooltip` —
+  `MediaUsageBadge`, similarity/tier badges, "trims %" / clinician-initial / caption badges; any
+  element with its own `onClick` (hover checkboxes, quick-action buttons); the drag layers
+  (`TextDragLayer`/`ObjectDragLayer`, which toggle their own pointer-events); a `<video>` element; a
+  clickable backdrop.
+- **Not applicable** (no fix): a thumbnail whose CONTAINER has no click handler (image sits in a
+  plain `<div>` — no clickable ancestor to misattribute from). PostPreview frames, StoryComposer,
+  MediaDetail, MomentMiner, Capture, NewBrief tiles are all this case.
+
+A clickable parent that itself carries the `title`/`Tooltip` (ClipFinder, CandidateCard,
+PhotoTemplates picker, ThemeTile) keeps its tooltip even with inert children — the hover falls
+through to the button, which still has pointer events. Verify a change live (Chrome-on-prod):
+`document.elementFromPoint(cx,cy)` at a tile center must resolve to the button, `getComputedStyle`
+must read `none` on the fill and `auto` on any preserved tooltip badge.
+
+---
+
 ## Supabase / migrations
 
 Migrations live in `supabase/multitenant/migrations/`. Apply with:
