@@ -156,7 +156,7 @@ export default function AdExportModal({ asset, onClose, treatment, templateId, s
                   onClick={() => toggle(f.aspect)}
                   className={`rounded-lg border p-2 text-left transition-colors ${on ? 'border-primary' : 'border-border opacity-60'}`}
                 >
-                  <div className={`relative overflow-hidden rounded bg-muted ${ASPECT_BOX[f.aspect]}`}>
+                  <div className={`pointer-events-none relative overflow-hidden rounded bg-muted ${ASPECT_BOX[f.aspect]}`}>
                     {done
                       ? <img src={done.url} alt="" className="h-full w-full object-cover" />
                       : sourceUrl

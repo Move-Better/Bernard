@@ -396,7 +396,7 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                           {a.kind === 'video' ? (
                             <div className="relative h-full w-full">
                               {previewSrc ? (
-                                <img src={previewSrc} alt={a.filename} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                                <img src={previewSrc} alt={a.filename} className="pointer-events-none w-full h-full object-cover" loading="lazy" decoding="async" />
                               ) : (
                                 <div className="h-full bg-slate-800 flex flex-col items-center justify-center gap-1 px-1">
                                   <Video className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -410,7 +410,7 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                               </div>
                             </div>
                           ) : previewSrc ? (
-                            <img src={previewSrc} alt={a.filename} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                            <img src={previewSrc} alt={a.filename} className="pointer-events-none w-full h-full object-cover" loading="lazy" decoding="async" />
                           ) : (
                             <div className="h-full bg-muted flex items-center justify-center">
                               <Image className="h-5 w-5 text-muted-foreground" />
@@ -431,14 +431,14 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
                           </div>
 
                           {tooLong && (
-                            <span className="absolute bottom-1 left-1 right-1 text-3xs font-medium px-1 py-0.5 rounded bg-action/80 text-foreground flex items-center gap-0.5 leading-tight">
+                            <span className="pointer-events-none absolute bottom-1 left-1 right-1 text-3xs font-medium px-1 py-0.5 rounded bg-action/80 text-foreground flex items-center gap-0.5 leading-tight">
                               <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
                               {fmtDur(a.duration_s)} — too long
                             </span>
                           )}
 
                           {sel && (
-                            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                            <div className="pointer-events-none absolute inset-0 bg-primary/20 flex items-center justify-center">
                               <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
                                 <Check className="h-3.5 w-3.5 text-white" />
                               </div>

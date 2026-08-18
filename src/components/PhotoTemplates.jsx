@@ -692,7 +692,7 @@ export default function PhotoTemplates() {
                       : 'border-transparent hover:border-primary/40'
                   }`}
                 >
-                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <img src={url} alt="" className="pointer-events-none w-full h-full object-cover" />
                 </button>
               ))}
             </div>
