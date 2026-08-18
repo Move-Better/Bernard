@@ -656,9 +656,9 @@ export default function MediaHub() {
                 >
                   <div className="relative aspect-video bg-muted">
                     {(c.thumbnailUrl || (c.kind !== 'video' && c.blobUrl)) ? (
-                      <img src={c.thumbnailUrl || c.blobUrl} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                      <img src={c.thumbnailUrl || c.blobUrl} alt="" className="pointer-events-none w-full h-full object-cover" loading="lazy" decoding="async" />
                     ) : (
-                      <ImageIcon className="h-5 w-5 text-muted-foreground absolute inset-0 m-auto" />
+                      <ImageIcon className="pointer-events-none h-5 w-5 text-muted-foreground absolute inset-0 m-auto" />
                     )}
                     <span
                       className={`absolute left-1 top-1 rounded px-1 py-px text-3xs font-semibold ${tier.cls}`}

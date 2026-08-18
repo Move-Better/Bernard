@@ -43,7 +43,7 @@ function Thumb({ asset }) {
   if (asset.kind === 'photo') {
     const src = asset.thumbnail_url || asset.blob_url
     if (src && !imgError) {
-      return <img src={src} alt={alt} loading="lazy" decoding="async" onError={() => setImgError(true)} className="w-full h-full object-cover" />
+      return <img src={src} alt={alt} loading="lazy" decoding="async" onError={() => setImgError(true)} className="pointer-events-none w-full h-full object-cover" />
     }
     return <div className="h-full bg-muted flex items-center justify-center"><ImageIcon className="h-6 w-6 text-muted-foreground" /></div>
   }
@@ -56,7 +56,7 @@ function Thumb({ asset }) {
   return (
     <div className="relative h-full w-full">
       {asset.thumbnail_url && !imgError ? (
-        <img src={asset.thumbnail_url} alt={alt} loading="lazy" decoding="async" onError={() => setImgError(true)} className="w-full h-full object-cover" />
+        <img src={asset.thumbnail_url} alt={alt} loading="lazy" decoding="async" onError={() => setImgError(true)} className="pointer-events-none w-full h-full object-cover" />
       ) : (
         <div className="h-full bg-foreground/80 flex flex-col items-center justify-center gap-1 px-1">
           <Video className="h-6 w-6 text-card/50 shrink-0" />
@@ -185,10 +185,10 @@ function GridCell({ asset, index, isSelected, isFocused, multiSelect, onSelect, 
       <Thumb asset={asset} />
 
       {/* Status rail — left edge, keyed to asset status (matches the pill) */}
-      <span aria-hidden="true" className={`absolute left-0 top-0 bottom-0 w-1 ${statusMeta.rail}`} />
+      <span aria-hidden="true" className={`pointer-events-none absolute left-0 top-0 bottom-0 w-1 ${statusMeta.rail}`} />
 
       {/* Status pill — top left */}
-      <div className="absolute top-1.5 left-1.5">
+      <div className="pointer-events-none absolute top-1.5 left-1.5">
         <span className={`text-3xs font-medium px-1.5 py-0.5 rounded ${statusMeta.tone}`}>
           {statusMeta.label}
         </span>

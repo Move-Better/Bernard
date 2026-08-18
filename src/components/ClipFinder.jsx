@@ -104,13 +104,13 @@ function ProposalRow({ s, asset, isActive, isSelected, canEdit, onTogglePreview,
             <img
               src={asset.thumbnail_url}
               alt=""
-              className="w-full h-full object-cover"
+              className="pointer-events-none w-full h-full object-cover"
             />
           ) : (
             <div className="w-full h-full bg-slate-800" />
           )}
           {/* Overlay: Play icon, or an "active" indicator when this clip is showing */}
-          <div className={`absolute inset-0 flex items-center justify-center transition-colors ${
+          <div className={`pointer-events-none absolute inset-0 flex items-center justify-center transition-colors ${
             isActive
               ? 'bg-primary/30'
               : 'bg-black/40 group-hover:bg-black/20'

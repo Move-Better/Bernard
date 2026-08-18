@@ -18,7 +18,7 @@ export default function ThemeTile({ t, slide, photoUrl, brandStyle, customThemes
             selected ? 'border-verbatim-accent ring-1 ring-verbatim-accent/40' : 'border-border hover:border-primary/40'
           }`}
         >
-          <div className="aspect-[4/5] w-full bg-muted">
+          <div className="pointer-events-none aspect-[4/5] w-full bg-muted">
             <MiniSlideCanvas
               renderSlide={slide}
               photoUrl={photoUrl}
@@ -27,9 +27,9 @@ export default function ThemeTile({ t, slide, photoUrl, brandStyle, customThemes
               renderKey={`${t.id}|${thumbSig}`}
             />
           </div>
-          <div className="px-2 py-1.5 text-xs font-medium truncate text-foreground">{t.name}</div>
+          <div className="pointer-events-none px-2 py-1.5 text-xs font-medium truncate text-foreground">{t.name}</div>
           {selected && (
-            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-verbatim-accent ring-1 ring-verbatim-accent/40" />
+            <span className="pointer-events-none absolute right-1 top-1 h-2 w-2 rounded-full bg-verbatim-accent ring-1 ring-verbatim-accent/40" />
           )}
         </button>
       </TooltipTrigger>

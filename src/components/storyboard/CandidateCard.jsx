@@ -71,9 +71,9 @@ export default function CandidateCard({ clip, attached, attaching, onPreview, on
         aria-label="Open full-size preview"
       >
         {thumb ? (
-          <img src={thumb} alt={clip.filename || ''} className="h-full w-full object-cover" />
+          <img src={thumb} alt={clip.filename || ''} className="pointer-events-none h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+          <div className="pointer-events-none flex h-full w-full items-center justify-center text-muted-foreground">
             {isVideo ? <Play className="h-8 w-8" /> : <ImageIcon className="h-8 w-8" />}
           </div>
         )}
@@ -90,13 +90,13 @@ export default function CandidateCard({ clip, attached, attaching, onPreview, on
         >
           {tier.label}
         </span>
-        <span className="absolute right-2 top-2 rounded bg-black/55 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="pointer-events-none absolute right-2 top-2 rounded bg-black/55 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
           <Maximize2 className="h-3.5 w-3.5" />
         </span>
         {/* Kind badge — labels each candidate Photo or Video (with its length
             when known) so the producer can tell stills from clips at a glance,
             on top of the centered play overlay videos already get. */}
-        <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-3xs font-medium text-white">
+        <span className="pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-3xs font-medium text-white">
           {isVideo ? <Video className="h-2.5 w-2.5" /> : <ImageIcon className="h-2.5 w-2.5" />}
           {isVideo ? (fmtDuration(clip.durationS) ? `Video · ${fmtDuration(clip.durationS)}` : 'Video') : 'Photo'}
         </span>

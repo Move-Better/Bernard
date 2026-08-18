@@ -327,7 +327,7 @@ function Canvas({ ctx }) {
           >
             {playing ? <Pause className="h-7 w-7 text-white" fill="#fff" /> : <Play className="h-7 w-7 text-white" fill="#fff" />}
           </div>
-          <span className="absolute left-3 top-3 rounded bg-black/30 px-1.5 py-0.5 text-3xs text-white/70">{ctx.formatDim} · {fmt(ctx.durationSec)}{startSec > 0 ? ` · from ${fmt(startSec)}` : ''}</span>
+          <span className="pointer-events-none absolute left-3 top-3 rounded bg-black/30 px-1.5 py-0.5 text-3xs text-white/70">{ctx.formatDim} · {fmt(ctx.durationSec)}{startSec > 0 ? ` · from ${fmt(startSec)}` : ''}</span>
         </div>
       </div>
     </section>

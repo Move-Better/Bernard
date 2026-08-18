@@ -97,11 +97,11 @@ function CardPreview({ item }) {
         src={item.thumbnailUrl}
         alt=""
         loading="lazy"
-        className="h-full w-full object-cover"
+        className="pointer-events-none h-full w-full object-cover"
         onLoad={(e) => setNatural({ w: e.target.naturalWidth, h: e.target.naturalHeight })}
       />
       {item.mediaKind === 'video' && (
-        <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/25">
           <Play className="h-3.5 w-3.5 text-white" fill="currentColor" aria-hidden="true" />
         </span>
       )}
