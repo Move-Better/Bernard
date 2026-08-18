@@ -355,6 +355,21 @@ Real failures from this list: the Size control previewing identically for Medium
 1.0× vs 1.35× (`vh` with a 40px clamp vs a frame-relative bake); `glow` previewing an accent halo for a
 commit after the bake moved to a dark one.
 
+**A `<video>`'s `src` and its `poster` are a mirror pair too — a fix that swaps the src to a clean
+source must swap the poster in the same breath, or the poster becomes a second surface carrying the
+exact artifact you just removed from the src.** `VideoEditor.jsx` edits a caption-baked auto-reel from
+its RAW un-captioned source (`resolveVideoEditSource`, see the reel-editor section below / memory
+`project-reel-editor-raw-source`). #2609 correctly pointed `<video src>` at that clean source but left
+`poster={asset.thumbnail_url}` on the BAKED clip's thumbnail (captions burned in). On the paused/
+undecoded frame — the resting state before play, and always in a stalled harness — the baked-caption
+poster rendered UNDER the live karaoke overlay: the same double #2609 removed from the src, now via the
+poster. Fix (#2641): `editPoster = editSource.window ? undefined : asset?.thumbnail_url` — drop the
+poster whenever editing from a resolved raw-source window; normal clips/uploads and the `captionsBaked`
+fallback (video IS the baked blob → thumbnail matches, no live overlay) keep it. It was a universal
+wiring bug (all source-linked auto-reels), fixed in one line, no data. The tell that this class exists:
+a `<video>` whose `src` and `poster` resolve from DIFFERENT assets. (Client-preview only — the publish
+bake reads neither.)
+
 **A per-platform DISPATCH is a mirror pair too, and it's the harder one to audit — a value mismatch is
 visible in a diff, a missing platform is invisible until someone opens that specific post.**
 `publishPiece.js` bakes slides (photo + text blocks) for EVERY platform except an Instagram Reel with
