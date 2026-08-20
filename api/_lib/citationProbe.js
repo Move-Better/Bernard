@@ -19,7 +19,7 @@
 import { generateText, generateObject } from 'ai'
 import { z } from 'zod'
 
-const OPENAI_MODEL = 'gpt-5-mini' // cheapest web_search-capable tier; reasoning kept low
+const OPENAI_MODEL = 'gpt-5.6-terra' // gpt-5-mini retires 2026-12-11; terra is its recommended replacement (balanced tier, same Responses+web_search+reasoning.effort surface)
 
 export function availableEngines() {
   const engines = []
