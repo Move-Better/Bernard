@@ -166,7 +166,7 @@ async function extractFrame(input, atSeconds, outPath, { width = 512 } = {}) {
 }
 
 // ─── vision ────────────────────────────────────────────────────────────────
-const VISION_MODEL = 'google/gemini-2.5-flash' // same default as api/_lib/tagAsset.js
+const VISION_MODEL = 'google/gemini-3.6-flash' // same default as api/_lib/tagAsset.js (2.5-flash retires no earlier than 2026-10-16)
 const orientationSchema = z.object({
   correction: z.enum(['none', 'rotate_90_clockwise', 'rotate_90_counterclockwise', 'rotate_180']),
   confidence: z.enum(['high', 'medium', 'low']),
