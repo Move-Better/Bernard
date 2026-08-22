@@ -946,6 +946,56 @@ is destructive here, because `selectReelCandidates` requires
 can never be re-selected, so deleting the atom strands the clip in the Library
 and loses the slot permanently.
 
+### The reel WYSIWYG contract has two halves, and the server half cannot bake
+
+An auto-reel's `media_urls` holds a RENDER. Editing it in VideoEditor changes a
+draft spec (`media_assets.video_edit_draft`), not that render — so anything that
+publishes from the stored `media_urls` without re-rendering ships the pre-edit
+clip. #2638 closed the in-editor half (`bakeVideoIfDirty` → `onBeforeCommit`).
+The other half is `/week`'s inline Approve, which dispatches server-side through
+`dispatchContentItem` and never opens the editor at all (feedback f46a0eec).
+
+**The server detects the gap; it does not close it.** The render endpoint is
+server-side, but its payload is assembled from live editor state (`renderBody` in
+`VideoEditor.jsx`: the resolved raw-source window, the `captionsBaked` lock,
+per-line caption words). A server-side reconstruction of that assembly would be a
+second copy of the WYSIWYG contract — the exact mirror-pair hazard, inside a fix
+for a WYSIWYG bug — so a drifted copy would silently render something the
+operator never previewed. Instead `dispatchContentItem` declines and the client
+routes the operator to `/publish/:id`, where the one existing bake runs.
+
+**Draft existence is not dirtiness.** Autosave writes `video_edit_draft`
+unconditionally once the editor hydrates, so merely *opening* a reel creates one.
+The bake therefore stamps `videoEditHash` — a fingerprint of the doc it rendered
+— onto the media entry it writes, and "pending" means that stamp disagrees with
+the current draft. Both sides call one module, `src/lib/videoEditFingerprint.js`.
+
+Three things there are load-bearing:
+
+- **Canonicalize before hashing.** Postgres `jsonb` does not preserve key order,
+  so the browser's doc and the same doc read back compare unequal under
+  `JSON.stringify`. A stringify-based check would defer *every* reel forever — a
+  permanent decline that looks exactly like a real pending edit. Object keys are
+  sorted at every depth; arrays are never sorted (cut order, overlay z-order and
+  caption sequence all carry meaning).
+- **The decline is NOT `fallback:'client'`.** That fallback runs
+  `publishPieceToSocial` against the same stored `media_urls` and would publish
+  the identical stale render — a fix that changes nothing. It returns its own
+  `needs_video_bake`, handled in `YourWeek` *before* the fallback branch.
+- **Scoped to `vvideo`/`lvideo`.** The remedy is "approve it at `/publish/:id`",
+  which is only a remedy if that route lands on VideoEditor. A carousel that
+  merely contains a clip opens SlideEditor, which has no video bake, so sending
+  its operator there would be a dead end.
+
+A reel nobody opened has no draft and dispatches untouched, so the never-edited
+auto-reel path keeps its one-click approve. A reel opened and left unchanged
+*does* defer: nothing distinguishes it from a real edit at this layer, because
+the auto-reel was rendered from segment params rather than a draft doc, so there
+is no baseline doc to compare against. VideoEditor takes the same stance for the
+same reason (`lastBakedDoc` starts null, so its first commit always bakes). That
+costs a click and a re-render; the other direction ships a post the operator
+never approved.
+
 ---
 
 ## Async pipeline patterns
