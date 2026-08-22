@@ -14,7 +14,12 @@
 // This module owns axis 1 (archetype) and the media-tier gate. Axes 2–3 are the
 // inspector's job and live in the editor.
 
-import { isVideoEntry } from '@/lib/mediaEntry'
+// Relative + extension-ful, NOT the '@/lib' alias: this module is imported
+// across the boundary by api/_lib/dispatchContentItem.js, and the Vite alias
+// exists only in the client build — Node resolves it as a bare package and the
+// handler dies at cold start with ERR_MODULE_NOT_FOUND. Same convention as the
+// other shared libs the API pulls in (mediaEntry, publishLock, gbpLocations).
+import { isVideoEntry } from './mediaEntry.js'
 
 // The side surface that mounts beside the canvas. A carousel gets a SLIDE RAIL
 // (spatial); a clip gets a TIMELINE (temporal, disclosed only when there's

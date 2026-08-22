@@ -1052,6 +1052,18 @@ export default function YourWeek() {
       })
       if (resp?.dispatched) {
         toast.success('Approved & scheduled')
+      } else if (resp?.needs_video_bake) {
+        // This piece's video edit was never rendered into the post, so nothing
+        // here can dispatch it faithfully — the client fallback below would send
+        // the same pre-edit clip the server declined to send. Only the embedded
+        // VideoEditor bakes a video edit (#2638), so hand the operator to it;
+        // Approve there runs the bake first and then publishes. Checked BEFORE
+        // the fallback branch so a future server change that sets both can never
+        // route a stale reel through publishPieceToSocial.
+        toast.info('Approve this one in its editor', {
+          description: 'Bernard can’t confirm the saved video matches your edits, so the exact version you see gets scheduled from here.',
+        })
+        navigate(`/publish/${item.contentPieceId}`)
       } else if (resp?.fallback === 'client' || resp?.needs_client_bake) {
         // Server approved it but can't dispatch (carousel bake / Buffer provider)
         // — finish on the client via the proven publish path.

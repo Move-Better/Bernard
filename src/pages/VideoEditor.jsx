@@ -17,6 +17,7 @@ import { buildTemplateFromEditor, suggestTemplateName } from '@/lib/videoTemplat
 import { posthogCapture } from '@/lib/posthog'
 import { getMediaAsset, updateMediaAsset } from '@/lib/mediaLib'
 import { resolveVideoEditSource, shouldUseSourceWindow } from '@/lib/videoEditSource'
+import { videoEditFingerprint, VIDEO_EDIT_HASH_KEY } from '@/lib/videoEditFingerprint'
 import { applyCaptionWindow, nearestWithin } from '@/lib/captionTimeline'
 import { getSegments, renderWholeVideo, findClips, updateSegment, exportClipToBroll } from '@/lib/clipsLib'
 import { updateBrandStyle } from '@/lib/brandKitLib'
@@ -1932,7 +1933,13 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
       // Snapshot the draft we're about to render BEFORE the async work, so a mid-
       // render edit isn't wrongly marked as already-baked. Committed to
       // lastBakedDocRef only after the persist succeeds.
-      const bakedDoc = JSON.stringify(draftDoc)
+      const bakedSnapshot = draftDoc
+      const bakedDoc = JSON.stringify(bakedSnapshot)
+      // Stamp the SERVER-readable marker of what this render was made from, so
+      // /week's inline Approve can tell an already-baked reel from one carrying
+      // a pending edit and route the latter back here instead of dispatching the
+      // stale render. See src/lib/videoEditFingerprint.js.
+      const bakedPrint = videoEditFingerprint(bakedSnapshot)
       const render = await doRenderClip()
       const baked = {
         url: render.blobUrl,
@@ -1941,7 +1948,13 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
         mediaAssetId: pieceVideoEntry?.mediaAssetId || null,
         thumbnailUrl: pieceVideoEntry?.thumbnailUrl || null,
         ...(pieceVideoEntry?.name ? { name: pieceVideoEntry.name } : {}),
+        ...(bakedPrint ? { [VIDEO_EDIT_HASH_KEY]: bakedPrint } : {}),
       }
+      // Flush the exact doc the stamp describes to the asset now rather than
+      // waiting on the 1500ms autosave debounce. Without this, a bake followed
+      // immediately by an Approve elsewhere compares the new stamp against the
+      // PREVIOUS draft and defers a reel that is in fact freshly baked.
+      if (assetId) await updateMediaAsset(assetId, { videoEditDraft: bakedSnapshot }).catch(() => {})
       await updateItem.mutateAsync({ id: piece.id, patch: { mediaUrls: [baked] } })
       setLastBakedDoc(bakedDoc)
       // Return the fresh media_urls so an auto-bake-on-commit can dispatch THESE
