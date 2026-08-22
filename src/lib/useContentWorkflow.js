@@ -130,7 +130,24 @@ export function useContentWorkflow(piece) {
         approvedAt: new Date().toISOString(),
       })
       posthogCapture('draft_reviewed', { pieceId: piece.id, platform: piece.platform })
-      toast.success('Stories approved — ready for media')
+      // Blog is the ONE channel where approve does not publish (every social
+      // channel dispatches on approve, so approve-means-done is the learned
+      // model). Say so at the exact moment the model misleads, with the missing
+      // step one click away — 7 approved movebetter blogs sat unpublished for
+      // up to 66 days with zero "Publish to website" clicks ever recorded
+      // (2026-08-21 outcome review).
+      if (piece.platform === 'blog') {
+        toast.success('Approved — one step left', {
+          description: 'Blogs don’t publish on approve. Press “Publish to website” when you’re ready to put it live.',
+          duration: 12000,
+          action: {
+            label: 'Publish to website',
+            onClick: () => publish({ bypassMediaCheck: true }),
+          },
+        })
+      } else {
+        toast.success('Stories approved — ready for media')
+      }
     } catch (err) {
       toast.error('Failed to approve', { description: err.message })
     }
@@ -206,6 +223,21 @@ export function useContentWorkflow(piece) {
     // routes to Storyboard. A confirmed publish re-runs with bypassMediaCheck.
     const effectiveMediaUrls = mediaUrlsOverride || piece.media_urls
     const hasMedia = Array.isArray(effectiveMediaUrls) && effectiveMediaUrls.length > 0
+    if (!hasMedia && !bypassMediaCheck && piece.platform === 'blog') {
+      // Blog-specific: a hero is optional (publish/website ships fine without
+      // one), and the generic warning below is social-framed — worse, its "Add
+      // media" action navigates to /publish/:id, the page the blog editor is
+      // already on, a dead click. Name the real tradeoff and keep publishing
+      // one click away.
+      toast.warning('This blog has no hero image', {
+        description: 'It will publish without one. You can attach a hero from the media rail first, or just publish.',
+        action: {
+          label: 'Publish anyway',
+          onClick: () => publish({ bypassMediaCheck: true }),
+        },
+      })
+      return
+    }
     if (!hasMedia && !bypassMediaCheck) {
       toast.warning('This post has no photo or video', {
         description: 'Posts with media usually perform better.',

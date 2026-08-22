@@ -44,7 +44,7 @@ function formatWhen(dateStr) {
 // `publish` is the bar's commit-wrapped publisher (runs onBeforeCommit — the
 // video-editor bake — before dispatching), and `busy` folds in that pre-commit
 // step so the button spins through the render, not just the network call.
-function PublishControl({ wf, piece, enabled, publish, busy }) {
+function PublishControl({ wf, piece, enabled, publish, busy, disabledReason }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const isBlog = piece.platform === 'blog'
 
@@ -72,7 +72,7 @@ function PublishControl({ wf, piece, enabled, publish, busy }) {
         loading={busy}
         onClick={() => publish({})}
         className="bg-action text-action-foreground hover:bg-action/90"
-        title={enabled ? 'Publish to your website' : 'Approve first'}
+        title={enabled ? 'Publish to your website' : (disabledReason || 'Approve first')}
       >
         {!busy && <Send className="mr-1.5 h-3.5 w-3.5" />}
         Publish to website
@@ -88,7 +88,7 @@ function PublishControl({ wf, piece, enabled, publish, busy }) {
   const publishEnabled = enabled && !formatBlocked
   const scheduleTitle = formatBlocked
     ? wf.formatBlockReason
-    : enabled ? (slotLabel ? `Schedule for ${slotLabel}` : 'Schedule') : 'Approve first'
+    : enabled ? (slotLabel ? `Schedule for ${slotLabel}` : 'Schedule') : (disabledReason || 'Approve first')
 
   return (
     <div className="relative inline-flex">
@@ -446,7 +446,16 @@ export default function EditorWorkflowBar({ piece, onBeforeCommit }) {
               undo
             </button>
           </span>
-          <PublishControl wf={wf} piece={piece} enabled={!wordsGateBlocked} publish={publish} busy={committing || wf.publishing} />
+          <PublishControl
+            wf={wf}
+            piece={piece}
+            enabled={!wordsGateBlocked}
+            publish={publish}
+            busy={committing || wf.publishing}
+            // The piece IS approved here — a bare "Approve first" tooltip on the
+            // disabled button reads as a lie; name the words gate instead.
+            disabledReason={wordsGateBlocked ? 'Approve the story’s words first — publishing is blocked until then' : undefined}
+          />
         </>
       )}
 
