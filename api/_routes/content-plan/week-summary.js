@@ -13,6 +13,7 @@ import { computeChannelSilence } from '../../_lib/producer/publishSilence.js'
 import { isInstagramReel } from '../../../src/lib/mediaEntry.js'
 import { isTextOnlyPlatform } from '../../../src/lib/platformMediaKind.js'
 import { shapeApprovedBlog } from '../../_lib/approvedBlogs.js'
+import { filterStalledApproved } from '../../_lib/stalledApproved.js'
 import { blogTargetFor, monthKey, progressFor } from '../../_lib/blogTarget.js'
 import { isEditor } from '../../../src/lib/roles.js'
 import { shapeUsagePlatforms } from '../../_lib/mediaUsageShape.js'
@@ -230,6 +231,26 @@ export default async function handler(req, res) {
     return rows.map(shapeApprovedBlog)
   }
 
+  // Approved-but-never-published social posts — the stalled last click.
+  //
+  // The sibling of fetchApprovedBlogs above, born the same way: the first reel
+  // approval in product history (f172b617, 2026-08-17) sat approved /
+  // unscheduled / unpublished with no error, and nothing anywhere flagged it —
+  // a past week's board doesn't show it, the pace + silence chips key on other
+  // signals. Query is broad on purpose; the stall rule (grace period, excluded
+  // lanes) lives in filterStalledApproved where it's unit-tested.
+  async function fetchStalledApproved() {
+    if (!isEditor(auth.role)) return []
+    const r = await sb(
+      `content_items?workspace_id=eq.${ws.id}&status=eq.approved&scheduled_at=is.null&select=id,platform,format,status,topic,staff_name,media_urls,approved_at,published_at,scheduled_at&order=approved_at.asc.nullslast`,
+    )
+    if (!r.ok) {
+      console.error('[week-summary] stalled approved query failed:', r.status, (await r.text().catch(() => '')).slice(0, 300))
+      return []
+    }
+    return filterStalledApproved(await r.json())
+  }
+
   // Publish-silence sensor (.claude/decisions.md 2026-07-22 "known limit,
   // accepted" — this is the "different metric, different chip" it deferred).
   // Reads published_at directly rather than the plan, so a channel that fell
@@ -243,13 +264,14 @@ export default async function handler(req, res) {
     return computeChannelSilence({ workspaceId: ws.id, sb, channels })
   }
 
-  const [{ scheduled, itemStatusMap }, heldAtoms, yourReview, approvedBlogs, myBlogTarget, silentChannels] = await Promise.all([
+  const [{ scheduled, itemStatusMap }, heldAtoms, yourReview, approvedBlogs, myBlogTarget, silentChannels, stalledApproved] = await Promise.all([
     fetchAtomsAndDraftedItems(),
     fetchHeldAtoms(),
     fetchYourReview(),
     fetchApprovedBlogs(),
     fetchMyBlogProgress(),
     fetchSilentChannels(),
+    fetchStalledApproved(),
   ])
 
   const byPlatform = {}
@@ -436,5 +458,6 @@ export default async function handler(req, res) {
     approvedBlogs,
     myBlogTarget,
     silentChannels,
+    stalledApproved,
   })
 }

@@ -1426,6 +1426,65 @@ export default function YourWeek() {
     </div>
   ) : null
 
+  // Approved, but never published — the stalled last click. Approve → schedule
+  // is a two-click flow, and the second click can silently never come: the
+  // first reel approval in product history (2026-08-17) sat approved /
+  // unscheduled / unpublished with no error and no surface anywhere flagged it
+  // (the piece's week scrolls into the past and off the board; pace + silence
+  // chips key on other signals). Server-side rule (24h grace, blog/email lanes
+  // excluded) lives in api/_lib/stalledApproved.js — week-summary returns [] to
+  // non-editors, so no client role gate (same reasoning as ApprovedBlogsSlice).
+  // Amber accents on purpose: this is an act-now signal, not status reporting.
+  // Each row links into /publish/:id, where the editor re-bakes any pending
+  // video edit before Schedule/Publish (#2638), so finishing from here ships
+  // what the operator last saw.
+  const StalledApprovedSlice = data?.stalledApproved?.length ? (
+    <div className="rounded-xl border border-action/40 bg-action/5 p-3.5">
+      <div className="mb-2 flex items-center gap-2">
+        <AlertTriangle className="h-4 w-4 text-action" aria-hidden="true" />
+        <span className="text-sm font-bold">Approved, but never published</span>
+        <span className="ml-auto inline-flex items-center rounded-full bg-action/15 px-2 py-0.5 text-2xs font-semibold text-action">
+          {data.stalledApproved.length}
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        {data.stalledApproved.map((item) => {
+          const meta = PLATFORM_META[item.platform] || { label: item.platform || '—', icon: null }
+          const PIcon = meta.icon
+          return (
+            <Link
+              key={item.id}
+              to={`/publish/${item.id}`}
+              className="flex items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-foreground hover:border-primary/50"
+            >
+              {PIcon && <PIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-2xs font-medium">
+                  {stripStoryDatePrefix(item.topic) || `${meta.label} ${item.format || 'post'}`}
+                </span>
+                <span className="block text-3xs text-muted-foreground">
+                  {[
+                    meta.label,
+                    item.staffName,
+                    item.approvedAt
+                      ? `approved ${new Date(item.approvedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: tz })} · waiting ${item.daysStalled}d`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-action/15 px-2 py-0.5 text-3xs font-bold text-action">
+                <Send className="h-3 w-3" aria-hidden="true" /> Finish publishing
+              </span>
+              <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+            </Link>
+          )
+        })}
+      </div>
+    </div>
+  ) : null
+
   // Producer "blogs ready to publish" — the sibling of the clinician slice above
   // and the other half of the blog loop: a clinician approves their words here,
   // a producer gives it a hero image and ships it.
@@ -1665,6 +1724,11 @@ export default function YourWeek() {
           </span>
         </div>
       </div>
+
+      {/* Stalled last click — approved work that never went out. First, because
+          it's the one strip where the work is already done and only a click is
+          missing. */}
+      {StalledApprovedSlice}
 
       {/* Clinician review slice (2d) */}
       {YourReviewSlice}
