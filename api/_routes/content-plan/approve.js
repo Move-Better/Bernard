@@ -8,6 +8,11 @@
 //   { status:'scheduled', dispatched:true, scheduledAt }         — done server-side
 //   { status:'approved', dispatched:false, fallback:'client', needs_client_bake? }
 //                                                                — client runs publishPieceToSocial
+//   { status:'approved', dispatched:false, needs_video_bake:true }
+//                                                                — a video edit was never
+//     rendered into media_urls. Deliberately NOT fallback:'client': the client
+//     fallback would publish the same stale render. Only the VideoEditor can
+//     bake it, so the client sends the operator to /publish/:id instead.
 //   { status:'approved', dispatched:false, error }               — surface; client must NOT re-dispatch
 //   { status:'approved', dispatched:false, reason:'in_progress' } — another dispatch holds the claim
 //   { status, alreadyApproved:true }                             — already scheduled/published
@@ -124,6 +129,7 @@ export default async function handler(req, res) {
     dispatched: false,
     ...(dispatch?.fallback ? { fallback: dispatch.fallback } : {}),
     ...(dispatch?.needs_client_bake ? { needs_client_bake: true } : {}),
+    ...(dispatch?.needs_video_bake ? { needs_video_bake: true } : {}),
     ...(dispatch?.reason ? { reason: dispatch.reason } : {}),
     ...(dispatch?.error ? { error: dispatch.error } : {}),
   })

@@ -27,6 +27,9 @@ import { resolveBundleGbpTargets } from './social/gbpTargets.js'
 import { resolveGbpLocationIds } from '../../src/lib/gbpLocations.js'
 import { unpostedTargets, mergePostedLocations } from './autoPublishRetry.js'
 import { isInstagramReel } from '../../src/lib/mediaEntry.js'
+import { resolveArchetype } from '../../src/lib/editorArchetype.js'
+import { videoEditTarget, isVideoEditUnbaked } from '../../src/lib/videoEditFingerprint.js'
+import { UUID_RE } from './requestSchemas/primitives.js'
 import { checkWordsApproved } from './wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from './dispatchClaim.js'
 import { syncAtomSchedule } from './atomSchedule.js'
@@ -53,6 +56,33 @@ const sb = (path, init = {}) => supabaseRest(path, init, { timeoutMs: 15_000, co
 const CAROUSEL_PLATFORMS = new Set(['instagram', 'facebook'])
 
 /**
+ * Does this piece carry a VideoEditor draft that was never baked into its
+ * media_urls? See src/lib/videoEditFingerprint.js for the decision itself; this
+ * only supplies it with the saved draft.
+ *
+ * Fails OPEN (returns false) when the asset read errors: a transient Supabase
+ * blip must not silently strand every reel approval in "open the editor", which
+ * is indistinguishable to the operator from the feature being broken. The
+ * pre-existing #2638 bake still covers the in-editor path in that window.
+ */
+async function hasUnbakedVideoEdit(ws, piece) {
+  const target = videoEditTarget(piece, resolveArchetype(piece))
+  if (!target) return false
+  if (!UUID_RE.test(String(target.assetId))) return false
+  try {
+    const r = await sb(
+      `media_assets?id=eq.${target.assetId}&workspace_id=eq.${ws.id}&select=video_edit_draft&limit=1`,
+    )
+    if (!r.ok) throw new Error(`media_assets read ${r.status}`)
+    const rows = await r.json()
+    return isVideoEditUnbaked(target.entry, rows?.[0]?.video_edit_draft ?? null)
+  } catch (e) {
+    console.warn('[dispatchContentItem] video draft read failed:', piece.id, e?.message)
+    return false
+  }
+}
+
+/**
  * @param {object} a
  * @param {object} a.ws     workspace row (id, clerk_org_id, bundle_team_id…)
  * @param {object} a.piece  content_items row: id,status,platform,content,media_urls,slides,scheduled_at,location_overrides
@@ -77,6 +107,18 @@ export async function dispatchContentItem({ ws, piece }) {
   if (!reel && CAROUSEL_PLATFORMS.has(piece.platform) && Array.isArray(piece.slides) && piece.slides.length > 0) {
     return { dispatched: false, fallback: 'client', needs_client_bake: true }
   }
+
+  // A video piece whose saved editor draft was never rendered into media_urls
+  // would dispatch the PRE-EDIT clip from here — the /week half of the WYSIWYG
+  // break #2638 fixed inside the editor (feedback f46a0eec). Unlike the carousel
+  // case above this cannot fall back to the client: YourWeek's fallback runs
+  // publishPieceToSocial, which sends the same stored media_urls and would ship
+  // the identical stale render. The only thing that can bake a video edit is the
+  // VideoEditor itself, so this returns its own signal and the client routes the
+  // operator to /publish/:id to approve there. Also pre-claim — a deferred piece
+  // has posted nothing and taken no lock.
+  const unbaked = await hasUnbakedVideoEdit(ws, piece)
+  if (unbaked) return { dispatched: false, needs_video_bake: true }
 
   // Words-approval gate (Phase 3, story-monitor redesign) — this server-side
   // dispatch is a publish path like any other and must not bypass it. Checked
