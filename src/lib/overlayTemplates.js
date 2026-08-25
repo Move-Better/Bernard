@@ -1548,6 +1548,35 @@ export function prepareRenderTarget(target, W, H) {
 // Render one slide (photo + freeform text blocks) to a canvas. Returns the
 // canvas so callers can either display it directly (DOM canvas preview) or
 // call toBlob() to produce a baked PNG.
+// Structure primitives whose ONLY job is darkening the photo so overlaid text
+// stays legible. Everything else (photo, panels, rules, backgrounds, circles)
+// is structural design and is always drawn.
+const DARKENING_PRIMITIVES = new Set(['scrim', 'overlay'])
+
+// Does this slide render any on-screen text? A slide with zero text needs no
+// legibility darkening, so the scrim/overlay primitives are skipped and the
+// photo ships untouched. Ad-mode themes render no text blocks by design.
+// Pure + exported so the rule is unit-testable — the render path itself needs a
+// canvas, which no test can give it, so the decision lives here where it can be
+// asserted directly (and mutation-tested).
+export function slideRendersText(slide, theme) {
+  if (theme?.mode === 'ad') return false
+  const blocks = Array.isArray(slide?.blocks) ? slide.blocks : []
+  return blocks.some((b) => (b?.text || '').trim().length > 0)
+}
+
+// The structure to actually paint. Legibility darkening (scrim/overlay) is
+// dropped when the slide has no text to protect (hasText false), OR when the
+// deck's legibility scrim has been turned Off (scrimOff) — so a
+// distribution-ready photo publishes exactly as uploaded. All structural
+// primitives are always kept. Same function feeds the editor preview, the
+// publish bake and ad export, so the three stay WYSIWYG. (feedback #519c4d75.)
+export function visibleStructure(structure, { hasText = true, scrimOff = false } = {}) {
+  if (!Array.isArray(structure)) return structure
+  if (hasText && !scrimOff) return structure
+  return structure.filter((p) => !DARKENING_PRIMITIVES.has(p?.type))
+}
+
 export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas, theme, background, width = SIZE, height = SIZE }) {
   const target = canvas || document.createElement('canvas')
   const W = width, H = height
@@ -1578,13 +1607,19 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
   // all carry the same look.
   const photoFilter = gradeToCanvasFilter(slide?.grade)
 
+  // Legibility darkening is skipped when the slide has no text to protect, or
+  // when the deck's legibility scrim is turned Off — so a bare, ready-to-publish
+  // photo ships exactly as uploaded. (feedback #519c4d75, Q sign-off 2026-08-25.)
+  const scrimOff = slide?.scrim === 'off'
+  const hasText = slideRendersText(slide, theme)
+
   if (useWhoop) {
     // Paint structural geometry: data-driven path when the theme declares a
     // `structure` array; legacy drawWhoopLayout for older custom themes that
     // have layout/palette but no structure field.
     const img = sourceUrl ? await loadImage(sourceUrl) : null
     if (Array.isArray(theme?.structure)) {
-      drawStructure(ctx, theme.structure, brandStyle || {}, img, W, H, photoZoom, photoOffset, photoFilter, photoFill)
+      drawStructure(ctx, visibleStructure(theme.structure, { hasText, scrimOff }), brandStyle || {}, img, W, H, photoZoom, photoOffset, photoFilter, photoFill)
     } else {
       drawWhoopLayout(ctx, { layout, palette, img, brandStyle: brandStyle || {}, zoom: photoZoom, offset: photoOffset, photoFilter, W, H, fill: photoFill })
     }
@@ -1615,7 +1650,7 @@ export async function renderFreeformSlide({ sourceUrl, slide, brandStyle, canvas
   // Ad-mode templates render the structural background only — no text blocks —
   // so the canvas is a clean background for ad copy set elsewhere.
   const blocks = theme?.mode === 'ad' ? [] : (Array.isArray(slide?.blocks) ? slide.blocks : [])
-  if (!useWhoop && sourceUrl && blocks.length > 0) {
+  if (!useWhoop && sourceUrl && blocks.length > 0 && !scrimOff) {
     let scrim
     if (square) {
       scrim = ctx.createRadialGradient(W / 2, H / 2, W * 0.35, W / 2, H / 2, W * 0.75)

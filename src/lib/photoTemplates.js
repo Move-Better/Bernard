@@ -91,17 +91,23 @@ const NAVY_PANEL  = 'rgba(12,26,46,0.94)'
 export const BUILTIN_THEMES = {
 
   // ── FULL PHOTO ── clean full-bleed photo, text overlaid (the default)
-  //   The photo owns the whole slide; edge scrims (stronger bottom, light top)
-  //   keep overlaid text legible without dimming the photo. "The photo is the
-  //   photo" — zoom/reposition to frame it. Default deck theme for carousels.
-  //   (U2.1b, Q sign-off mockups/photo-experience-v1.html 2026-06-20.)
+  //   The photo owns the whole slide. ONE bottom scrim keeps an overlaid
+  //   headline legible; it is lighter (max 0.50, was 0.74) and tighter (starts
+  //   at 0.66, was 0.50) than it used to be, and there is no top-edge scrim at
+  //   all — this layout pulls text to the bottom, so the old top scrim only ever
+  //   darkened the photo for nothing. The scrim is a legibility overlay: it is
+  //   dropped entirely on a text-free slide (see visibleStructure) or when the
+  //   deck's legibility scrim is turned Off, so a distribution-ready photo ships
+  //   exactly as uploaded. "The photo is the photo" — zoom/reposition to frame it.
+  //   Default deck theme for carousels. (Q sign-off 2026-08-25, feedback
+  //   #519c4d75 — see .claude/mockups/photo-scrim.html; supersedes the 2026-06-20
+  //   two-scrim version.)
   'photo-dark': {
     id: 'photo-dark', name: 'Full Photo', builtin: true,
     layout: 'photo', palette: 'dark',
     structure: [
       { type: 'photo', fallback: { type: 'bg-linear', colorFrom: { token: '$ink', fallback: '#1e293b', lighten: 0.28 }, colorTo: { token: '$ink', fallback: '#1e293b' } } },
-      { type: 'scrim', yFrac: 0.50, yEndFrac: 1.0,  stops: [[0, 'rgba(0,0,0,0)'], [0.55, 'rgba(0,0,0,0.42)'], [1.0, 'rgba(0,0,0,0.74)']] },
-      { type: 'scrim', yFrac: 0.0,  yEndFrac: 0.22, stops: [[0, 'rgba(0,0,0,0.34)'], [1.0, 'rgba(0,0,0,0)']] },
+      { type: 'scrim', yFrac: 0.66, yEndFrac: 1.0, stops: [[0, 'rgba(0,0,0,0)'], [0.46, 'rgba(0,0,0,0.26)'], [1.0, 'rgba(0,0,0,0.50)']] },
     ],
     blocks: {
       hook:        { fontSize: '2xl',  fontWeight: 'extrabold', color: '#ffffff',               shadow: 'strong', background: 'none',  bgColor: null,        uppercase: false },

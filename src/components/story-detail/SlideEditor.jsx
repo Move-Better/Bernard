@@ -394,6 +394,17 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     toast.success('Theme applied to all slides')
   }
 
+  // Legibility scrim — the subtle darkening Bernard adds behind overlaid text so
+  // it stays readable. It's a deck-level choice (a clinician who's colour-graded
+  // their photos wants it Off across the whole post), so the toggle writes every
+  // slide. 'off' only when EVERY slide is off; otherwise the default, Auto.
+  // (feedback #519c4d75.)
+  const scrimMode = slides.length > 0 && slides.every((s) => s.scrim === 'off') ? 'off' : 'auto'
+  function handleScrimModeChange(mode) {
+    setSlides((prev) => prev.map((s) => (s.scrim === mode ? s : { ...s, scrim: mode })))
+    toast.success(mode === 'off' ? 'Legibility scrim off — photos publish untouched' : 'Legibility scrim on')
+  }
+
   function handleUseAsHook(text) {
     const slide0 = slides[0]
     if (!slide0) return
@@ -816,6 +827,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
                     allThemes={allThemes}
                     customThemes={customThemes}
                     globalThemeId={themeId}
+                    scrimMode={scrimMode}
+                    onScrimModeChange={handleScrimModeChange}
                     onChange={(next) => updateSlide(activeSlideIdx, next)}
                     onApplyThemeToAll={handleApplyThemeToAll}
                     onSaveAsTemplate={openSaveTemplate}
