@@ -1,18 +1,22 @@
 // GET /api/cron/sweep-stuck-clip-exports  (Vercel cron, every 5 minutes)
 //
-// Safety-net for the async "Save to Library" clip-export lane. The happy path
-// flips media_assets.render_status 'rendering' → 'ready' (or 'failed') inside
-// export-clip-worker's waitUntil (runExportRender). But a Vercel SIGKILL at the
-// 300s wall runs no code — the catch never fires — so a b-roll row can strand at
-// 'rendering' forever, showing an eternal "Rendering…" tile in the Library that
-// the client poll can never resolve.
+// Safety-net for the two async clip-render lanes, both of which mark a row
+// 'rendering' up front and flip it terminal inside a worker's waitUntil:
+//   • media_assets.render_status — the "Save to Library" b-roll export
+//     (export-clip-worker → runExportRender).
+//   • clip_render_jobs.status    — the embedded reel bake
+//     (render-clip-job-worker → runReelRender).
+// A Vercel SIGKILL at the 300s wall runs no code — the catch never fires — so a
+// row of either kind can strand at 'rendering' forever: the b-roll case shows an
+// eternal "Rendering…" tile in the Library; the reel-bake case leaves the
+// editor's commit poll hanging until its own 6-min cap.
 //
 // This sweep flips any row stuck at 'rendering' for longer than a healthy render
-// could possibly take to 'failed' (+ render_error) — the same terminal state
-// runExportRender's catch writes — so the Library tile settles and the user can
-// retry. The write is guarded on render_status=eq.rendering (cooperative-cancel
+// could possibly take to 'failed' — the same terminal state each worker's catch
+// writes — so the Library tile settles / the poll resolves and the user can
+// retry. Each write is guarded on status=eq.rendering (cooperative-cancel
 // pattern): a row that completed between cron fire and the write no longer
-// matches, so we never clobber a 'ready' row.
+// matches, so we never clobber a settled row.
 //
 // Auth: Bearer CRON_SECRET (same as the other cron handlers).
 
@@ -63,9 +67,9 @@ export default async function handler(req, res) {
   if (!activeIds.length) return res.status(200).json({ swept: 0, note: 'no_active_workspaces' })
   const wsFilter = `&workspace_id=in.(${activeIds.map((id) => `"${id}"`).join(',')})`
 
-  // Single guarded PATCH: every row still 'rendering' whose updated_at predates
-  // the cutoff flips to 'failed'. return=representation gives us the swept rows
-  // so we can report the count.
+  // Guarded PATCH #1 (b-roll export): every media_assets row still 'rendering'
+  // whose updated_at predates the cutoff flips to 'failed'. return=representation
+  // gives us the swept rows so we can report the count.
   const r = await sb(
     `media_assets?render_status=eq.rendering&updated_at=lt.${cutoff}${wsFilter}`,
     {
@@ -83,5 +87,25 @@ export default async function handler(req, res) {
   const count = Array.isArray(swept) ? swept.length : 0
   if (count) console.warn(`[sweep-stuck-clip-exports] failed ${count} stuck clip export(s)`)
 
-  return res.status(200).json({ swept: count })
+  // Guarded PATCH #2 (embedded reel bake): same shape against clip_render_jobs.
+  // The status vocab and error column differ (status/error vs render_status/
+  // render_error), so it's a sibling PATCH, not the same one.
+  const jr = await sb(
+    `clip_render_jobs?status=eq.rendering&updated_at=lt.${cutoff}${wsFilter}`,
+    {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ status: 'failed', error: 'render_timeout' }),
+    },
+  )
+  if (!jr.ok) {
+    const text = await jr.text().catch(() => '')
+    console.error('[sweep-stuck-clip-exports] reel-job sweep failed:', jr.status, text)
+    return res.status(500).json({ error: 'reel_job_sweep_failed' })
+  }
+  const sweptJobs = await jr.json().catch(() => [])
+  const jobCount = Array.isArray(sweptJobs) ? sweptJobs.length : 0
+  if (jobCount) console.warn(`[sweep-stuck-clip-exports] failed ${jobCount} stuck reel render job(s)`)
+
+  return res.status(200).json({ swept: count, sweptReelJobs: jobCount })
 }
