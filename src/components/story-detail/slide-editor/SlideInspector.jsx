@@ -9,10 +9,15 @@ import { ROLE_META } from './shared'
 
 export default function SlideInspector({
   slide, slideIdx, totalSlides, photoUrl, brandStyle, allThemes, customThemes, globalThemeId,
+  scrimMode = 'auto', onScrimModeChange,
   onChange, onApplyThemeToAll, onAddBlock, onMoveLeft, onMoveRight, onRemove,
   onSaveAsTemplate,
 }) {
   const [addOpen, setAddOpen] = useState(false)
+  // The legibility scrim only exists on the photo templates (a full-bleed photo
+  // with text overlaid). Text-card themes have no photo to darken, so the
+  // control is hidden there. Resolved against this slide's effective theme.
+  const activeIsPhoto = templateFamily(resolveTheme(slide.template_id || globalThemeId, customThemes)) === 'photo'
   // Signature of everything (besides the theme) that changes a thumbnail's pixels.
   const thumbSig = `${photoUrl || ''}|${slide.photo_zoom ?? 'fill'}|${slide.photo_fill ?? ''}|${slide.photo_offset ? `${slide.photo_offset.x},${slide.photo_offset.y}` : ''}|${slide.blocks.map((b) => `${b.role}:${b.text}`).join('~')}|${(slide.objects || []).map((o) => `${o.src}:${o.x},${o.y}:${o.scale}`).join('~')}`
   return (
@@ -86,6 +91,41 @@ export default function SlideInspector({
             <ThemeTile key={t.id} t={t} slide={slide} photoUrl={photoUrl} brandStyle={brandStyle} customThemes={customThemes} thumbSig={thumbSig} onChange={onChange} />
           ))}
         </div>
+        {/* Legibility scrim — deck-wide disclosure + control. Bernard adds a
+            subtle gradient behind overlaid text so it stays readable; Off
+            publishes the photo untouched. The photo itself is never re-edited.
+            (feedback #519c4d75 — Philip asked to control this or be told it
+            happens.) Only shown for photo templates, which are the only ones
+            that carry a scrim. */}
+        {activeIsPhoto && onScrimModeChange && (
+          <div className="space-y-1.5 rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-foreground">
+                Legibility scrim <span className="font-normal text-muted-foreground/70">· all slides</span>
+              </span>
+              <div className="flex overflow-hidden rounded-md border border-border text-xs font-semibold" role="group" aria-label="Legibility scrim">
+                {[['auto', 'Auto'], ['off', 'Off']].map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => onScrimModeChange(mode)}
+                    aria-pressed={scrimMode === mode}
+                    className={`px-3 py-1 transition-colors ${
+                      scrimMode === mode
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Auto adds a subtle gradient behind text so it stays readable — only where text sits, and never on a photo with no text. Off publishes your photo exactly as uploaded. Either way, the photo itself isn&rsquo;t edited.
+            </p>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => onApplyThemeToAll(slide.template_id || globalThemeId)}

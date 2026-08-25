@@ -66,6 +66,8 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle, aspect }) {
     photoFill: slide.photo_fill ?? null,
     photoOffset: slide.photo_offset || null,
     grade: slide.grade || null,
+    // Legibility-scrim mode ('off' hides the darkening) — part of the pixels.
+    scrim: slide.scrim || null,
     // Renderer version — bump to force a one-time re-bake when the render model
     // changes. v2: fit-relative zoom (whole photo by default) + blurred backdrop
     // when the photo doesn't fill the frame. v3: 4:5 portrait output (1080×1350,
@@ -80,7 +82,13 @@ function slideSignature({ slide, photoUrl, themeId, brandStyle, aspect }) {
     //     every slide baked under v8 without an explicit zoom is a cached image
     //     of the OLD letterboxed render. Without the bump those stale bakes keep
     //     being served and the fix looks like it never shipped.
-    _renderV: 9,
+    // v10: photo legibility scrim reworked — the default 'photo-dark' theme's
+    //     scrim is lighter/tighter with no top-edge darkening, the scrim is
+    //     dropped entirely on a text-free slide, and a deck can turn it Off.
+    //     Every slide baked under v9 is a cached image of the OLD heavier scrim,
+    //     so without this bump those stale bakes keep serving and the fix looks
+    //     like it never shipped (feedback #519c4d75).
+    _renderV: 10,
     aspect: aspect || '4:5',
   }))
 }
