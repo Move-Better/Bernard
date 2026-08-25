@@ -1036,6 +1036,50 @@ correctly, but the spinner never resolved because the kickoff never called the q
 `refetch()`. Fix: call `refetch()` (destructured from the same `useQuery`) immediately after the
 kickoff request resolves, so the very next evaluation sees the fresh pending status.
 
+### The reel bake renders async, on a fresh worker budget (`clip_render_jobs`)
+
+VideoEditor bakes the current trim/caption/grade edit into a video piece's `media_urls` before
+Approve/Schedule/Publish (see "The reel WYSIWYG contract" above). That render used to run
+SYNCHRONOUSLY inside `POST /api/editorial/render-clip` (`maxDuration: 300`) — the same 300s wall the
+b-roll "Save to Library" export (`export-clip`) already moved async to escape. A long or hi-res
+EDITED reel can approach the ceiling and 504, which aborts the commit (`bakeVideoIfDirty` throws →
+`EditorWorkflowBar.runCommit` catches → the workflow action never runs, so a stale reel is NEVER
+shipped) but leaves that reel un-publishable.
+
+`VideoEditor.doRenderClip()` now kicks an async render job and polls it to completion, keeping its
+EXACT return contract (`{ blobUrl, width, height, sizeBytes, hadSubtitles }`). So everything
+downstream is UNCHANGED — `saveVideoToPiece` still constructs the baked entry, stamps `videoEditHash`,
+flushes `video_edit_draft`, and PATCHes `content_items.media_urls`; `onBeforeCommit →
+mediaUrlsOverride` and the `dispatchContentItem` /week parity are untouched. Only the raw ffmpeg
+render left the request path. **No WYSIWYG construction moved server-side** — the client still
+finalizes `media_urls` — which is exactly why this is a job-that-returns-a-blob, not a
+worker-that-writes-`content_items` (a server-side finalize would be the mirror-pair hazard the WYSIWYG
+contract above exists to avoid).
+
+The baton pattern (shared with `export-clip` and `render-longform`):
+- **`clip_render_jobs`** (migration 212) — the transient job carrier the client polls, the direct
+  analog of the b-roll path's `media_assets.render_status` and longform's `story_packages.status`.
+  `status` goes `rendering → ready | failed`; `ready` carries `blob_url` + dims.
+- **`api/editorial/render-clip-job.js`** — `POST` validates fast (shared `resolveClipRender`), creates
+  the job, kicks the worker via a `CRON_SECRET` self-POST, returns `202 { jobId }`; `GET ?id=` polls
+  the job (workspace-scoped).
+- **`api/editorial/render-clip-job-worker.js`** — renders via the shared `renderClipCore` on a fresh
+  300s instance (Bearer `CRON_SECRET`), then writes the terminal status.
+- **`api/_lib/clipRenderJobEngine.js`** — mirrors `exportClipEngine`; the terminal write is guarded on
+  `status=eq.rendering` (a duplicate worker / cron sweep can't clobber a settled row) and
+  `runReelRender` never throws (always writes a terminal status).
+
+`doRenderClip`'s poll is hard-capped at 6 min (per "Polling: hard cap is universal" above); on cap or
+`failed` it throws, so the commit aborts with a legible message rather than shipping a stale reel. A
+SIGKILL at the 300s wall runs no `catch`, so `sweep-stuck-clip-exports` (every 5 min) also flips a
+stranded `clip_render_jobs` row to `failed` — the editor poll always settles either way.
+
+The sync `render-clip.js` stays for the ad-export flow and `EditorialTest.jsx` (not the reel bake);
+both paths share `renderClipCore` so they can never drift. `finalizeToPost` (the standalone
+"Sounds like me" clip-to-post) also routes through `doRenderClip`, so it gets the fresh budget too.
+(#2654 — prod-verified end-to-end: POST → 202, worker rendered a 1080×1920 reel in ~24s, GET →
+`ready`.)
+
 ### Pipeline-transient status values must not round-trip through editable form state
 A row's `status` column can legitimately hold values the server sets itself and that never
 appear as a user-selectable option — e.g. `media_assets.status = 'tagging'` while AI tagging is
@@ -1745,9 +1789,9 @@ the real timeline editor lived on a separate route with no publish chrome. The e
 - **`postId` seeds from `piece.id`**, so the header `EditorWorkflowBar` binds to the EXISTING piece
   (Approve/Reject/Schedule/publish act on this reel) — no `clip-to-post` creation. The standalone
   `/moments/clip` + `/slate/clip` routes pass no props → prior behavior (finalize-creates-new-post).
-- **"Save video" render-back** (the embedded-only CTA): renders the current edit via `render-clip` and
-  PATCHes the baked blob to the piece's `media_urls`, so **publish sends the EDITED clip, never the raw
-  source**. `mediaAssetId` stays the SOURCE asset (re-open re-edits from source + the per-asset
+- **"Save video" render-back** (the embedded-only CTA): renders the current edit via the async
+  `render-clip-job` (see "The reel bake renders async, on a fresh worker budget" above) and PATCHes the
+  baked blob to the piece's `media_urls`, so **publish sends the EDITED clip, never the raw source**. `mediaAssetId` stays the SOURCE asset (re-open re-edits from source + the per-asset
   `video_edit_draft` autosave); only the `url` is the baked render. No `content_items.video_edit` write
   needed — the draft covers restore, and the PATCH stays within the existing `mediaUrls` allowlist.
   The clip-export dropdown (Save-to-Library / ads / whole-video-navigate-away) is hidden when embedded.
