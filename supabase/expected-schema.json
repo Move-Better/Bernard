@@ -205,6 +205,21 @@
     "updated_by",
     "workspace_id"
   ],
+  "clip_render_jobs": [
+    "blob_pathname",
+    "blob_url",
+    "created_at",
+    "duration_s",
+    "error",
+    "had_subtitles",
+    "height",
+    "id",
+    "size_bytes",
+    "status",
+    "updated_at",
+    "width",
+    "workspace_id"
+  ],
   "collection_items": [
     "added_at",
     "added_by",
