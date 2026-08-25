@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Check, CheckCircle2, CalendarClock, ChevronDown, ListPlus, Send,
-  Clock, RotateCcw, XCircle, Lock, ThumbsDown,
+  Clock, RotateCcw, XCircle, Lock, ThumbsDown, Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useContentWorkflow } from '@/lib/useContentWorkflow'
@@ -263,7 +263,13 @@ function MenuItem({ icon: Icon, title, sub, onClick }) {
 // (feedback f46a0eec). It resolves to the freshly-baked media_urls (threaded
 // into publish as mediaUrlsOverride) or null when nothing needed baking. Every
 // other editor omits it, so their behavior is unchanged.
-export default function EditorWorkflowBar({ piece, onBeforeCommit }) {
+//
+// renderingReel (optional): true while that bake is actually rendering the reel
+// server-side — a ~1-minute inline ffmpeg pass. Without a signal, Approve /
+// Schedule / Save just show a bare spinner for that whole minute, which reads as
+// a hung button ("videos are not approving", feedback 2cc4a9e3). We surface a
+// visible "rendering… ~1 min" status so the wait is legible instead of alarming.
+export default function EditorWorkflowBar({ piece, onBeforeCommit, renderingReel = false }) {
   const wf = useContentWorkflow(piece)
   const status = piece?.status || 'draft'
   // True while the pre-commit bake + the workflow action run, so buttons spin
@@ -317,6 +323,20 @@ export default function EditorWorkflowBar({ piece, onBeforeCommit }) {
     <div className="flex flex-wrap items-center gap-2">
       <VoiceChip piece={piece} />
       <SafetyChip piece={piece} />
+
+      {/* Reel bake in flight — a ~1-minute server-side render behind the spinning
+          Approve / Schedule / Save button. Make the wait legible so the button
+          doesn't read as stuck (feedback 2cc4a9e3). */}
+      {renderingReel && (
+        <span
+          className="inline-flex items-center gap-1.5 rounded-md border border-primary/25 bg-primary/5 px-2.5 py-1.5 text-xs font-medium text-primary"
+          role="status"
+          aria-live="polite"
+        >
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+          Rendering your video… about a minute
+        </span>
+      )}
 
       {/* Only the states where Publish/Retry actually matters — the gate
           doesn't block approving-to-publish or sending-for-review, so no
