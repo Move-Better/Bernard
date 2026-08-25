@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { runBundlePublish } from '../../api/_routes/publish/social.js'
+import { BundlePublisher } from '../../api/_lib/social/bundlePublisher.js'
 
 // Regression for feedback 14ba3329 (2026-08-07): an Instagram piece with
 // format='post' but 6 photos publishes → BundlePublisher.publish throws
@@ -39,5 +40,51 @@ describe('runBundlePublish — format/media mismatch surfaces the real 400 reaso
     expect(r.status).toBe(400)
     expect(r.body.error).toBe('mixed_not_allowed')
     expect(r.body.message).toContain('Facebook')
+  })
+})
+
+// Regression for feedback 7f5bb584 (2026-08-24): a LinkedIn post with a photo
+// failed to publish with "This post's format doesn't fit the attached media."
+// The planner stamps format='post' on every non-story platform, but LinkedIn
+// (like tiktok/twitter/gbp/…) has no entry in the format REGISTRY, so 'format'
+// is a no-op legacy field there. publish() validated it anyway, so
+// validateFormatMedia returned format_not_supported and hard-blocked EVERY
+// publish on those channels. The guard now skips validation whenever the
+// platform offers no format choice — mirroring describeFormatViolation and
+// promoteFormatForMedia, which already guard the same way.
+describe('BundlePublisher.publish — format is a no-op on non-REGISTRY platforms (feedback 7f5bb584)', () => {
+  beforeAll(() => { process.env.BUNDLE_API_KEY = process.env.BUNDLE_API_KEY || 'test-key' })
+
+  // Stub the network so publish() runs to completion without touching
+  // bundle.social — the point under test is the pre-upload format guard, not the
+  // upload itself.
+  const makePub = () => {
+    const pub = new BundlePublisher(WORKSPACE)
+    pub._uploadMedia = async () => [{ id: 'up_1', type: 'image' }]
+    pub.sdk = {
+      post: {
+        postCreate: async () => ({ id: 'post_1', status: 'SCHEDULED', postDate: '2026-01-01T00:00:00Z' }),
+      },
+    }
+    return pub
+  }
+
+  it('a LinkedIn post with a photo publishes — the bogus format_not_supported block is gone', async () => {
+    const pub = makePub()
+    const r = await pub.publish({
+      platform: 'linkedin', content: 'hello', mediaUrls: [PHOTO(0)], format: 'post',
+    })
+    expect(r.success).toBe(true)
+    expect(r.postId).toBe('post_1')
+  })
+
+  it('still blocks a genuinely illegal format on a REGISTRY platform (IG Post, 6 photos)', async () => {
+    // Proves the guard is scoped to non-REGISTRY platforms, not a blanket disable
+    // of format validation — an Instagram Post over its 1-item cap must still 400.
+    const pub = makePub()
+    const media = Array.from({ length: 6 }, (_, i) => PHOTO(i))
+    await expect(
+      pub.publish({ platform: 'instagram', content: 'hi', mediaUrls: media, format: 'post' }),
+    ).rejects.toThrow(/too_many_items/)
   })
 })

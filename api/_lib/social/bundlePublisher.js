@@ -17,7 +17,7 @@
 // in production (every workspace defaults to Buffer).
 import { Bundlesocial } from 'bundlesocial'
 import { SocialPublisher, publishError, emptyMetrics } from './socialPublisher.js'
-import { validateFormatMedia } from '../../../src/lib/platformFormats.js'
+import { validateFormatMedia, formatOptions } from '../../../src/lib/platformFormats.js'
 
 // Bernard platform id -> bundle.social social account type (SDK enum, verified).
 const PLATFORM_TO_BUNDLE_TYPE = {
@@ -393,7 +393,15 @@ export class BundlePublisher extends SocialPublisher {
     // BEFORE anything uploads — bundle's own rejection for e.g. a mixed
     // Facebook album arrives as an opaque 400 after the media round-trip.
     // Null format skips this entirely (legacy derived behavior).
-    if (format) {
+    //
+    // Guard non-REGISTRY platforms exactly as describeFormatViolation and
+    // promoteFormatForMedia do: a platform with no format choice (linkedin,
+    // tiktok, twitter, gbp, …) carries 'format' only as a no-op legacy field
+    // the planner stamps ('post'), so validateFormatMedia would return
+    // format_not_supported and hard-block every publish. Only validate when the
+    // platform actually offers formats. (feedback 7f5bb584 — a LinkedIn post
+    // with a photo blocked on "format doesn't fit media".)
+    if (format && formatOptions(platform).length > 0) {
       const check = validateFormatMedia(platform, format, mediaUrls)
       if (!check.ok) throw publishError(`format_${check.reason}`, 400)
     }
