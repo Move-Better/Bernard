@@ -42,8 +42,13 @@ import { put as blobPut } from '@vercel/blob'
 import { generateText } from 'ai'
 import { downloadImageCapped } from './imageSource.js'
 
-const MAX_LONG_EDGE = 2000
-const JPEG_QUALITY  = 80
+// Delivery variant caps. Raised from 2000px/q80 (2026-08-24) after a clinician
+// reported visible quality loss on image-first platforms (LinkedIn, GBP, blog
+// hero). 3200px covers a retina full-width hero; q90 mozjpeg keeps artifacts
+// imperceptible while still bounding file size. The full-res upload is always
+// preserved in media_assets.original_blob_url; only this delivery variant ships.
+const MAX_LONG_EDGE = 3200
+const JPEG_QUALITY  = 90
 const PNG_COMPRESSION = 9
 const THUMB_LONG_EDGE   = 400
 const THUMB_JPEG_QUALITY = 78
