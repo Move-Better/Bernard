@@ -98,6 +98,37 @@ export function exportClipToBroll(body) {
 }
 
 /**
+ * Kick off an async reel-bake render. Renders the edited clip on a FRESH worker
+ * budget instead of inline, so a long/hi-res EDITED reel can't 504 the commit.
+ * Returns fast with 202 { jobId, status: 'rendering' }. Poll getClipRenderJob()
+ * until its status flips 'rendering' → 'ready' (blobUrl set) | 'failed'.
+ *
+ * The CLIENT finalizes on 'ready' (writes the baked media_urls entry with its
+ * videoEditHash stamp + flushes the source-asset draft) — this only offloads the
+ * raw render, so the WYSIWYG media construction stays in one place client-side.
+ * @param {Object} body  the editor renderBody (assetId + edit params)
+ * @returns {Promise<{ jobId: string, status: string }>}
+ */
+export function startClipRenderJob(body) {
+  return apiFetch('/api/editorial/render-clip-job', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+/**
+ * Read an async reel-bake render job's status.
+ * @param {string} jobId
+ * @returns {Promise<{ status: string, blobUrl: string|null, width: number|null,
+ *   height: number|null, sizeBytes: number|null, hadSubtitles: boolean|null,
+ *   durationS: number|null, error: string|null }>}
+ */
+export function getClipRenderJob(jobId) {
+  return apiFetch(`/api/editorial/render-clip-job?id=${encodeURIComponent(jobId)}`)
+}
+
+/**
  * Render the WHOLE source video as one keep-whole, landscape long-form story
  * package — the other explicit choice next to "Find clips". Returns 202 with
  * { packageId, status, channels }; the Moment Miner polls story_packages for

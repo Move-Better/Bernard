@@ -19,7 +19,7 @@ import { getMediaAsset, updateMediaAsset } from '@/lib/mediaLib'
 import { resolveVideoEditSource, shouldUseSourceWindow } from '@/lib/videoEditSource'
 import { videoEditFingerprint, isVideoEditUnbaked, VIDEO_EDIT_HASH_KEY } from '@/lib/videoEditFingerprint'
 import { applyCaptionWindow, nearestWithin } from '@/lib/captionTimeline'
-import { getSegments, renderWholeVideo, findClips, updateSegment, exportClipToBroll } from '@/lib/clipsLib'
+import { getSegments, renderWholeVideo, findClips, updateSegment, exportClipToBroll, startClipRenderJob, getClipRenderJob } from '@/lib/clipsLib'
 import { updateBrandStyle } from '@/lib/brandKitLib'
 import AdVideoExportModal from '@/components/AdVideoExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
@@ -1924,13 +1924,42 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     // truth), so we send only the id + mix options. Omitted when no track picked.
     ...(music.trackId ? { music: { trackId: music.trackId, volume: music.volume, duck: music.duck, fade: music.fade } } : {}),
   })
+  // Render the current edit into a finished clip and resolve with its blob.
+  //
+  // The render runs ASYNC on a fresh worker budget (render-clip-job): kick a job
+  // (202), then poll it to a terminal status. A long/hi-res EDITED reel used to
+  // render inside ONE synchronous /api/editorial/render-clip request and 504 at
+  // the 300s wall, which aborted the commit and made that reel un-publishable.
+  // Offloading only the raw render keeps the return contract IDENTICAL
+  // ({ blobUrl, width, height, sizeBytes, hadSubtitles }), so both callers
+  // (saveVideoToPiece's media_urls finalization + finalizeToPost) are unchanged
+  // — the stamp/draft/PATCH fidelity logic stays entirely client-side.
+  //
+  // Hard-capped: the worker has its own 300s budget and a stuck job is swept to
+  // 'failed' by cron, so this never loops forever; on cap it throws so the
+  // commit aborts (never ships a stale reel) with a legible message.
   async function doRenderClip() {
-    const result = await apiFetch('/api/editorial/render-clip', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(renderBody()),
-    })
-    const render = result?.renders?.[0]
-    if (!render?.blobUrl) throw new Error('Render returned no output.')
-    return render
+    const kicked = await startClipRenderJob(renderBody())
+    const jobId = kicked?.jobId
+    if (!jobId) throw new Error('Render did not start — please try again.')
+
+    const CAP_MS = 6 * 60 * 1000
+    const startedAt = Date.now()
+    while (Date.now() - startedAt < CAP_MS) {
+      await new Promise((r) => setTimeout(r, 2500))
+      let job
+      try {
+        job = await getClipRenderJob(jobId)
+      } catch {
+        continue  // transient read blip — keep polling until the cap
+      }
+      if (job?.status === 'ready') {
+        if (!job.blobUrl) throw new Error('Render returned no output.')
+        return { blobUrl: job.blobUrl, width: job.width, height: job.height, sizeBytes: job.sizeBytes, hadSubtitles: job.hadSubtitles }
+      }
+      if (job?.status === 'failed') throw new Error(job.error || 'Render failed — please try again.')
+    }
+    throw new Error('Rendering took too long — please try again.')
   }
 
   // Embedded (video content piece) render-back. Editing a Reel from the publish
