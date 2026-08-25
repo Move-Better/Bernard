@@ -17,7 +17,7 @@ import { buildTemplateFromEditor, suggestTemplateName } from '@/lib/videoTemplat
 import { posthogCapture } from '@/lib/posthog'
 import { getMediaAsset, updateMediaAsset } from '@/lib/mediaLib'
 import { resolveVideoEditSource, shouldUseSourceWindow } from '@/lib/videoEditSource'
-import { videoEditFingerprint, VIDEO_EDIT_HASH_KEY } from '@/lib/videoEditFingerprint'
+import { videoEditFingerprint, isVideoEditUnbaked, VIDEO_EDIT_HASH_KEY } from '@/lib/videoEditFingerprint'
 import { applyCaptionWindow, nearestWithin } from '@/lib/captionTimeline'
 import { getSegments, renderWholeVideo, findClips, updateSegment, exportClipToBroll } from '@/lib/clipsLib'
 import { updateBrandStyle } from '@/lib/brandKitLib'
@@ -1511,10 +1511,25 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   // stable because draftDoc is a fixed-key object literal. State, not a ref, so
   // clearing dirty after a bake re-renders the workflow bar.
   const [lastBakedDoc, setLastBakedDoc] = useState(null)
-  const videoEditDirty = useMemo(
-    () => !!(embedded && piece?.id) && JSON.stringify(draftDoc) !== lastBakedDoc,
-    [embedded, piece?.id, draftDoc, lastBakedDoc],
-  )
+  // Dirty = the current edit isn't already rendered into this piece's media, so a
+  // commit must re-bake. Two ways it can be clean: it matches the doc we baked
+  // earlier THIS session (lastBakedDoc), or — across a reopen, where lastBakedDoc
+  // is null — the current draft's fingerprint matches the stamp the last bake
+  // wrote onto the media entry. That second check is isVideoEditUnbaked, the SAME
+  // predicate /week's server dispatch uses (dispatchContentItem.js), so the editor
+  // and the server can't disagree about whether a reel still needs baking; before
+  // this, reopening an already-baked reel and hitting Approve paid a full ~1-min
+  // re-render for nothing. An untouched auto-reel carries no stamp, so it stays
+  // dirty and its first commit bakes — that render is genuinely unavoidable here
+  // (the auto-reel was rendered from segment params, not a draft doc, so there's
+  // no baseline to compare a zero-edit draft against). The failure mode of a
+  // hydration round-trip that doesn't fingerprint-match is a redundant bake, never
+  // a stale ship, so this only ever removes work, never fidelity.
+  const videoEditDirty = useMemo(() => {
+    if (!(embedded && piece?.id)) return false
+    if (JSON.stringify(draftDoc) === lastBakedDoc) return false
+    return isVideoEditUnbaked(pieceVideoEntry, draftDoc)
+  }, [embedded, piece?.id, draftDoc, lastBakedDoc, pieceVideoEntry])
 
   // localStorage mirror — immediate, undebounced offline copy. The server
   // PATCH below is debounced via useAutosave, which also flushes any pending
@@ -2349,12 +2364,12 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
                   onClick={() => saveVideoToPiece.mutate()}
                 >
                   {!saveVideoToPiece.isPending && <Check className="mr-1.5 h-3.5 w-3.5" />}
-                  {saveVideoToPiece.isPending ? 'Saving video…' : 'Save video'}
+                  {saveVideoToPiece.isPending ? 'Rendering… ~1 min' : 'Save video'}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Renders your edits and saves the finished clip to this post</TooltipContent>
+              <TooltipContent>Renders your edits and saves the finished clip to this post (about a minute)</TooltipContent>
             </Tooltip>
-            {post && <EditorWorkflowBar piece={post} onBeforeCommit={bakeVideoIfDirty} />}
+            {post && <EditorWorkflowBar piece={post} onBeforeCommit={bakeVideoIfDirty} renderingReel={saveVideoToPiece.isPending} />}
           </>
         ) : post ? (
           <EditorWorkflowBar piece={post} />

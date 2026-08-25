@@ -34,10 +34,21 @@ const count = (src, re) => (src.match(re) || []).length
 
 describe('reel editor bakes before every commit (EditorWorkflowBar)', () => {
   it('accepts an onBeforeCommit hook and runs it inside runCommit', () => {
-    expect(barSrc).toMatch(/function EditorWorkflowBar\(\{\s*piece,\s*onBeforeCommit\s*\}\)/)
+    // piece + onBeforeCommit are required first; trailing props (renderingReel)
+    // are allowed.
+    expect(barSrc).toMatch(/function EditorWorkflowBar\(\{\s*piece,\s*onBeforeCommit\b[^}]*\}\)/)
     // runCommit is the single chokepoint that awaits the bake before the action.
     expect(barSrc).toMatch(/const runCommit = async \(action\) =>/)
     expect(barSrc).toMatch(/onBeforeCommit \? await onBeforeCommit\(\)/)
+  })
+
+  it('surfaces a rendering status while the reel bakes (not a bare spinner)', () => {
+    // The bake is a ~1-minute inline render; a bare spinner on Approve/Schedule
+    // reads as a hung button (feedback 2cc4a9e3). The bar takes a renderingReel
+    // signal and shows a visible "rendering…" status while it is true.
+    expect(barSrc).toMatch(/renderingReel\s*=\s*false\s*\}/)
+    expect(barSrc).toMatch(/\{renderingReel && \(/)
+    expect(barSrc).toMatch(/Rendering your video/)
   })
 
   it('routes Approve and Send-for-review through the bake, never a bare wf.*', () => {
@@ -62,16 +73,24 @@ describe('reel editor bakes before every commit (EditorWorkflowBar)', () => {
 })
 
 describe('VideoEditor wires the bake to the embedded workflow bar', () => {
-  it('passes bakeVideoIfDirty as onBeforeCommit', () => {
+  it('passes bakeVideoIfDirty as onBeforeCommit and wires the rendering signal', () => {
     expect(editorSrc).toContain('onBeforeCommit={bakeVideoIfDirty}')
+    // The bar's rendering status is driven by the actual render-in-flight state.
+    expect(editorSrc).toContain('renderingReel={saveVideoToPiece.isPending}')
   })
 
-  it('bakeVideoIfDirty only re-renders when the edit is dirty', () => {
-    // Guards on videoEditDirty so a redundant Save→Approve does not re-bake,
-    // but the edit starts dirty (compared against lastBakedDoc, initially null)
-    // so the FIRST commit always bakes the current state.
+  it('bakeVideoIfDirty re-renders only when the edit is unbaked', () => {
+    // The bake guards on videoEditDirty so a redundant Save→Approve doesn't
+    // re-render.
     expect(editorSrc).toMatch(/if \(!embedded \|\| !piece\?\.id \|\| !videoEditDirty\) return null/)
-    expect(editorSrc).toMatch(/JSON\.stringify\(draftDoc\) !== lastBakedDoc/)
+    // Dirty is clean when the current draft matches EITHER the doc baked this
+    // session (lastBakedDoc) OR the stamp the last bake wrote onto the media
+    // entry (isVideoEditUnbaked — the SAME predicate the /week server dispatch
+    // uses, so the editor and the server can't disagree about whether a reel
+    // still needs baking). An untouched auto-reel carries no stamp, so it stays
+    // dirty and its first commit still bakes.
+    expect(editorSrc).toMatch(/JSON\.stringify\(draftDoc\) === lastBakedDoc/)
+    expect(editorSrc).toMatch(/return isVideoEditUnbaked\(pieceVideoEntry, draftDoc\)/)
   })
 
   it('the bake returns the fresh media_urls it persisted', () => {
