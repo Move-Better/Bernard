@@ -8,6 +8,7 @@ import noRawUseMutation from './eslint/rules/no-raw-use-mutation.js'
 import noArbitraryTextSize from './eslint/rules/no-arbitrary-text-size.js'
 import noRawApiFetch from './eslint/rules/no-raw-api-fetch.js'
 import noHardcodedBrandColor from './eslint/rules/no-hardcoded-brand-color.js'
+import noProductBrandInContent from './eslint/rules/no-product-brand-in-content.js'
 import requireWorkspaceScope from './eslint/rules/require-workspace-scope.js'
 import noDetailInErrorResponse from './eslint/rules/no-detail-in-error-response.js'
 import noTemperatureOnOpus from './eslint/rules/no-temperature-on-opus.js'
@@ -97,6 +98,7 @@ export default [
           'no-arbitrary-text-size': noArbitraryTextSize,
           'no-raw-api-fetch': noRawApiFetch,
           'no-hardcoded-brand-color': noHardcodedBrandColor,
+          'no-product-brand-in-content': noProductBrandInContent,
           'no-temperature-on-opus': noTemperatureOnOpus,
         },
       },
@@ -120,11 +122,54 @@ export default [
     files: ['api/_lib/**/*.js'],
     plugins: {
       bernard: {
-        rules: { 'no-temperature-on-opus': noTemperatureOnOpus },
+        rules: {
+          'no-temperature-on-opus': noTemperatureOnOpus,
+          'no-product-brand-in-content': noProductBrandInContent,
+        },
       },
     },
     rules: {
       'bernard/no-temperature-on-opus': 'error',
+    },
+  },
+  // bernard/no-product-brand-in-content — the OTHER half of the brand wall
+  // (no-hardcoded-brand-color guards product chrome from tenant/retired hexes;
+  // this guards TENANT CONTENT from Bernard PRODUCT colors #0C7580/#d97706 and
+  // the BERNARD_* constants). Enabled ONLY on the render-pipeline + editor files
+  // that bake tenant artifacts. Rules-only block (no `plugins` key) so it never
+  // redefines the `bernard` plugin — it relies on the src/** and api/_lib/**
+  // blocks above, which register the rule. ADD new render files here as they land.
+  {
+    files: [
+      // Client editors + content-render libs
+      'src/pages/VideoEditor.jsx',
+      'src/components/editor/UnifiedEditor.jsx',
+      'src/lib/overlayTemplates.js',
+      'src/lib/photoTemplates.js',
+      'src/lib/mediaEntry.js',
+      'src/lib/gradeParams.js',
+      'src/lib/brandSwatches.js',
+      'src/lib/locationOverlay.js',
+      'src/lib/videoTemplateCapture.js',
+      'src/lib/photoTemplateCapture.js',
+      // Server render pipeline (bakes tenant reels / photos / carousels)
+      'api/_lib/brandRender.js',
+      'api/_lib/brandRenderVideo.js',
+      'api/_lib/videoOverlays.js',
+      'api/_lib/karaokeCaptions.js',
+      'api/_lib/whoopTemplates.js',
+      'api/_lib/videoTemplates.js',
+      'api/_lib/renderClipCore.js',
+      'api/_lib/renderChunkPlan.js',
+      'api/_lib/renderPackageChannels.js',
+      'api/_lib/reelFactory.js',
+      'api/_lib/longformEngine.js',
+      'api/_lib/stitchLongform.js',
+      'api/_lib/gradeParams.js',
+      'api/_lib/clipRenderJobEngine.js',
+    ],
+    rules: {
+      'bernard/no-product-brand-in-content': 'error',
     },
   },
 ]
