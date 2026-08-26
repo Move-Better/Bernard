@@ -194,7 +194,10 @@ export function normalizeOverlays(overlays, clipDur, max = 6) {
  * on a workspace whose brand is orange. hook_card takes brandColor for that
  * reason; every other role keeps using accentColor unchanged.
  */
-export function buildOverlaySvg({ width, height, overlay, accentColor = '#0C7580', brandColor, fontBuffer }) {
+// Default is the neutral sage DEFAULT_ACCENT (brandRender.js), NOT a Bernard
+// product color — this renders into TENANT artifacts, and the sole caller always
+// passes the tenant's resolved accent anyway (see the doc note above).
+export function buildOverlaySvg({ width, height, overlay, accentColor = '#83957C', brandColor, fontBuffer }) {
   const o = overlay || {}
   const role = OVERLAY_ROLES.includes(o.role) ? o.role : 'title'
   const baseDim = Math.min(width, height)

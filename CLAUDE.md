@@ -392,6 +392,37 @@ deliberately left out pinned as a recorded decision (`instagram_story` uses `ove
 instead; `blog`/`landing_page`/`email` publish off the social path; `tiktok`/`youtube` are video-first)
 so the next platform added has to actively decide which side of the line it's on.
 
+## Bernard PRODUCT brand ≠ tenant brand — two color namespaces that must never cross
+
+This keeps coming up (Q, repeatedly). There are two brands, and they share a history that makes them
+easy to conflate:
+
+| Namespace | What it is | Color | Where it belongs |
+|---|---|---|---|
+| **Bernard product** | the SaaS app's own chrome | Blue Spruce `#0C7580` (`BERNARD_PRIMARY`, `--primary`), amber `#d97706` (`BERNARD_ACTION`, `--action`) | nav, buttons, app UI **only** |
+| **Tenant brand** | the clinic's own brand, stored on its `workspaces` row | e.g. Move Better = orange **`#E36525`** (`colors.primary` / `brand_style.accent_color`) | that tenant's **published content only** |
+
+The app was built FOR Move Better in orange, then repainted to Bernard emerald/Blue Spruce (#1294) —
+so `#E36525` looks "retired" but is **Move Better's LIVE tenant color** (verified in prod:
+`colors.primary` = `#E36525` for all three Move Better workspaces). `#0C7580` Blue Spruce is Bernard's,
+NOT Move Better's — do **not** propose it as a tenant default.
+
+**The wall (both directions):**
+- Product chrome must not use a tenant/retired brand hex → `bernard/no-hardcoded-brand-color` (the
+  `#e36525`/`#6e7072`/… ban is about keeping those literals out of *app chrome code*, NOT a claim that
+  the tenant retired the color).
+- **Tenant content** (captions, overlays, slide text, baked reels/photos — anything rendered into a
+  tenant artifact) must resolve color ONLY from the tenant palette (`workspaceCaptionAccent(workspace)`
+  client / `resolveBrandColors(workspace)` server), falling back to a **neutral** (white / black /
+  `#83957C` / `#1a3a5c`) — **never** a `BERNARD_*` constant → `bernard/no-product-brand-in-content`,
+  scoped to the render-pipeline + editor files in `eslint.config.js` (add new render files to that glob).
+
+Triage note: a Move Better reel with an **orange** karaoke caption is **on-brand**, not a bug. The
+recurring failure is the reverse — Bernard's Blue Spruce / amber leaking INTO tenant content (seeded
+caption defaults, editor swatches, render-fn defaults). (feedback dd192d5f, 2026-08: VideoEditor seeded
+the caption default accent to `BERNARD_PRIMARY` and offered `BERNARD_ACTION` as a caption swatch;
+`videoOverlays.js` defaulted `accentColor` to `#0C7580`.)
+
 ## Caption style invariants (`karaokeCaptions.js` `CAPTION_STYLES`)
 
 Two rules, both pinned by `tests/lib/captionStyleContrast.test.js`, both violated in shipped styles:

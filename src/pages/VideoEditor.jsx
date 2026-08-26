@@ -10,7 +10,6 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppMutation } from '@/lib/useAppMutation'
-import { BERNARD_PRIMARY, BERNARD_ACTION } from '@/lib/brand'
 import { workspaceCaptionAccent, WORKSPACE_DEFAULT_ACCENT } from '@/lib/brandSwatches'
 import { apiFetch } from '@/lib/api'
 import { buildTemplateFromEditor, suggestTemplateName } from '@/lib/videoTemplateCapture'
@@ -86,12 +85,30 @@ const CAPTION_STYLE_OPTS = [
   { id: 'underline', label: 'Underline' },
   { id: 'pop', label: 'Pop' },
 ]
+// Per-glyph black OUTLINE ring, em-scaled so it tracks the Size control — the
+// preview mirror of the ASS bake's outline (karaokeCaptions.js: every style draws
+// an outline of width max(2, fontSize×0.08) × outlineMul). Without it the plain
+// outline styles (bold / underline / pop) read as a SOFT drop-shadow in the
+// editor and a HARD-outlined caption once baked — Philip's "the karaoke style
+// does not match what was done in editing" report. Box/halo styles (word_box,
+// accent_fill, glow) already carry their own contrast treatment, matching how
+// the bake gives them a box/soft-halo rather than relying on a plain outline.
+function ringShadow(mul = 1) {
+  const w = (0.055 * mul).toFixed(3)
+  const d = (0.039 * mul).toFixed(3)
+  return `${w}em 0 #000,-${w}em 0 #000,0 ${w}em #000,0 -${w}em #000,` +
+    `${d}em ${d}em #000,-${d}em ${d}em #000,${d}em -${d}em #000,-${d}em -${d}em #000,` +
+    '0 2px 8px rgba(0,0,0,.5)'
+}
 // Preview styling per caption preset (approximates the ASS bake). Returns the
-// spoken-word style, the upcoming-word style, and any container wrap.
+// spoken-word style, the upcoming-word style, and any container wrap. KEEP IN
+// SYNC with CAPTION_STYLES in api/_lib/karaokeCaptions.js — the preview and the
+// bake styling the same clip differently is exactly the drift this mirrors out.
 function captionCss(style, accent) {
   // Fallback must equal the bake-side default accent (brandRender.js
-  // DEFAULT_ACCENT) — caption.accent is seeded on hydrate, so this only
-  // guards a pathological draft.
+  // DEFAULT_ACCENT). caption.accent is seeded from the tenant workspace on
+  // hydrate, so this only paints the pre-hydrate frame / a pathological draft —
+  // never a Bernard PRODUCT color (that would put app chrome into tenant content).
   const a = accent || WORKSPACE_DEFAULT_ACCENT
   switch (style) {
     case 'word_box':    return { active: { color: '#fff', background: 'rgba(0,0,0,.72)', padding: '0 5px', borderRadius: 4 }, base: { color: '#fff', background: 'rgba(0,0,0,.72)', padding: '0 5px', borderRadius: 4 }, wrap: {} }
@@ -101,9 +118,9 @@ function captionCss(style, accent) {
     // The halo is dark, matching the bake. An accent halo around an accent-
     // filled spoken word is the same hue on itself — no contrast at any alpha.
     case 'glow':        return { active: { color: a, textShadow: '0 0 14px rgba(0,0,0,.8), 0 2px 6px rgba(0,0,0,.65)' }, base: { color: '#fff', textShadow: '0 0 14px rgba(0,0,0,.8), 0 2px 6px rgba(0,0,0,.65)' }, wrap: {} }
-    case 'underline':   return { active: { color: '#fff', borderBottom: `3px solid ${a}` }, base: { color: '#fff' }, wrap: {} }
-    case 'pop':         return { active: { color: a, display: 'inline-block', transform: 'scale(1.14)' }, base: { color: '#fff' }, wrap: {} }
-    default:            return { active: { color: a }, base: { color: '#fff' }, wrap: {} } // bold
+    case 'underline':   return { active: { color: '#fff', borderBottom: `3px solid ${a}`, textShadow: ringShadow(1) }, base: { color: '#fff', textShadow: ringShadow(1) }, wrap: {} }
+    case 'pop':         return { active: { color: a, display: 'inline-block', transform: 'scale(1.14)', textShadow: ringShadow(1) }, base: { color: '#fff', textShadow: ringShadow(1) }, wrap: {} }
+    default:            return { active: { color: a, textShadow: ringShadow(1) }, base: { color: '#fff', textShadow: ringShadow(1) }, wrap: {} } // bold
   }
 }
 
@@ -244,8 +261,10 @@ function Canvas({ ctx }) {
               className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-center font-extrabold leading-tight"
               style={{
                 maxWidth: '86%',
-                top: caption.position === 'top' ? '11%' : caption.position === 'center' ? '46%' : 'auto',
-                bottom: caption.position === 'bottom' ? '15%' : 'auto',
+                // % mirror the bake's marginV (karaokeCaptions.js: top 0.10,
+                // bottom 0.14 of frame height) so preview placement == publish.
+                top: caption.position === 'top' ? '10%' : caption.position === 'center' ? '46%' : 'auto',
+                bottom: caption.position === 'bottom' ? '14%' : 'auto',
                 // Sized off the FRAME (cqw), matching the bake's
                 // CAPTION_BASE_FS × OVERLAY_SIZE_SCALE in brandRenderVideo.js.
                 // It used to be `clamp(14px, N vh, 40px)` — viewport-relative
@@ -559,7 +578,8 @@ function CaptionInspector({ ctx }) {
         <div className="mb-3">
           <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Highlight colour</p>
           <div className="flex items-center gap-1.5">
-            {[wsPrimary, '#ffffff', BERNARD_ACTION].map((c, i) => {
+            {/* tenant brand + neutrals only — never a Bernard product color (#0C7580/#d97706). */}
+            {[wsPrimary, '#ffffff', '#111111'].map((c, i) => {
               const on = (caption.accent || '').toLowerCase() === c.toLowerCase()
               return <button key={c} type="button" onClick={() => setCaption('accent', c)} aria-label={i === 0 ? `Your brand colour ${c}` : `Caption colour ${c}`} title={i === 0 ? 'Your brand colour (default)' : undefined} className="h-6 w-6 rounded-full border" style={{ background: c, borderColor: on ? 'hsl(var(--primary))' : 'hsl(var(--border))', boxShadow: on ? '0 0 0 1.5px hsl(var(--primary))' : undefined }} />
             })}
@@ -687,7 +707,7 @@ function OverlayInspector({ ctx }) {
       <input aria-label="Text overlay size" type="range" min={50} max={160} value={Math.round((o.size || 1) * 100)} onChange={(e) => setOverlay('size', +e.target.value / 100)} className="mb-3 w-full" />
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Text color</p>
       <div className="mb-3 flex items-center gap-1.5">
-        {['#ffffff', '#111111', caption?.accent || BERNARD_PRIMARY].map((c) => {
+        {['#ffffff', '#111111', caption?.accent || WORKSPACE_DEFAULT_ACCENT].map((c) => {
           const on = (o.color || '#ffffff').toLowerCase() === c.toLowerCase()
           return (
             <button key={c} type="button" onClick={() => setOverlay('color', c)} aria-label={`Text color ${c}`}
@@ -1330,7 +1350,11 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   const [reframe, setReframe] = useState({ zoom: 100, x: 50, y: 50 })
   const [kenBurns, setKenBurnsState] = useState({ motion: 'none', intensity: 50 })
   const [speed, setSpeedState] = useState(1)
-  const [caption, setCaptionState] = useState({ preset: 'karaoke', position: 'bottom', size: 'medium', accent: BERNARD_PRIMARY, anim: 'none', style: 'bold' })
+  // accent starts null (NOT a Bernard product color) and is seeded from the
+  // TENANT workspace brand on hydrate — Bernard's own #0C7580/#d97706 must never
+  // become a Move Better caption color. The bake resolves a null/invalid accent
+  // to the tenant's brand primary too (brandRenderVideo.js), so preview == bake.
+  const [caption, setCaptionState] = useState({ preset: 'karaoke', position: 'bottom', size: 'medium', accent: null, anim: 'none', style: 'bold' })
   const [overlays, setOverlays] = useState([])
   // Music bed (WS3.3): trackId null = no music. volume 0..1; duck/fade default on.
   const [music, setMusic] = useState({ trackId: null, volume: 0.22, duck: true, fade: true })
