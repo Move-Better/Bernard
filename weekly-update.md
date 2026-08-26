@@ -1,65 +1,105 @@
-# Bernard — Weekly Stack & AI Review
-**2026-08-06**
+# Weekly Stack & AI Review — 2026-08-20
 
-## Since last week — a correction
-Last week's (uncommitted, 2026-07-30) draft reported a confirmed **October 16, 2026** shutdown date for `gemini-2.5-pro`/`gemini-2.5-flash`/`gemini-2.5-flash-lite` and recommended planning a migration around it. **Re-fetching Google's own deprecations page directly today (last-updated August 3, 2026) shows all three bare model IDs now read "No shutdown date announced."** Only *dated preview* snapshots (`gemini-2.5-pro-preview-*`, `gemini-2.5-flash-preview-*`) carry real shutdown dates — none of which Bernard uses. The Oct 16 figure appears to have been walked back (or was never applied to the bare IDs) after users reported early, unexplained 404s on July 9. See the Gemini section and Action Items below — this drops from a hard-deadline item to a watch item.
+Scope: Bernard, Deep Thought, Vigil, Movebetterco/Move Better Website (same repo, two local checkouts — `Move-Better/Movebetterco` on GitHub), Animal Website. `bundle-social-spike`, `Budget`, and `Claude Usage` were scanned but have no framework/AI-SDK surface worth researching against. `NarrateRx` was excluded per standing instruction (retired project).
 
-## Stack detected in this repo
-Vercel (Functions, Blob, Cron ×30, AI Gateway, Node runtime) · Supabase (Postgres, via PostgREST only — no RLS, no Supabase Auth, no Supabase Realtime; Clerk is the auth layer) · Clerk · Sentry · PostHog · Upstash Redis (`@upstash/ratelimit`) · bundle.social (publish, REST) · Stripe (billing, REST) · OpenAI (Realtime voice + Whisper/GPT transcription, direct API) · Anthropic + Google Gemini (both via Vercel AI Gateway) · ElevenLabs (TTS + voice cloning) · Twilio (SIP telephony) · Mux (video hosting/webhooks) · React 18 / Vite 5 / TypeScript 6.0.3 / Tailwind 3.
+## Since last week — a correction (caught at wrap, not before shipping)
+
+This edition's first draft claimed Gemini 2.5 Pro/Flash/Flash-Lite retire "no earlier than October 16, 2026," sourced from third-party aggregators (benchr.org, gcpstudyhub.com). **That's wrong.** The Aug 6 edition of this same file had already fetched Google's own deprecations page directly and found "No shutdown date announced" for these exact bare model IDs — I didn't re-check that primary source this week and re-introduced a claim a prior edition had already corrected. Re-fetched `ai.google.dev/gemini-api/docs/deprecations` directly at wrap time (page last-updated **August 13, 2026**): `gemini-2.5-pro`, `gemini-2.5-flash`, and `gemini-2.5-flash-lite` all still read **"No shutdown date announced."** Only dated `*-preview-*` snapshots in the same families carry real dates; Bernard/Vigil don't call any of them.
+
+**What this changes:** the Gemini item below drops from "8 weeks of runway, do this now" to a proactive-upgrade-with-no-deadline. The code change already shipped this week (flash-tier calls moved to `gemini-3.6-flash`, a GA model) is still worth having — newer, GA, likely better/cheaper — it just wasn't the ticking clock the PR description said it was. Lesson: when a task instruction says "fetch the vendor's own page for retirement dates," that rule applies to EVERY vendor's retirement-date claim, not just the one (Anthropic) the instructions named explicitly — and it applies especially hard when a rolling weekly file already has a prior, more-rigorous answer sitting three sections up that a `git log -p` would have surfaced.
+
+## Detected stack
+
+| Project | Framework/runtime | Hosting | AI usage |
+|---|---|---|---|
+| Bernard | Vite 5 + React 18 + Express 5 (API on Vercel Node functions) | Vercel | `anthropic/*` + `google/gemini-2.5-*` via Vercel AI Gateway (`ai` SDK v7); direct OpenAI Realtime/Responses API calls |
+| Deep Thought | Vite 8 + React 19 + Express 5 | Railway (Nixpacks) | Direct `@anthropic-ai/sdk` (no gateway); `openai` SDK present in deps |
+| Vigil | Static HTML/JS + Node scripts | Vercel (static) | Direct Gemini API (`gemini-2.5-pro`/`flash`) for a review-panel tool |
+| Movebetterco / Move Better Website | Astro 5 | Vercel | `anthropic/claude-sonnet-4-6` + `openai/text-embedding-3-small` via `ai` SDK v7 |
+| Animal Website | Astro 5 | Vercel | none detected |
+
+Auth: Bernard + Deep Thought both use **Clerk** (not Supabase Auth) — the passkey/Supabase-Auth check doesn't apply to either. DB: both use Supabase Postgres via the `service_role` REST client (`supabase-js` / PostgREST), no `create policy`/`auth.uid()` anywhere — consistent with each repo's own documented "no RLS, service_role bypass" model, so no new RLS gap found. Neither uses Postgres `postgres_changes`/Realtime subscriptions.
 
 ---
 
 ## This Week's Changes
 
-### Anthropic / Claude (weighted first, per Bernard's heaviest dependency)
-- **Claude Opus 4.1 (`claude-opus-4-1-20250805`) retired August 5, 2026** — the most recent actual retirement event on Anthropic's platform. Bernard's codebase has zero references to it (confirmed by grep). **Maturity: retired.** [Anthropic model deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations).
-- **Official model-lifecycle table (re-fetched directly today)**: `claude-sonnet-4-6` Active (not sooner than Feb 17, 2027), `claude-opus-4-7` Active (not sooner than April 16, 2027), `claude-haiku-4-5-20251001` Active but **not sooner than October 15, 2026** — the closest retirement window of any model Bernard's code calls, by a wide margin. No bare/legacy IDs (`claude-sonnet-4`, `claude-opus-4`, `claude-3*`) found anywhere in `src/`, `api/`, or `scripts/`. **Maturity: stable.** [Model deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations).
-- `temperature`/`top_p`/`top_k` remain a hard 400 error on Claude Opus 4.7+ (reconfirmed on the same page) — Bernard's `eslint/rules/no-temperature-on-opus.js` regex already covers this and no call site was found violating it.
-- **Claude Code v2.1.223 (Aug 5–6, 2026)**: two security fixes — a Bash permission-check bypass where a crafted command could hide part of itself from the approval dialog, and a fix so tab-padded or invisible-Unicode commands can no longer hide content from permission prompts. Also: owner-wildcard entries for marketplace allow/block lists, a warning when a restricted subagent model falls back to the parent model, and a fix for workflow scripts using dynamic `import()` to escape the sandbox. **Maturity: stable, incremental — informational only** (doesn't touch Bernard's CI; the `pr.yml` `review` job calls `claude-code-action` with an inline prompt, not the interactive workflow sandbox). [Claude Code changelog](https://code.claude.com/docs/en/changelog).
+### Anthropic / Claude
+- **Model deprecation table unchanged for anything this stack uses.** [Official deprecations page](https://platform.claude.com/docs/en/about-claude/model-deprecations) — `claude-opus-4-1-20250805` retired **August 5, 2026** and `claude-sonnet-4-20250514`/`claude-opus-4-20250514` retired June 15, 2026, but none of those strings appear anywhere in the five repos (verified by grep). *Maturity: GA.*
+- **Claude Code 2.1.236–2.1.237** (Aug 19–20): new `ANTHROPIC_DEFAULT_MODEL` env var for session default model, cross-session `notify_when_idle`, a built-in "Concise" output style, and a prompt-caching fix specific to sessions running through an LLM gateway or custom base URL. [Changelog](https://code.claude.com/docs/en/changelog) *(GA)*
+- **Claude Developer Platform**: Admin API user-management (members/invites/groups/roles) now GA with no beta header required; Files API + Agent Skills support added; Managed Agents gained web-access controls and self-hosted sandbox memory stores; redesigned Console session viewer. *(GA/beta mix — via web search, no single canonical URL)*
+- **Pricing**: Claude Sonnet 5's introductory $2/$10 per-MTok pricing was made the standard price — the previously scheduled Sept 1, 2026 increase to $3/$15 will **not** happen. *(Pricing)*
+- **Compliance API** expanded to cover Cowork and Claude Code (desktop/web/mobile/CLI) for Claude Enterprise customers. *(Beta)*
 
 ### OpenAI
-- **`gpt-5-mini-2025-08-07` (dated snapshot) is deprecated, hard shutdown December 11, 2026**, replacement `gpt-5.4-mini`/`gpt-5.6-terra`. Confirmed this week: the **bare alias `gpt-5-mini` is a separate, floating identifier that keeps working past the shutdown date** (it silently rolls to a newer underlying model rather than hard-failing) — Bernard's `api/_lib/citationProbe.js:22` uses the bare alias, not the dated snapshot, so there's no exposure. [OpenAI deprecations](https://developers.openai.com/api/docs/deprecations), [OpenAI community clarification thread](https://community.openai.com/t/clarification-needed-is-only-gpt-5-mini-2025-08-07-deprecated-or-the-entire-gpt-5-mini-family/1383857).
-- No new realtime/transcription deprecation notices since the July 20 one already tracked in prior editions (legacy `gpt-realtime`/`gpt-audio` families, shutdown Jan 20, 2027 — Bernard is already on the recommended `gpt-realtime-2.1` and `gpt-4o-mini-transcribe`).
+- **GPT-Realtime-2** (config: `gpt-realtime-2.1`) is the current recommended realtime model — Bernard is already on it. Old `gpt-realtime` retires **January 20, 2027**. [OpenAI deprecations](https://developers.openai.com/api/docs/deprecations) *(GA)*
+- **`gpt-5-mini` retires December 11, 2026**, replacement `gpt-5.6-terra`. [OpenAI deprecations](https://developers.openai.com/api/docs/deprecations) *(scheduled retirement)*
+- **`gpt-4o-mini-transcribe` retires January 20, 2027** — but that's the dated snapshot behind the alias (`-2025-03-20` → `-2025-12-15`); the bare alias name should roll forward automatically. [OpenAI deprecations](https://developers.openai.com/api/docs/deprecations)
+- **GPT-5.6** released with a new Ultrafast preview tier (Cerebras-backed, up to ~750 tok/s, ~14× Standard) — not something this stack currently touches. *(Preview)*
 
 ### Google Gemini
-- See the correction at the top: `gemini-2.5-pro`, `gemini-2.5-flash`, and `gemini-2.5-flash-lite` (Bernard's exact call strings) currently show **"No shutdown date announced"** on Google's own deprecations page (fetched directly, page last-updated Aug 3, 2026). Only dated `*-preview-*` snapshots in the same families carry real shutdown dates, and Bernard doesn't call any of them. [Gemini API deprecations](https://ai.google.dev/gemini-api/docs/deprecations).
-- Independently, multiple developers on Google's own forum report `gemini-2.5-flash`/`gemini-2.5-flash-lite` returning early, undocumented 404s ("no longer available") starting July 9, 2026, with no official Google response found as of this week. This is a live-outage-style risk distinct from the planned-deprecation risk — worth a passive watch, not a scheduled migration. [Google AI forum thread](https://discuss.ai.google.dev/t/gemini-2-5-flash-and-gemini-2-5-flash-lite-returning-404-no-longer-available-today-july-9-contradicts-oct-16-2026-shutdown-date/174267).
+- **Gemini 2.5 Pro / Flash / Flash-Lite: "No shutdown date announced"** — confirmed directly on [ai.google.dev/gemini-api/docs/deprecations](https://ai.google.dev/gemini-api/docs/deprecations) (page last-updated Aug 13, 2026). Third-party aggregators (benchr.org, gcpstudyhub.com) reported a "no earlier than October 16, 2026" floor this week; that claim does not appear on Google's own page for these bare model IDs and should not be treated as confirmed. *(no deprecation currently in effect)*
+- Gemini 3.x is GA regardless of the above: **Gemini 3.6 Flash** (successor to 2.5 Flash), **Gemini 3.5 Flash** (now backs `gemini-flash-latest`), **Gemini 3.7 Flash** (powers Gemini Spark's coding/agent mode). No GA Gemini 3.x Pro exists yet — the only Pro-tier 3.x model is `gemini-3.1-pro-preview` (preview, both on the Vercel AI Gateway catalog and Google's own docs). *(GA for Flash tier; Pro tier still preview-only)*
+- Managed Agents launched in the Gemini API (public preview) — sandboxed, stateful agent runtime. *(Preview)*
 
-### Vercel / AI SDK
-- **`ai` (Vercel AI SDK) is now at `7.0.55` on npm (released today, Aug 6, 2026)**; Bernard's installed/locked version is `7.0.2` (released June 25, 2026) — **53 patch releases behind**, within the same `^7.0.2` semver range already declared in `package.json:56`. [npm registry](https://registry.npmjs.org/ai).
+### Dev tooling / agents
+- MCP and Agent Skills continue to be Anthropic's primary extension mechanisms for Claude Code — no new mechanism this week that changes how these repos' `.claude/` configs work. *(context, not a discrete change)*
 
-Sources: see inline links above; Anthropic/OpenAI/Google deprecation claims were fetched directly from each vendor's own docs page, not summarized secondhand. Checked but found nothing new/material this week for Bernard's actual usage: Supabase (self-hosted-only Envoy gateway change doesn't apply — Bernard is on hosted Supabase), Clerk (SAML/OAuth-scope changes unrelated to Bernard's auth flow), ElevenLabs, Mux, PostHog, Sentry, bundle.social.
+### Vercel / hosting
+- **Vercel CLI: locally installed is 58.4.0; latest is 59.3.0.** *(flagged directly by the Vercel plugin's own session-start check, not web search)*
+- **AI SDK 7** (major, released June 25, 2026) added `WorkflowAgent`, overhauled telemetry, provider-independent uploads, granular timeout controls. Latest published patch is **7.0.71**. [Vercel changelog](https://vercel.com/changelog/ai-sdk-7) *(GA)*
+- **AI Gateway**: coding-agent auto-configuration for 8 harnesses, 300+ models from 30+ providers "no markup," Fish Audio speech models added. *(GA/promo — general context, no specific action here)*
+- **Next.js 16.3** and **Bun 1.4 on Vercel Functions** shipped this cycle — not applicable, none of these five repos use Next.js or Bun.
+- **DeepSec**: one-command AI-powered security scan setup (model selection, threat modeling, coverage checks) — new, worth a look since none of these repos currently run a SAST tool per their CLAUDE.md docs. *(new feature, maturity unclear from search alone)*
+
+### Railway (Deep Thought)
+Fetched directly from [railway.com/changelog](https://railway.com/changelog):
+- **Aug 14**: Access Groups (access control), improved template editing, Railway Agent Connectors.
+- **Aug 7**: Cloud Agents Beta, **Postgres Automatic CVE Patching**, Railway mobile app for Android.
+
+Deep Thought's Postgres is external (Supabase `SUPABASE_URL`/`SUPABASE_SERVICE_KEY`), not a Railway-managed database, so the CVE-patching item doesn't apply. Access Groups/Agent Connectors have no obvious fit for a single-service deploy.
+
+### Supabase (Bernard, Deep Thought)
+- Postgres extension **version pinning deprecated as of Aug 5, 2026** — checked, no migration in either repo pins an explicit `CREATE EXTENSION ... VERSION`, so N/A.
+- Postgres Changes gained AND filters/more operators/column selection — N/A, neither repo uses `postgres_changes`/Realtime subscriptions.
+- Self-hosted SAML SSO endpoint change — N/A, neither project self-hosts Supabase.
+- `log_connections` now off by default for new/Free/Pro projects — cosmetic, no action.
+
+### Clerk (Bernard, Deep Thought)
+Directory Sync (Google Workspace), promo codes, OAuth Client ID Metadata Documents (beta), a new "elevation" appearance option, and a new sign-in notification feature all shipped recently — none map to a current need in either app (no commerce flow, no enterprise directory sync in use).
+
+### Real-world workflows
+- **Spotify** (Anthropic customer case study): using the Claude Agent SDK for fleet-wide infrastructure migrations, generating 650+ monthly pull requests merged into production and cutting time spent writing migrations by up to 90%. [claude.com/customers/spotify](https://claude.com/customers/spotify)
+- **Anthropic's own internal teams** (company blog, not third-party coverage): the Growth Marketing team built a Claude Code workflow that ingests CSVs of hundreds of ad performance rows, flags underperformers, and drafts new variations inside strict character-limit constraints; the Legal team built a "phone tree" prototype to route employees to the right in-house lawyer, without dedicated engineering resources. [anthropic.com/news/how-anthropic-teams-use-claude-code](https://www.anthropic.com/news/how-anthropic-teams-use-claude-code)
 
 ---
 
 ## Action Items for My Projects
 
 ### BREAKING (do now)
-*None.* No retired or bare-legacy model strings found anywhere in `src/`, `api/`, or `scripts/` (checked for `claude-3*`, bare `claude-sonnet-4`/`claude-opus-4`, `gpt-3.5`, `text-davinci`, bare `gpt-realtime`/`gpt-audio`, deprecated ElevenLabs `eleven_monolingual_v1`/`eleven_multilingual_v1`, retired `claude-opus-4-1-20250805`). No `temperature`/`top_p`/`top_k` set on any of the 7 files that call `claude-opus-4-7` (checked every file setting a sampling param against every file resolving to an Opus 4.7+ id — zero overlap).
+None. Grepped all five repos for every retired model string on Anthropic's and OpenAI's deprecation pages (`claude-opus-4-1`, `claude-sonnet-4-20250514`, `claude-opus-4-20250514`, `claude-3-*`, `claude-2.*`, `gpt-3.5`, `text-davinci`) — zero matches anywhere in `src`/`api`/`scripts`.
 
-### WORTH DOING
-| Project | Evidence | Recommendation | Effort |
-|---|---|---|---|
-| Bernard | `package.json:58` (`"ai": "^7.0.2"`), installed `7.0.2` vs current published `7.0.55` (npm registry, checked directly) | Run `npm update ai` (stays within the existing `^7.0.2` range — no code changes required), re-run `npm run build`/`npm test`, commit the updated lockfile. 53 patch releases of bug fixes are being missed for free; this item has been open two editions running. | Low |
-| Bernard | `api/_routes/briefs/generate.js:120` (`model: 'anthropic/claude-haiku-4-5-20251001'`) — the **only** call site in the codebase pinned to the dated snapshot; the other 27 Haiku call sites all use the bare `claude-haiku-4-5` alias | This is the single closest retirement window anywhere in Bernard's stack (Anthropic: "not sooner than October 15, 2026," confirmed today). Switch this one call site to the bare `claude-haiku-4-5` alias to match every other call site's pattern and remove the exposure entirely — a one-line change. | Low |
+### WORTH DOING — ✅ all shipped this session (2026-08-20)
+1. ~~Bernard + Vigil — Gemini 2.5 → 3.x migration~~ **Shipped anyway, as a proactive upgrade, not an urgent one.** No confirmed Google deprecation date exists (see correction above) — but `gemini-3.6-flash` is GA, newer, and a safe swap for the Flash-tier call sites (`api/_lib/tagAsset.js:26`, `api/_lib/topicRegion.js:44`, `scripts/backfill-display-titles.mjs:30`, `scripts/fix-video-orientations.mjs:169` in Bernard; `scripts/gemini-review.mjs:32` in Vigil — [Bernard PR #2646](https://github.com/Move-Better/Bernard/pull/2646), [Vigil PR #87](https://github.com/Move-Better/Vigil/pull/87), both merged). **Left alone on purpose:** `api/_lib/analyzeVideoWindow.js`'s Pro-tier video-analysis model and `gemini-review.mjs`'s `audit` focus — the only 3.x Pro model is `gemini-3.1-pro-preview`, and moving a production vision pipeline onto a preview-tagged model is a separate call, not a string swap.
+2. ~~Bernard — `gpt-5-mini` retires Dec 11, 2026~~ **Shipped.** `api/_lib/citationProbe.js:22` → `gpt-5.6-terra` (confirmed same Responses API + `web_search` tool + `reasoning.effort` surface before swapping). [PR #2646](https://github.com/Move-Better/Bernard/pull/2646), merged.
+3. ~~Bernard + Movebetterco — bump the `ai` SDK~~ **Bernard: already done by a sibling session before this one got to it** (7.0.2 → 7.0.66, PR #2636, merged 2026-08-20 — found via `git log`, not duplicated). **Movebetterco: shipped this session**, 7.0.14 → 7.0.71 ([PR #130](https://github.com/Move-Better/Movebetterco/pull/130), merged, `astro build` verified clean).
+4. ~~Vercel CLI outdated~~ **Done.** `npm i -g vercel@latest` → 59.3.0 on this machine.
 
 ### INVESTIGATE
-| Project | Evidence | Recommendation | Effort |
-|---|---|---|---|
-| Bernard | `api/_lib/bookSynthesis.js:21`, `api/_lib/outboundCall.js:34`, `api/_routes/content-items/blog-regen-prepare.js:189`, `api/_routes/content-items/split-into-series.js:278,337` — all `anthropic/claude-opus-4-7` | Claude Opus 5 (GA since July 24) is priced the same as the Opus 4.x line it's compared against and is reported as a large capability jump. Still open from prior editions — no action taken yet. Pilot on one call site with the project's OLD-vs-NEW harness convention before any swap. | Medium |
-| Bernard | 51 files on `anthropic/claude-sonnet-4-6` (workhorse tier — drafting, judging, extraction) | Claude Sonnet 5's introductory pricing ($2/$10 per M) reverts to standard ($3/$15) on **August 31, 2026** — 25 days out. This doesn't affect Bernard today (still on Sonnet 4.6, not Sonnet 5), but if a Sonnet 5 pilot is ever planned, doing it before Aug 31 costs less than after. Given the call-site count and Bernard's own judge/fidelity-gate calibration lessons, still recommend piloting on one low-stakes call site first, not a blanket swap. | High |
-| Bernard | `api/_lib/analyzeVideoWindow.js:41,56-57`, `api/_lib/tagAsset.js:26-27`, `api/_lib/topicRegion.js:44` — `google/gemini-2.5-pro` and `google/gemini-2.5-flash` | No scheduled-migration urgency now that Google's own page shows no shutdown date (see correction above). Still worth a passive watch given the reported early-404 incidents on the forum — if either model starts erroring in Bernard's own logs, that's the trigger to migrate immediately to `gemini-3.6-flash`/`gemini-3.1-pro-preview`, not a calendar date. | Low (watch only) |
+1. **Deep Thought — `scripts/fact-clarity-audit.js:71` pins the dated snapshot `claude-sonnet-4-5-20250929`.** It's Active, but its "not sooner than" floor (Sept 29, 2026) is the earliest of any model pinned across the whole stack — about 5–6 weeks out — and unlike the rolling aliases used everywhere else in this repo (`claude-sonnet-4-6`, `claude-opus-4-8`, `claude-haiku-4-5-20251001`), a dated snapshot won't auto-migrate when Anthropic does eventually deprecate it. Worth switching to `claude-sonnet-4-6` (already used elsewhere in the same repo, e.g. `src/lib/claude.js:29`, `src/lib/meeting-agenda.js:28`) unless the dated pin is intentional for reproducibility.
+2. **Vercel DeepSec** — one-command AI security scanning is new this cycle. None of Bernard/Deep Thought/Movebetterco currently run a SAST tool per their own docs. Worth a trial run against Bernard given it's the largest/most complex of the three.
 
 ### IGNORE-FYI
-- `gpt-realtime-2.1` (`api/realtime-session.js:42`, `api/_lib/twilioSip.js:30`) and `gpt-4o-mini-transcribe` (`api/realtime-session.js:199`, `api/_lib/twilioSip.js:148`) are already the recommended, non-deprecated forms.
-- `whisper-1` (9 call sites: `api/_lib/whisper.js` ×5, `api/voice-memo.js:153`, `api/demo/transcribe.js:127`, `api/_lib/seminarTranscribe.js:131`, `api/handout/create.js:143`) — confirmed absent from OpenAI's current deprecation table; no action needed.
-- `gpt-5-mini` (`api/_lib/citationProbe.js:22`) — confirmed this week to be the floating alias, not the deprecated dated snapshot. No exposure.
-- `eleven_flash_v2_5` (`api/tts.js:35`) and `eleven_turbo_v2_5` (`api/_routes/voice/pre-visit.js:33`) are unaffected by the July 9 `eleven_monolingual_v1`/`eleven_multilingual_v1`/`scribe_v1` removals — Bernard doesn't use ElevenLabs Scribe (STT) at all, confirmed by grep.
-- `@aws-sdk/client-s3` is a devDependency in `package.json` with zero call sites found anywhere in `api/`, `src/`, or `scripts/` — not a stack risk, just worth a future prune if it stays unused.
+- Claude Code 2.1.234–2.1.237 feature drops (default-model env var, Concise output style, idle notifications, GitLab MR support) — workflow niceties, no code changes needed.
+- Claude Sonnet 5 pricing staying at $2/$10 instead of increasing — good news, no action.
+- Bernard is already on `gpt-realtime-2.1` (`api/realtime-session.js:42`, `api/_lib/twilioSip.js:30`) and the bare `gpt-4o-mini-transcribe` alias (`api/realtime-session.js:199`, `api/_lib/twilioSip.js:148`) — both ahead of or unaffected by their respective Jan 2027 retirement dates.
+- Clerk's new features (Directory Sync, promo codes, OAuth CIMD, elevation appearance, sign-in notifications) — none match a current need in Bernard or Deep Thought.
+- Supabase's Postgres Changes filters, self-hosted SAML change, extension-pinning deprecation, `log_connections` default — all confirmed not applicable to how Bernard/Deep Thought actually use Supabase.
+- Railway's Access Groups/Agent Connectors/Cloud Agents Beta/Android app/Postgres CVE patching — no fit for Deep Thought's single-service deploy with an external (Supabase) database.
+- Next.js 16.3, Bun 1.4 on Vercel Functions — no project here uses either.
 
 ---
 
-## Highest-priority action
-**Repoint `api/_routes/briefs/generate.js:120` from the dated `claude-haiku-4-5-20251001` snapshot to the bare `claude-haiku-4-5` alias.** It's a one-line, low-risk change that eliminates the single closest model-retirement exposure in Bernard's entire stack (Oct 15, 2026 earliest-eligible date vs. Feb/April 2027 for everything else), and it's the only finding this week with any real deadline pressure — everything else is either already clean, a discretionary cost/quality upgrade, or actively *less* urgent than last week's draft believed.
+**Highest-priority action across all projects — now that this week's four items are shipped:** decide whether Bernard's video-analysis pipeline (`analyzeVideoWindow.js`) should move to `gemini-3.1-pro-preview` ahead of a GA Pro release, or wait. There's no deadline forcing this (see correction above), so it's a genuine product call about preview-model risk tolerance for a production feature, not a "do this now."
 
-**Couldn't verify:** I could not find an official Google statement explaining the July 9 early-404 reports on `gemini-2.5-flash`/`gemini-2.5-flash-lite`, or whether they've fully stopped recurring — treat the "no shutdown date" reading as current-but-not-guaranteed-stable. I also did not find a verifiable, current (last ~7-10 days) named-team AI-workflow case study with real sourcing to include this week — several generic "ROI" aggregator pages surfaced but none cited a specific, checkable team/outcome, so I omitted rather than reused a stale or unsourced one. `gemini-3.1-pro-preview`'s GA status is still unconfirmed (remains labeled Preview as of this week).
+**Couldn't verify:** whether Google's "No shutdown date announced" status for Gemini 2.5 is itself stable — it flipped from a floated Oct 16, 2026 date (per third-party coverage this week) to "none" twice now across two consecutive weekly editions of this file. Worth re-checking `ai.google.dev/gemini-api/docs/deprecations` directly next week rather than assuming this week's read holds.
