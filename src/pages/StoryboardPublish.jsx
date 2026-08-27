@@ -49,7 +49,21 @@ function firstHeading(content) {
 export default function StoryboardPublish() {
   const { pieceId } = useParams()
   const goBack = useSmartBack('/publish')
-  const { data: piece, isLoading, isError } = useContentItem(pieceId)
+  // Revalidate the piece's status on every open of this route (overriding the
+  // global 30s staleTime). The publish lock below routes a scheduled/published
+  // piece to the read-only receipt, but it reads the React Query cache — and the
+  // publish pipeline commits status via sb() directly, without invalidating that
+  // cache (cron auto-publish, a sibling device). So a stale non-locked copy could
+  // keep the EDITOR mounted over a row that is actually locked: every field looks
+  // editable, every save 409s, and the only self-heal was reactive (the first
+  // refused write refetched and flipped to the receipt — the "error message
+  // continually populates screen when entering post editor" storm, movebetter
+  // 2026-08-10). Forcing a fresh status read on mount closes that window at the
+  // source, so a locked piece lands on the receipt reliably rather than after a
+  // failed edit.
+  const { data: piece, isLoading, isError } = useContentItem(pieceId, {
+    refetchOnMount: 'always',
+  })
 
   // Other drafts still waiting on media — drives the "Next up" loop-close so the
   // producer flows straight back into the queue after publishing one piece,
