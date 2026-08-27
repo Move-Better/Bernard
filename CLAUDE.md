@@ -52,6 +52,18 @@ The server checks the STORED status, never `patch.status`, so a body claiming `d
 itself in the same request; blocked writes return 409. The publish pipeline is unaffected —
 `social.js` and `dispatchContentItem.js` write via `sb()` directly and never pass through this route.
 
+**That same sb()-direct bypass is also a client-cache hole, not just a server one.** The router's
+`isPieceLocked(piece)` gate (`StoryboardPublish.jsx`) reads the React Query cache, which inherits the
+global `staleTime: 30_000`. A status flip written by `sb()` directly (cron auto-publish, a sibling
+device) never invalidates that cache — so a stale non-locked copy could keep the editor mounted over a
+row that's actually locked, with every save silently 409ing until the reactive self-heal in
+`useUpdateContentItem`'s `onError` (an `isLockRejection` catch that force-refetches) finally kicked in
+on the first failed write. Fixed in #2662 by forcing `refetchOnMount: 'always'` on `useContentItem` for
+the publish route, so the gate re-reads status on every open instead of trusting a cache the write
+pipeline never told to update. Any other surface that gates on `isPieceLocked`/similar off a cached
+query needs the same override — a reactive self-heal on write-failure is not the same as preventing the
+stale-render window in the first place.
+
 ## API handler checklist — 7 rules every new route must follow
 
 These patterns caused 26+ consecutive audit rounds because each appeared in one reference handler and got copy-pasted to ~15 others without being caught. The ESLint rule `bernard/no-detail-in-error-response` catches #1 at lint time; the PR review job's Claude prompt checks these. But check them manually before opening a PR:
