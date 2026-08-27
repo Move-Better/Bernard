@@ -85,6 +85,25 @@ export default async function handler(req, res) {
   // 6-9s, 2026-07-16 UX report).
   const clerkUserId = auth.userId || auth.user?.id || null
 
+  // fetchYourReview and fetchMyBlogProgress both need the SAME staff row for the
+  // signed-in user (id + blog_review_enabled) and each used to fire the identical
+  // select independently — two duplicate queries per /week load. Share one
+  // in-flight promise so it runs once. Latency is unchanged (this still overlaps
+  // everything in the Promise.all below); it just drops the redundant round-trip.
+  // Resolves to the row or null; both callers already treat "no eligible staff
+  // row" (including a failed fetch) as their empty result.
+  let staffRowPromise
+  const myStaffRow = () => {
+    if (!staffRowPromise) {
+      staffRowPromise = clerkUserId
+        ? sb(`staff?workspace_id=eq.${ws.id}&user_id=eq.${encodeURIComponent(clerkUserId)}&select=id,blog_review_enabled&limit=1`)
+            .then(async (r) => (r.ok ? (await r.json().catch(() => []))[0] || null : null))
+            .catch(() => null)
+        : Promise.resolve(null)
+    }
+    return staffRowPromise
+  }
+
   async function fetchAtomsAndDraftedItems() {
     const atomsRes = await sb(
       `content_plan_atoms?workspace_id=eq.${ws.id}&plan_week=eq.${weekMonday}&select=${ATOM_SELECT}`,
@@ -151,12 +170,7 @@ export default async function handler(req, res) {
   // "From your words" provenance block (Moments IA ①).
   async function fetchYourReview() {
     if (!clerkUserId) return []
-    const staffRes = await sb(
-      `staff?workspace_id=eq.${ws.id}&user_id=eq.${encodeURIComponent(clerkUserId)}&select=id,blog_review_enabled&limit=1`,
-    )
-    if (!staffRes.ok) return []
-    const staffRows = await staffRes.json()
-    const sf = staffRows[0]
+    const sf = await myStaffRow()
     if (!sf?.blog_review_enabled) return []
     const reviewRes = await sb(
       `content_items?workspace_id=eq.${ws.id}&staff_id=eq.${sf.id}&platform=eq.blog&status=eq.in_review&select=id,topic,created_at,plan_atoms:content_plan_atoms!content_piece_id(moment:moments!moment_id(excerpt,score,interview:interviews!interview_id(topic,created_at)))&order=created_at.desc&limit=10`,
@@ -180,11 +194,7 @@ export default async function handler(req, res) {
     if (!clerkUserId) return null
     const target = blogTargetFor(ws)
     if (!target.enabled) return null
-    const staffRes = await sb(
-      `staff?workspace_id=eq.${ws.id}&user_id=eq.${encodeURIComponent(clerkUserId)}&select=id,blog_review_enabled&limit=1`,
-    )
-    if (!staffRes.ok) return null
-    const sf = (await staffRes.json().catch(() => []))[0]
+    const sf = await myStaffRow()
     if (!sf?.blog_review_enabled) return null
 
     const tz = ws.cadence_policy?.timezone || 'America/Los_Angeles'
