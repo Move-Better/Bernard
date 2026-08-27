@@ -655,14 +655,14 @@ export function getBlogPostSystemPrompt(workspace, staffName, condition, tone = 
   const internalLinksBlock = workspace.internal_links_markdown
     ? `\nINTERNAL LINKS. Available if a natural opportunity arises. Use descriptive anchor text (never "click here"). Don't force them; never bend the writing to hit a link count:\n\n${workspace.internal_links_markdown}\n`
     : ''
-  const externalLinksLine = `\nEXTERNAL LINKS. Research citations serve readers and back up ${staffName}'s credibility. Treat ${staffName}'s clinical positions as hypotheses and look for the research that supports them:
-- A clinician's treatment philosophy is often ahead of mainstream practice but grounded in existing literature. "We believe most low back pain is not structural" is not a personal opinion. It has a research base. Find it and cite it.
-- For clinical claims, treatment approaches, and positions that challenge conventional wisdom, search for supporting research (NIH/PubMed, Cochrane, Mayo Clinic, Cleveland Clinic, ACA, professional society guidelines) and link the best source.
-- ${staffName} explicitly naming a study or protocol → always find and link it.
-- Aim for 1 to 3 external citations per post where the content warrants them. Don't count-fill. Only link what genuinely supports what ${staffName} said.
-- Pure personal anecdote (a patient story, a personal experience narrative) with no research parallel → skip the external link.
-- Never manufacture a citation. If no real source exists for a claim, leave it unsupported rather than linking something tangential.
-- Anchor text must be descriptive (e.g., "research on nonspecific low back pain and imaging overuse", never "click here" or "this study").\n`
+  // No EXTERNAL LINKS instruction here on purpose. Blogs are generated with NO
+  // web-search / retrieval tool (streamMessage and generateText both pass no
+  // tools), so any "find the supporting research and link it" instruction makes
+  // the model fabricate plausible-looking PubMed/PMID URLs whose anchor text
+  // doesn't match the real page. The "Never manufacture a citation" line was a
+  // no-op — producing a real matching URL is impossible without retrieval. Real
+  // external citations require a retrieval + URL-verification pass; until that
+  // exists, do not instruct external links. (feedback 1cd775a1, 2026-08-27)
   const bookingLine = workspace.booking_url
     ? `\nIf the piece naturally arrives at "what should the reader do next," the booking destination is ${workspace.booking_url}. No prescribed wording. Let ${staffName}'s voice carry the close.\n`
     : ''
@@ -691,7 +691,7 @@ ${workspace.display_name.toUpperCase()} BRAND VOICE:
 ${workspace.brand_voice}
 
 ${formatPatientContextForPrompt(workspace, prototypeId)}
-${internalLinksBlock}${externalLinksLine}${bookingLine}
+${internalLinksBlock}${bookingLine}
 HEADLINE: write one compelling, specific headline that front-loads the primary topic/keyword in its first ~60 characters (a shorter SEO title is derived from its opening, so lead with the substance). Never include ${staffName}'s name in the headline.
 
 FORMAT: Markdown. The first line is the headline as a single "# " heading. That is the ONLY single-"#" (h1) line allowed. Every section heading in the body uses "## " (and "### " for subsections); never start another line with a single "# ". Use headings only where the content actually shifts thread. No fixed section count.
@@ -1335,6 +1335,12 @@ export function getSeriesPartSystemPrompt(workspace, staffName, condition, tone 
     ? `\nKEY QUOTES to preserve verbatim wherever they fit naturally (these are the clinician's actual words from the transcript):\n${keyQuotes.map((q) => `  • "${q}"`).join('\n')}\n`
     : ''
 
+  // Internal links only. Series parts are generated with NO web-search /
+  // retrieval tool (split-into-series.js calls generateText with no tools), so
+  // an "add an authoritative external source" instruction makes the model
+  // fabricate plausible PubMed/PMID URLs whose anchor text doesn't match the
+  // real page. Same reasoning as getBlogPostSystemPrompt above; real external
+  // citations need a retrieval + verification pass. (feedback 1cd775a1, 2026-08-27)
   return `You are a content writer for ${workspace.display_name} in ${workspace.location}. You are writing Part ${partNum} of a multi-part blog series about ${condition} based on an interview with ${staffName}. The full transcript is in the conversation history above.
 
 ${getFramingRule(workspace, { voiceMode, staffName, assetType: 'blog' })}
@@ -1354,10 +1360,8 @@ LINK BUILDING. Internal links to other ${workspace.display_name} content where t
 
 ${workspace.internal_links_markdown}
 
-External links: add 1 to 2 authoritative, non-competing sources where they support a claim (Mayo Clinic, NIH/PubMed, Cleveland Clinic, ACA).
-
 LINKING RULES:
-- Aim for 2 to 4 internal links and 1 to 2 external links per post
+- Aim for 2 to 4 internal links per post
 - Anchor text must be descriptive and natural
 - Spread links throughout
 - The CTA section must link to ${workspace.booking_url}

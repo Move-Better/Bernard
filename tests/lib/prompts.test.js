@@ -5,6 +5,7 @@ import {
   getTonesForWorkspace,
   getInterviewSystemPrompt,
   getBlogPostSystemPrompt,
+  getSeriesPartSystemPrompt,
   getVoiceAuditSystemPrompt,
   getPointSafetyAuditSystemPrompt,
   getThreadDetectionSystemPrompt,
@@ -164,10 +165,18 @@ describe('getBlogPostSystemPrompt — clinical mode (default)', () => {
     const prompt = getBlogPostSystemPrompt(ws, 'Dr. Smith', 'lower back pain')
     // Voice fidelity is the lead frame
     expect(prompt).toContain('VOICE FIDELITY IS THE ONLY GOAL')
-    // External links: clinician philosophy treated as a hypothesis to find research for
-    expect(prompt).toContain('Mayo Clinic')
-    expect(prompt).toContain('Treat')
-    expect(prompt).toContain('Never manufacture a citation. If no real source exists')
+    // Internal links are still offered when internal_links_markdown is set
+    expect(prompt).toContain('INTERNAL LINKS')
+    expect(prompt).toContain('/about')
+    // External / research-citation instructions are intentionally ABSENT: blogs
+    // generate with NO web-search / retrieval tool, so any "find the supporting
+    // research and link it" instruction makes the model fabricate plausible
+    // PubMed/PMID URLs whose anchor text doesn't match the real page.
+    // (feedback 1cd775a1, 2026-08-27)
+    expect(prompt).not.toContain('Mayo Clinic')
+    expect(prompt).not.toContain('PubMed')
+    expect(prompt).not.toContain('external citation')
+    expect(prompt).not.toContain('Never manufacture a citation')
     // Booking URL is available; no prescribed heading or wording
     expect(prompt).toContain(ws.booking_url)
     expect(prompt).not.toContain('Ready to Move Better?')
@@ -400,5 +409,22 @@ describe('getThreadDetectionSystemPrompt', () => {
   it('defaults to practice lane when voiceMode is omitted', () => {
     const prompt = getThreadDetectionSystemPrompt('Dr. Smith', 'rotator cuff')
     expect(prompt).toContain("clinic's team voice")
+  })
+})
+
+describe('getSeriesPartSystemPrompt — no fabricated external citations', () => {
+  it('keeps internal links but instructs no external / research links (clinical mode)', () => {
+    const prompt = getSeriesPartSystemPrompt(clinicalWorkspace(), 'Dr. Smith', 'lower back pain')
+    // Internal links still built from internal_links_markdown
+    expect(prompt).toContain('LINK BUILDING')
+    expect(prompt).toContain('/about')
+    // Series parts also generate with no retrieval tool, so the external-source
+    // instruction that made the model fabricate PubMed URLs is gone. Its
+    // per-post link count must not mention external links either.
+    // (feedback 1cd775a1, 2026-08-27)
+    expect(prompt).not.toContain('Mayo Clinic')
+    expect(prompt).not.toContain('PubMed')
+    expect(prompt).not.toContain('external links per post')
+    expect(prompt).not.toMatch(/\bexternal (link|source|citation)/i)
   })
 })
