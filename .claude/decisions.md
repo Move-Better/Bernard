@@ -405,3 +405,15 @@ Resolves the known-limit clause in the 2026-07-22 `/week` chrome entry above: th
 **Case against the deferral (for honesty).** As Bernard productizes for external clinics (Vigil SaaS specs), role granularity may become a real ask, and building the toggle proactively would be cheap-ish. Rejected because there is zero current evidence of the need and the role model already enforces the restriction for every paid clinic today.
 
 **Revisit if** a paid/external clinic onboards a producer-tier staff member AND asks to restrict that producer's word-approval (or delete-story) rights — that is the moment the role model stops covering it and a per-clinic `producer_can_approve_words`-style setting (default = current behavior) becomes worth the migration + toggle. Not before. No revisit-by date; it's gated on that concrete trigger, not a clock.
+
+## 2026-08-22 — Blog stays two-step (approve, then a separate publish); shipped a nudge instead
+
+**Context.** 66-day blog publish silence (7 approved movebetter blogs, up to 66 days waiting). Root cause: blog is the only channel where approve ≠ publish — every social channel dispatches on approve, so approve-means-done is the learned model, and it silently doesn't hold for blog. PostHog: zero clicks ever recorded on "Publish to website" in 90 days, while 14 pageviews landed on exactly the 7 stuck pieces' `/publish/:id` and one approval landed 16s after a pageview — people reach the editor, approve, and leave without noticing a second step exists.
+
+**Decision: keep the two-step model, don't collapse it to publish-on-approve.** Shipped #2647 instead — the approve toast for blog now says "Approved — one step left … Blogs don't publish on approve" with a one-click Publish action, plus a blog-specific no-hero warning (no more dead "Add media" click) and a correct disabled-button tooltip when the words gate is the real blocker. Q's call, given the choice between collapsing to publish-on-approve vs. shipping the nudge and watching it.
+
+**Case against the deferral.** Publish-on-approve would end the two-step permanently and matches every other channel's model; the #2527 clinician-reviews/producer-publishes split that motivates the two-step produced zero actual publishes in the 18 days it's been live, so the split's cost (a step nobody takes) may outweigh its benefit (a producer gate on live blog content). If the nudge doesn't close the gap, that argument gets stronger, not weaker.
+
+**Kill criterion / revisit-by: 2026-09-15.** Check whether any blog has published via the nudge's new copy since 2026-08-22 (`content_items.published_at` on platform='blog' rows, or a `published` PostHog event with pieceId matching a blog). Zero publishes by 2026-09-15 means the nudge didn't fix it and publish-on-approve should be built.
+
+**Backlog note.** As of 2026-08-22, 6 of the 7 stuck blogs are fully eligible (approved + words approved) and were deliberately left for staff to publish via the now-explained UI, not auto-published by this session. The 7th ("how breathing can affect performance") stays blocked on its story's words approval.
