@@ -6,9 +6,14 @@ export function cn(...inputs) {
 }
 
 export function getInitials(name) {
-  return name
+  // Guard against null/undefined/empty names — a recap row (or any avatar
+  // source) can have an unassigned staff member, and an unguarded .split()
+  // crashed the whole /overview page via the page error boundary. Returning ''
+  // matches the display fallback (the text already renders 'Team' for null).
+  return String(name ?? '')
     .split(' ')
     .map((n) => n[0])
+    .filter(Boolean)
     .join('')
     .toUpperCase()
     .slice(0, 2)
