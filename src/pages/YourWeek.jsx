@@ -1508,18 +1508,21 @@ export default function YourWeek() {
   // returns [] to non-editors, and a second client-side gate is precisely what
   // made the clinician slice above dead for every user at Move Better.
   //
-  // Every row's next step is the same (attach a hero), so the trailing element
-  // names the action instead of reporting status: an amber "needs hero" chip
-  // would light on effectively every row and stop carrying signal. Colour marks
-  // readiness, the label says what happens. It's a plain span, not a nested
-  // button — the whole row is one link into the editor where the media rail and
-  // the Publish control already live, so there's no dead click to hit.
+  // The trailing element REPORTS STATE ("Needs hero" / "Ready to publish"),
+  // not an action — deliberately parallel labels so the two read as the same
+  // kind of thing. An earlier "Add hero" wording (imperative verb + plus icon)
+  // looked like a button, and a clinician reported clicking it "did nothing
+  // different" — because it never was one: the whole row is a single link into
+  // the editor (where the media rail and Publish live), and this is a plain
+  // span with no handler of its own. The chevron is the one open-this cue.
+  // Kept in a calm --primary tint rather than amber: "needs hero" lights on
+  // effectively every row, so amber here would stop carrying act-now signal.
   const ApprovedBlogsSlice = data?.approvedBlogs?.length ? (
     <div className="rounded-xl border border-border bg-muted/40 p-3.5">
       <div className="mb-2 flex items-center gap-2">
         <Send className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-        <span className="text-sm font-bold">Blogs ready to publish</span>
-        <span className="ml-auto inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-2xs font-semibold text-muted-foreground">
+        <span className="text-base font-bold">Blogs ready to publish</span>
+        <span className="ml-auto inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-action px-2.5 py-0.5 text-xs font-bold text-action-foreground">
           {data.approvedBlogs.length}
         </span>
       </div>
@@ -1528,12 +1531,12 @@ export default function YourWeek() {
           <Link
             key={blog.id}
             to={`/publish/${blog.id}`}
-            className="flex items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-foreground hover:border-primary/50"
+            className="flex items-center gap-2 rounded-lg border bg-card px-2.5 py-2.5 text-foreground hover:border-primary/50"
           >
-            <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-2xs font-medium">{stripStoryDatePrefix(blog.topic) || 'Blog post'}</span>
-              <span className="block text-3xs text-muted-foreground">
+              <span className="block truncate text-sm font-medium">{stripStoryDatePrefix(blog.topic) || 'Blog post'}</span>
+              <span className="block text-xs text-muted-foreground">
                 {[
                   blog.staffName,
                   blog.approvedAt
@@ -1545,15 +1548,15 @@ export default function YourWeek() {
               </span>
             </span>
             {blog.needsHero ? (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-3xs font-bold text-primary">
-                <ImagePlus className="h-3 w-3" aria-hidden="true" /> Add hero
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-2xs font-bold text-primary">
+                <ImageIcon className="h-3 w-3" aria-hidden="true" /> Needs hero
               </span>
             ) : (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-3xs font-bold text-success">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-2xs font-bold text-success">
                 Ready to publish
               </span>
             )}
-            <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
           </Link>
         ))}
       </div>
