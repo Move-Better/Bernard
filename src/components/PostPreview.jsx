@@ -657,12 +657,21 @@ function BlogPreview({ content, mediaUrls = [] }) {
   // markdown-only: a blog with a photo attached read "1 media attached" but
   // showed a header-less wall of text, confusing the publisher.
   const hero = pickHero(mediaUrls)
+  // The RAW hero entry — it carries the reframe fields (photo_fill / photo_offset
+  // / grade). pickHero deliberately returns a stripped { url, alt } for the
+  // publish frontmatter, so the canvas MUST read the real entry or the frame is
+  // silently dropped and the preview renders unframed while publish crops (the
+  // classic preview-lies bug). Same image test as pickHero, returning the entry.
+  const heroEntry = (Array.isArray(mediaUrls) ? mediaUrls : []).find(
+    (m) => m && (m.kind === 'image' || m.type === 'image' || m.type === 'photo') &&
+      (m.web_url || m.web_blob_url || m.url || m.blob_url || m.rendered_url || m.sourceUrl),
+  )
   const ws = useWorkspace()
   const brandStyle = brandStyleForRender(ws)
   const [heroW, heroH] = HERO_DIMS
   return (
     <div className="max-w-2xl mx-auto bg-white border rounded-xl shadow-sm overflow-hidden">
-      {hero?.url && (
+      {hero?.url && heroEntry && (
         // The hero renders through the SAME canvas renderer the editor
         // (PhotoInspector) and the publish bake (renderAndUploadHero) use — a
         // one-photo pseudo-slide via renderFreeformSlide — so the author's frame
@@ -671,7 +680,7 @@ function BlogPreview({ content, mediaUrls = [] }) {
         // letterboxed and ignored the frame entirely, so the reframe controls
         // appeared to do nothing.
         <div className="relative w-full border-b bg-black" style={{ aspectRatio: `${heroW} / ${heroH}` }}>
-          <SlideCanvas slide={heroSlide(hero)} photo={hero} brandStyle={brandStyle} theme={HERO_THEME} width={heroW} height={heroH} />
+          <SlideCanvas slide={heroSlide(heroEntry)} photo={{ ...heroEntry, url: heroEntry.url || hero.url }} brandStyle={brandStyle} theme={HERO_THEME} width={heroW} height={heroH} />
         </div>
       )}
       <div className="px-8 py-8 prose prose-sm max-w-none
