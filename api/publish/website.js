@@ -51,6 +51,7 @@ import { enforceLimit } from '../_lib/ratelimit.js'
 import { rewriteMarkdownImageUrls } from '../_lib/publishImageMirror.js'
 import { findBodyH1, deriveSeoTitle, SEO_TITLE_MAX } from '../../src/lib/blogOutput.js'
 import { checkWordsApproved } from '../_lib/wordsApprovalGate.js'
+import { fetchApprovedCitations, insertApprovedCitations } from '../_lib/citations/insertCitations.js'
 
 async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed', message: 'POST only' })
@@ -101,6 +102,19 @@ async function handler(req, res) {
   // parent interview must have its words approved before this can publish.
   const gate = await checkWordsApproved(payload.contentItemId, workspaceId)
   if (!gate.ok) return res.status(gate.status).json(gate.body)
+
+  // Research citations (.claude/blog-research-citations-spec.md) — the ONLY
+  // place an approved citation is mechanically appended to the published
+  // body. Runs AFTER the body-h1 lint above (an appended "## Further
+  // reading" section never introduces an h1, so ordering doesn't matter for
+  // that gate) and reads fresh from the DB right before dispatch, so an
+  // approval made moments before publish is honored. Fails open on the read
+  // (see fetchApprovedCitations) — a citations hiccup must never block a
+  // publish that would otherwise succeed.
+  if (payload.contentItemId) {
+    const approvedCitations = await fetchApprovedCitations(payload.contentItemId, workspaceId)
+    payload.markdown = insertApprovedCitations(payload.markdown, approvedCitations)
+  }
 
   const wpCred = await getCredential(workspaceId, 'wordpress')
   if (wpCred?.secret && wpCred?.config?.user) {

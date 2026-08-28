@@ -13,7 +13,13 @@
 //     keep pulling from Part 1).
 //   • Persist interview.generation_style if explicitly requested.
 
-export const config = { runtime: 'nodejs', maxDuration: 30 }
+// maxDuration raised 30 → 300 to cover citation enrichment's waitUntil below
+// (multiple claims × multiple candidates × a real network fetch + a judge
+// call each — genuinely slow, same budget as the other multi-pass AI routes
+// in this codebase, e.g. split-into-series.js). The response itself still
+// returns immediately after the PATCH; only the background instance needs
+// the larger budget.
+export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { waitUntil } from '@vercel/functions'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
@@ -24,6 +30,7 @@ import { LENGTH_PRESETS } from '../../../src/lib/lengthPresets.js'
 import { auditContentItem } from '../../_lib/voiceAudit.js'
 import { auditPointContentSafety } from '../../_lib/pointSafetyAudit.js'
 import { stripAiDashes } from '../../_lib/stripAiDashes.js'
+import { runCitationEnrichmentForContentItem } from '../../_lib/citations/runForContentItem.js'
 
 const VALID_LENGTH_PRESETS = new Set(LENGTH_PRESETS.map((p) => p.id))
 const VALID_GENERATION_STYLES = new Set(['blog_post', 'minimal_edits'])
@@ -158,6 +165,12 @@ export default async function handler(req, res) {
   if (interview.kind === 'point') {
     waitUntil(auditPointContentSafety(ws, id))
   }
+  // Research-citation enrichment (.claude/blog-research-citations-spec.md) —
+  // the body just changed, so re-check it the same way a fresh draft does.
+  // Never re-proposes a source_url already decided on this piece (see
+  // runForContentItem.js's dedup), so a reviewer's prior rejections survive a
+  // regen.
+  waitUntil(runCitationEnrichmentForContentItem({ workspaceId: ws.id, contentItemId: id }))
 
   return ok(res, updRows[0] ?? null)
 }
