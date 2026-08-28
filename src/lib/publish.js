@@ -61,6 +61,33 @@ export function suggestMediaForDraft(id, opts = {}) {
   })
 }
 
+// ── Research citations (blog/series only) ────────────────────────────────────
+// See .claude/blog-research-citations-spec.md. fetchCitations reads the review
+// panel's rows (any status); runCitationEnrichment triggers "find supporting
+// research" (both automatic-after-draft and the on-demand backfill button use
+// the same server-side pipeline, api/_lib/citations); decideCitation is the
+// human gate itself.
+
+export function fetchCitations(id) {
+  return apiFetch(`/api/content-items/citations-list?id=${encodeURIComponent(id)}`)
+}
+
+export function runCitationEnrichment(id) {
+  return apiFetch('/api/content-items/citations-enrich', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  })
+}
+
+export function decideCitation(citationId, decision) {
+  return apiFetch('/api/content-items/citations-decide', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ citationId, decision }),
+  })
+}
+
 // "Copy this post to other platforms" (feedback 21331b1d) — preview per-target
 // fill/create/already-live state (no writes), or run the real copy. See
 // api/content-items/copy-to-platforms.js for the full contract.

@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { StaffChip } from '@/components/StaffChip'
 import MomentProvenance from '@/components/MomentProvenance'
+import CitationReviewPanel from '@/components/CitationReviewPanel'
 import { PLATFORM_META, STATUS_META } from '@/lib/contentMeta'
 import { getStageToken } from '@/lib/stageTokens'
 import { useUserRole } from '@/lib/useUserRole'
@@ -636,6 +637,14 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
           </span>
         )}
       </div>
+
+      {/* Research citations (blog/series only) — the human gate for real,
+          verified sources. Lives here specifically ("before Approve/Schedule/
+          Publish", per .claude/blog-research-citations-spec.md) so a reviewer
+          sees and decides on suggestions before the piece ships. Renders
+          nothing for a non-blog platform or in workflow (non-publish) mode —
+          the review-panel neighborhood is the publish editor specifically. */}
+      {isPublish && canReview && <CitationReviewPanel piece={piece} />}
 
       {/* When-to-publish action sheet — shown on approved pieces. The reviewer
           can accept the suggested time (one click), pick a custom time, or
