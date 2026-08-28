@@ -13,7 +13,7 @@ import { autoGradeFromImage } from './imageSampling'
 // and therefore the zoom/reposition the author sees — matches the shape the
 // published post actually crops to. The frame model (photo_fill / photo_offset)
 // is relative to this frame, so the aspect MUST match the bake's (HERO_DIMS).
-export default function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onAttachPhoto, onChange, singleSlide = false, aspect = '4 / 5' }) {
+export default function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onAttachPhoto, onChange, singleSlide = false, aspect = '4 / 5', label = "This slide's photo" }) {
   // One photo control: the slide's current photo + Replace, or an empty state
   // that prompts a pick. Picking ALWAYS attaches+binds in one step (per-slide
   // model) — the old "use an attached photo" pool dropdown is gone. `replacing`
@@ -97,7 +97,7 @@ export default function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, at
     <div className="space-y-4">
       <div className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5" style={{ background: 'hsl(var(--primary)/.08)' }}>
         <ImageIcon className="h-6 w-6 text-primary" />
-        <span className="text-lg font-bold text-primary">This slide&apos;s photo</span>
+        <span className="text-lg font-bold text-primary">{label}</span>
       </div>
 
       {singleSlide && (
