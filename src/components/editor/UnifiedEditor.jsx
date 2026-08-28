@@ -24,6 +24,8 @@ import PostCaptionField from '@/components/editor/PostCaptionField'
 import RegenerateCaptionButton, { canRegenerateCaption } from '@/components/editor/RegenerateCaptionButton'
 import { apiFetch } from '@/lib/api'
 import { clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey, photoSourceUrl, isVideoEntry, slidesHaveText } from '@/lib/mediaEntry'
+import PhotoInspector from '@/components/story-detail/slide-editor/PhotoInspector'
+import { heroSlide, applyHeroFrame, HERO_ASPECT } from '@/lib/heroPhoto'
 import { resolveArchetype, ARCHETYPES, railFor, mediaTierFor, MEDIA_TIER } from '@/lib/editorArchetype'
 import { isPieceLocked } from '@/lib/publishLock'
 import { deriveSeoTitle, deriveMetaDescription, cleanBlogMarkdown, SEO_TITLE_MAX, META_DESC_MAX } from '@/lib/blogOutput'
@@ -268,6 +270,73 @@ function SuggestionThumb({ clip, attached, attaching, onAttach }) {
 // (clipToMediaEntry / pickerItemToMediaEntry) so the stored entry has the
 // correct {url,type,mediaAssetId,…} shape — a raw clip or picker item stores
 // url:null and breaks dedup.
+// Blog / landing HERO photo — the SAME PhotoInspector every other photo is
+// edited with (Replace · Frame zoom/reposition/reset · AI Photo Editor colour),
+// the ONLY difference being the 16:9 preview that matches the shape the
+// published hero actually crops to (Philip's feedback #692e60b0; Q sign-off
+// 2026-08-27). The doc's hero is the first image entry in media_urls; this
+// adapter maps it to/from the one-photo pseudo-slide PhotoInspector edits and
+// stores the framing fields (photo_fill / photo_offset / grade) on the entry.
+// The framed hero is baked to a real 16:9 image at publish time
+// (useContentWorkflow → renderAndUploadHero), so every destination — including
+// the separate movebetter.co site — receives an already-cropped photo.
+function HeroPhotoPanel({ piece, updateItem }) {
+  const media = Array.isArray(piece.media_urls) ? piece.media_urls : []
+  const heroIdx = media.findIndex((m) => m && !isVideoEntry(m))
+  const hero = heroIdx >= 0 ? media[heroIdx] : null
+  const attachedKeys = new Set(media.map(mediaEntryKey))
+  const slide = hero ? heroSlide(hero) : { photo_idx: null, blocks: [] }
+  const photoUrl = hero ? (photoSourceUrl(hero) || hero.thumbnailUrl) : null
+
+  function persist(nextMedia) {
+    if (isPieceLocked(piece)) return
+    // camelCase mediaUrls — the PATCH allowlist maps mediaUrls→media_urls; a
+    // snake_case key is silently dropped (see MediaPanel.attachEntry).
+    updateItem.mutate({ id: piece.id, patch: { mediaUrls: nextMedia } })
+  }
+
+  // PhotoInspector edits a pseudo-slide: framing (photo_fill/photo_offset/grade)
+  // or removal (photo_idx → null). Map both back onto the hero entry.
+  function handleChange(next) {
+    if (!hero) return
+    if (next?.photo_idx == null) { persist(media.filter((_, i) => i !== heroIdx)); return }
+    const nextMedia = media.slice()
+    nextMedia[heroIdx] = applyHeroFrame(hero, next)
+    persist(nextMedia)
+  }
+
+  // Replace / first-attach — SwapAddPhoto hands back a normalized media entry
+  // (never a raw clip). A fresh photo starts unframed (no carried-over crop).
+  function handleAttach(entry) {
+    if (!entry?.url) { toast.error('That file has no usable URL'); return }
+    const nextMedia = media.slice()
+    if (heroIdx >= 0) nextMedia[heroIdx] = { ...entry }
+    else nextMedia.unshift({ ...entry })
+    persist(nextMedia)
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="shrink-0 border-b px-3 py-2">
+        <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Photo</span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <PhotoInspector
+          slide={slide}
+          photoUrl={photoUrl}
+          mediaUrls={hero ? [hero] : []}
+          pieceId={piece.id}
+          attachedKeys={attachedKeys}
+          onAttachPhoto={handleAttach}
+          onChange={handleChange}
+          singleSlide
+          aspect={HERO_ASPECT}
+        />
+      </div>
+    </div>
+  )
+}
+
 function MediaPanel({ piece, updateItem }) {
   const confirm = useConfirm()
   const media = Array.isArray(piece.media_urls) ? piece.media_urls : []
@@ -895,7 +964,12 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
           {activeKey === 'words' ? (
             <WordsPanel piece={piece} updateItem={updateItem} />
           ) : activeKey === 'media' || activeKey === 'photo' ? (
-            <MediaPanel piece={piece} updateItem={updateItem} />
+            // A single-visual doc (blog/landing) edits its hero with the shared
+            // PhotoInspector at 16:9; every other archetype keeps the compact
+            // attach/swap MediaPanel (reels/video, multi-image email/ad).
+            archetype === 'doc'
+              ? <HeroPhotoPanel piece={piece} updateItem={updateItem} />
+              : <MediaPanel piece={piece} updateItem={updateItem} />
           ) : activeKey === 'text' ? (
             <TextPanel piece={piece} />
           ) : activeKey === 'grade' ? (

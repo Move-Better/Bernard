@@ -18,6 +18,7 @@ import { apiFetch } from '@/lib/api'
 import { renderFreeformSlide } from '@/lib/overlayTemplates'
 import { resolveTheme } from '@/lib/photoTemplates'
 import { photoSourceUrl, slidePhotos, slidePhotoEntry, slideMediaEntry, isVideoEntry, carouselPublishEntry } from '@/lib/mediaEntry'
+import { heroSlide, HERO_DIMS, HERO_THEME } from '@/lib/heroPhoto'
 
 // Re-exported for existing importers; the definition now lives in mediaEntry.js
 // alongside the rest of the media_urls entry contract, so the preview, the
@@ -111,6 +112,47 @@ async function renderAndUploadSlide({ slide, photoUrl, brandStyle, theme, sig, p
   })
   if (!url) throw new Error('Slide upload returned no URL')
   return url
+}
+
+// Bake a single-visual doc's HERO photo (blog / landing_page) to a real 16:9
+// image and upload it. Same canvas renderer, upload endpoint, and JPEG quality
+// as the carousel slide bake above — the ONLY differences are the aspect (16:9,
+// the published hero shape) and that a hero is photo-only (heroSlide carries
+// blocks:[], so no text and no scrim are drawn). Returns the uploaded URL, or
+// null if the entry has no usable source photo. Used lazily at publish time
+// (useContentWorkflow), so the site receives an already-cropped photo and no
+// downstream repo needs to understand a crop — the reason the bake approach was
+// chosen over passing focal metadata.
+export async function renderAndUploadHero({ entry, brandStyle, pieceId }) {
+  const sourceUrl = photoSourceUrl(entry)
+  if (!sourceUrl) return null
+  const [width, height] = HERO_DIMS
+  const slide = heroSlide(entry)
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  await renderFreeformSlide({ sourceUrl, slide, brandStyle: brandStyle || {}, canvas, theme: HERO_THEME, width, height })
+  const dataUrl = canvasToJpegDataUrl(canvas)
+  // sig is CONTENT-derived, not a fixed label. upload-slide writes to a fixed
+  // path (`…/<idx>-<sig>.jpg`, allowOverwrite:true), so a fixed sig would make
+  // every re-frame overwrite ONE URL — and the blog + CDN would keep serving the
+  // stale crop (the exact reason compose-photo timestamps its path). Keying the
+  // filename on the framing inputs gives each distinct crop its own URL, so a
+  // re-published re-frame is always visible. idx:0 is safe — a doc hero lives on
+  // a piece with no carousel slides, so it can't collide with a slide upload.
+  const sig = 'hero' + hashString(JSON.stringify({
+    src: sourceUrl,
+    f: entry?.photo_fill ?? null,
+    o: entry?.photo_offset || null,
+    g: entry?.grade || null,
+    d: `${width}x${height}`,
+  }))
+  const { url } = await apiFetch('/api/editorial/upload-slide', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pieceId, idx: 0, sig, dataUrl }),
+  })
+  return url || null
 }
 
 /**

@@ -8,7 +8,12 @@ import { autoGradeFromImage } from './imageSampling'
 
 // ── PHOTO inspector body — swap/add + bind + reframe + colorist ──────────────
 
-export default function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onAttachPhoto, onChange, singleSlide = false }) {
+// `aspect` is the preview/frame aspect ratio (CSS `aspect-ratio` string). It
+// defaults to the carousel's 4:5; a blog/landing HERO passes 16:9 so the tile —
+// and therefore the zoom/reposition the author sees — matches the shape the
+// published post actually crops to. The frame model (photo_fill / photo_offset)
+// is relative to this frame, so the aspect MUST match the bake's (HERO_DIMS).
+export default function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onAttachPhoto, onChange, singleSlide = false, aspect = '4 / 5' }) {
   // One photo control: the slide's current photo + Replace, or an empty state
   // that prompts a pick. Picking ALWAYS attaches+binds in one step (per-slide
   // model) — the old "use an attached photo" pool dropdown is gone. `replacing`
@@ -110,7 +115,8 @@ export default function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, at
           <button
             type="button"
             onClick={() => setReplacing((o) => !o)}
-            className={`group relative block aspect-[4/5] w-full overflow-hidden rounded-2xl border-2 transition-colors ${
+            style={{ aspectRatio: aspect }}
+            className={`group relative block w-full overflow-hidden rounded-2xl border-2 transition-colors ${
               replacing ? 'border-primary' : 'border-border hover:border-primary'
             }`}
             aria-label="Replace this photo"

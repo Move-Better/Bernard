@@ -12,6 +12,7 @@ import { resolveTheme } from '@/lib/photoTemplates'
 import { usePhotoTemplates } from '@/lib/queries'
 import { pickHero } from '@/lib/publishImageMirror'
 import { isVideoEntry, photoSourceUrl, slidePhotoEntry } from '@/lib/mediaEntry'
+import { heroSlide, HERO_DIMS, HERO_THEME } from '@/lib/heroPhoto'
 import { deriveStory } from '@/lib/storyFields'
 
 // Pull the best logo URL for previews, preferring Brand Kit (primary_logo_url
@@ -656,14 +657,22 @@ function BlogPreview({ content, mediaUrls = [] }) {
   // markdown-only: a blog with a photo attached read "1 media attached" but
   // showed a header-less wall of text, confusing the publisher.
   const hero = pickHero(mediaUrls)
+  const ws = useWorkspace()
+  const brandStyle = brandStyleForRender(ws)
+  const [heroW, heroH] = HERO_DIMS
   return (
     <div className="max-w-2xl mx-auto bg-white border rounded-xl shadow-sm overflow-hidden">
       {hero?.url && (
-        <img
-          src={hero.url}
-          alt={hero.alt || ''}
-          className="w-full aspect-video object-cover border-b"
-        />
+        // The hero renders through the SAME canvas renderer the editor
+        // (PhotoInspector) and the publish bake (renderAndUploadHero) use — a
+        // one-photo pseudo-slide via renderFreeformSlide — so the author's frame
+        // (zoom/reposition) and colour show live and match exactly what
+        // publishes (preview == publish). A plain <img> showed the whole photo
+        // letterboxed and ignored the frame entirely, so the reframe controls
+        // appeared to do nothing.
+        <div className="relative w-full border-b bg-black" style={{ aspectRatio: `${heroW} / ${heroH}` }}>
+          <SlideCanvas slide={heroSlide(hero)} photo={hero} brandStyle={brandStyle} theme={HERO_THEME} width={heroW} height={heroH} />
+        </div>
       )}
       <div className="px-8 py-8 prose prose-sm max-w-none
         prose-headings:font-bold prose-headings:tracking-tight
