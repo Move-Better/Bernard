@@ -97,6 +97,25 @@
     "website",
     "workspace_id"
   ],
+  "blog_citations": [
+    "claim_quote",
+    "claim_text",
+    "confidence",
+    "content_item_id",
+    "created_at",
+    "decided_at",
+    "decided_by",
+    "id",
+    "source",
+    "source_title",
+    "source_type",
+    "source_url",
+    "status",
+    "updated_at",
+    "verify_evidence",
+    "why_match",
+    "workspace_id"
+  ],
   "book_excluded_sources": [
     "excluded_at",
     "excluded_by",
