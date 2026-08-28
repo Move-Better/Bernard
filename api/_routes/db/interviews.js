@@ -22,6 +22,7 @@ import { indexInterviewTranscriptFull } from '../../_lib/practiceMemoryRag.js'
 import { extractAndBankMoments } from '../../_lib/momentExtract.js'
 import { selectMissingOutputPlatforms } from '../../_lib/interviewOutputFanout.js'
 import { stripAiDashes } from '../../_lib/stripAiDashes.js'
+import { runCitationEnrichmentForContentItem } from '../../_lib/citations/runForContentItem.js'
 import { waitUntil } from '@vercel/functions'
 
 
@@ -515,6 +516,31 @@ export default async function handler(req, res) {
               continue
             }
             console.error(`[db/interviews] content_items insert ${insRes.status} for interview=${id} platform=${row.platform} ws=${ws.slug}: ${errBody.slice(0, 500)}`)
+          }
+
+          // Research-citation enrichment (.claude/blog-research-citations-spec.md)
+          // — automatic, post-draft, off the request path. A follow-up read
+          // rather than reusing the insert response above: the insert uses
+          // Prefer: return=minimal (deliberately, see the comment above this
+          // loop), and by this point the blog row exists regardless of
+          // whether THIS request inserted it or a concurrent completion PATCH
+          // did (the 23505 branch above). waitUntil() so it survives the
+          // response being sent, same as every other post-completion pass in
+          // this handler (extractConcepts, summarizeInterview, etc.).
+          if (items.some((r) => r.platform === 'blog')) {
+            waitUntil((async () => {
+              try {
+                const blogRes = await sb(
+                  `content_items?interview_id=eq.${id}&${wsFilter}&platform=eq.blog&select=id&order=created_at.desc&limit=1`,
+                )
+                if (!blogRes.ok) return
+                const blogRow = (await blogRes.json())?.[0]
+                if (!blogRow) return
+                await runCitationEnrichmentForContentItem({ workspaceId: ws.id, contentItemId: blogRow.id })
+              } catch (e) {
+                console.error(`[db/interviews] citation enrichment failed for interview=${id}:`, e?.message)
+              }
+            })())
           }
         }
       } catch (e) {

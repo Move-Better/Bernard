@@ -33,6 +33,7 @@ import { replanWorkspaceWeek } from '../../_lib/strategistPlan.js'
 import { mondayOf } from '../../_lib/strategist.js'
 import { extractAndBankMoments } from '../../_lib/momentExtract.js'
 import { stripAiDashes } from '../../_lib/stripAiDashes.js'
+import { runCitationEnrichmentForContentItem } from '../../_lib/citations/runForContentItem.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -269,6 +270,16 @@ async function runCascade({ iv, recordingUrl, authToken, interview, wsId }) {
   if (clinicianTurns) {
     steps.push(['voice', () => extractVoicePhrases({ workspaceId: wsId, staffId: staff.id, content: clinicianTurns, initialWeight: 0.5 })])
   }
+  // Research-citation enrichment (.claude/blog-research-citations-spec.md) —
+  // mirrors the db/interviews.js hookpoint. The 5a insert above uses
+  // Prefer: return=minimal, so this looks the row up rather than reusing the
+  // insert response; a no-op (ran:false, draft_not_found) is expected and
+  // harmless on a call with no blog output at all.
+  steps.push(['citations', async () => {
+    const blogRes = await sb(`content_items?interview_id=eq.${iv}&${wsFilter}&platform=eq.blog&select=id&limit=1`)
+    const blogRow = blogRes.ok ? (await blogRes.json())?.[0] : null
+    if (blogRow) await runCitationEnrichmentForContentItem({ workspaceId: wsId, contentItemId: blogRow.id })
+  }])
   for (const [name, fn] of steps) {
     try { await fn() } catch (e) { console.error(`[webhooks/twilio-recording] enrichment '${name}' failed iv=${iv}: ${e?.message}`) }
   }

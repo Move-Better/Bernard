@@ -27,9 +27,11 @@ export const config = { runtime: 'nodejs', maxDuration: 300 }
 
 import { randomUUID } from 'node:crypto'
 import { generateText } from 'ai'
+import { waitUntil } from '@vercel/functions'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
+import { runCitationEnrichmentForContentItem } from '../../_lib/citations/runForContentItem.js'
 import {
   getSeriesClusterSystemPrompt,
   getSeriesPartSystemPrompt,
@@ -388,6 +390,17 @@ export default async function handler(req, res) {
       return dbErr(res, insRes, 'Insert failed')
     }
     const inserted = await insRes.json()
+
+    // Research-citation enrichment (.claude/blog-research-citations-spec.md)
+    // — every inserted row is platform:'blog' (a series part), so each gets
+    // its own enrichment pass. waitUntil() per part so one slow/failing part
+    // can't block the others; the route's maxDuration is already 300 for the
+    // cluster+write AI passes above, which comfortably covers this too.
+    for (const row of inserted) {
+      waitUntil(runCitationEnrichmentForContentItem({ workspaceId: ws.id, contentItemId: row.id }).catch((e) => {
+        console.error(`[content-items/split-into-series] citation enrichment failed for part ${row.id}:`, e?.message)
+      }))
+    }
 
     // Update interview.outputs.blogPost to Part 1's content so downstream
     // atom regeneration uses the strongest standalone post as its editorial
