@@ -46,6 +46,9 @@ import {
   suggestMediaForDraft,
   previewCopyToPlatforms,
   copyToPlatforms,
+  fetchCitations,
+  runCitationEnrichment,
+  decideCitation,
 } from './publish'
 import { listMedia } from './mediaLib'
 import {
@@ -82,6 +85,7 @@ export const queryKeys = {
     mediaSuggestions: (id) => ['contentItems', 'mediaSuggestions', id],
     copyPreview: (id) => ['contentItems', 'copyPreview', id],
     verbatimQuotes:   (id) => ['contentItems', 'verbatimQuotes', id],
+    citations: (id) => ['contentItems', 'citations', id],
   },
   contentPlan: {
     all:              ['contentPlan'],
@@ -501,6 +505,42 @@ export function useCopyToPlatforms() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.contentItems.all })
       qc.invalidateQueries({ queryKey: queryKeys.contentPlan.all })
+    },
+  })
+}
+
+// Research citations (blog/series only) — the review panel's read + the two
+// human-gate actions (enrich = "find supporting research", decide =
+// approve/reject one suggestion). See .claude/blog-research-citations-spec.md.
+export function useCitations(pieceId, { enabled = true, ...options } = {}) {
+  return useQuery({
+    queryKey: queryKeys.contentItems.citations(pieceId),
+    queryFn: () => fetchCitations(pieceId).then((r) => r.citations ?? []),
+    enabled: !!pieceId && enabled,
+    staleTime: 0, // a reviewer expects to see their own decision reflected immediately
+    refetchOnWindowFocus: false,
+    ...options,
+  })
+}
+
+export function useRunCitationEnrichment() {
+  const qc = useQueryClient()
+  return useAppMutation({
+    errorMessage: "Couldn't check for supporting research",
+    mutationFn: (pieceId) => runCitationEnrichment(pieceId),
+    onSuccess: (_data, pieceId) => {
+      qc.invalidateQueries({ queryKey: queryKeys.contentItems.citations(pieceId) })
+    },
+  })
+}
+
+export function useDecideCitation(pieceId) {
+  const qc = useQueryClient()
+  return useAppMutation({
+    errorMessage: "Couldn't save your decision",
+    mutationFn: ({ citationId, decision }) => decideCitation(citationId, decision),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.contentItems.citations(pieceId) })
     },
   })
 }

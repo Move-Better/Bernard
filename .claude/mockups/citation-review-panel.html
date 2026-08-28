@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Suggested research citations — ApprovalPanel insert</title>
+<style>
+  :root {
+    --background: 0 0% 100%; --foreground: 222 47% 8%;
+    --card: 0 0% 100%; --muted: 220 14% 96%; --muted-foreground: 215 19% 34%;
+    --border: 214 32% 91%; --success: 152 76% 40%; --action: 32 95% 44%;
+    --destructive: 0 84% 60%; --primary: 186 83% 27%; --info: 199 95% 40%;
+    --radius: 0.625rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: 220 20% 7%; --foreground: 210 20% 96%;
+      --card: 220 16% 11%; --muted: 220 14% 16%; --muted-foreground: 215 15% 65%;
+      --border: 220 13% 22%; --success: 152 60% 50%; --action: 32 85% 55%;
+      --destructive: 0 70% 55%; --primary: 186 65% 45%; --info: 199 80% 55%;
+    }
+  }
+  :root[data-theme="dark"] {
+    --background: 220 20% 7%; --foreground: 210 20% 96%;
+    --card: 220 16% 11%; --muted: 220 14% 16%; --muted-foreground: 215 15% 65%;
+    --border: 220 13% 22%; --success: 152 60% 50%; --action: 32 85% 55%;
+    --destructive: 0 70% 55%; --primary: 186 65% 45%; --info: 199 80% 55%;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: hsl(var(--background)); color: hsl(var(--foreground));
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 32px 18px 60px; display: flex; flex-direction: column; gap: 28px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: 11px; font-weight: 700; color: hsl(var(--muted-foreground)); }
+  h1 { font-size: 20px; font-weight: 800; margin: 4px 0 4px; }
+  .sub { font-size: 13px; color: hsl(var(--muted-foreground)); margin: 0 0 4px; line-height: 1.5; }
+  .scenario { border: 1px solid hsl(var(--border)); border-radius: var(--radius); padding: 16px; background: hsl(var(--card)); }
+  .scenario .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: hsl(var(--muted-foreground)); margin-bottom: 12px; }
+
+  /* ── The panel itself (this is what ships, framed inside its neighbors) ── */
+  .approval-context { border-top: 1px solid hsl(var(--border)); padding-top: 12px; margin-top: 4px; }
+  .context-note { font-size: 11px; color: hsl(var(--muted-foreground)); font-style: italic; margin-bottom: 10px; }
+  .status-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 3px 9px; font-size: 11px; font-weight: 700; background: hsl(var(--muted)); }
+
+  .citations-panel { display: flex; flex-direction: column; gap: 10px; }
+  .citations-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .citations-title { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: hsl(var(--foreground)); }
+  .citations-title svg { color: hsl(var(--muted-foreground)); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; border-radius: 8px; padding: 6px 11px; border: 1px solid hsl(var(--border)); background: hsl(var(--background)); cursor: pointer; color: hsl(var(--foreground)); }
+  .btn:hover { background: hsl(var(--muted)); }
+  .btn-ghost { border-color: transparent; color: hsl(var(--muted-foreground)); }
+  .btn-approve { border-color: hsl(var(--success)/.4); color: hsl(var(--success)); }
+  .btn-approve:hover { background: hsl(var(--success)/.10); }
+  .btn-reject { border-color: hsl(var(--destructive)/.35); color: hsl(var(--destructive)); }
+  .btn-reject:hover { background: hsl(var(--destructive)/.08); }
+
+  .empty-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px dashed hsl(var(--border)); border-radius: 10px; background: hsl(var(--muted)/.4); }
+  .empty-text { font-size: 12px; color: hsl(var(--muted-foreground)); }
+
+  .cite-card { border: 1px solid hsl(var(--border)); border-radius: 10px; padding: 12px 13px; background: hsl(var(--background)); display: flex; flex-direction: column; gap: 8px; }
+  .cite-claim { font-size: 12.5px; color: hsl(var(--muted-foreground)); }
+  .cite-claim b { color: hsl(var(--foreground)); font-weight: 600; }
+  .cite-claim .q-mark { opacity: .5; }
+  .cite-source-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .cite-source { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .cite-title { font-size: 13.5px; font-weight: 700; color: hsl(var(--primary)); text-decoration: none; display: flex; align-items: center; gap: 5px; }
+  .cite-title svg { flex: none; width: 12px; height: 12px; opacity: .6; }
+  .cite-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .tier-chip { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: 2px 7px; border-radius: 999px; }
+  .tier-peer { background: hsl(var(--info)/.12); color: hsl(var(--info)); }
+  .tier-inst { background: hsl(var(--primary)/.10); color: hsl(var(--primary)); }
+  .tier-guide { background: hsl(var(--action)/.12); color: hsl(var(--action)); }
+  .tier-healthed { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .confidence { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: hsl(var(--muted-foreground)); flex: none; }
+  .conf-bar { width: 40px; height: 4px; border-radius: 999px; background: hsl(var(--muted)); overflow: hidden; }
+  .conf-fill { height: 100%; background: hsl(var(--success)); }
+  .cite-why { font-size: 12px; color: hsl(var(--foreground)); background: hsl(var(--muted)/.5); border-radius: 7px; padding: 7px 9px; line-height: 1.45; }
+  .cite-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+  .decided-list { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+  .decided-row { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 6px 9px; border-radius: 8px; }
+  .decided-row.is-approved { background: hsl(var(--success)/.06); }
+  .decided-row.is-rejected { background: hsl(var(--muted)/.5); opacity: .75; }
+  .decided-icon { flex: none; width: 15px; height: 15px; }
+  .decided-icon.approved { color: hsl(var(--success)); }
+  .decided-icon.rejected { color: hsl(var(--muted-foreground)); }
+  .decided-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .decided-title.rejected-text { text-decoration: line-through; color: hsl(var(--muted-foreground)); }
+  .decided-who { font-size: 10.5px; color: hsl(var(--muted-foreground)); flex: none; }
+
+  .collapsible-toggle { font-size: 11px; color: hsl(var(--muted-foreground)); background: none; border: none; cursor: pointer; text-align: left; padding: 2px 0; text-decoration: underline; text-underline-offset: 2px; }
+
+  .legend { border: 1px dashed hsl(var(--border)); border-radius: 12px; padding: 14px 16px; }
+  .legend h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: hsl(var(--muted-foreground)); }
+  .legend ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+  .legend li { font-size: 12.5px; line-height: 1.45; }
+  .legend b { font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Publish editor · ApprovalPanel insert · mockup for sign-off</p>
+  <h1>Suggested research citations</h1>
+  <p class="sub">
+    NEW panel. Sits in <code>ApprovalPanel</code> (<code>src/components/story-detail/AssetsPane.jsx</code>),
+    right after the voice-drift scorecard row and before the "when to publish" card &mdash;
+    shown only when <code>piece.platform === 'blog'</code>. Every card below is exactly what
+    a reviewer sees; nothing here is hand-drawn without a rule behind it (see the confidence
+    bars and tier chips, which reflect the real <code>allowlist.js</code> tiers and the judge's
+    real <code>confidence</code> field).
+  </p>
+
+  <div class="scenario">
+    <div class="label">Scenario 1 &mdash; suggestions waiting for review (the common case right after a draft is created)</div>
+    <div class="approval-context">
+      <span class="status-badge">Draft</span>
+      <div class="citations-panel" style="margin-top:12px">
+        <div class="citations-head">
+          <div class="citations-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            Suggested research citations (2)
+          </div>
+          <button class="btn btn-ghost">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            Re-check
+          </button>
+        </div>
+
+        <div class="cite-card">
+          <div class="cite-claim"><span class="q-mark">&ldquo;</span><b>imaging findings correlate poorly with reported pain levels</b><span class="q-mark">&rdquo;</span></div>
+          <div class="cite-source-row">
+            <div class="cite-source">
+              <a class="cite-title" href="#">
+                What is the role of imaging in acute low back pain?
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+              </a>
+              <div class="cite-meta">
+                <span class="tier-chip tier-peer">Peer-reviewed</span>
+                <span style="font-size:11px;color:hsl(var(--muted-foreground))">pubmed.ncbi.nlm.nih.gov</span>
+              </div>
+            </div>
+            <div class="confidence">
+              <span>82%</span>
+              <div class="conf-bar"><div class="conf-fill" style="width:82%"></div></div>
+            </div>
+          </div>
+          <div class="cite-why">Why it matches: the abstract directly states that MRI findings such as disc bulges are common in people with no back pain at all, supporting the claim that imaging doesn&rsquo;t reliably track symptoms.</div>
+          <div class="cite-actions">
+            <button class="btn btn-reject">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              Reject
+            </button>
+            <button class="btn btn-approve">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+              Approve &amp; link
+            </button>
+          </div>
+        </div>
+
+        <div class="cite-card">
+          <div class="cite-claim"><span class="q-mark">&ldquo;</span><b>early, graded movement outperforms prolonged rest for most mechanical low back pain</b><span class="q-mark">&rdquo;</span></div>
+          <div class="cite-source-row">
+            <div class="cite-source">
+              <a class="cite-title" href="#">
+                Low back pain &mdash; Diagnosis and treatment
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+              </a>
+              <div class="cite-meta">
+                <span class="tier-chip tier-inst">Major institution</span>
+                <span style="font-size:11px;color:hsl(var(--muted-foreground))">mayoclinic.org</span>
+              </div>
+            </div>
+            <div class="confidence">
+              <span>71%</span>
+              <div class="conf-bar"><div class="conf-fill" style="width:71%"></div></div>
+            </div>
+          </div>
+          <div class="cite-why">Why it matches: the page recommends staying active and gradually resuming normal activities rather than extended bed rest, matching the claim's recommendation.</div>
+          <div class="cite-actions">
+            <button class="btn btn-reject">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              Reject
+            </button>
+            <button class="btn btn-approve">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+              Approve &amp; link
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scenario">
+    <div class="label">Scenario 2 &mdash; a mix already decided (approved ships, rejected is remembered and won't come back)</div>
+    <div class="approval-context">
+      <span class="status-badge">Approved</span>
+      <div class="citations-panel" style="margin-top:12px">
+        <div class="citations-head">
+          <div class="citations-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            Research citations
+          </div>
+        </div>
+        <div class="decided-list">
+          <div class="decided-row is-approved">
+            <svg class="decided-icon approved" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+            <span class="decided-title">What is the role of imaging in acute low back pain? &mdash; will publish as a link</span>
+            <span class="decided-who">You &middot; 2m ago</span>
+          </div>
+          <div class="decided-row is-rejected">
+            <svg class="decided-icon rejected" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            <span class="decided-title rejected-text">A loosely-related wellness listicle</span>
+            <span class="decided-who">You &middot; 2m ago</span>
+          </div>
+        </div>
+        <button class="collapsible-toggle">Find more research for this post &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="scenario">
+    <div class="label">Scenario 3 &mdash; checked, nothing worth linking (a correct outcome, not a failure &mdash; per the spec's "cite sparingly")</div>
+    <div class="approval-context">
+      <span class="status-badge">Draft</span>
+      <div class="citations-panel" style="margin-top:12px">
+        <div class="empty-row">
+          <span class="empty-text">Checked for supporting research &mdash; nothing in this post needed a citation.</span>
+          <button class="btn btn-ghost">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            Re-check
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scenario">
+    <div class="label">Scenario 4 &mdash; never checked yet (Phase 5's on-demand backfill &mdash; e.g. one of the 14 pieces #2665 stripped links from)</div>
+    <div class="approval-context">
+      <span class="status-badge">Draft</span>
+      <div class="citations-panel" style="margin-top:12px">
+        <div class="empty-row">
+          <span class="empty-text">No research citations checked yet for this post.</span>
+          <button class="btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            Find supporting research
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scenario">
+    <div class="label">Scenario 5 &mdash; checking right now (real external calls + a judge model &mdash; can take a while)</div>
+    <div class="approval-context">
+      <span class="status-badge">Draft</span>
+      <div class="citations-panel" style="margin-top:12px">
+        <div class="empty-row">
+          <span class="empty-text">Checking PubMed, Semantic Scholar, and the web for real sources&hellip; this can take a minute.</span>
+          <button class="btn" disabled style="opacity:.6;cursor:default">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            Checking&hellip;
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <h3>Design notes / open questions for sign-off</h3>
+    <ul>
+      <li><b>Placement:</b> inside <code>ApprovalPanel</code>, gated on <code>piece.platform === 'blog'</code> (covers series parts too &mdash; they're <code>platform:'blog'</code> with <code>series_id</code> set). Shown regardless of draft/approved status, per the spec ("before Approve/Schedule/Publish").</li>
+      <li><b>Tier chips</b> map 1:1 to <code>allowlist.js</code>'s <code>CITATION_SOURCE_TIERS</code> &mdash; Peer-reviewed / Major institution / Professional guidelines / Health-ed. Not decorative.</li>
+      <li><b>Confidence bar</b> is the judge's real <code>confidence</code> (0&ndash;1), never a fabricated/rounded display value beyond formatting as a percentage.</li>
+      <li><b>Rejected rows stay visible</b> (struck through, muted) rather than disappearing &mdash; the spec calls this an audit trail, and a reviewer should be able to see "yes, I already looked at that one and said no."</li>
+      <li><b>Open question for Q:</b> should "Approve &amp; link" show WHERE in the post the link will land (inline vs. a "Further reading" footer list)? This build inserts approved citations as a footer list (see PR description) rather than attempting fragile inline substring-matching into voice-fidelity prose &mdash; flagging this as a judgment call, not a locked decision.</li>
+      <li><b>Open question for Q:</b> is a confidence percentage useful to a clinician reviewer, or just visual noise? Easy to drop if it doesn't earn its place.</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>
