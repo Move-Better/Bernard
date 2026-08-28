@@ -25,6 +25,20 @@
 
 const OWNER_TIER = 'owner'
 
+// The Playwright/e2e fixture account is provisioned as a Clerk org:admin (so
+// it can pass authz checks in tests — see tests/e2e/auth.setup.ts and
+// scripts/capture-screenshot.mjs), which makes it indistinguishable from a
+// real owner to this module. Left unfiltered, it was swept into every
+// owner-addressed cron mailing (engagement-digest, approval-escalation) and
+// received real production "Weekly Producer Digest" emails at
+// e2e@movebetter.co. Exclude it here, once, so every caller of
+// listWorkspaceOwnerUserIds is covered rather than patching each cron.
+const E2E_FIXTURE_EMAILS = new Set(
+  [process.env.E2E_TEST_USER_EMAIL, 'e2e@movebetter.co']
+    .filter(Boolean)
+    .map((e) => e.toLowerCase())
+)
+
 /**
  * Owner Clerk user IDs for a workspace.
  *
@@ -54,6 +68,8 @@ export async function listWorkspaceOwnerUserIds(workspace, sb, clerk, logTag = '
       const rows = res?.data ?? res ?? []
       for (const m of rows) {
         if (m?.role !== 'org:admin') continue
+        const identifier = (m?.publicUserData?.identifier || '').toLowerCase()
+        if (identifier && E2E_FIXTURE_EMAILS.has(identifier)) continue
         const uid = m?.publicUserData?.userId ?? m?.publicUserData?.user_id
         if (uid) owners.add(uid)
       }
