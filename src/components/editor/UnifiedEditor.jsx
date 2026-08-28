@@ -331,6 +331,7 @@ function HeroPhotoPanel({ piece, updateItem }) {
           onChange={handleChange}
           singleSlide
           aspect={HERO_ASPECT}
+          label="This photo"
         />
       </div>
     </div>
