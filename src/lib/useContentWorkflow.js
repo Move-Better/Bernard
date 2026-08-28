@@ -12,7 +12,10 @@ import {
 } from '@/lib/queries'
 import { publishBlogToWebsite, sendBlogToBeehiiv, cancelScheduledPost } from '@/lib/publish'
 import { publishPieceToSocial } from '@/lib/publishPiece'
-import { publishMediaForFormat } from '@/lib/mediaEntry'
+import { renderAndUploadHero } from '@/lib/renderSlides'
+import { publishMediaForFormat, photoSourceUrl, isVideoEntry } from '@/lib/mediaEntry'
+import { heroReframed } from '@/lib/heroPhoto'
+import { brandStyleForRender } from '@/lib/brandSwatches'
 import { suggestScheduleTime } from '@/lib/scheduleHeuristics'
 import { buildImagesManifest } from '@/lib/publishImageMirror'
 import { slugifyTitle, deriveSeoTitle, deriveMetaDescription, cleanBlogMarkdown } from '@/lib/blogOutput'
@@ -274,7 +277,33 @@ export function useContentWorkflow(piece) {
         const seoTitle = (piece.seo_title || '').trim() || deriveSeoTitle(title)
         const description = (piece.meta_description || '').trim() || deriveMetaDescription(body, seoTitle)
         const pubDate = new Date().toISOString().slice(0, 10)
-        const manifest = buildImagesManifest({ markdown: body, mediaUrls: piece.media_urls, slug })
+        // Bake the framed + colour-graded hero to a real 16:9 image so the site
+        // receives an already-cropped photo — the reason the bake approach was
+        // chosen over passing crop metadata (Philip's feedback #692e60b0, Q
+        // 2026-08-27). Only when the author actually reframed/graded it; an
+        // untouched hero ships as-is (the site's object-fit:cover crops it to the
+        // same 16:9 the preview showed). Reuses the carousel's canvas→upload
+        // path; a bake failure is non-fatal — fall back to the original hero
+        // rather than block the publish.
+        let heroMedia = Array.isArray(piece.media_urls) ? piece.media_urls : []
+        const heroIdx = heroMedia.findIndex((m) => m && !isVideoEntry(m))
+        const heroEntry = heroIdx >= 0 ? heroMedia[heroIdx] : null
+        if (heroEntry && heroReframed(heroEntry)) {
+          try {
+            const bakedUrl = await renderAndUploadHero({
+              entry: heroEntry,
+              brandStyle: brandStyleForRender(workspace),
+              pieceId: piece.id,
+            })
+            if (bakedUrl) {
+              heroMedia = heroMedia.slice()
+              heroMedia[heroIdx] = { ...heroEntry, url: bakedUrl, sourceUrl: photoSourceUrl(heroEntry), composed: true }
+            }
+          } catch (e) {
+            console.warn('[publish] hero bake failed, shipping original:', e?.message)
+          }
+        }
+        const manifest = buildImagesManifest({ markdown: body, mediaUrls: heroMedia, slug })
         const payload = { contentItemId: piece.id, slug, title, seoTitle, headline: title, description, pubDate, markdown: body, ...manifest }
         if (piece.published_at) payload.updatedDate = pubDate
         if (piece.staff_name) payload.author = piece.staff_name
