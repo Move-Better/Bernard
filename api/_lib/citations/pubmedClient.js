@@ -81,6 +81,68 @@ export function pubmedUrl(pmid) {
   return `https://pubmed.ncbi.nlm.nih.gov/${encodeURIComponent(pmid)}/`
 }
 
+// A real, currently-live bug found by running the shipped pipeline against
+// real content (2026-08-27, see .claude/mockups/citation-review-real-preview.html):
+// fetching a pubmed.ncbi.nlm.nih.gov ABSTRACT PAGE with a plain HTTP GET (the
+// generic web-fetch path in verify.js) returns a cookie-consent interstitial,
+// not the abstract — reproduced 6/6 and 3/3 on two real posts. This is a
+// retrieval COVERAGE bug, not a fabrication-safety bug: the judge correctly
+// rejects the interstitial ("just a cookie/login error page"), so real,
+// relevant papers were being silently lost. A pmc.ncbi.nlm.nih.gov full-text
+// URL is unaffected (fetches cleanly) — this only applies to the abstract
+// host.
+const PUBMED_ABSTRACT_URL_RE = /^https?:\/\/pubmed\.ncbi\.nlm\.nih\.gov\/(\d+)\/?(?:[?#].*)?$/i
+
+/**
+ * Does this URL point at a pubmed.ncbi.nlm.nih.gov ABSTRACT page (as opposed
+ * to e.g. a pmc.ncbi.nlm.nih.gov full-text URL, which fetches fine)? Pure.
+ * @param {string} url
+ * @returns {boolean}
+ */
+export function isPubmedAbstractUrl(url) {
+  return PUBMED_ABSTRACT_URL_RE.test(String(url || ''))
+}
+
+/**
+ * Extract the real PMID from a pubmed.ncbi.nlm.nih.gov abstract URL, or null
+ * if it doesn't match. Pure.
+ * @param {string} url
+ * @returns {string|null}
+ */
+export function pmidFromPubmedUrl(url) {
+  const m = PUBMED_ABSTRACT_URL_RE.exec(String(url || ''))
+  return m ? m[1] : null
+}
+
+/**
+ * Fetch ONE article's real title/abstract via the same E-utilities efetch
+ * call searchPubMed uses, given only a PMID — for a candidate that arrived
+ * via a DIFFERENT retrieval path (e.g. web search surfacing a real
+ * pubmed.ncbi.nlm.nih.gov/<pmid>/ URL) but whose abstract page can't be
+ * scraped directly (see isPubmedAbstractUrl's header comment). Network.
+ * Never throws on a bad/unknown PMID — returns null so the caller can treat
+ * it as "couldn't verify" rather than crash the enrichment pass.
+ * @param {string} pmid
+ * @param {{fetchFn?: Function}} [deps] — injectable for tests; defaults to global fetch
+ * @returns {Promise<{pmid: string, title: string, abstract: string}|null>}
+ */
+export async function fetchPubmedAbstractByPmid(pmid, { fetchFn = fetch } = {}) {
+  const id = String(pmid || '').trim()
+  if (!id) return null
+  try {
+    const res = await fetchFn(
+      `${EFETCH_URL}?db=pubmed&rettype=abstract&retmode=xml&id=${encodeURIComponent(id)}&${TOOL_PARAMS}`,
+      { signal: AbortSignal.timeout(15_000) },
+    )
+    if (!res.ok) return null
+    const xml = await res.text()
+    const articles = parseEfetchArticles(xml)
+    return articles.find((a) => a.pmid === id) || articles[0] || null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Search PubMed for a claim and return real candidates (esearch → efetch).
  * Network. Timed out generously but bounded — this runs inside a background
