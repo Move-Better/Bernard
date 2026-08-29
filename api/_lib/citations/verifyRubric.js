@@ -23,14 +23,18 @@ export const VERIFY_MODEL = 'anthropic/claude-sonnet-4-6' // judging content-mat
 
 /**
  * Build the verification judge prompt. Pure.
- * @param {{claimText: string, candidateTitle: string, candidateContent: string, sourceType: string}} p
+ * @param {{claimText: string, candidateTitle: string, candidateContent: string, sourceType: string, subjectContext?: string}} p — subjectContext optional; a one-line description of who/what the content is about (e.g. a workspace's clinic_context). When absent, the prompt is IDENTICAL to before this parameter existed (backward compatible for every existing caller).
  * @returns {{instructions: string, user: string}}
  */
-export function buildVerifyPrompt({ claimText, candidateTitle, candidateContent, sourceType }) {
+export function buildVerifyPrompt({ claimText, candidateTitle, candidateContent, sourceType, subjectContext }) {
+  const subjectBlock = subjectContext
+    ? `\nSUBJECT OF THIS CONTENT: ${subjectContext}\n\nThis content is written for and about the population/subject described above. A source about a DIFFERENT population does NOT support the claim, even if the underlying mechanism (e.g. spinal mobility, joint biomechanics, movement/pain correlation) sounds anatomically similar across populations — for example, a human clinical study cited to support a claim written for horses, an equine study cited to support a claim about human patients or about dogs/cats, or a small-animal (dog/cat) study cited to support an equine claim (or the reverse of any of these). This is a HARD rule, not a judgment call: if the candidate source's real subject population differs from this content's subject, rule support:false and say so explicitly in "why", even if every other aspect of the source looks relevant.\n`
+    : ''
+
   const instructions = `You are a strict fact-checker. You are given a CLAIM from a health/chiropractic blog post and the REAL, actual content of a candidate source (fetched directly, not from memory). Decide whether this SPECIFIC source genuinely supports this SPECIFIC claim.
 
 Be strict. "About the same general topic" is NOT enough — the source's actual content must support the specific assertion in the claim. A source that discusses a related but different mechanism, a different population, a different condition, or reaches a different conclusion does NOT support the claim, even if it shares keywords.
-
+${subjectBlock}
 ${sourceType === 'reputable_health_ed' ? 'This source is a health-education site (not peer-reviewed). Only count it as supporting if the page itself is citing or reflecting primary research, not just general wellness advice.' : ''}
 
 If the provided content is too short, is clearly the wrong page (e.g. a paywall notice, an error page, a login screen, or an unrelated article), rule support:false and say why in one line.

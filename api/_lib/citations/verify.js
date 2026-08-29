@@ -89,12 +89,12 @@ export async function fetchCandidateContent(candidate, { fetchFn = fetch } = {})
  * support/confidence/why (per parseVerifyResult) — there is no url field on
  * the return type, by construction. See verifyRubric.js header.
  *
- * @param {{claimText: string, candidateTitle: string, candidateContent: string, sourceType: string|null}} p
+ * @param {{claimText: string, candidateTitle: string, candidateContent: string, sourceType: string|null, subjectContext?: string}} p — subjectContext optional, see verifyRubric.js buildVerifyPrompt
  * @param {{generateTextFn?: Function}} [deps] — injectable for tests
  * @returns {Promise<{support: boolean, confidence: number, why: string}|null>}
  */
-export async function judgeCandidate({ claimText, candidateTitle, candidateContent, sourceType }, { generateTextFn } = {}) {
-  const { instructions, user } = buildVerifyPrompt({ claimText, candidateTitle, candidateContent, sourceType })
+export async function judgeCandidate({ claimText, candidateTitle, candidateContent, sourceType, subjectContext }, { generateTextFn } = {}) {
+  const { instructions, user } = buildVerifyPrompt({ claimText, candidateTitle, candidateContent, sourceType, subjectContext })
   let generate = generateTextFn
   if (!generate) {
     const { generateText } = await import('ai')

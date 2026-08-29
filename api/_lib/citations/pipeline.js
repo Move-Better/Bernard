@@ -24,6 +24,17 @@
 // network, zero API keys, and fully deterministic assertions — the real
 // callers (api/_routes/content-items/citations-enrich.js) wire in the real
 // pubmed/semanticScholar/web clients.
+//
+// `subjectContext` (optional) is the SECOND axis of "does this source
+// genuinely support this claim" — not fabrication (a source that's real but
+// about the wrong thing). Bernard is multi-tenant across human/equine/
+// small-animal workspaces sharing this one pipeline, and neither the claim
+// extractor nor the judge had any concept of which population a claim was
+// written for until this was added — a human PubMed study could be accepted
+// as "supporting" a horse or dog claim whenever the mechanism sounded
+// generically similar (see runForContentItem.js for where it's derived from
+// the workspace's clinic_context, and verifyRubric.js for the hard rejection
+// rule this threads into).
 
 import { isAllowedCitationUrl } from './allowlist.js'
 import { sourceTierFor } from './verify.js'
@@ -40,16 +51,18 @@ const DEFAULT_MAX_CITATIONS = 3
  *
  * @param {object} p
  * @param {string} p.draftBody
- * @param {(draftBody: string) => Promise<Array<{claim_text: string, quote: string}>>} p.extractClaimsFn
+ * @param {string} [p.subjectContext] — a one-line description of who/what this content is about (e.g. a workspace's clinic_context: human patients vs. horses vs. dogs/cats). Threaded into BOTH claim extraction and the verify judge so a source about a different subject population is never accepted just because the mechanism sounds similar. Optional — when absent (default ''), behavior is IDENTICAL to before this parameter existed.
+ * @param {(draftBody: string, subjectContext: string) => Promise<Array<{claim_text: string, quote: string}>>} p.extractClaimsFn
  * @param {Array<(claimText: string) => Promise<Array<object>>>} p.retrieveFns — one per source; each returns candidates for ONE claim. Independent failures are isolated per-source.
  * @param {(candidate: object) => Promise<{content: string, title: string|null, fetchOk: boolean}>} p.fetchContentFn
- * @param {(args: {claimText: string, candidateTitle: string, candidateContent: string, sourceType: string|null}) => Promise<{support: boolean, confidence: number, why: string}|null>} p.judgeFn
+ * @param {(args: {claimText: string, candidateTitle: string, candidateContent: string, sourceType: string|null, subjectContext: string}) => Promise<{support: boolean, confidence: number, why: string}|null>} p.judgeFn
  * @param {number} [p.maxCandidatesPerClaim]
  * @param {number} [p.maxCitations]
  * @returns {Promise<{citations: Array<object>, claimsConsidered: number, rejections: Array<object>}>}
  */
 export async function runCitationEnrichment({
   draftBody,
+  subjectContext = '',
   extractClaimsFn,
   retrieveFns,
   fetchContentFn,
@@ -57,7 +70,7 @@ export async function runCitationEnrichment({
   maxCandidatesPerClaim = DEFAULT_MAX_CANDIDATES_PER_CLAIM,
   maxCitations = DEFAULT_MAX_CITATIONS,
 }) {
-  const claims = await extractClaimsFn(draftBody)
+  const claims = await extractClaimsFn(draftBody, subjectContext)
   if (!Array.isArray(claims) || claims.length === 0) {
     return { citations: [], claimsConsidered: 0, rejections: [] }
   }
@@ -118,6 +131,7 @@ export async function runCitationEnrichment({
         candidateTitle: title,
         candidateContent: fetched.content,
         sourceType,
+        subjectContext,
       })
 
       if (!verdict) {
