@@ -578,6 +578,29 @@ Related invariant: the cron requires the package's GBP `content_items` row to EX
 `approved` before dispatching — a package approved with `destination='library'` has no
 content_items row and must never auto-publish (audit follow-up, 2026-07-15).
 
+**Second documented exception: an approved BLOG piece satisfies the gate on its own** (Q,
+2026-08-29 — `.claude/decisions.md`). Blog fans out 1:1 from its story (measured on prod:
+1.00 posts/story, vs. 2–3.4 for social), so the once-per-story words check and the per-post
+approval were asking the clinician the same question twice on two screens — the literal bug
+Philip reported (feedback `3b7f432c`). Two halves, both in `api/_lib/blogApprovalImpliesWords.js`:
+- **stateful** — `blogApprovalImpliesWords(piece, newStatus)` fires in `db/content.js`'s approve
+  branch and stamps the parent interview's `words_approved_at`/`words_approved_by` (only ever
+  filling a NULL, never overwriting an earlier approver).
+- **stateless** — `wordsApprovalGate.js`'s `checkWordsApproved` also calls
+  `blogApprovalSatisfiesWordsGate(piece)`, which passes any blog piece whose own `status` is
+  `approved`/`scheduled`/`published`, independent of `words_approved_at`.
+
+**Why both exist, not just the stamp:** the stamp only takes effect on the NEXT approve action.
+A blog approved before this policy shipped keeps `words_approved_at: null` forever — with only
+the stateful half, the editor (which no longer shows the words step for blog) would offer an
+enabled Publish button that the gate then 403s, which is worse than the contradiction it
+replaced. This shipped as exactly that bug (#2679 → caught verifying on prod → fixed same-day in
+#2681) before the stateless half was added. **The general pattern: relaxing a hard gate by having
+one action imply a precondition needs a stateless equivalent in the gate itself, not only a
+forward-stamp on the triggering action — a stamp alone silently strands every row that predates
+it.** Social is untouched by either half; an unapproved blog still needs the story's words
+exactly as before.
+
 ---
 
 ## Router conventions (App.jsx)
