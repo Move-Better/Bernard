@@ -6,6 +6,15 @@
 // rows for decision and 'approved'/'rejected' ones for context (a reviewer
 // can see what they already ruled on).
 //
+// Each row also carries a computed `willInlineLink` (boolean) — the SAME
+// exact-match rule insertCitations.js enforces at publish time
+// (quoteMatch.js), checked live against the content_item's CURRENT `content`
+// on every read. Per the spec's "Link placement — LOCKED 2026-08-28": the
+// reviewer must see whether approving a citation right now would produce an
+// inline link or fall back to footer-only, computed fresh — never a stale
+// flag captured at enrichment time, since the body may have been hand-edited
+// since.
+//
 // Auth: Clerk JWT + workspace org-id check + EDITOR_ROLES (same gate as the
 // enrich/decide routes — citations are part of the same content-moderation
 // surface as approve/publish, not a general read).
@@ -18,6 +27,7 @@ export const config = { runtime: 'nodejs' }
 import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
+import { willInlineLink } from '../../_lib/citations/quoteMatch.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -62,6 +72,27 @@ export default async function handler(req, res) {
     console.error(`[content-items/citations-list] fetch failed ${r.status}`)
     return res.status(500).json({ error: 'fetch_failed' })
   }
-  const citations = await r.json()
+  const rows = await r.json()
+  if (rows.length === 0) return res.status(200).json({ citations: [] })
+
+  // Read the CURRENT body once, fresh, so every row's willInlineLink reflects
+  // this exact moment — not a flag from whenever enrichment ran. Fails open
+  // to an empty body on a read hiccup: every quote then correctly reads as
+  // "not found" (count 0), which is the safe footer-only degrade, not a crash.
+  const itemRes = await sb(
+    `content_items?id=eq.${encodeURIComponent(id)}&workspace_id=eq.${encodeURIComponent(ws.id)}&select=content&limit=1`,
+  )
+  let currentBody = ''
+  if (itemRes.ok) {
+    const itemRows = await itemRes.json()
+    currentBody = String(itemRows?.[0]?.content || '')
+  } else {
+    console.error(`[content-items/citations-list] content fetch failed ${itemRes.status}`)
+  }
+
+  const citations = rows.map((c) => ({
+    ...c,
+    willInlineLink: willInlineLink(currentBody, c.claim_quote),
+  }))
   return res.status(200).json({ citations })
 }
