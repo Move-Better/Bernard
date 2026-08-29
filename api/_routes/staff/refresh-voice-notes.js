@@ -6,19 +6,22 @@
 // actually edited the draft), asks an AI to summarize the consistent patterns,
 // and saves the result to clinicians.voice_notes.
 //
-// Manual trigger only (clinician profile button). Cheap to re-run — uses one
-// AI call per refresh.
+// Two triggers, ONE implementation: this manual button (clinician profile) and
+// the automatic on-approve path in api/_routes/db/content.js both call
+// refreshVoiceNotes() from api/_lib/voiceNotesRefresh.js. The analysis, the
+// thresholds, and the persist all live there so the two callers cannot drift.
+// This route keeps the auth + self/admin gate and maps the result to HTTP.
+// The button passes force:true so a clinician can always refresh right now,
+// bypassing the cooldown the approve path respects.
 export const config = { runtime: 'nodejs', maxDuration: 60 }
 
-import { generateText } from 'ai'
+import { refreshVoiceNotes } from '../../_lib/voiceNotesRefresh.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
-const MAX_PAIRS = 12       // most recent edit pairs to analyze
-const MIN_PAIRS = 3        // minimum needed before we even try
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -35,37 +38,6 @@ function sb(path, init = {}) {
 
 const ok  = (res, data, status = 200) => res.status(status).json(data)
 const err = (res, msg, status = 400)  => res.status(status).json({ error: msg })
-
-function buildAnalysisPrompt(staffName, workspaceName, editPairs) {
-  const examples = editPairs
-    .map((p, i) => `### EXAMPLE ${i + 1} — ${p.platform} post on ${p.topic}
-
-AI ORIGINAL:
-${p.ai_original_content}
-
-WHAT ${staffName.toUpperCase()} CHANGED IT TO:
-${p.content}
-`)
-    .join('\n')
-
-  return `You are analyzing how a clinician at ${workspaceName} edits AI-generated content drafts. Identify the consistent patterns in how they revise drafts — things they routinely cut, add, rephrase, or restructure.
-
-Your output will be injected directly into future prompts as guidance, so:
-- Write actionable rules, not observations ("Cut hedging phrases like 'we believe'" — not "Tends to remove hedging phrases")
-- 3 to 6 bullet points, one short line each
-- Skip anything that only happened once or twice — only include patterns you see repeated across multiple examples
-- Skip generic writing advice ("be specific," "use active voice") — only call out patterns SPECIFIC to this clinician's voice
-- Skip stylistic preferences too vague to act on ("more conversational tone")
-- If there are not enough consistent patterns to be useful, return the single line: "NO CLEAR PATTERN"
-
-OUTPUT FORMAT — your full response must be just the bulleted rules, nothing else. No preamble, no commentary, no markdown headers.
-
-EDIT EXAMPLES:
-
-${examples}
-
-Now write the rules.`
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return err(res, 'Method not allowed', 405)
@@ -97,78 +69,39 @@ export default async function handler(req, res) {
   const isSelf = staffMember.user_id && staffMember.user_id === auth.userId
   if (!isSelf && auth.role !== 'admin') return err(res, 'forbidden', 403)
 
-  // Pull recent content_items where the clinician edited the AI draft.
-  // We compare in JS rather than via a PostgREST filter because content
-  // can be long and PostgREST `neq` on text columns is brittle.
-  const itemsRes = await sb(
-    `content_items?staff_id=eq.${staffId}&${wsFilter}` +
-    `&select=platform,topic,content,ai_original_content` +
-    `&ai_original_content=not.is.null` +
-    `&order=created_at.desc&limit=40`
-  )
-  if (!itemsRes.ok) return err(res, 'Database error', 500)
-  const items = await itemsRes.json()
+  // force:true — this is the explicit "refresh now" button, so it bypasses the
+  // cooldown the automatic on-approve trigger respects.
+  const result = await refreshVoiceNotes({
+    sb,
+    staffId,
+    wsFilter,
+    workspaceName: ws.display_name,
+    force: true,
+  })
 
-  const editPairs = items
-    .filter((it) =>
-      it.ai_original_content &&
-      it.content &&
-      it.ai_original_content.trim() !== it.content.trim()
-    )
-    .slice(0, MAX_PAIRS)
+  if (!result.ok) {
+    const status = result.reason === 'ai_analysis_failed' ? 500
+      : result.reason === 'staff_not_found' ? 404
+      : 500
+    return err(res, result.reason === 'ai_analysis_failed' ? 'ai_analysis_failed' : 'Database error', status)
+  }
 
-  if (editPairs.length < MIN_PAIRS) {
-    // Save a marker so the UI can show "need more edits" instead of looking broken
-    await sb(`staff?id=eq.${staffId}&${wsFilter}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        voice_notes: null,
-        voice_notes_refreshed_at: new Date().toISOString(),
-        voice_notes_edits_analyzed: editPairs.length,
-      }),
-    })
+  // Preserve this route's original response shape — VoiceNotesPanel reads
+  // edits_analyzed / voice_notes / reason / pairs_found / pairs_required.
+  if (result.reason === 'insufficient_pairs') {
     return ok(res, {
       ok: true,
-      edits_analyzed: editPairs.length,
+      edits_analyzed: result.edits_analyzed,
       voice_notes: null,
       reason: 'insufficient_pairs',
-      pairs_found: editPairs.length,
-      pairs_required: MIN_PAIRS,
+      pairs_found: result.edits_analyzed,
+      pairs_required: result.pairs_required,
     })
   }
-
-  const systemPrompt = buildAnalysisPrompt(staffMember.name, ws.display_name, editPairs)
-
-  let analysisText
-  try {
-    const result = await generateText({
-      model: 'anthropic/claude-sonnet-4-6',
-      instructions: systemPrompt,
-      messages: [{ role: 'user', content: 'Analyze the edits and write the rules now.' }],
-      maxOutputTokens: 600,
-    })
-    analysisText = (result.text || '').trim()
-  } catch (e) {
-    console.error('[clinicians/refresh-voice-notes] AI call failed:', e.message)
-    return err(res, 'ai_analysis_failed', 500)
-  }
-
-  // "NO CLEAR PATTERN" means the AI found nothing actionable
-  const voiceNotes = /^NO CLEAR PATTERN/i.test(analysisText) ? null : analysisText
-
-  const patchRes = await sb(`staff?id=eq.${staffId}&${wsFilter}`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      voice_notes: voiceNotes,
-      voice_notes_refreshed_at: new Date().toISOString(),
-      voice_notes_edits_analyzed: editPairs.length,
-    }),
-  })
-  if (!patchRes.ok) return err(res, 'Database error', 500)
 
   return ok(res, {
     ok: true,
-    edits_analyzed: editPairs.length,
-    voice_notes: voiceNotes,
+    edits_analyzed: result.edits_analyzed,
+    voice_notes: result.voice_notes,
   })
 }

@@ -17,6 +17,7 @@ import { indexContentItem } from '../../_lib/practiceMemoryRag.js'
 import { syncAtomSchedule } from '../../_lib/atomSchedule.js'
 import { computeEditDiff } from '../../_lib/editDiffMining.js'
 import { blogApprovalImpliesWords } from '../../_lib/blogApprovalImpliesWords.js'
+import { refreshVoiceNotes } from '../../_lib/voiceNotesRefresh.js'
 import { waitUntil } from '@vercel/functions'
 import { uuid, uuidCoerced, isoDateOrTimestamp } from '../../_lib/requestSchemas/primitives.js'
 import {
@@ -550,6 +551,30 @@ export default async function handler(req, res) {
             body: JSON.stringify({ edit_diff: editDiff }),
           }).catch((e) => console.error('[db/content] edit_diff persist failed:', e?.message))
         )
+
+        // Edit-learning loop (Q, 2026-08-29). The analyzer that turns "what the
+        // clinician changed" into staff.voice_notes — which ARE read by the
+        // generation prompts (src/lib/prompts.js) — shipped as a manual button
+        // and had never run once: 0 of 20 staff had voice notes while 15 of 21
+        // movebetter blogs had been genuinely edited before approval. Fire it
+        // here, where we already know a human rewrote the draft.
+        //
+        // Guarded three ways so this can't become a per-approve AI bill: only
+        // when the draft was actually edited (this branch), only with a staff
+        // row to attribute it to, and only once per cooldown window (the lib's
+        // shouldRefreshVoiceNotes). waitUntil so a slow model call can never
+        // delay the approve response — the same discipline as the enrichment
+        // calls above.
+        if (updated.staff_id) {
+          waitUntil(
+            refreshVoiceNotes({
+              sb,
+              staffId: updated.staff_id,
+              wsFilter,
+              workspaceName: ws.display_name,
+            }).catch((e) => console.error('[db/content] voice-notes refresh failed:', e?.message))
+          )
+        }
       }
     } else if (updated && patch.status === 'in_review' && patch.notes?.trim() && updated.content?.trim()) {
       // Change request returned — mild negative signal on the rejected draft.
