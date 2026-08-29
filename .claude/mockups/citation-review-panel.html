@@ -9,6 +9,7 @@
     --card: 0 0% 100%; --muted: 220 14% 96%; --muted-foreground: 215 19% 34%;
     --border: 214 32% 91%; --success: 152 76% 40%; --action: 32 95% 44%;
     --destructive: 0 84% 60%; --primary: 186 83% 27%; --info: 199 95% 40%;
+    --scheduled: 262 83% 58%; --action-foreground: 0 0% 100%; --warning: 38 92% 50%;
     --radius: 0.625rem;
   }
   @media (prefers-color-scheme: dark) {
@@ -25,6 +26,11 @@
     --border: 220 13% 22%; --success: 152 60% 50%; --action: 32 85% 55%;
     --destructive: 0 70% 55%; --primary: 186 65% 45%; --info: 199 80% 55%;
   }
+  /* --scheduled (violet-600 #7c3aed) carries no dark-mode override in the real
+     src/index.css, so it's intentionally absent from both dark blocks above —
+     this mockup uses the same single value in both themes, matching source. */
+  @keyframes cite-spin { to { transform: rotate(360deg); } }
+  .spin-icon { animation: cite-spin 1s linear infinite; transform-origin: center; }
   * { box-sizing: border-box; }
   body { margin: 0; background: hsl(var(--background)); color: hsl(var(--foreground));
     font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
@@ -52,6 +58,20 @@
   .btn-reject { border-color: hsl(var(--destructive)/.35); color: hsl(var(--destructive)); }
   .btn-reject:hover { background: hsl(var(--destructive)/.08); }
 
+  /* Re-check / Checking: the feature's own accent (violet — same family as
+     --scheduled, "content in a queued/processing state"), distinct from both
+     bernard-primary teal and the info-blue peer-reviewed chip. */
+  .btn-recheck { border-color: hsl(var(--scheduled)/.35); color: hsl(var(--scheduled)); }
+  .btn-recheck:hover { background: hsl(var(--scheduled)/.10); }
+  .btn-checking { border-color: hsl(var(--scheduled)/.3); color: hsl(var(--scheduled)); background: hsl(var(--scheduled)/.08); }
+
+  /* Find supporting research: a real act-now CTA (solid amber fill, matching
+     the app's existing "Do this now" pattern) rather than another outlined
+     ghost button — it's the one actionable thing in an otherwise empty row. */
+  .btn-cta { border-color: transparent; background: hsl(var(--action)); color: hsl(var(--action-foreground)); }
+  .btn-cta:hover { filter: brightness(0.94); }
+  .collapsible-toggle.cta-link { color: hsl(var(--action)); font-weight: 700; }
+
   .empty-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px dashed hsl(var(--border)); border-radius: 10px; background: hsl(var(--muted)/.4); }
   .empty-text { font-size: 12px; color: hsl(var(--muted-foreground)); }
 
@@ -61,19 +81,26 @@
   .cite-claim .q-mark { opacity: .5; }
   .cite-source-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
   .cite-source { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .cite-title { font-size: 13.5px; font-weight: 700; color: hsl(var(--primary)); text-decoration: none; display: flex; align-items: center; gap: 5px; }
+  .cite-title { font-size: 13.5px; font-weight: 700; color: hsl(var(--scheduled)); text-decoration: none; display: flex; align-items: center; gap: 5px; }
   .cite-title svg { flex: none; width: 12px; height: 12px; opacity: .6; }
   .cite-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .tier-chip { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: 2px 7px; border-radius: 999px; }
   .tier-peer { background: hsl(var(--info)/.12); color: hsl(var(--info)); }
-  .tier-inst { background: hsl(var(--primary)/.10); color: hsl(var(--primary)); }
+  .tier-inst { background: hsl(var(--success)/.10); color: hsl(var(--success)); }
   .tier-guide { background: hsl(var(--action)/.12); color: hsl(var(--action)); }
   .tier-healthed { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
   .confidence { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: hsl(var(--muted-foreground)); flex: none; }
   .conf-bar { width: 40px; height: 4px; border-radius: 999px; background: hsl(var(--muted)); overflow: hidden; }
   .conf-fill { height: 100%; background: hsl(var(--success)); }
   .cite-why { font-size: 12px; color: hsl(var(--foreground)); background: hsl(var(--muted)/.5); border-radius: 7px; padding: 7px 9px; line-height: 1.45; }
-  .cite-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .cite-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  /* Per-citation outcome indicator — live-checked at render time against the
+     CURRENT body (not a stale flag from enrichment). Tells the reviewer which
+     of the two locked outcomes approving this will produce. */
+  .link-outcome { display: flex; align-items: center; gap: 5px; font-size: 11px; line-height: 1.3; }
+  .link-outcome svg { flex: none; width: 12px; height: 12px; }
+  .link-outcome.ok { color: hsl(var(--success)); }
+  .link-outcome.warn { color: hsl(var(--warning)); }
 
   .decided-list { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
   .decided-row { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 6px 9px; border-radius: 8px; }
@@ -118,7 +145,7 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
             Suggested research citations (2)
           </div>
-          <button class="btn btn-ghost">
+          <button class="btn btn-recheck">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
             Re-check
           </button>
@@ -144,14 +171,20 @@
           </div>
           <div class="cite-why">Why it matches: the abstract directly states that MRI findings such as disc bulges are common in people with no back pain at all, supporting the claim that imaging doesn&rsquo;t reliably track symptoms.</div>
           <div class="cite-actions">
-            <button class="btn btn-reject">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
-              Reject
-            </button>
-            <button class="btn btn-approve">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
-              Approve &amp; link
-            </button>
+            <div class="link-outcome ok">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+              Will link inline + Further reading
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-reject">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                Reject
+              </button>
+              <button class="btn btn-approve">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                Approve &amp; link
+              </button>
+            </div>
           </div>
         </div>
 
@@ -175,14 +208,20 @@
           </div>
           <div class="cite-why">Why it matches: the page recommends staying active and gradually resuming normal activities rather than extended bed rest, matching the claim's recommendation.</div>
           <div class="cite-actions">
-            <button class="btn btn-reject">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
-              Reject
-            </button>
-            <button class="btn btn-approve">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
-              Approve &amp; link
-            </button>
+            <div class="link-outcome warn" title="The exact sentence this was matched to has changed since this suggestion was generated — approving still adds the source to Further reading, it just won't be linked inline.">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
+              Text changed since suggested &mdash; Further reading only
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-reject">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                Reject
+              </button>
+              <button class="btn btn-approve">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                Approve &amp; link
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -203,7 +242,7 @@
         <div class="decided-list">
           <div class="decided-row is-approved">
             <svg class="decided-icon approved" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
-            <span class="decided-title">What is the role of imaging in acute low back pain? &mdash; will publish as a link</span>
+            <span class="decided-title">What is the role of imaging in acute low back pain? &mdash; linked inline + in Further reading</span>
             <span class="decided-who">You &middot; 2m ago</span>
           </div>
           <div class="decided-row is-rejected">
@@ -212,7 +251,7 @@
             <span class="decided-who">You &middot; 2m ago</span>
           </div>
         </div>
-        <button class="collapsible-toggle">Find more research for this post &rarr;</button>
+        <button class="collapsible-toggle cta-link">Find more research for this post &rarr;</button>
       </div>
     </div>
   </div>
@@ -224,7 +263,7 @@
       <div class="citations-panel" style="margin-top:12px">
         <div class="empty-row">
           <span class="empty-text">Checked for supporting research &mdash; nothing in this post needed a citation.</span>
-          <button class="btn btn-ghost">
+          <button class="btn btn-recheck">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
             Re-check
           </button>
@@ -240,7 +279,7 @@
       <div class="citations-panel" style="margin-top:12px">
         <div class="empty-row">
           <span class="empty-text">No research citations checked yet for this post.</span>
-          <button class="btn">
+          <button class="btn btn-cta">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
             Find supporting research
           </button>
@@ -256,8 +295,8 @@
       <div class="citations-panel" style="margin-top:12px">
         <div class="empty-row">
           <span class="empty-text">Checking PubMed, Semantic Scholar, and the web for real sources&hellip; this can take a minute.</span>
-          <button class="btn" disabled style="opacity:.6;cursor:default">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          <button class="btn btn-checking" disabled>
+            <svg class="spin-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
             Checking&hellip;
           </button>
         </div>
@@ -266,14 +305,13 @@
   </div>
 
   <div class="legend">
-    <h3>Design notes / open questions for sign-off</h3>
+    <h3>Design notes (both open questions resolved 2026-08-28)</h3>
     <ul>
       <li><b>Placement:</b> inside <code>ApprovalPanel</code>, gated on <code>piece.platform === 'blog'</code> (covers series parts too &mdash; they're <code>platform:'blog'</code> with <code>series_id</code> set). Shown regardless of draft/approved status, per the spec ("before Approve/Schedule/Publish").</li>
       <li><b>Tier chips</b> map 1:1 to <code>allowlist.js</code>'s <code>CITATION_SOURCE_TIERS</code> &mdash; Peer-reviewed / Major institution / Professional guidelines / Health-ed. Not decorative.</li>
-      <li><b>Confidence bar</b> is the judge's real <code>confidence</code> (0&ndash;1), never a fabricated/rounded display value beyond formatting as a percentage.</li>
+      <li><b>Confidence bar</b> is the judge's real <code>confidence</code> (0&ndash;1), never a fabricated/rounded display value beyond formatting as a percentage. <b>Resolved:</b> Q confirmed this is useful, not noise &mdash; kept as-is.</li>
       <li><b>Rejected rows stay visible</b> (struck through, muted) rather than disappearing &mdash; the spec calls this an audit trail, and a reviewer should be able to see "yes, I already looked at that one and said no."</li>
-      <li><b>Open question for Q:</b> should "Approve &amp; link" show WHERE in the post the link will land (inline vs. a "Further reading" footer list)? This build inserts approved citations as a footer list (see PR description) rather than attempting fragile inline substring-matching into voice-fidelity prose &mdash; flagging this as a judgment call, not a locked decision.</li>
-      <li><b>Open question for Q:</b> is a confidence percentage useful to a clinician reviewer, or just visual noise? Easy to drop if it doesn't earn its place.</li>
+      <li><b>Resolved &mdash; link placement:</b> both. Inline in the body at the exact sentence, AND in the "Further reading" footer &mdash; Q: "the redundancy adds clarity." Approving still can't corrupt hand-edited prose: inlining only happens on an exact, single-occurrence match of the source quote against the CURRENT body, re-checked live (not from enrichment time). When the quote has drifted or gone ambiguous, it degrades to footer-only for that one citation rather than guessing &mdash; the small badge above each card's action row (green check vs. amber warning) is that live check, shown to the reviewer BEFORE they approve. See <code>.claude/blog-research-citations-spec.md</code>'s "Link placement" section for the full design.</li>
     </ul>
   </div>
 </div>

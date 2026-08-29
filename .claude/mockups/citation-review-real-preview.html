@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Real pipeline run — Knee Pain Differential Diagnostics</title>
+<style>
+  :root {
+    --background: 0 0% 100%; --foreground: 222 47% 8%;
+    --card: 0 0% 100%; --muted: 220 14% 96%; --muted-foreground: 215 19% 34%;
+    --border: 214 32% 91%; --success: 152 76% 40%; --action: 32 95% 44%;
+    --destructive: 0 84% 60%; --primary: 186 83% 27%; --info: 199 95% 40%;
+    --scheduled: 262 83% 58%; --action-foreground: 0 0% 100%; --warning: 38 92% 50%;
+    --radius: 0.625rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: 220 20% 7%; --foreground: 210 20% 96%;
+      --card: 220 16% 11%; --muted: 220 14% 16%; --muted-foreground: 215 15% 65%;
+      --border: 220 13% 22%; --success: 152 60% 50%; --action: 32 85% 55%;
+      --destructive: 0 70% 55%; --primary: 186 65% 45%; --info: 199 80% 55%;
+    }
+  }
+  :root[data-theme="dark"] {
+    --background: 220 20% 7%; --foreground: 210 20% 96%;
+    --card: 220 16% 11%; --muted: 220 14% 16%; --muted-foreground: 215 15% 65%;
+    --border: 220 13% 22%; --success: 152 60% 50%; --action: 32 85% 55%;
+    --destructive: 0 70% 55%; --primary: 186 65% 45%; --info: 199 80% 55%;
+  }
+  @keyframes cite-spin { to { transform: rotate(360deg); } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: hsl(var(--background)); color: hsl(var(--foreground));
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 32px 18px 60px; display: flex; flex-direction: column; gap: 26px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: 11px; font-weight: 700; color: hsl(var(--muted-foreground)); }
+  h1 { font-size: 20px; font-weight: 800; margin: 4px 0 4px; }
+  h2.section { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; margin: 0; color: hsl(var(--muted-foreground)); }
+  .sub { font-size: 13px; color: hsl(var(--muted-foreground)); margin: 0 0 4px; line-height: 1.55; }
+  code { background: hsl(var(--muted)); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+  .real-banner { border: 1.5px solid hsl(var(--success)/.4); background: hsl(var(--success)/.06); border-radius: 12px; padding: 14px 16px; font-size: 12.5px; line-height: 1.55; }
+  .real-banner b { color: hsl(var(--success)); }
+  .real-banner .meta { margin-top: 8px; font-size: 11.5px; color: hsl(var(--muted-foreground)); }
+  .real-banner .meta code { font-size: 11px; }
+
+  .finding-banner { border: 1.5px solid hsl(var(--warning)/.4); background: hsl(var(--warning)/.07); border-radius: 12px; padding: 14px 16px; font-size: 12.5px; line-height: 1.6; }
+  .finding-banner b { color: hsl(var(--warning)); }
+
+  .section-block { display: flex; flex-direction: column; gap: 10px; }
+
+  .scenario { border: 1px solid hsl(var(--border)); border-radius: var(--radius); padding: 16px; background: hsl(var(--card)); }
+
+  .status-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 3px 9px; font-size: 11px; font-weight: 700; background: hsl(var(--muted)); }
+  .citations-panel { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+  .citations-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .citations-title { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; }
+  .citations-title svg { color: hsl(var(--muted-foreground)); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; border-radius: 8px; padding: 6px 11px; border: 1px solid hsl(var(--border)); background: hsl(var(--background)); cursor: pointer; color: hsl(var(--foreground)); }
+  .btn-recheck { border-color: hsl(var(--scheduled)/.35); color: hsl(var(--scheduled)); }
+  .btn-approve { border-color: hsl(var(--success)/.4); color: hsl(var(--success)); }
+  .btn-reject { border-color: hsl(var(--destructive)/.35); color: hsl(var(--destructive)); }
+
+  .cite-card { border: 1px solid hsl(var(--border)); border-radius: 10px; padding: 12px 13px; background: hsl(var(--background)); display: flex; flex-direction: column; gap: 8px; }
+  .cite-claim { font-size: 12.5px; color: hsl(var(--muted-foreground)); }
+  .cite-claim b { color: hsl(var(--foreground)); font-weight: 600; }
+  .cite-source-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .cite-source { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .cite-title { font-size: 13.5px; font-weight: 700; color: hsl(var(--scheduled)); text-decoration: none; display: flex; align-items: center; gap: 5px; }
+  .cite-title svg { flex: none; width: 12px; height: 12px; opacity: .6; }
+  .cite-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .tier-chip { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: 2px 7px; border-radius: 999px; }
+  .tier-peer { background: hsl(var(--info)/.12); color: hsl(var(--info)); }
+  .confidence { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: hsl(var(--muted-foreground)); flex: none; }
+  .conf-bar { width: 40px; height: 4px; border-radius: 999px; background: hsl(var(--muted)); overflow: hidden; }
+  .conf-fill { height: 100%; background: hsl(var(--success)); }
+  .cite-why { font-size: 12px; color: hsl(var(--foreground)); background: hsl(var(--muted)/.5); border-radius: 7px; padding: 7px 9px; line-height: 1.45; }
+  .cite-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .link-outcome { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+  .link-outcome svg { flex: none; width: 12px; height: 12px; }
+  .link-outcome.ok { color: hsl(var(--success)); }
+
+  .post-excerpt { border: 1px solid hsl(var(--border)); border-radius: var(--radius); padding: 18px 20px; background: hsl(var(--card)); font-size: 14px; line-height: 1.7; }
+  .post-excerpt .label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: hsl(var(--muted-foreground)); margin-bottom: 10px; }
+  .post-excerpt.before { color: hsl(var(--muted-foreground)); }
+  .post-excerpt.before b { color: hsl(var(--foreground)); }
+  a.inline-cite { color: hsl(var(--scheduled)); font-weight: 600; text-decoration: underline; text-decoration-color: hsl(var(--scheduled)/.4); text-underline-offset: 2px; }
+
+  .footer-render { border: 1px dashed hsl(var(--border)); border-radius: var(--radius); padding: 16px 20px; background: hsl(var(--muted)/.3); font-size: 13.5px; }
+  .footer-render h3 { font-size: 15px; margin: 0 0 8px; }
+  .footer-render a { color: hsl(var(--scheduled)); font-weight: 600; }
+
+  .legend { border: 1px dashed hsl(var(--border)); border-radius: 12px; padding: 14px 16px; }
+  .legend h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: hsl(var(--muted-foreground)); }
+  .legend ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+  .legend li { font-size: 12.5px; line-height: 1.5; }
+  .legend b { font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Real pending blog &middot; real pipeline run &middot; no synthetic data</p>
+  <h1>What this looks like on an actual unpublished Move Better post</h1>
+  <p class="sub">
+    Not a mock. This is <b>Phase 1's already-shipped retrieval + verification code</b>
+    (<code>runCitationEnrichment</code>, the real PubMed/Semantic Scholar/web
+    clients, the real judge model) run live against a real, currently
+    <b>approved-but-unpublished</b> blog in the movebetter workspace &mdash; no
+    database writes were made; this is a read-only preview of what "Find
+    supporting research" would produce.
+  </p>
+
+  <div class="real-banner">
+    <b>&#10003; Real content, real API calls, real result.</b> Ran against
+    content_item <code>90859146-2dd1-4d97-8401-cb44ede5e20f</code>,
+    &ldquo;Knee Pain Differential Diagnostics&rdquo; (status: <code>approved</code>,
+    never published, 9,067 characters). 3 claims were extracted; PubMed +
+    Semantic Scholar + web search returned candidates for each; the judge
+    model evaluated every candidate's REAL fetched content. 1 of 4 retrieved
+    sources survived verification &mdash; the other 3 are shown below too, with
+    their real rejection reasons.
+    <div class="meta">Semantic Scholar 429'd on the anonymous tier for all 3 claims (no <code>SEMANTIC_SCHOLAR_API_KEY</code> configured) &mdash; expected, and isolated per the pipeline's per-source failure handling; PubMed + web search still ran.</div>
+  </div>
+
+  <div class="section-block">
+    <h2 class="section">1&#41; The review panel this post would show right now</h2>
+    <div class="scenario">
+      <span class="status-badge">Approved &middot; unpublished</span>
+      <div class="citations-panel">
+        <div class="citations-head">
+          <div class="citations-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            Suggested research citations (1)
+          </div>
+          <button class="btn btn-recheck">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            Re-check
+          </button>
+        </div>
+
+        <div class="cite-card">
+          <div class="cite-claim"><span style="opacity:.5">&ldquo;</span><b>Knee valgus (inward tracking) during hip hinging increases force accumulation on the medial (inside) knee structures</b><span style="opacity:.5">&rdquo;</span></div>
+          <div class="cite-source-row">
+            <div class="cite-source">
+              <a class="cite-title" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7304256/" target="_blank" rel="noopener">
+                Frontal Plane Loading Characteristics of Medial Collateral Ligament Strain Concurrent to Anterior Cruciate Ligament Failure
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+              </a>
+              <div class="cite-meta">
+                <span class="tier-chip tier-peer">Peer-reviewed</span>
+                <span style="font-size:11px;color:hsl(var(--muted-foreground))">pmc.ncbi.nlm.nih.gov</span>
+              </div>
+            </div>
+            <div class="confidence">
+              <span>72%</span>
+              <div class="conf-bar"><div class="conf-fill" style="width:72%"></div></div>
+            </div>
+          </div>
+          <div class="cite-why">Why it matches (the real judge's actual output, verbatim): &ldquo;The source confirms that dynamic knee valgus (knee abduction moment) increases strain on medial knee structures including both the ACL and MCL, supporting the claim that knee valgus increases force accumulation on medial knee structures, though the study specifically examines landing tasks rather than hip hinging.&rdquo;</div>
+          <div class="cite-actions">
+            <div class="link-outcome ok">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+              Will link inline + Further reading
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-reject">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                Reject
+              </button>
+              <button class="btn btn-approve">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                Approve &amp; link
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <h2 class="section">2&#41; If you click Approve &mdash; the actual post, before / after</h2>
+    <p class="sub">The exact sentence the claim was drawn from appears <b>exactly once, verbatim</b>, in the real post body &mdash; confirmed by direct string match, not assumed. That's what makes inline linking safe here.</p>
+    <div class="post-excerpt before">
+      <div class="label">Before (as it reads today)</div>
+      &hellip;<b>When the knee tracks inward, more force accumulates on the inside of the knee.</b> If you have a ligament irritation there, that repetitive stress makes it hard for the area to heal.
+
+      So we want two things: keep the pelvis more stable as you&hellip;
+    </div>
+    <div class="post-excerpt">
+      <div class="label">After approving</div>
+      &hellip;<a class="inline-cite" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7304256/" target="_blank" rel="noopener">When the knee tracks inward, more force accumulates on the inside of the knee.</a> If you have a ligament irritation there, that repetitive stress makes it hard for the area to heal.
+
+      So we want two things: keep the pelvis more stable as you&hellip;
+    </div>
+    <div class="footer-render">
+      <h3>Further reading</h3>
+      &bull; <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7304256/" target="_blank" rel="noopener">Frontal Plane Loading Characteristics of Medial Collateral Ligament Strain Concurrent to Anterior Cruciate Ligament Failure</a>
+    </div>
+  </div>
+
+  <div class="section-block">
+    <h2 class="section">3&#41; The 3 candidates that did NOT make it &mdash; also real, shown for transparency</h2>
+    <div class="scenario" style="opacity:.85">
+      <ul style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.7;color:hsl(var(--muted-foreground))">
+        <li><b style="color:hsl(var(--foreground))">Chronic pain / tissue healing claim</b> &mdash; NIH source found, but its real content discussed acute-vs-chronic pain definitions generally, not the specific claim. Judge: not supported.</li>
+        <li><b style="color:hsl(var(--foreground))">Same knee-valgus claim, 2 more PubMed URLs</b> &mdash; both real, correct PMIDs from web search, but fetching <code>pubmed.ncbi.nlm.nih.gov</code> abstract pages returned a cookie-consent page instead of the abstract. Judge correctly refused to treat a cookie notice as evidence.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="finding-banner">
+    <b>A real, specific bug found by this exact run — fixed 2026-08-29:</b>
+    every <code>pubmed.ncbi.nlm.nih.gov/&lt;pmid&gt;/</code> URL surfaced by web
+    search failed verification because fetching it returns a cookie-consent
+    interstitial, not the abstract &mdash; on THIS post and on the other pending
+    post run at the same time (a full run against &ldquo;Why stretching and
+    massage are not fixing your pain&rdquo; found 0 citations for exactly this
+    reason, 6/6 real PubMed candidates rejected as unreadable). The accepted
+    citation above worked because it happened to be a
+    <code>pmc.ncbi.nlm.nih.gov</code> full-text URL, which fetches cleanly.
+    Fix shipped: when a candidate's URL matches
+    <code>pubmed.ncbi.nlm.nih.gov/(\d+)</code>, re-fetch its abstract via the
+    same E-utilities <code>efetch</code> call <code>searchPubMed</code> already
+    uses, instead of scraping the HTML page — see
+    <code>api/_lib/citations/pubmedClient.js</code>'s
+    <code>fetchPubmedAbstractByPmid</code>, wired into
+    <code>verify.js</code>'s <code>fetchCandidateContent</code>. Separately
+    fixed: retrieved web URLs carried a <code>?utm_source=openai</code>
+    tracking param, now stripped in <code>webSearchClient.js</code> before a
+    citation URL is ever stored or shown.
+  </div>
+
+  <div class="legend">
+    <h3>What's mechanical here vs. what's a real model call</h3>
+    <ul>
+      <li><b>Real model/API calls:</b> claim extraction (Haiku), PubMed search, web search, the verify/judge call on each candidate's real fetched content. Nothing here was written by me.</li>
+      <li><b>Mechanical, shipped in production 2026-08-29:</b> the before/after inline-link rendering and the Further reading footer above are now produced by <code>api/_lib/citations/insertCitations.js</code>'s <code>insertApprovedCitations</code> itself, applying the exact locked algorithm from <code>.claude/blog-research-citations-spec.md</code> — not a hand-simulated approximation, the real shipped function.</li>
+      <li><b>Not done in this run:</b> no row was written to <code>blog_citations</code>; nothing was approved, rejected, or published. This was a read-only preview at the time it was captured.</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

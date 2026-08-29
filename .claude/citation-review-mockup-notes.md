@@ -1,11 +1,13 @@
-# Citation review panel — mockup notes (DRAFT, pending Q's sign-off)
+# Citation review panel — mockup notes
 
-Mockup: `.claude/mockups/citation-review-panel.html`. Built to my best judgment
-against `.claude/blog-research-citations-spec.md` since no live human was
-available to sign off in this session — **treat this as a draft**, not a
-locked design. The React component (`src/components/CitationReviewPanel.jsx`)
-follows this mockup closely so it can be swapped/restyled cheaply once Q has
-actually looked at it.
+Mockup: `.claude/mockups/citation-review-panel.html`. Originally built to my
+best judgment (no live human available to sign off in that session); Q has
+since reviewed it live and both open questions below are resolved. Two rounds
+of feedback applied on top of the original: (1) more color — the panel leaned
+too heavily on Bernard's own product blue, which "falls flat" in a review UI
+that should feel distinct from app chrome; (2) the two design questions,
+answered below. `src/components/CitationReviewPanel.jsx` has been updated to
+match both rounds (2026-08-29 — see the "Shipped" section below).
 
 ## What it is
 
@@ -48,20 +50,30 @@ status, per the spec's "before Approve/Schedule/Publish."
 - **Rejected rows stay visible** (struck through, muted, "who decided" shown)
   rather than disappearing on decision, matching the audit-trail requirement.
 
-## Open questions flagged IN the mockup for Q (unresolved judgment calls)
+## Resolved — Q's answers (2026-08-28)
 
-1. **Where does an approved citation land in the published post?** This
-   build inserts approved citations as a "Further reading" list appended
-   after the body (see `api/_lib/citations/insertCitations.js`, Phase 4)
-   rather than attempting inline substring-matching into voice-fidelity
-   prose, which is fragile (the model may have rephrased the claim's exact
-   wording by the time a citation is approved) and risks corrupting content
-   this whole project treats as sacred (see CLAUDE.md's voice-fidelity
-   doctrine). This is a judgment call I made given the ambiguity in the
-   spec's "inserted with descriptive anchor text" language — flagging it
-   explicitly rather than presenting it as settled.
+1. **Where does an approved citation land in the published post?** — **Both.**
+   Hyperlinked inline in the body, at the exact sentence it supports, AND
+   listed again in the "Further reading" footer with its own link. Q: "The
+   redundancy adds clarity." This overrides Phase 4's footer-only ship
+   (`api/_lib/citations/insertCitations.js`), which deliberately avoided
+   inline insertion because the extracted `quote` can go stale if the body is
+   hand-edited between enrichment and approval (voice-fidelity prose is
+   treated as sacred in this codebase — see CLAUDE.md). That risk is real and
+   Q's answer doesn't remove it, so the locked design in
+   `.claude/blog-research-citations-spec.md` ("Link placement" section) keeps
+   the safety property: inline insertion only happens on an EXACT,
+   case-sensitive, single-occurrence substring match checked fresh at publish
+   time; anything else (quote drifted, quote now ambiguous/repeated)
+   gracefully degrades to footer-only for that one citation rather than
+   guessing. The review panel needs a live per-citation indicator of which
+   outcome the reviewer is about to get — mocked as a small state note under
+   the source row (see the updated mockup); wired to the real, live
+   `willInlineLink` field as of 2026-08-29 (below).
 2. **Is a confidence percentage useful to a clinician reviewer, or noise?**
-   Easy to drop from the card if Q says it doesn't earn its place.
+   — **Keep it.** Q: "Confidence is very useful." No changes needed here —
+   the confidence bar was already reading the judge's real `confidence`
+   field, not a decorative value.
 
 ## What's NOT mocked
 
@@ -73,10 +85,36 @@ status, per the spec's "before Approve/Schedule/Publish."
   fixed widths, so it should reflow fine, but this needs a real device/viewport
   check before calling it done, not just an assumption.
 
-## Status
+## Shipped (2026-08-29)
 
-**Backend (Phases 1-2, the retrieval/verification/storage/API layer) does
-NOT depend on this mockup being finalized** and should be treated as fully
-shipped and correct regardless of how the UI evolves. The UI (Phase 3, this
-mockup + its React implementation) is the one piece of this feature that
-explicitly wants a human design pass before being called final.
+Both rounds of feedback are now live in `src/components/CitationReviewPanel.jsx`:
+
+- **Color pass:** citation title links + the "Re-check"/"Checking…" controls
+  moved from `--primary` (Bernard's product blue) to `--scheduled` (violet —
+  "content in a queued/processing state," a real token already used
+  elsewhere, not invented for this). The "Major institution" tier chip moved
+  from `--primary` to `--success` (green). "Find supporting research" (the
+  first-ever check on a post) is now a solid `--action` (amber) CTA, matching
+  this project's established "act now" pattern; the "Find more research for
+  this post →" affordance is now a real clickable amber link, not static text.
+- **Live outcome indicator:** each suggested citation card now shows a
+  green-check "Will link inline + Further reading" row or an amber-warning
+  "Text changed since suggested — Further reading only" row, sourced from the
+  `willInlineLink` boolean `api/_routes/content-items/citations-list.js`
+  computes fresh on every read (never a stale enrichment-time flag) — see
+  `api/_lib/citations/quoteMatch.js`, the one shared implementation of the
+  exact-match rule behind both this indicator and the actual publish-time
+  insertion.
+- Backend Phases 1-2 (retrieval/verification/storage/API) and the inline+footer
+  insertion (`api/_lib/citations/insertCitations.js`) are fully shipped —
+  confirmed via `tests/lib/citationQuoteMatch.test.js` and
+  `tests/lib/citationInsertCitations.test.js`, mutation-tested by hand.
+- Separately, a real retrieval bug found while running the shipped pipeline
+  against real content is fixed — see the spec's "Known retrieval bug, fixed
+  2026-08-29" section (PubMed abstract pages returning a cookie-consent wall
+  to a plain fetch, plus stripping a `?utm_source=openai` tracking param from
+  every web-search result). The run that found it is preserved as
+  `.claude/mockups/citation-review-real-preview.html` — not a design mockup,
+  a record of the actual pipeline (no mocks) against two real pending Move
+  Better blogs, including the real judge output and the real before/after
+  post body for the one citation that survived verification.
