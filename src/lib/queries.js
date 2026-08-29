@@ -1559,6 +1559,12 @@ export function useUpdateContentItemStatus() {
       // the card keeps its stale state until a hard reload (feedback 79eb7eb1).
       qc.invalidateQueries({ queryKey: ['week-summary'] })
       qc.invalidateQueries({ queryKey: ['moments-summary'] })
+      // Approving a BLOG also stamps the parent story's words_approved_at
+      // server-side (Q, 2026-08-29 — see api/_lib/blogApprovalImpliesWords.js).
+      // EditorWorkflowBar reads that field through useInterview, so without
+      // this the cached interview keeps words_approved_at: null and the gate
+      // would still read as open on every other piece from the same story.
+      qc.invalidateQueries({ queryKey: queryKeys.interviews.all })
     },
   })
 }
