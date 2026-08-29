@@ -309,7 +309,17 @@ export default function EditorWorkflowBar({ piece, onBeforeCommit, renderingReel
   // so default to NOT blocking while the interview is still loading rather
   // than flash-disabling the button on every editor open.
   const { data: interview, isLoading: interviewLoading } = useInterview(piece?.interview_id)
-  const wordsGateBlocked = !interviewLoading && !!piece?.interview_id && !interview?.words_approved_at
+  // Blog collapses to ONE approval (Q, 2026-08-29): approving a blog article
+  // also marks the story's words approved server-side (see
+  // api/_lib/blogApprovalImpliesWords.js), so blog must never render the words
+  // gate as a separate step the clinician still owes. Showing a green
+  // "Approved" beside an amber "Approve the story's words first" is the exact
+  // contradiction Philip reported (feedback 3b7f432c). Social is unchanged —
+  // its 2-3 posts per story still share one words approval, which is where the
+  // separate check earns its keep.
+  const isBlogPiece = piece?.platform === 'blog'
+  const wordsGateBlocked =
+    !isBlogPiece && !interviewLoading && !!piece?.interview_id && !interview?.words_approved_at
 
   // Caption-length gate — same shape as the words gate above: the boundary is
   // the server (checkCaptionCap in api/_lib/socialLengthTargets.js, enforced on
@@ -501,7 +511,10 @@ export default function EditorWorkflowBar({ piece, onBeforeCommit, renderingReel
             title={captionOver > 0 ? `Shorten the caption by ${captionOver} characters to approve` : undefined}
           >
             {!wf.statusPending && !committing && <Check className="mr-1.5 h-3.5 w-3.5" />}
-            Approve
+            {/* Blog is one approval covering both the article and the story's
+                words, so name what's actually being confirmed. Social keeps the
+                plain "Approve" — its words check lives on the story screen. */}
+            {isBlogPiece && piece?.interview_id ? 'Approve — sounds like me' : 'Approve'}
           </Button>
           <RejectControl wf={wf} />
           <PublishControl wf={wf} piece={piece} enabled={false} publish={publish} busy={committing || wf.publishing} />

@@ -16,6 +16,7 @@ import { extractVoicePhrases } from '../../_lib/voicePhraseExtractor.js'
 import { indexContentItem } from '../../_lib/practiceMemoryRag.js'
 import { syncAtomSchedule } from '../../_lib/atomSchedule.js'
 import { computeEditDiff } from '../../_lib/editDiffMining.js'
+import { blogApprovalImpliesWords } from '../../_lib/blogApprovalImpliesWords.js'
 import { waitUntil } from '@vercel/functions'
 import { uuid, uuidCoerced, isoDateOrTimestamp } from '../../_lib/requestSchemas/primitives.js'
 import {
@@ -492,6 +493,49 @@ export default async function handler(req, res) {
           content:     updated.content,
         }))
       }
+      // Blog collapses to ONE approval (Q, 2026-08-29) — approving the article
+      // IS the story's words approval, because blog fans out 1:1 from its story
+      // and the clinician has just read the whole long-form piece. See
+      // api/_lib/blogApprovalImpliesWords.js for the full rationale and why it
+      // is blog-only. The hard publish gate (wordsApprovalGate.js) is untouched:
+      // this changes who SETS words_approved_at, never who may skip it.
+      //
+      // Only ever fills a NULL — never overwrites an existing approval, so an
+      // earlier approver keeps the credit and the summary-edit-clears-approval
+      // invariant (api/_routes/db/interviews.js) can't be quietly undone by a
+      // later blog approve. Awaited, not waitUntil'd: the client publishes off
+      // the back of this response, so a race would leave Publish disabled on a
+      // piece the server already considers cleared.
+      if (blogApprovalImpliesWords(updated, patch.status)) {
+        try {
+          const wRes = await sb(
+            `interviews?id=eq.${updated.interview_id}&workspace_id=eq.${ws.id}` +
+            `&words_approved_at=is.null`,
+            {
+              method: 'PATCH',
+              headers: { Prefer: 'return=minimal' },
+              body: JSON.stringify({
+                words_approved_at: new Date().toISOString(),
+                // Approver identity is ALWAYS server-derived, never taken from
+                // the request body — same rule as approved_by above and as the
+                // words screen's own approveWords path (db/interviews.js).
+                words_approved_by: auth.userId || null,
+              }),
+            },
+          )
+          if (!wRes.ok) {
+            console.error(
+              `[db/content] blog approve → words approval PATCH ${wRes.status} for interview=${updated.interview_id} ws=${ws.slug}`,
+            )
+          }
+        } catch (e) {
+          // Non-fatal: the piece is still approved. The clinician would meet
+          // the words gate at publish, which is the pre-existing behaviour —
+          // strictly no worse than before this change.
+          console.error(`[db/content] blog approve → words approval threw: ${e?.message}`)
+        }
+      }
+
       // T4 learning loop, part 2 — persist the diff between the AI's original
       // draft and what staff actually approved. Digest-only today (see
       // api/_lib/editDiffMining.js); not read by any generation path. Same

@@ -140,8 +140,17 @@ export function useContentWorkflow(piece) {
       // up to 66 days with zero "Publish to website" clicks ever recorded
       // (2026-08-21 outcome review).
       if (piece.platform === 'blog') {
-        toast.success('Approved — one step left', {
-          description: 'Blogs don’t publish on approve. Press “Publish to website” when you’re ready to put it live.',
+        // Blog is ONE approval now (Q, 2026-08-29): this same click also marks
+        // the story's words approved server-side. Say so — and name the one
+        // real consequence, that the story's social posts are greenlit too,
+        // since they're written from the same interview. Q's explicit call to
+        // surface that rather than bury it (see .claude/decisions.md).
+        // The "publish is still a separate step" nudge stays: that's the
+        // distinct 2026-08-22 decision (#2647), untouched by this change.
+        toast.success('Approved — that’s everything you need to do', {
+          description: piece.interview_id
+            ? 'You’ve confirmed the article and that the story’s words sound like you — this also greenlights the social posts from this story. Blogs don’t publish on approve, so press “Publish to website” when it’s ready to go live.'
+            : 'Blogs don’t publish on approve. Press “Publish to website” when you’re ready to put it live.',
           duration: 12000,
           action: {
             label: 'Publish to website',

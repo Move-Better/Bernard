@@ -1,0 +1,228 @@
+<title>Blog Approval Bar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --page:200 33% 96%; --panel:0 0% 100%; --ink:215 40% 12%; --ink-soft:215 19% 38%;
+    --hair:214 30% 88%; --rule:214 32% 91%;
+    --app-bg:0 0% 100%; --app-ink:222 47% 8%; --app-border:214 32% 91%; --app-muted:215 19% 34%;
+    --primary:186 83% 27%; --success:152 76% 40%; --warning:38 92% 50%; --action:32 95% 44%; --destructive:0 84% 60%;
+    --note-bad:350 74% 47%; --note-good:152 60% 34%; --note-bg:220 20% 97%;
+  }
+  :root:not([data-theme="light"]) { @media (prefers-color-scheme: dark) {
+    --page:215 32% 8%; --panel:215 26% 12%; --ink:210 30% 92%; --ink-soft:214 15% 64%;
+    --hair:215 20% 22%; --rule:215 20% 20%;
+    --app-bg:215 28% 14%; --app-ink:210 30% 92%; --app-border:215 18% 26%; --app-muted:214 15% 64%;
+    --primary:186 66% 52%; --success:152 60% 52%; --warning:40 92% 60%; --action:32 95% 58%; --destructive:0 74% 62%;
+    --note-bad:350 82% 68%; --note-good:152 55% 60%; --note-bg:215 24% 15%;
+  }}
+  :root[data-theme="dark"] {
+    --page:215 32% 8%; --panel:215 26% 12%; --ink:210 30% 92%; --ink-soft:214 15% 64%;
+    --hair:215 20% 22%; --rule:215 20% 20%;
+    --app-bg:215 28% 14%; --app-ink:210 30% 92%; --app-border:215 18% 26%; --app-muted:214 15% 64%;
+    --primary:186 66% 52%; --success:152 60% 52%; --warning:40 92% 60%; --action:32 95% 58%; --destructive:0 74% 62%;
+    --note-bad:350 82% 68%; --note-good:152 55% 60%; --note-bg:215 24% 15%;
+  }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:hsl(var(--page)); color:hsl(var(--ink));
+    font-family:"IBM Plex Sans",system-ui,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:44px 24px 80px; }
+
+  .eyebrow { font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:hsl(var(--primary)); font-weight:600; margin:0 0 10px; }
+  h1 { font-size:clamp(26px,4vw,33px); line-height:1.12; font-weight:700; letter-spacing:-.01em; text-wrap:balance; margin:0 0 14px; }
+  .lede { font-size:16px; color:hsl(var(--ink-soft)); max-width:64ch; margin:0; }
+  .lede b { color:hsl(var(--ink)); font-weight:600; }
+
+  .databar { display:flex; flex-wrap:wrap; gap:10px; margin:24px 0 4px; }
+  .stat { background:hsl(var(--panel)); border:1px solid hsl(var(--hair)); border-radius:10px; padding:11px 14px; flex:1; min-width:158px; }
+  .stat .n { font-family:"IBM Plex Mono",monospace; font-size:19px; font-weight:600; color:hsl(var(--primary)); }
+  .stat .l { font-size:11.5px; color:hsl(var(--ink-soft)); margin-top:2px; line-height:1.35; }
+  .stat.warn .n { color:hsl(var(--action)); }
+
+  h2 { font-size:13px; font-family:"IBM Plex Mono",monospace; letter-spacing:.1em; text-transform:uppercase;
+    font-weight:600; color:hsl(var(--ink-soft)); margin:0 0 8px; display:flex; align-items:center; gap:10px; }
+  h2::after { content:""; flex:1; height:1px; background:hsl(var(--rule)); }
+  .h2sub { font-size:13.5px; color:hsl(var(--ink-soft)); margin:0 0 16px; max-width:66ch; }
+  .section { margin-top:48px; }
+
+  .editor { background:hsl(var(--app-bg)); color:hsl(var(--app-ink)); border:1px solid hsl(var(--app-border));
+    border-radius:14px; overflow:hidden; box-shadow:0 1px 2px hsl(215 40% 12% / .04), 0 22px 48px -30px hsl(215 40% 12% / .28);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  .editor__crumb { display:flex; align-items:center; gap:8px; padding:11px 16px; border-bottom:1px solid hsl(var(--app-border));
+    font-size:12.5px; color:hsl(var(--app-muted)); }
+  .editor__crumb b { color:hsl(var(--app-ink)); font-weight:600; }
+  .who { margin-left:auto; font-size:11px; font-family:"IBM Plex Mono",monospace; letter-spacing:.06em; text-transform:uppercase;
+    padding:3px 8px; border-radius:999px; background:hsl(var(--primary) / .1); color:hsl(var(--primary)); font-weight:600; }
+  .dot { width:5px; height:5px; border-radius:999px; background:hsl(var(--app-muted) / .5); }
+  .editor__bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:14px 16px; }
+
+  .pill { display:inline-flex; align-items:center; gap:6px; line-height:1; white-space:nowrap; }
+  .pill svg { width:14px; height:14px; flex:none; }
+  .pill--round { border-radius:999px; padding:5px 10px; font-size:11px; font-weight:600; border:1px solid; }
+  .pill--md { border-radius:6px; padding:6px 10px; font-size:12px; font-weight:600; border:1px solid; }
+  .tone-warning { color:hsl(var(--warning)); background:hsl(var(--warning) / .1); border-color:hsl(var(--warning) / .3); }
+  .tone-success { color:hsl(var(--success)); background:hsl(var(--success) / .1); border-color:hsl(var(--success) / .3); }
+  .undo { font-weight:400; color:hsl(var(--app-muted)); text-decoration:none; margin-left:2px; }
+
+  .btn { display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 12px; border-radius:6px;
+    font-size:13px; font-weight:500; border:none; cursor:pointer; font-family:inherit; }
+  .btn svg { width:14px; height:14px; }
+  .btn--action { background:hsl(var(--action)); color:#fff; }
+  .btn--success { background:hsl(var(--success)); color:#fff; }
+  .btn--ghost { background:transparent; color:hsl(var(--app-muted)); }
+  .spacer { flex:1; }
+
+  .confirm { margin:0 16px 16px; border:1px solid hsl(var(--success) / .35); border-radius:12px; background:hsl(var(--success) / .06); padding:14px 16px; }
+  .confirm__t { font-size:14px; font-weight:700; color:hsl(var(--app-ink)); }
+  .confirm__b { font-size:12.5px; color:hsl(var(--app-muted)); margin-top:4px; max-width:64ch; }
+  .confirm__b b { color:hsl(var(--app-ink)); font-weight:600; }
+  .confirm__acts { display:flex; gap:10px; margin-top:12px; align-items:center; }
+
+  .state-label { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:hsl(var(--ink-soft)); margin:22px 0 8px; display:flex; align-items:center; gap:8px; }
+  .state-label .step { width:18px; height:18px; border-radius:5px; display:grid; place-items:center; font-weight:700; font-size:11px;
+    background:hsl(var(--primary) / .12); color:hsl(var(--primary)); }
+
+  .calls { display:grid; gap:11px; margin-top:16px; }
+  .call { display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:start; font-size:13.5px; }
+  .tag { font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:600; letter-spacing:.04em; text-transform:uppercase;
+    padding:3px 8px; border-radius:6px; white-space:nowrap; margin-top:1px; }
+  .tag--bad { color:hsl(var(--note-bad)); background:hsl(var(--note-bad) / .12); border:1px solid hsl(var(--note-bad) / .3); }
+  .tag--good { color:hsl(var(--note-good)); background:hsl(var(--note-good) / .14); border:1px solid hsl(var(--note-good) / .3); }
+  .tag--warn { color:hsl(var(--action)); background:hsl(var(--action) / .13); border:1px solid hsl(var(--action) / .32); }
+  .call p { margin:0; color:hsl(var(--ink-soft)); }
+  .call b { color:hsl(var(--ink)); font-weight:600; }
+  code { font-family:"IBM Plex Mono",monospace; font-size:.88em; background:hsl(var(--note-bg)); padding:1px 5px;
+    border-radius:4px; border:1px solid hsl(var(--hair)); }
+
+  .learn { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; margin-top:18px; }
+  .lcard { background:hsl(var(--panel)); border:1px solid hsl(var(--hair)); border-radius:12px; padding:15px 17px; }
+  .lcard.now { border-color:hsl(var(--note-bad) / .35); }
+  .lcard.next { border-color:hsl(var(--success) / .4); }
+  .lcard h4 { margin:0 0 8px; font-size:11px; font-family:"IBM Plex Mono",monospace; letter-spacing:.08em; text-transform:uppercase; color:hsl(var(--ink-soft)); }
+  .lcard p { margin:0; font-size:13px; color:hsl(var(--ink-soft)); }
+  .lcard .big { font-family:"IBM Plex Mono",monospace; font-size:22px; font-weight:600; color:hsl(var(--note-bad)); display:block; margin-bottom:4px; }
+  .lcard.next .big { color:hsl(var(--success)); }
+
+  table { width:100%; border-collapse:collapse; margin-top:14px; font-size:13px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid hsl(var(--rule)); }
+  th { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:hsl(var(--ink-soft)); font-weight:600; }
+  td.num { font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono",monospace; }
+  .tblwrap { overflow-x:auto; }
+
+  .foot { margin-top:38px; font-size:12px; color:hsl(var(--ink-soft)); border-top:1px solid hsl(var(--rule)); padding-top:16px; }
+  .foot code { font-size:11px; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></symbol>
+  <symbol id="ic-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="ic-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="ic-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+  <symbol id="ic-img" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.35-4.35a2 2 0 0 0-2.83 0L6 18"/></symbol>
+  <symbol id="ic-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8L4 10.5l6.1 1.7L12 18l1.9-5.8L20 10.5l-6.1-1.7Z"/></symbol>
+</svg>
+
+<div class="wrap">
+  <p class="eyebrow">Feedback triage · model change · sign-off</p>
+  <h1>Blog gets one approval — the clinician’s</h1>
+  <p class="lede">Philip’s report wasn’t a wording bug: blog really did ask for the same judgment twice. <b>Blog collapses to a single approve</b> by the clinician who did the interview; the publisher just adds a photo and posts. <b>Social is unchanged</b> — that’s where the separate words check pays for itself. And every approve now <b>teaches Bernard from the edits</b>.</p>
+
+  <div class="databar">
+    <div class="stat"><div class="n">1.00</div><div class="l">Posts per story for <b>blog</b> — one story, one article. Two gates had nothing to amortise.</div></div>
+    <div class="stat"><div class="n">3.4 / 2.2 / 2.1</div><div class="l">Posts per story on Instagram / LinkedIn / Facebook — why social keeps its once-per-story words check.</div></div>
+    <div class="stat"><div class="n">8 of 8</div><div class="l">movebetter clinicians already routed their own blog for review (<code>blog_review_enabled</code>). Mostly built already.</div></div>
+    <div class="stat warn"><div class="n">0 of 20</div><div class="l">Staff with voice notes — the edit-learning loop exists and has <b>never once run</b>.</div></div>
+  </div>
+
+  <!-- CLINICIAN -->
+  <div class="section">
+    <h2>The clinician — one approve, end of job</h2>
+    <p class="h2sub">The blog already lands in the interview author’s review lane. Now their approve is the <em>only</em> approval: it covers both “this is my article” and “these words sound like me.”</p>
+
+    <div class="state-label"><span class="step">1</span> Their draft, ready to approve</div>
+    <div class="editor">
+      <div class="editor__crumb"><span>Stories</span><span class="dot"></span><b>How Your Breathing Pattern Is Quietly Capping Your Performance</b><span class="who">Clinician</span></div>
+      <div class="editor__bar">
+        <span class="pill pill--round tone-warning"><svg><use href="#ic-alert"/></svg>Sounds like you 62</span>
+        <span class="spacer"></span>
+        <button class="btn btn--ghost">Reject</button>
+        <button class="btn btn--success"><svg><use href="#ic-check"/></svg>Approve — sounds like me</button>
+      </div>
+    </div>
+
+    <div class="state-label"><span class="step">2</span> On approve — says plainly what it covers</div>
+    <div class="editor">
+      <div class="editor__crumb"><span>Stories</span><span class="dot"></span><b>How Your Breathing Pattern Is Quietly Capping Your Performance</b><span class="who">Clinician</span></div>
+      <div class="confirm">
+        <div class="confirm__t">Approved — that’s everything you need to do</div>
+        <div class="confirm__b">You’ve confirmed the article <b>and</b> that the story’s words sound like you. Your team will add a photo and put it live. This also greenlights the <b>social posts</b> written from this same interview.</div>
+        <div class="confirm__acts"><button class="btn btn--ghost">Undo</button></div>
+      </div>
+    </div>
+
+    <div class="calls">
+      <div class="call"><span class="tag tag--good">one action</span><p>No second screen, no second gate, no “approve the words first.” Philip’s exact complaint disappears rather than getting re-worded.</p></div>
+      <div class="call"><span class="tag tag--good">honest</span><p>The confirm names the one real consequence — approving also unlocks that story’s <b>social</b> posts, because they’re written from the same interview. Not hidden in a tooltip.</p></div>
+      <div class="call"><span class="tag tag--warn">unchanged</span><p>Blogs still don’t auto-publish. This removes the duplicate <em>words</em> approval only — the publisher’s post step stays, per the 2026-08-22 decision.</p></div>
+    </div>
+  </div>
+
+  <!-- PUBLISHER -->
+  <div class="section">
+    <h2>The publisher — add a photo, post it</h2>
+    <p class="h2sub">No approval to make, no words to vet. Just the two things they’re actually for.</p>
+    <div class="editor">
+      <div class="editor__crumb"><span>Stories</span><span class="dot"></span><b>How Your Breathing Pattern Is Quietly Capping Your Performance</b><span class="who">Publisher</span></div>
+      <div class="editor__bar">
+        <span class="pill pill--md tone-success"><svg><use href="#ic-check"/></svg>Approved by Philip Abraham III</span>
+        <span class="spacer"></span>
+        <button class="btn btn--ghost"><svg><use href="#ic-img"/></svg>Add hero photo</button>
+        <button class="btn btn--action"><svg><use href="#ic-send"/></svg>Publish to website</button>
+      </div>
+    </div>
+    <div class="calls">
+      <div class="call"><span class="tag tag--good">attributed</span><p>Shows <b>who</b> approved it, so the publisher knows the clinical sign-off happened without having to re-check anything.</p></div>
+      <div class="call"><span class="tag tag--warn">optional second check</span><p>Want a producer to double-check someone’s work? Turn their <code>blog_review_enabled</code> off and it routes to the producer instead — the toggle already exists per clinician.</p></div>
+    </div>
+  </div>
+
+  <!-- LEARNING -->
+  <div class="section">
+    <h2>Bernard learns from the edits</h2>
+    <p class="h2sub">The machinery is already written: every draft stores its AI original, and an analyzer turns “what the clinician changed” into voice notes that feed future generation. It has simply never been triggered — it’s a button nobody pressed.</p>
+
+    <div class="learn">
+      <div class="lcard now"><h4>Today</h4><span class="big">0 / 20</span><p>Staff with voice notes. The analyzer has run <b>zero</b> times since it shipped — no cron, no trigger, manual button only.</p></div>
+      <div class="lcard now"><h4>Meanwhile</h4><span class="big">15 of 21</span><p>movebetter blogs the human genuinely rewrote before approving — real teaching signal, discarded.</p></div>
+      <div class="lcard next"><h4>After this change</h4><span class="big">on approve</span><p>If the clinician edited the draft, approving quietly kicks off the existing analyzer in the background. No new UI, no waiting.</p></div>
+    </div>
+
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Clinician</th><th>Edit pairs waiting</th><th>What happens on their next approve</th></tr></thead>
+        <tbody>
+          <tr><td>Dr. Q</td><td class="num">22</td><td>Analyzer runs — well past the minimum</td></tr>
+          <tr><td>Zach Cullen</td><td class="num">13</td><td>Analyzer runs</td></tr>
+          <tr><td>Tyler Hoang</td><td class="num">13</td><td>Analyzer runs</td></tr>
+          <tr><td>Whitney Phillips</td><td class="num">8</td><td>Analyzer runs</td></tr>
+          <tr><td>Sophie Kaplan</td><td class="num">8</td><td>Analyzer runs</td></tr>
+          <tr><td>Philip Abraham III</td><td class="num">0</td><td>Nothing yet — he approves without editing</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="calls">
+      <div class="call"><span class="tag tag--good">reuses</span><p>Same endpoint the Voice Notes panel calls today (<code>/api/staff/refresh-voice-notes</code>) — writes <code>staff.voice_notes</code>, which already feed the generation prompts. Wiring, not new construction.</p></div>
+      <div class="call"><span class="tag tag--warn">honest limit</span><p>Only clinicians who <b>edit</b> teach Bernard anything. An approve-without-edits contributes nothing — that’s inherent, not a bug to paper over.</p></div>
+    </div>
+  </div>
+
+  <p class="foot">
+    Ships as <b>two separate PRs</b> — the blog approval change, then the learning wiring — so either can be reverted alone. Grounded in live prod (movebetter): fan-out, gate adherence (0 of 78 published pieces ever bypassed it), and the 0/20 voice-notes count are all measured, not estimated. Decision recorded in <code>.claude/decisions.md</code> (2026-08-29), superseding part of the 2026-08-22 two-step entry. After shipping I verify on prod against Philip’s exact piece, then resolve his note — which emails him, so I’ll confirm with you first.
+  </p>
+</div>
