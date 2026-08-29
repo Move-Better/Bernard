@@ -15,14 +15,22 @@
 import { tierForHostname, hostnameOf } from './allowlist.js'
 import { extractHtmlText, extractHtmlTitle } from './htmlText.js'
 import { buildVerifyPrompt, parseVerifyResult, VERIFY_MODEL } from './verifyRubric.js'
+import { isPubmedAbstractUrl, pmidFromPubmedUrl, fetchPubmedAbstractByPmid } from './pubmedClient.js'
 
 /**
  * Fetch a candidate's real content. For pubmed/semantic_scholar this is a
  * pass-through (the abstract already came from the structured API — no need
- * to re-fetch). For web, this does a real HTTP fetch and extracts text/title.
- * Never throws on a dead/unreachable URL — returns { content: '', title: candidate.title,
- * fetchOk: false } so the caller can reject for "couldn't verify" rather than
- * crash the whole enrichment pass over one bad link.
+ * to re-fetch). For any OTHER candidate whose URL happens to be a
+ * pubmed.ncbi.nlm.nih.gov abstract page (e.g. surfaced by web search — a real,
+ * relevant paper found via a different retrieval channel), the abstract is
+ * fetched via the same E-utilities efetch call the pubmed retrieval source
+ * uses, NOT scraped as HTML — a plain HTTP GET of that page returns a
+ * cookie-consent interstitial, not the abstract, on every real run tested
+ * (see pubmedClient.js's isPubmedAbstractUrl header comment). Everything else
+ * falls through to the generic web fetch. Never throws on a dead/unreachable
+ * URL — returns { content: '', title: candidate.title, fetchOk: false } so
+ * the caller can reject for "couldn't verify" rather than crash the whole
+ * enrichment pass over one bad link.
  * @param {{source: string, url: string, title: string|null, abstract?: string}} candidate
  * @param {{fetchFn?: Function}} [deps] — injectable for tests; defaults to global fetch
  * @returns {Promise<{content: string, title: string|null, fetchOk: boolean}>}
@@ -31,6 +39,17 @@ export async function fetchCandidateContent(candidate, { fetchFn = fetch } = {})
   if (candidate.source === 'pubmed' || candidate.source === 'semantic_scholar') {
     const abstract = String(candidate.abstract || '').trim()
     return { content: abstract, title: candidate.title, fetchOk: abstract.length > 0 }
+  }
+
+  if (isPubmedAbstractUrl(candidate.url)) {
+    const pmid = pmidFromPubmedUrl(candidate.url)
+    const article = pmid ? await fetchPubmedAbstractByPmid(pmid, { fetchFn }) : null
+    const abstract = String(article?.abstract || '').trim()
+    return {
+      content: abstract,
+      title: article?.title || candidate.title || null,
+      fetchOk: abstract.length > 0,
+    }
   }
 
   // web candidate — fetch the real page. A self-identifying bot UA

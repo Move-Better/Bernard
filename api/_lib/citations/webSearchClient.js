@@ -21,10 +21,36 @@
 // allowlisted domains, so this filters the real citation URLs down to the
 // allowlist post-hoc (rerankToAllowlist, pure + testable) rather than trusting
 // the model's judgment about which domains are authoritative.
+//
+// Every url_citation annotation carries a ?utm_source=openai tracking param
+// (found while probing real runs against real content, 2026-08-27) — stripped
+// via stripTrackingParams BEFORE reranking/dedup, so a citation published on a
+// clinic's blog never permanently carries a tracking parameter for how it was
+// found, and two annotations that differ only by that param dedupe correctly.
 
 import { isAllowedCitationUrl } from './allowlist.js'
 
 const OPENAI_MODEL = 'gpt-5.6-terra' // matches citationProbe.js's pinned model
+
+/**
+ * Strip utm_* tracking params (and the OpenAI web_search tool's own
+ * ?utm_source=openai it appends to every citation URL) before a URL is ever
+ * stored/shown. A citation published on a clinic's blog shouldn't carry a
+ * permanent tracking parameter for how it happened to be found. Pure —
+ * returns the input unchanged if it isn't a parseable URL, never throws.
+ * @param {string} url
+ * @returns {string}
+ */
+export function stripTrackingParams(url) {
+  try {
+    const u = new URL(url)
+    const toDelete = [...u.searchParams.keys()].filter((k) => /^utm_/i.test(k))
+    for (const k of toDelete) u.searchParams.delete(k)
+    return u.toString()
+  } catch {
+    return url
+  }
+}
 
 /**
  * Filter + dedupe a raw list of cited URLs down to the allowlist. Pure.
@@ -83,7 +109,7 @@ export async function searchWebAllowlisted(claimText, { max = 5 } = {}) {
   const textPart = msg?.content?.find((c) => c.type === 'output_text')
   const urls = (textPart?.annotations || [])
     .filter((a) => a.type === 'url_citation' && a.url)
-    .map((a) => a.url)
+    .map((a) => stripTrackingParams(a.url))
 
   return rerankToAllowlist(urls, { max }).map((url) => ({ source: 'web', url, title: null }))
 }
