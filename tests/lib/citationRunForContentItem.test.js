@@ -8,8 +8,70 @@ vi.mock('../../api/_lib/citations/pipeline.js', () => ({
   runCitationEnrichment: vi.fn(),
 }))
 
-import { runCitationEnrichmentForContentItem, isCitationEligiblePlatform } from '../../api/_lib/citations/runForContentItem.js'
+// Same pattern as tests/lib/clipRenderJobEngine.test.js: mock the shared
+// workspaceContext.js module directly rather than fighting its frozen
+// import-time SUPABASE_URL/SUPABASE_KEY constants (from supabaseRest.js) via
+// fetch-response mocking.
+vi.mock('../../api/_lib/workspaceContext.js', () => ({
+  workspaceById: vi.fn(),
+}))
+
+// Isolate the WIRING (does runForContentItem.js actually forward
+// subjectContext to the real extractClaims/judgeCandidate functions?) from
+// their own prompt-building logic, which is covered by
+// citationClaimExtraction.test.js / citationVerifyRubric.test.js / citationVerify.test.js.
+vi.mock('../../api/_lib/citations/claimExtraction.js', () => ({
+  extractClaims: vi.fn(async () => []),
+}))
+vi.mock('../../api/_lib/citations/verify.js', () => ({
+  fetchCandidateContent: vi.fn(async () => ({ content: '', title: null, fetchOk: false })),
+  judgeCandidate: vi.fn(async () => null),
+}))
+
+import { runCitationEnrichmentForContentItem, isCitationEligiblePlatform, deriveSubjectContext } from '../../api/_lib/citations/runForContentItem.js'
 import { runCitationEnrichment } from '../../api/_lib/citations/pipeline.js'
+import { workspaceById } from '../../api/_lib/workspaceContext.js'
+import { extractClaims } from '../../api/_lib/citations/claimExtraction.js'
+import { judgeCandidate } from '../../api/_lib/citations/verify.js'
+
+describe('deriveSubjectContext', () => {
+  it('returns "" when the workspace is null (lookup failed/missing) — degrades to no constraint, never throws', () => {
+    expect(deriveSubjectContext(null)).toBe('')
+    expect(deriveSubjectContext(undefined)).toBe('')
+  })
+
+  it('returns "" when clinic_context is missing or blank, even if display_name is set', () => {
+    expect(deriveSubjectContext({ display_name: 'Move Better', clinic_context: null })).toBe('')
+    expect(deriveSubjectContext({ display_name: 'Move Better', clinic_context: '   ' })).toBe('')
+  })
+
+  it('prefixes with display_name when both are present (a real equine workspace)', () => {
+    const ws = {
+      display_name: 'Move Better Equine',
+      clinic_context: 'A mobile equine chiropractic practice. Dr. Whitney Phillips visits horses on-site at farms and barns.',
+    }
+    expect(deriveSubjectContext(ws)).toBe(
+      'Move Better Equine: A mobile equine chiropractic practice. Dr. Whitney Phillips visits horses on-site at farms and barns.',
+    )
+  })
+
+  it('a real small-animal workspace context is preserved verbatim (this is the exact string that has to reach the judge)', () => {
+    const ws = {
+      display_name: 'Move Better Animals',
+      clinic_context: 'AVCA-certified animal chiropractic practice. Dr. Whitney Phillips treats dogs, cats, and small animals.',
+    }
+    expect(deriveSubjectContext(ws)).toContain('dogs, cats, and small animals')
+  })
+
+  it('falls back to bare clinic_context when display_name is missing', () => {
+    expect(deriveSubjectContext({ clinic_context: 'A clinic for horses.' })).toBe('A clinic for horses.')
+  })
+
+  it('truncates an unreasonably long clinic_context rather than blowing the prompt budget', () => {
+    const ws = { display_name: 'X', clinic_context: 'y'.repeat(2000) }
+    expect(deriveSubjectContext(ws).length).toBeLessThanOrEqual(700)
+  })
+})
 
 describe('isCitationEligiblePlatform', () => {
   it('blog (and series parts, which are also platform:blog) are eligible', () => {
@@ -30,6 +92,10 @@ describe('runCitationEnrichmentForContentItem', () => {
     process.env.SUPABASE_URL = 'http://localhost'
     process.env.SUPABASE_SERVICE_KEY = 'svc'
     runCitationEnrichment.mockReset()
+    workspaceById.mockReset()
+    workspaceById.mockResolvedValue(null) // default: no workspace context available — must degrade to subjectContext:'' (today's behavior), never block enrichment
+    extractClaims.mockClear()
+    judgeCandidate.mockClear()
   })
 
   function mockFetchSequence({ item, existingUrls = [], insertOk = true }) {
@@ -142,5 +208,66 @@ describe('runCitationEnrichmentForContentItem', () => {
     expect(result).toEqual({ ran: true, inserted: 0, claimsConsidered: 2 })
     // Only the content_items read happened — no existing-urls lookup, no insert.
     expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Subject/species-mismatch guard: fetches the workspace, derives a
+  // subjectContext, and threads it into BOTH the claim extractor and the
+  // verify judge — the only two places that could otherwise accept a
+  // wrong-population source as "supporting" a claim.
+  // ───────────────────────────────────────────────────────────────────────
+
+  it('fetches the workspace by id and threads its derived subjectContext into runCitationEnrichment', async () => {
+    workspaceById.mockResolvedValue({
+      display_name: 'Move Better Animals',
+      clinic_context: 'AVCA-certified animal chiropractic practice treating dogs, cats, and small animals.',
+    })
+    runCitationEnrichment.mockResolvedValue({ citations: [], claimsConsidered: 0, rejections: [] })
+    mockFetchSequence({ item: { id: ITEM, content: 'a real draft body', platform: 'blog' } })
+
+    await runCitationEnrichmentForContentItem({ workspaceId: WS, contentItemId: ITEM })
+
+    expect(workspaceById).toHaveBeenCalledWith(WS)
+    const callArgs = runCitationEnrichment.mock.calls[0][0]
+    expect(callArgs.subjectContext).toBe(
+      'Move Better Animals: AVCA-certified animal chiropractic practice treating dogs, cats, and small animals.',
+    )
+  })
+
+  it('degrades to subjectContext:"" (no constraint) when the workspace cannot be loaded — never blocks enrichment', async () => {
+    workspaceById.mockResolvedValue(null)
+    runCitationEnrichment.mockResolvedValue({ citations: [], claimsConsidered: 0, rejections: [] })
+    mockFetchSequence({ item: { id: ITEM, content: 'x', platform: 'blog' } })
+
+    const result = await runCitationEnrichmentForContentItem({ workspaceId: WS, contentItemId: ITEM })
+
+    expect(result.ran).toBe(true)
+    expect(runCitationEnrichment.mock.calls[0][0].subjectContext).toBe('')
+  })
+
+  it('the extractClaimsFn wiring actually forwards subjectContext to the real extractClaims — not just carries it as an unused param', async () => {
+    workspaceById.mockResolvedValue({ display_name: 'Move Better Equine', clinic_context: 'A mobile equine chiropractic practice.' })
+    runCitationEnrichment.mockResolvedValue({ citations: [], claimsConsidered: 0, rejections: [] })
+    mockFetchSequence({ item: { id: ITEM, content: 'x', platform: 'blog' } })
+
+    await runCitationEnrichmentForContentItem({ workspaceId: WS, contentItemId: ITEM })
+
+    const { extractClaimsFn } = runCitationEnrichment.mock.calls[0][0]
+    await extractClaimsFn('a draft body', 'Move Better Equine: A mobile equine chiropractic practice.')
+    expect(extractClaims).toHaveBeenCalledWith('a draft body', {
+      subjectContext: 'Move Better Equine: A mobile equine chiropractic practice.',
+    })
+  })
+
+  it('the judgeFn wiring is a pure pass-through — whatever subjectContext pipeline.js attaches to the verdict args reaches judgeCandidate verbatim', async () => {
+    runCitationEnrichment.mockResolvedValue({ citations: [], claimsConsidered: 0, rejections: [] })
+    mockFetchSequence({ item: { id: ITEM, content: 'x', platform: 'blog' } })
+
+    await runCitationEnrichmentForContentItem({ workspaceId: WS, contentItemId: ITEM })
+
+    const { judgeFn } = runCitationEnrichment.mock.calls[0][0]
+    const args = { claimText: 'a claim', candidateTitle: 't', candidateContent: 'c', sourceType: 'peer_reviewed', subjectContext: 'a horse practice' }
+    await judgeFn(args)
+    expect(judgeCandidate).toHaveBeenCalledWith(args)
   })
 })

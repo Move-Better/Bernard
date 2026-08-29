@@ -21,6 +21,7 @@ import { searchPubMed } from './pubmedClient.js'
 import { searchSemanticScholar } from './semanticScholarClient.js'
 import { searchWebAllowlisted } from './webSearchClient.js'
 import { fetchCandidateContent, judgeCandidate } from './verify.js'
+import { workspaceById } from '../workspaceContext.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -42,6 +43,30 @@ async function sb(path, init = {}) {
 // plain platform check covers both without a special case.
 export function isCitationEligiblePlatform(platform) {
   return platform === 'blog'
+}
+
+// Bernard runs this ONE pipeline across human, equine, and small-animal
+// workspaces (movebetter / movebetter-equine / movebetter-animals). Neither
+// the claim extractor nor the verify judge otherwise has any concept of which
+// population a claim is written for — so a human PubMed study could be
+// accepted as "supporting" a horse or dog claim whenever the underlying
+// mechanism sounded generically similar. Every workspace already carries a
+// real, human-written one-line description of who it treats in
+// `clinic_context` (see workspaces table / src/lib/prompts.js's own use of
+// the same field for the interview/onboarding prompts) — reuse it here rather
+// than inventing a second way to describe a workspace's subject.
+//
+// Deliberately returns '' (no constraint) when the workspace can't be loaded
+// or has no clinic_context set, so this degrades to exactly today's behavior
+// rather than blocking enrichment over a missing/failed lookup — the
+// species-mismatch protection is a strict improvement layered on top of the
+// existing content-level verification, not a new hard dependency.
+/** @param {{clinic_context?: string|null, display_name?: string|null}|null} workspace */
+export function deriveSubjectContext(workspace) {
+  const ctx = String(workspace?.clinic_context || '').trim()
+  if (!ctx) return ''
+  const name = String(workspace?.display_name || '').trim()
+  return (name ? `${name}: ${ctx}` : ctx).slice(0, 700)
 }
 
 /**
@@ -74,9 +99,16 @@ export async function runCitationEnrichmentForContentItem({ workspaceId, content
     return { ran: false, inserted: 0, claimsConsidered: 0, reason: 'empty_draft' }
   }
 
+  // Best-effort: workspaceById already fails soft (logs + returns null) on any
+  // lookup problem, so a workspace fetch failure degrades to subjectContext:
+  // '' — exactly today's behavior — rather than blocking enrichment.
+  const workspace = await workspaceById(workspaceId)
+  const subjectContext = deriveSubjectContext(workspace)
+
   const result = await runCitationEnrichment({
     draftBody,
-    extractClaimsFn: (body) => extractClaims(body),
+    subjectContext,
+    extractClaimsFn: (body, subjCtx) => extractClaims(body, { subjectContext: subjCtx }),
     retrieveFns: [
       (claimText) => searchPubMed(claimText, { max: 4 }),
       (claimText) => searchSemanticScholar(claimText, { max: 4 }).catch((e) => {
