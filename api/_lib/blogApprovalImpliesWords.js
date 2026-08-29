@@ -48,3 +48,37 @@ export function blogApprovalImpliesWords(piece, newStatus) {
   if (!piece.interview_id) return false
   return true
 }
+
+// Statuses that mean "a human has signed this article off". `approved` is the
+// live case; scheduled/published are included so a row that moved on can never
+// retroactively fail the gate (e.g. a republish or a retry after scheduling).
+const APPROVED_STATUSES = new Set(['approved', 'scheduled', 'published'])
+
+/**
+ * Does this blog piece's OWN approval satisfy the story-words publish gate?
+ *
+ * The stateful half above stamps words_approved_at when the approve happens.
+ * This is the stateless half, and it is what makes the policy actually true
+ * rather than only true going forward:
+ *
+ *   • rows approved BEFORE the policy shipped have a null words_approved_at,
+ *     so without this the editor (which no longer shows the words step for
+ *     blog) would offer an enabled Publish button that the server then 403s —
+ *     strictly worse than the contradiction it replaced. Exactly one live row
+ *     was in that state when this shipped: the piece Philip reported;
+ *   • any approve path that doesn't route through db/content.js still gets the
+ *     policy, instead of depending on one writer having run.
+ *
+ * Deliberately narrow: blog only, and only for a piece a human actually
+ * approved. It does NOT relax the gate for social, and it does NOT let an
+ * unapproved blog through — an unapproved blog still needs the story's words,
+ * exactly as before.
+ *
+ * @param {{platform?: string, status?: string}|null|undefined} piece
+ * @returns {boolean}
+ */
+export function blogApprovalSatisfiesWordsGate(piece) {
+  if (!piece) return false
+  if (piece.platform !== 'blog') return false
+  return APPROVED_STATUSES.has(piece.status)
+}

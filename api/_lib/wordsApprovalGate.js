@@ -19,6 +19,7 @@
 // strict — no bypass for a request that has the field but fails the check.
 
 import { supabaseRest, SUPABASE_URL, SUPABASE_KEY } from './supabaseRest.js'
+import { blogApprovalSatisfiesWordsGate } from './blogApprovalImpliesWords.js'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -42,7 +43,7 @@ export async function checkWordsApproved(contentItemId, workspaceId) {
     return { ok: false, status: 503, body: { error: 'not_configured' } }
   }
 
-  const ciRes = await sb(`content_items?id=eq.${contentItemId}&workspace_id=eq.${workspaceId}&select=id,interview_id`)
+  const ciRes = await sb(`content_items?id=eq.${contentItemId}&workspace_id=eq.${workspaceId}&select=id,interview_id,platform,status`)
   if (!ciRes.ok) {
     console.error(`[wordsApprovalGate] content_items lookup ${ciRes.status} for id=${contentItemId}`)
     return { ok: false, status: 500, body: { error: 'words_gate_check_failed' } }
@@ -56,6 +57,18 @@ export async function checkWordsApproved(contentItemId, workspaceId) {
   // autoPublishGate signals) is the words checkpoint for that pipeline — see
   // ARCHITECTURE.md "words-approval hard gate".
   if (!piece.interview_id) return { ok: true }
+
+  // Blog is ONE approval (Q, 2026-08-29): the clinician approving the article
+  // IS the words approval, because blog fans out 1:1 from its story and they
+  // just read the whole long-form piece. db/content.js stamps
+  // words_approved_at when that approve happens; this is the stateless half,
+  // so a blog approved BEFORE the policy shipped (or through a path that skips
+  // that writer) isn't left with an enabled Publish button that 403s here.
+  // See api/_lib/blogApprovalImpliesWords.js for the full rationale.
+  //
+  // Narrow on purpose: social is untouched, and an UNAPPROVED blog still needs
+  // the story's words exactly as before.
+  if (blogApprovalSatisfiesWordsGate(piece)) return { ok: true }
 
   const ivRes = await sb(`interviews?id=eq.${piece.interview_id}&workspace_id=eq.${workspaceId}&select=words_approved_at`)
   if (!ivRes.ok) {
