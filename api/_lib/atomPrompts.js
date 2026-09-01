@@ -128,6 +128,17 @@ export function getAtomSystemPrompt(workspace, staffName, condition, platform, a
   const linkedinUrlLine = website ? `Include URL ${website} at end. No hashtags.` : 'No hashtags. Do not include a URL.'
   const facebookUrlLine = website ? `Include the full URL ${website} on its own line near the end.` : 'Do not include a URL.'
 
+  // Local-reach nudge (Philip feedback, 2026-08-31). On the two discovery-driven
+  // platforms (Instagram, TikTok), keyword-rich captions drive more local reach
+  // than hashtags do — Instagram has publicly de-emphasized hashtags for reach,
+  // and captions that name the city surface in local search + recommendations.
+  // So weave the city keyword into the caption BODY, not only the hashtag slot.
+  // (Geotagging is a publish-time action the caption model can't perform, so it
+  // is deliberately not instructed here.)
+  const localReachLine = workspace.location_keyword
+    ? `LOCAL SEO: weave "${workspace.location_keyword}" naturally into the caption body once (beyond any location hashtag) — keyword-rich captions surface in local search and recommendations better than tags alone. Never force it or repeat it.`
+    : ''
+
   // Appended to every Instagram prompt. Instructs the AI to plan a multi-slide
   // carousel with per-slide text blocks. draft.js parses this JSON block as
   // the canonical source for content_items.slides.
@@ -160,6 +171,7 @@ ${lengthLine('instagram', 'hook', lean)}
 ANGLE: Open with the most scroll-stopping moment from the conversation: a myth-buster, bold claim, or surprising fact ${firstName ? `${firstName} actually said` : 'the clinician actually said'}. Make it impossible to scroll past.
 ${isPersonal ? `Write in ${firstName}'s first-person voice.` : `Use "we" and "our team" language.`}
 ${articleCtaLine}
+${localReachLine}
 Add a blank line, then 3 to 5 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
 
@@ -168,6 +180,7 @@ ${lengthLine('instagram', 'quick_win', lean)}
 ANGLE: Lead with one actionable tip or self-test the viewer can try right now at home: something concrete that ${firstName ? `${firstName} mentioned` : 'the clinician mentioned'} in the conversation. Make it genuinely useful on its own. Do NOT reference any specific patient, case, or individual's story. Keep it general and educational (no PHI).
 ${isPersonal ? `Write in ${firstName}'s first-person voice.` : `Use "we" and "our team" language.`}
 ${quickWinCtaLine}
+${localReachLine}
 Add a blank line, then 3 to 5 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
 
@@ -176,6 +189,7 @@ ${lengthLine('instagram', 'clinical_insight', lean)}
 ANGLE: Open with the sharpest, most counterintuitive thing ${firstName ? firstName : 'the clinician'} actually said about ${condition}: the misconception they push back on, in their own framing. Do NOT use a templated "the one thing most people get wrong about…" opener; pull the real line from the conversation. Then deliver the key clinical insight ${firstName ? `${firstName} surfaced` : 'the clinician surfaced'} in the conversation.
 ${isPersonal ? `Write in ${firstName}'s first-person voice.` : `Use "we" and "our team" language.`}
 ${clinicalInsightCtaLine}
+${localReachLine}
 Add a blank line, then 3 to 5 hashtags: condition-specific, movement, ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}.
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
 
@@ -184,6 +198,7 @@ ${lengthLine('instagram', 'cta', lean)}
 ANGLE: Direct invitation to book. Lead with a one-line hook that mirrors back the specific pattern or experience of someone dealing with ${condition}, not a generic "Are you suffering from pain?" opener. Briefly describe what the assessment at ${workspace.display_name} actually involves (movement screen, not just "a consult"). Make the ask feel like the natural next step after the insight you led with.
 ${isPersonal ? `Write in ${firstName}'s first-person voice.` : `Use "we" and "our team" language.`}
 ${bookingCtaLine}
+${localReachLine}
 Add a blank line, then 3 to 5 targeted local hashtags: ${workspace.location_hashtag ?? '#physicaltherapy'}, ${workspace.brand_hashtag ?? ''}, plus condition tags.
 Do NOT include any URLs in the caption body.${instagramOverlayInstructions}`,
     },
@@ -274,7 +289,8 @@ One punchy sentence built from a real claim ${firstName ? firstName : 'the clini
 ${tiktokMythBusterCloseLine}
 
 CAPTION:
-50 to 80 word TikTok caption with 5 to 6 hashtags. Brand as ${workspace.display_name}.`,
+50 to 80 word TikTok caption with 5 to 6 hashtags. Brand as ${workspace.display_name}.
+${localReachLine}`,
 
       process: `Write a 45 to 60 second TikTok / Instagram Reels script for ${workspace.display_name} about ${condition}.
 ${lengthLine('tiktok', 'process', lean)}
@@ -290,7 +306,8 @@ Walk through: assessment → first session → what improves first → full reco
 ${tiktokProcessCloseLine}
 
 CAPTION:
-50 to 80 word TikTok caption with 5 to 6 hashtags. Brand as ${workspace.display_name}.`,
+50 to 80 word TikTok caption with 5 to 6 hashtags. Brand as ${workspace.display_name}.
+${localReachLine}`,
     },
 
     twitter: {
