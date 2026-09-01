@@ -44,6 +44,7 @@ import { workspaceContext } from '../_lib/workspaceContext.js'
 // The render body lives in reelFactory so this manual path and the auto-reel
 // cron cannot drift apart — one renderer, one caption, one output shape.
 import { renderSegmentToReel } from '../_lib/reelFactory.js'
+import { isRenderedClip } from '../_lib/renderedClipGuard.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -100,7 +101,7 @@ export default async function handler(req, res) {
       // Disambiguate the embed: video_segments has TWO FKs to media_assets
       // (source_asset_id + rendered_asset_id from migration 113), so PostgREST
       // needs the explicit FK constraint or it 500s with PGRST201 (ambiguous).
-      `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status,transcript_words,size_bytes,render_proxy_url)`,
+      `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status,transcript_words,size_bytes,render_proxy_url,parent_asset_id)`,
   )
   if (!segRes.ok) return res.status(500).json({ error: 'db_error' })
   const segments = await segRes.json()
@@ -126,6 +127,14 @@ export default async function handler(req, res) {
     const asset = seg.source_asset
     if (!asset || asset.kind !== 'video' || !asset.blob_url || asset.archived_at) {
       skipped.push({ segmentId: seg.id, reason: 'invalid_source' })
+      continue
+    }
+    // The source is itself a rendered clip (parent_asset_id set) — rendering it
+    // would bake a second karaoke track over the first (feedback e292bc09 /
+    // a7a3361d). Skip rather than double-bake; these are the already-created
+    // segments the entry-point guard now prevents going forward.
+    if (isRenderedClip(asset)) {
+      skipped.push({ segmentId: seg.id, reason: 'source_is_rendered_clip' })
       continue
     }
     if (asset.consent_status === 'pending' || asset.consent_status === 'revoked') {
