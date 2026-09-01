@@ -65,6 +65,7 @@ import { createClipDraft } from './clipDraft.js'
 import { assignSlots, dateAtLocalHour, occupancyKey } from './strategist.js'
 import { ATOM_FORMATS } from './atomPlan.js'
 import { classifySegmentVoices, SPEAKER_VOICES } from './speakerVoice.js'
+import { isRenderedClip } from './renderedClipGuard.js'
 import { mergeSlotsIntoCadence, slotsByPlatformFromCadence } from './cadenceSlots.js'
 
 
@@ -427,7 +428,7 @@ export async function selectReelCandidates({ ws, limit }) {
       `&rendered_asset_id=is.null&order=score.desc&limit=120` +
       `&select=id,source_asset_id,staff_id,start_sec,end_sec,hook,transcript_excerpt,score,` +
       `speaker_voice,speaker_voice_confidence,` +
-      `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status,transcript_words,size_bytes,render_proxy_url)`,
+      `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status,transcript_words,size_bytes,render_proxy_url,parent_asset_id)`,
   )
   if (!res.ok) {
     console.error('[reelFactory] candidate fetch failed:', res.status)
@@ -453,6 +454,12 @@ export async function selectReelCandidates({ ws, limit }) {
 
     const asset = seg.source_asset
     if (!asset || asset.kind !== 'video' || !asset.blob_url || asset.archived_at) continue
+    // Belt-and-suspenders: never render a segment whose source is itself a
+    // rendered clip (parent_asset_id set). The entry-point guards stop NEW such
+    // segments being created, but ones already sitting in the queue (6 live on
+    // movebetter, 2026-08-31) would otherwise auto-render into a double-baked
+    // reel — a second karaoke track over the first (feedback e292bc09 / a7a3361d).
+    if (isRenderedClip(asset)) continue
     // Same hard consent gate the manual path enforces.
     if (asset.consent_status === 'pending' || asset.consent_status === 'revoked') continue
     // One reel per source video per run — a single long interview must not fill

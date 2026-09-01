@@ -35,6 +35,7 @@ import { ALL_KNOWN_ROLES } from '../_lib/roles.js'
 import { workspaceContext } from '../_lib/workspaceContext.js'
 import { kickLongformRender, cleanFilename } from '../_lib/kickLongformRender.js'
 import { detectSegmentsForAsset } from '../_lib/segmentDetect.js'
+import { isRenderedClip } from '../_lib/renderedClipGuard.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -138,7 +139,7 @@ export default async function handler(req, res) {
   // render-longform and find-clips need.
   const aRes = await sb(
     `media_assets?id=eq.${assetId}&workspace_id=eq.${ws.id}` +
-      `&select=id,kind,blob_url,filename,staff_id,visual_narrative,transcription,archived_at,segment_status&limit=1`,
+      `&select=id,kind,blob_url,filename,staff_id,visual_narrative,transcription,archived_at,segment_status,parent_asset_id&limit=1`,
   )
   if (!aRes.ok) return res.status(500).json({ error: 'db_error' })
   const asset = (await aRes.json())?.[0]
@@ -147,6 +148,12 @@ export default async function handler(req, res) {
   if (asset.archived_at) return res.status(404).json({ error: 'asset_archived' })
   if (asset.kind !== 'video') {
     return res.status(415).json({ error: 'unsupported_asset_kind', kind: asset.kind })
+  }
+  // Repurposing a rendered clip (parent_asset_id set) re-cuts an already-cut clip
+  // and, for caption-baked reels, bakes a second karaoke track over the first
+  // (feedback e292bc09 / a7a3361d). Only raw sources are repurposable.
+  if (isRenderedClip(asset)) {
+    return res.status(409).json({ error: 'source_is_rendered_clip' })
   }
   if (!asset.blob_url) return res.status(500).json({ error: 'asset_missing_blob_url' })
 

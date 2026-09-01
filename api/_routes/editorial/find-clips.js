@@ -27,6 +27,7 @@ import { requireRole } from '../../_lib/auth.js'
 import { ALL_KNOWN_ROLES } from '../../_lib/roles.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { detectSegmentsForAsset } from '../../_lib/segmentDetect.js'
+import { isRenderedClip } from '../../_lib/renderedClipGuard.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
@@ -69,7 +70,7 @@ export default async function handler(req, res) {
   // Fetch + workspace-scope the asset.
   const assetRes = await sb(
     `media_assets?id=eq.${assetId}&workspace_id=eq.${ws.id}` +
-      `&select=id,kind,blob_url,filename,staff_id,duration_s,archived_at,segment_status`,
+      `&select=id,kind,blob_url,filename,staff_id,duration_s,archived_at,segment_status,parent_asset_id`,
   )
   if (!assetRes.ok) return res.status(500).json({ error: 'db_error' })
   const asset = (await assetRes.json())?.[0]
@@ -77,6 +78,13 @@ export default async function handler(req, res) {
   if (asset.archived_at) return res.status(404).json({ error: 'asset_archived' })
   if (asset.kind !== 'video') {
     return res.status(415).json({ error: 'unsupported_asset_kind', kind: asset.kind })
+  }
+  // A rendered clip (parent_asset_id set) is a derived, already-cut output — for
+  // caption-baked reels, re-detecting and re-rendering bakes a SECOND karaoke
+  // track over the first (feedback e292bc09 / a7a3361d). Detect on raw sources
+  // only. Matches the auto-detect-clips cron, which excludes these outright.
+  if (isRenderedClip(asset)) {
+    return res.status(409).json({ error: 'source_is_rendered_clip' })
   }
   if (!asset.blob_url) return res.status(500).json({ error: 'asset_missing_blob_url' })
   if (asset.segment_status === 'detecting') {
