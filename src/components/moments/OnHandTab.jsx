@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Loader2, MoreHorizontal, Search, PlayCircle, Quote, Check, Archive, CheckCircle2, Pencil, X, Undo2 } from 'lucide-react'
@@ -43,9 +43,10 @@ const REVIEW_FILTERS = [
   { key: 'unreviewed', label: 'Not reviewed' },
 ]
 
-// How many cards the queue shows at once. Three is enough to compare and build
-// a rhythm without turning the screen into a wall of quotes.
-const QUEUE_SIZE = 3
+// How many cards the queue shows at once. One at a time keeps the reviewer's
+// eye on a single quote — approving slides the next-strongest into the same
+// spot rather than stacking a wall of quotes (feedback 01eaef66, Philip).
+const QUEUE_SIZE = 1
 
 function fmtDay(iso) {
   if (!iso) return null
@@ -196,15 +197,21 @@ function ReviewStamp({ m, reviewerName, tone = 'reviewed' }) {
  * queue card and the author's fix card so a repair reads and behaves the same
  * wherever it happens.
  *
- * Editing swaps the whole action row (passed as children) for Save/Cancel:
- * mid-edit is not a moment to also be offering Approve or Retire, and a verdict
- * fired against half-rewritten text would stamp the wrong words.
+ * Editing swaps the whole action row for Save/Cancel: mid-edit is not a moment
+ * to also be offering Approve or Retire, and a verdict fired against
+ * half-rewritten text would stamp the wrong words.
+ *
+ * `children` is a render prop — `({ startEdit }) => …` — so the caller owns the
+ * action row and can place the Edit pencil right next to its verdict buttons
+ * (feedback 01eaef66, Philip: the pencil used to float top-right of the quote,
+ * away from the clicks you actually make). The children only render in read
+ * mode, so the pencil disappears cleanly once you're already editing.
  *
  * The excerpt is transcript-derived, and ASR reliably mangles clinical speech —
  * clauses run together, terms come out wrong. Editing is for repairing THAT,
- * which is why it sits next to the verdicts rather than behind a menu.
+ * which is why the pencil sits with the verdicts rather than behind a menu.
  */
-function MomentExcerpt({ m, onSave, disabled, children }) {
+function MomentExcerpt({ m, onSave, children }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(m.excerpt)
   const [saving, setSaving] = useState(false)
@@ -236,8 +243,14 @@ function MomentExcerpt({ m, onSave, disabled, children }) {
   if (editing) {
     return (
       <>
+        {/* spellCheck on: native red-squiggle underlines for misspellings while
+            you tidy a transcript-mangled quote — the word-processor basics
+            (feedback 01eaef66). Grammar/caps checking is deliberately NOT here:
+            it isn't native, and these excerpts are verbatim, so it would need a
+            suggest-only overlay rather than the browser's autocorrect. */}
         <Textarea
           autoFocus
+          spellCheck
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           maxLength={4000}
@@ -262,25 +275,10 @@ function MomentExcerpt({ m, onSave, disabled, children }) {
 
   return (
     <>
-      <div className="flex items-start gap-2">
-        <blockquote className="text-base leading-relaxed text-foreground max-w-[66ch] flex-1">
-          &ldquo;{m.excerpt}&rdquo;
-        </blockquote>
-        {/* Same resting-chip fix as RowMenu's kebab (audit 2026-08-08 #4,
-            approved for this surface too): the blockquote has no onClick, so
-            this pencil is the ONLY way to edit — bare-until-hover left it
-            undiscoverable, not merely quiet. */}
-        <button
-          type="button"
-          onClick={startEdit}
-          disabled={disabled}
-          aria-label="Edit this quote"
-          className="shrink-0 p-1.5 rounded-md border bg-muted text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
-      </div>
-      {children}
+      <blockquote className="text-base leading-relaxed text-foreground max-w-[66ch]">
+        &ldquo;{m.excerpt}&rdquo;
+      </blockquote>
+      {children({ startEdit })}
     </>
   )
 }
@@ -306,13 +304,30 @@ function QueueCard({ m, staffName, onApprove, onRetire, onSkip, onSaveExcerpt, o
     <article className="rounded-xl border border-border bg-card shadow-sm p-4 flex gap-3.5">
       <RatingBadge score={m.score} signal="quote" size="md" />
       <div className="min-w-0 flex-1">
-        <MomentExcerpt m={m} onSave={onSaveExcerpt} disabled={busy}>
+        <MomentExcerpt m={m} onSave={onSaveExcerpt}>
+          {({ startEdit }) => (
+          <>
           <div className="mt-2.5">
             <MomentMeta m={m} staffName={staffName}>
               <MomentContext m={m} staffName={staffName} />
             </MomentMeta>
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-3.5">
+            {/* Edit sits WITH the verdicts now — the pencil used to float
+                top-right of the quote, away from the clicks you actually make
+                (feedback 01eaef66, Philip). Clicking it swaps this whole row
+                for the editor, so it never competes with a live Approve. */}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={startEdit}
+              aria-label="Edit this quote"
+              className="px-2 border-primary/30 bg-accent text-primary hover:bg-accent hover:text-primary"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
             <Button
               variant="success"
               size="sm"
@@ -382,6 +397,8 @@ function QueueCard({ m, staffName, onApprove, onRetire, onSkip, onSaveExcerpt, o
               Skip for now
             </Button>
           </div>
+          </>
+          )}
         </MomentExcerpt>
       </div>
     </article>
@@ -428,20 +445,34 @@ function AuthorFixCard({ m, senderName, staffName, onSaveExcerpt, onConfirmFine,
         {m.sent_back_note && (
           <p className="mt-1 mb-2.5 text-sm text-foreground/80">&ldquo;{m.sent_back_note}&rdquo;</p>
         )}
-        <MomentExcerpt m={m} onSave={onSaveExcerpt} disabled={busy}>
+        <MomentExcerpt m={m} onSave={onSaveExcerpt}>
+          {({ startEdit }) => (
+          <>
           <div className="mt-2.5">
             <MomentMeta m={m}>
               <MomentContext m={m} staffName={staffName} />
             </MomentMeta>
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-3.5">
-            <span className="text-2xs text-muted-foreground">
-              Fix the wording with the pencil, or:
-            </span>
+            {/* Pencil-with-the-verdicts, same as the queue card (feedback
+                01eaef66). Two ways out of a send-back, both one click from
+                here: fix the words, or say it already reads right. */}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={startEdit}
+              className="border-primary/30 bg-accent text-primary hover:bg-accent hover:text-primary"
+            >
+              <Pencil className="h-4 w-4" />Edit wording
+            </Button>
             <Button size="sm" variant="outline" disabled={busy} onClick={() => onConfirmFine(m)}>
               <Check className="h-4 w-4" />It already reads right
             </Button>
           </div>
+          </>
+          )}
         </MomentExcerpt>
       </div>
     </article>
@@ -641,6 +672,20 @@ export default function OnHandTab({ moments, isLoading, error, refetch, staffMap
   const confirmFine = useCallback((m) => patchMutation.mutate({ id: m.id, sentBack: false }), [patchMutation])
 
   const queue = pending.slice(0, QUEUE_SIZE)
+
+  // With one card at a time, approving swaps the next-strongest quote into the
+  // same spot — but the header/fix-strip above can leave that new card scrolled
+  // partway off, so a verdict looks like nothing happened. Scroll to top when
+  // the queue head actually changes, and only after a real prior head (never on
+  // first mount, which would yank a fresh page load to the top).
+  const queueHeadId = queue[0]?.id
+  const prevHeadRef = useRef(queueHeadId)
+  useEffect(() => {
+    if (prevHeadRef.current && queueHeadId && prevHeadRef.current !== queueHeadId) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    prevHeadRef.current = queueHeadId
+  }, [queueHeadId])
 
   if (isLoading) {
     return (
