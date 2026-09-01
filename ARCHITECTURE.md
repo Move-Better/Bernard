@@ -1740,6 +1740,20 @@ Both editors — the carousel (`src/components/story-detail/SlideEditor.jsx`) an
   `needsMediaToPublish(piece)` is the publish gate. **Route by archetype, never ad-hoc platform/media
   flags** — `StoryboardPublish.jsx` does this (`resolveArchetype` replaced the old `isReel`/`isCarousel`
   booleans, verified-equivalent).
+- **A media-type-derived route to a type-specific editor is a ONE-WAY TRAP unless that editor offers a
+  path back to the other kind, for any platform that publishes both.** `resolveArchetype` sends any
+  dual-kind post (gbp / facebook / linkedin / a non-reel instagram post) with a video attached to
+  `lvideo`/`vvideo` → `VideoEditor`, whose only media affordance (`SwapAddVideo`) swaps one clip for
+  another. So a user who wants a photo on a GBP *post* — which GBP publishes fine — has no way out; the
+  editor even mislabels it a "reels format." The reverse path is nothing special: writing a photo entry
+  to `media_urls` (the SAME `swapVideo` → content PATCH the clip-swap already uses) drops `hasVideo` to
+  false, `resolveArchetype` re-resolves the piece to `visual`/`carousel`, and `StoryboardPublish` routes
+  it to the full photo editor (`SlideEditor`) automatically — no explicit editor-switch code. The editor
+  only needs to provide the escape hatch, not become a photo editor. `VideoEditor`'s `MediaInspector`
+  ("Use a photo instead", #2684) does this, gated on `mediaKindForPlatform(platform) !== 'video'` (so
+  video-only YouTube/TikTok never offer it) AND `format !== 'reel'` (a genuine reel is meant to stay
+  video). Any future editor keyed on media type inherits the same obligation: if the platform is
+  dual-kind, offer the reverse media-kind write, or you've built a dead end.
 - **`src/components/editor/EditorChrome.jsx`** — the shared top bar (back · title · format badge ·
   aspect seg · right-aligned action slot). Both editors render their header through it; per-editor
   buttons (Preview/Save/Schedule/Export/transport) go in `children`. Extracted verbatim from
