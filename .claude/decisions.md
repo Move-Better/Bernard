@@ -431,3 +431,13 @@ Resolves the known-limit clause in the 2026-07-22 `/week` chrome entry above: th
 **Supersedes** the 2026-08-22 "blog stays two-step" entry in part: that entry's own case-against ("the split produced zero publishes in 18 days") argued for collapsing, and its 2026-09-15 kill criterion is now moot for the words gate specifically. The approve→publish step itself is untouched — blogs still don't auto-publish; only the *duplicate words approval* is removed.
 
 **Kill criterion / revisit-by: 2026-10-15.** If blog publishes haven't resumed (zero `published_at` on new platform='blog' rows since 2026-08-29), the words gate wasn't the blocker and the remaining approve→publish step is the next suspect. If `staff.voice_notes` is still 0-populated by then, the learning wiring didn't fire — check the approve path, not the analyzer.
+
+## 2026-09-01 — No grammar/caps proofreading in the moment editor (spelling only)
+
+**Context.** Philip's `/moments` feedback (`01eaef66`) asked for Google-Docs/Word-style proofreading in the quote editor — underline misspellings, grammar, and missed capitals. Shipped in #2687 (mockup-first, Q sign-off): the edit pencil moved beside Approve, the review queue shows one quote at a time, and native `spellCheck` went on the edit textarea (misspelling squiggles — free, the browser already does this). Grammar + missed-caps was raised as the larger half and split out for its own decision.
+
+**Decision (Q, 2026-09-01): don't build grammar/caps proofreading. "Not worth the lift."** Unlike spelling, grammar/caps is not a browser feature — it needs a grammar engine (LanguageTool-style) plus a **suggest-only** overlay, because these excerpts are verbatim ASR of what a clinician actually said (the editor's own copy: "keep what they actually meant"), so an autocorrect-style tool would fight the intent. The build (engine + overlay + wiring + the verbatim-safety design so it never rewrites) outweighs the value for a text box whose job is repairing transcription errors — which native spellcheck already covers.
+
+**Case against the deferral.** A clinician who wants their quote to read cleanly could still be tripped by a grammar slip spellcheck won't catch; and if a future editor surface (blog/answer authoring) wanted richer proofreading, an engine built once could serve several. Rejected: the moment editor exists to repair ASR, not author prose, and no other surface has asked.
+
+**Revisit if** a paid/external clinic (not one of Q's internal-plan workspaces) explicitly asks for grammar/caps checking in an editing surface, or a product/frontier panel identifies proofreading as a retention lever with real evidence. Trigger-gated, no clock — do not re-scope on a hunch. Recorded in memory as `project-moments-review-rework`.
