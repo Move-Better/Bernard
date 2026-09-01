@@ -98,7 +98,7 @@
     <div class="mark">B</div>
     <div class="brand"><b>Bernard</b><small>How it works</small></div>
     <div class="spacer"></div>
-    <div class="stamp"><b>Living document</b><br>Last updated 1 Aug 2026</div>
+    <div class="stamp"><b>Living document</b><br>Last updated 1 Sep 2026</div>
   </div>
 </header>
 
@@ -342,10 +342,16 @@
         (now available in every workspace), speak turn-by-turn while your browser transcribes, or just <span class="keyword">type</span>.
         The running Q&amp;A is saved continuously, with a local backup, and becomes the transcript that feeds everything
         downstream. The raw audio is also kept — purely as future voice-training material, not to make the transcript.</p>
+        <p><span class="keyword">"Make a point" mode</span> flips the starting question. Instead of picking a clinical
+        topic, you seed a specific point from your own experience — a result, a strong opinion, a striking before/after —
+        and a podcast-host-style interviewer reflects it back, pounces on the interesting parts, and asks sharper
+        questions to sharpen it into something publishable. It never authors the thesis or asserts a medical mechanism
+        for you; it draws the point out.</p>
       </div>
       <div class="mech try"><span class="lab lab-try">Try it</span>
-        <p><span class="keyword">Create → Interview</span>, pick a topic, and talk. Don't over-prepare — the interviewer drives.
-        Finish when it wraps up, and Bernard takes it from there.</p>
+        <p><span class="keyword">Create → Interview</span>, pick a topic, and talk — or switch the mode toggle to
+        <span class="keyword">Make a point</span> and type the point you want to make instead. Don't over-prepare —
+        the interviewer drives. Finish when it wraps up, and Bernard takes it from there.</p>
       </div>
     </div>
     <div class="feature">
@@ -431,6 +437,32 @@
         in Your Week is all it takes.</p>
       </div>
     </div>
+
+    <div class="feature">
+      <h3>Real citations on blog posts</h3>
+      <p class="promise">Promise: a claim worth backing gets a real, verifiable source — never an invented one.</p>
+      <div class="mech"><span class="lab lab-how">How it works</span>
+        <p>When a blog draft is finished, Bernard reads it for claims that genuinely benefit from a citation — a
+        mechanism statement, a "studies show" reference, a protocol — and deliberately skips personal anecdotes and
+        patient stories. For each one it searches PubMed, Semantic Scholar and the open web, then checks any candidate
+        source against a fixed <span class="keyword">allowlist</span> of reputable domains (peer-reviewed journals, major
+        institutions, professional guidelines, established health-education sites) — a source outside the allowlist is
+        rejected outright, no matter what a model thinks of it. A second AI pass reads the actual source page and rates
+        whether it really supports the claim.</p>
+      </div>
+      <div class="mech trust"><span class="lab lab-trust">Why you can trust it</span>
+        <p>Nothing links automatically. Every candidate source lands in a review panel where a producer approves or
+        rejects it — only approved sources ever reach a published post. An approved citation is only inserted inline if
+        the exact sentence it was matched to still appears in the final, possibly hand-edited, text — otherwise it's
+        added to the "Further reading" footer only, never guessed into the wrong sentence. Rejected sources are kept
+        (not deleted) so the same weak source won't be proposed again.</p>
+      </div>
+      <div class="mech try"><span class="lab lab-try">Try it</span>
+        <p>Open a blog draft and look for the citations panel once it's finished. Review each proposed source, approve
+        or reject it, and publish — approved ones appear as a link in the sentence they support and again in a
+        "Further reading" list at the end.</p>
+      </div>
+    </div>
   </section>
 
   <!-- ── 9. ANALYTICS ── -->
@@ -473,6 +505,8 @@
       <div class="mini"><b>Your data is walled off</b><p>Each clinic is its own workspace. Every request is authenticated and scoped, so one clinic can't see another's content.</p></div>
       <div class="mini"><b>Credentials are encrypted</b><p>Connected-account secrets are stored with strong (AES-256) encryption — never as plain settings.</p></div>
       <div class="mini"><b>Backed up</b><p>The database is snapshotted automatically every day, with independent manual backups as well.</p></div>
+      <div class="mini"><b>Citations are human-approved</b><p>Bernard proposes real research sources for blog claims worth backing; a producer approves or rejects each one before it can ever link from a published post.</p></div>
+      <div class="mini"><b>What's live can't quietly drift</b><p>Once a post is scheduled or published, it shows a read-only receipt instead of an open editor — so the record of what actually shipped stays honest.</p></div>
     </div>
   </section>
 
@@ -481,7 +515,7 @@
 <footer>
   <div class="wrap">
     <div><strong style="color:hsl(var(--ink))">Bernard — How it works.</strong><br>A living document. Update it as the mechanisms change.</div>
-    <div style="text-align:right"><a href="https://withbernard.ai/how-bernard-works.html">withbernard.ai/how-bernard-works.html</a><br>Last updated 1 Aug 2026</div>
+    <div style="text-align:right"><a href="https://withbernard.ai/how-bernard-works.html">withbernard.ai/how-bernard-works.html</a><br>Last updated 1 Sep 2026</div>
   </div>
 </footer>
 
