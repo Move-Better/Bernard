@@ -138,7 +138,7 @@ After the caption and hashtags, add this separator on its own line:
 Then output a valid JSON array (no prose, no markdown fences) with 3 to 5 slide objects describing the carousel plan. Each slide has a "template" (cover, explainer, demonstration, quote, or cta) and a "blocks" array of on-photo text blocks. Each block has a "role" (hook, body, caption, cta, attribution, or page), a "text" string, and optionally a "position" (top, top-left, top-right, center, center-left, center-right, bottom, bottom-left, bottom-right).
 
 Template guidance:
-- cover (slide 1): one hook block, optional page-number. Hook = scroll-stopping statement, 5 to 7 words, ALL CAPS.
+- cover (slide 1): one hook block, optional page-number. Hook = scroll-stopping statement, 5 to 7 words, ALL CAPS. Vary how you open from post to post. Rotate across opener styles: a question ("WHY DOES THIS KEEP COMING BACK?"), a number ("3 SIGNS YOU'RE COMPENSATING"), a sharp contrast ("STRONG BUT STILL IN PAIN"), a bold claim ("TIGHT HIPS AREN'T THE PROBLEM"), or a direct command ("STOP ICING THAT ANKLE"). Pick whichever fits THIS post's angle. Do NOT default to opening with "Your"; it has been overused.
 - explainer (slides 2 to N): hook + body (+ optional caption). Body = 1 to 2 sentences explaining the idea.
 - demonstration: no text, the photo carries the slide.
 - quote: a body block (the actual quote, italic) + an attribution block.
@@ -148,7 +148,7 @@ Aim for 3 to 5 slides total. The last slide should usually be a "cta" template. 
 
 Example shape (do NOT copy verbatim. Write fresh text per the caption):
 [
-  { "template": "cover",     "blocks": [{ "role": "hook", "text": "YOUR PIRIFORMIS MIGHT NOT BE TIGHT", "position": "center" }] },
+  { "template": "cover",     "blocks": [{ "role": "hook", "text": "PIRIFORMIS ISN'T ALWAYS THE CULPRIT", "position": "center" }] },
   { "template": "explainer", "blocks": [{ "role": "hook", "text": "MRI SAYS HERNIATED", "position": "top" }, { "role": "body", "text": "But the structure isn't the problem. The pattern that stressed it is.", "position": "center" }] },
   { "template": "cta",       "blocks": [{ "role": "hook", "text": "READY TO MOVE PAST THE MRI?", "position": "top" }, { "role": "body", "text": "Book a free movement assessment.", "position": "center" }, { "role": "cta", "text": "Reserve Your Free Seat", "position": "bottom" }] }
 ]`
