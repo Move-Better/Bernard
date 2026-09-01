@@ -130,13 +130,13 @@ export function getAtomSystemPrompt(workspace, staffName, condition, platform, a
 
   // Local-reach nudge (Philip feedback, 2026-08-31). On the two discovery-driven
   // platforms (Instagram, TikTok), keyword-rich captions drive more local reach
-  // than hashtags do — Instagram has publicly de-emphasized hashtags for reach,
-  // and captions that name the city surface in local search + recommendations.
-  // So weave the city keyword into the caption BODY, not only the hashtag slot.
-  // (Geotagging is a publish-time action the caption model can't perform, so it
-  // is deliberately not instructed here.)
+  // than hashtags do, since Instagram has publicly de-emphasized hashtags for
+  // reach and captions that name the city surface in local search and
+  // recommendations. So weave the city keyword into the caption BODY, not only
+  // the hashtag slot. (Geotagging is a publish-time action the caption model
+  // cannot perform, so it is deliberately not instructed here.)
   const localReachLine = workspace.location_keyword
-    ? `LOCAL SEO: weave "${workspace.location_keyword}" naturally into the caption body once (beyond any location hashtag) — keyword-rich captions surface in local search and recommendations better than tags alone. Never force it or repeat it.`
+    ? `LOCAL SEO: weave "${workspace.location_keyword}" naturally into the caption body once (beyond any location hashtag). Keyword-rich captions surface in local search and recommendations better than tags alone. Never force it or repeat it.`
     : ''
 
   // Appended to every Instagram prompt. Instructs the AI to plan a multi-slide
