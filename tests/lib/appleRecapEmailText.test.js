@@ -74,8 +74,12 @@ describe('prepareRecapEmailText', () => {
   })
 })
 
-describe('apple import route wiring', () => {
-  const SRC = readFileSync(fileURLToPath(new URL('../../api/_routes/integrations/apple/import.js', import.meta.url)), 'utf8')
+describe('apple import wiring', () => {
+  // These originally scanned the route handler. The logic since moved into
+  // _lib/appleImport.js so a second (cron) route could share it verbatim, so
+  // they follow it there — the thing being guarded is unchanged: the send-date
+  // append is not reimplemented, the source is recorded, and the body is capped.
+  const SRC = readFileSync(fileURLToPath(new URL('../../api/_lib/appleImport.js', import.meta.url)), 'utf8')
 
   it('routes the email body through the shared helper, not an inline copy', () => {
     expect(SRC).toMatch(/prepareRecapEmailText\(/)
@@ -90,5 +94,103 @@ describe('apple import route wiring', () => {
   it('caps email text so a huge body cannot be pushed through the parser', () => {
     expect(SRC).toMatch(/MAX_TEXT_CHARS/)
     expect(SRC).toMatch(/invalid_text_size/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The Apple recap now has TWO entry points — the Clerk upload card and the
+// headless monthly routine (POST /api/cron/apple-import). They must not drift.
+//
+// This is the Buffer-vs-bundle lesson applied before it can bite: two publish
+// paths that were "byte-for-byte identical" per their own comment silently
+// diverged, and a platform rule enforced in one simply did not exist in the
+// other. So the parsing, the row shape and the upsert live in ONE module and
+// these guards assert neither route grew its own copy.
+
+describe('apple import — shared core, two routes', () => {
+  const read = (p) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'utf8')
+  const CLERK = read('../../api/_routes/integrations/apple/import.js')
+  const CRON = read('../../api/_routes/cron/apple-import.js')
+  const LIB = read('../../api/_lib/appleImport.js')
+
+  it('keeps the upsert in exactly one place', () => {
+    // Non-vacuity: the string must really be in the lib, or this guard passes
+    // by matching nothing anywhere.
+    expect(LIB).toContain("apple_insights?on_conflict=workspace_id,location_id,period_month")
+    expect(CLERK).not.toContain('apple_insights?on_conflict')
+    expect(CRON).not.toContain('apple_insights?on_conflict')
+  })
+
+  it('keeps the parser calls in exactly one place', () => {
+    expect(LIB).toMatch(/parseAppleRecapText\(/)
+    expect(LIB).toMatch(/parseAppleRecapPdf\(/)
+    for (const [name, src] of [['clerk', CLERK], ['cron', CRON]]) {
+      expect(`${name}:${/parseAppleRecap(Text|Pdf)\(/.test(src)}`).toBe(`${name}:false`)
+    }
+  })
+
+  it('builds the stored row in exactly one place', () => {
+    expect(LIB).toMatch(/place_card_views:/)
+    expect(CLERK).not.toMatch(/place_card_views:/)
+    expect(CRON).not.toMatch(/place_card_views:/)
+  })
+
+  it('checks the cron secret before reading the body', () => {
+    // Anchor on the CALL, not the identifier: `verifyCronSecret` also appears
+    // in the import line at the top of the file, so an identifier-position
+    // check passes no matter where the call actually sits. That exact hollow
+    // version survived its own mutation test before this comment existed.
+    const authAt = CRON.indexOf('verifyCronSecret(req)')
+    const bodyAt = CRON.indexOf('req.body')
+    expect(authAt).toBeGreaterThan(-1)
+    expect(bodyAt).toBeGreaterThan(-1)
+    expect(bodyAt).toBeGreaterThan(authAt)
+  })
+
+  it('REQUIRES a locationId on the cron route — there it is the tenant key', () => {
+    // The Clerk route resolves the tenant from the Host header and may take a
+    // null location. The cron route has no Host, so the location is the only
+    // thing identifying the workspace: accepting a null one would mean writing
+    // a row with no tenant, or guessing at somebody's.
+    expect(CRON).toMatch(/if \(!locationId \|\| !UUID_RE\.test\(locationId\)\)/)
+    expect(CRON).toMatch(/workspaceIdForLocation\(/)
+    expect(CRON).toMatch(/location_not_found/)
+  })
+})
+
+describe('buildInsightsRow / parseAppleRecapInput', () => {
+  it('maps all six metrics and tags the source by input shape', async () => {
+    const { parseAppleRecapInput, buildInsightsRow } = await import('../../api/_lib/appleImport.js')
+    const r = await parseAppleRecapInput({ emailText: RECAP, sentAt: '2026-07-07T12:00:00Z' })
+    expect(r.status).toBe('ok')
+
+    const row = buildInsightsRow({
+      workspaceId: 'ws-1', locationId: 'loc-1', parsed: r.parsed, hasText: r.hasText, subject: 'Your June Insights',
+    })
+    expect(row).toMatchObject({
+      workspace_id: 'ws-1',
+      location_id: 'loc-1',
+      period_month: '2026-06-01',
+      place_card_views: 143,
+      taps_from_search: 72,
+      directions: 65,
+      photos: 55,
+      website: 3,
+      call: 8,
+      source: 'email_recap',
+    })
+    expect(row.raw_extract.subject).toBe('Your June Insights')
+  })
+
+  it('refuses an empty input rather than writing an empty row', async () => {
+    const { parseAppleRecapInput } = await import('../../api/_lib/appleImport.js')
+    expect((await parseAppleRecapInput({})).status).toBe('missing_pdf')
+    expect((await parseAppleRecapInput({ emailText: '   ' })).status).toBe('missing_pdf')
+  })
+
+  it('caps an oversized body before it reaches the parser', async () => {
+    const { parseAppleRecapInput, MAX_TEXT_CHARS } = await import('../../api/_lib/appleImport.js')
+    const huge = 'x'.repeat(MAX_TEXT_CHARS + 1)
+    expect((await parseAppleRecapInput({ emailText: huge })).status).toBe('invalid_text_size')
   })
 })
