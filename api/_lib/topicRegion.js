@@ -41,7 +41,7 @@ export function regionLabel(slug) {
 // Model: reuse the AI-Gateway path already proven in tagAsset.js (plain
 // provider/model string, AI_GATEWAY_API_KEY). A short-string classification is
 // cheap; flash is plenty.
-const MODEL = 'google/gemini-3.6-flash' // gemini-2.5-flash retires no earlier than 2026-10-16; 3.6 flash is GA on the gateway
+const MODEL = 'google/gemini-3.6-flash' // gemini-2.5-flash has no announced shutdown date (checked ai.google.dev/gemini-api/docs/deprecations 2026-09-03); 3.6 flash is GA on the gateway and simply newer
 
 const schema = z.object({
   region: z.enum(REGION_SLUGS),
