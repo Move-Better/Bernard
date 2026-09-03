@@ -136,6 +136,31 @@ export function parseAppleRecapText(raw) {
   }
 }
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+// Prepare a recap EMAIL body for parseAppleRecapText.
+//
+// parseAppleRecapText resolves the report YEAR from the first
+// "<Month> <D>, <YYYY>" in the text, because a recap is always for the PRIOR
+// calendar month and the send date is what disambiguates a December recap read
+// in January. A PDF's text layer carries that date; an email body may not, so
+// the message's own send date is APPENDED as a fallback.
+//
+// Appending (never prepending) is the whole contract: the parser takes the
+// FIRST match, so a date genuinely present in the body always wins and this can
+// only fill a gap. Prepending would let the envelope silently override the
+// document, which is the bug this shape exists to prevent.
+export function prepareRecapEmailText(emailText, sentAt) {
+  const text = String(emailText || '')
+  if (sentAt == null) return text
+  const d = sentAt instanceof Date ? sentAt : new Date(sentAt)
+  if (Number.isNaN(d.getTime())) return text
+  return `${text} ${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`
+}
+
 // Parse an Apple recap from raw PDF bytes.
 export async function parseAppleRecapPdf(buffer) {
   const pdf = await getDocumentProxy(new Uint8Array(buffer))
