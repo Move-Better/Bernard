@@ -23,7 +23,7 @@ function requireScope(scope) {
 // Gateway with a plain `provider/model` string (AI_GATEWAY_API_KEY in env).
 
 
-const MODEL = 'google/gemini-3.6-flash' // gemini-2.5-flash retires no earlier than 2026-10-16; 3.6 flash is GA on the gateway
+const MODEL = 'google/gemini-3.6-flash' // gemini-2.5-flash has no announced shutdown date (checked ai.google.dev/gemini-api/docs/deprecations 2026-09-03); 3.6 flash is GA on the gateway and simply newer
 
 // Gemini's inline-data cap on Vertex (the path the AI Gateway uses) is ~20 MB
 // per request, after base64 inflation. Anything larger handed to the SDK as a
