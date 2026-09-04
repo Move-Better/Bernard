@@ -1,6 +1,6 @@
 // GENERATED FILE — do not hand-edit. Regenerate via scripts/write-supabase-types.mjs.
 // Source: Supabase MCP generate_typescript_types, public schema.
-// Generated: 2026-08-01T00:13:56.170Z
+// Generated: 2026-09-04T18:42:27.816Z
 //
 // See ARCHITECTURE.md "Generated DB types (api/_lib/supabase.types.d.ts)" for:
 //   - the opt-in consumption pattern (// @ts-check + a tsconfig.json include entry)
@@ -11,7 +11,7 @@
 //
 // Sibling artifact: supabase/expected-schema.json (npm run schema:snapshot /
 // schema:verify) — regenerate both together, same live-schema source.
-// Table count at generation time: 58
+// Table count at generation time: 60
 
 export type Json =
   | string
@@ -388,6 +388,81 @@ export type Database = {
           },
           {
             foreignKeyName: "apple_insights_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blog_citations: {
+        Row: {
+          claim_quote: string
+          claim_text: string
+          confidence: number
+          content_item_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          source: string
+          source_title: string | null
+          source_type: string | null
+          source_url: string
+          status: string
+          updated_at: string
+          verify_evidence: string
+          why_match: string
+          workspace_id: string
+        }
+        Insert: {
+          claim_quote?: string
+          claim_text: string
+          confidence?: number
+          content_item_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          source: string
+          source_title?: string | null
+          source_type?: string | null
+          source_url: string
+          status?: string
+          updated_at?: string
+          verify_evidence?: string
+          why_match?: string
+          workspace_id: string
+        }
+        Update: {
+          claim_quote?: string
+          claim_text?: string
+          confidence?: number
+          content_item_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          source?: string
+          source_title?: string | null
+          source_type?: string | null
+          source_url?: string
+          status?: string
+          updated_at?: string
+          verify_evidence?: string
+          why_match?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_citations_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blog_citations_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -828,6 +903,62 @@ export type Database = {
           },
         ]
       }
+      clip_render_jobs: {
+        Row: {
+          blob_pathname: string | null
+          blob_url: string | null
+          created_at: string
+          duration_s: number | null
+          error: string | null
+          had_subtitles: boolean | null
+          height: number | null
+          id: string
+          size_bytes: number | null
+          status: string
+          updated_at: string
+          width: number | null
+          workspace_id: string
+        }
+        Insert: {
+          blob_pathname?: string | null
+          blob_url?: string | null
+          created_at?: string
+          duration_s?: number | null
+          error?: string | null
+          had_subtitles?: boolean | null
+          height?: number | null
+          id?: string
+          size_bytes?: number | null
+          status?: string
+          updated_at?: string
+          width?: number | null
+          workspace_id: string
+        }
+        Update: {
+          blob_pathname?: string | null
+          blob_url?: string | null
+          created_at?: string
+          duration_s?: number | null
+          error?: string | null
+          had_subtitles?: boolean | null
+          height?: number | null
+          id?: string
+          size_bytes?: number | null
+          status?: string
+          updated_at?: string
+          width?: number | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clip_render_jobs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collection_items: {
         Row: {
           added_at: string
@@ -1103,6 +1234,8 @@ export type Database = {
           model_marked_at: string | null
           model_note: string | null
           model_reasons: string[] | null
+          moment_id: string | null
+          moment_provenance: Json | null
           notes: string | null
           overlay_text: Json | null
           performed_well: boolean
@@ -1111,6 +1244,8 @@ export type Database = {
           photo_treatment: Json | null
           platform: string
           platform_post_id: string | null
+          point_safety_audit: Json | null
+          point_safety_score: number | null
           provenance: Json | null
           publish_error: string | null
           published_at: string | null
@@ -1170,6 +1305,8 @@ export type Database = {
           model_marked_at?: string | null
           model_note?: string | null
           model_reasons?: string[] | null
+          moment_id?: string | null
+          moment_provenance?: Json | null
           notes?: string | null
           overlay_text?: Json | null
           performed_well?: boolean
@@ -1178,6 +1315,8 @@ export type Database = {
           photo_treatment?: Json | null
           platform: string
           platform_post_id?: string | null
+          point_safety_audit?: Json | null
+          point_safety_score?: number | null
           provenance?: Json | null
           publish_error?: string | null
           published_at?: string | null
@@ -1237,6 +1376,8 @@ export type Database = {
           model_marked_at?: string | null
           model_note?: string | null
           model_reasons?: string[] | null
+          moment_id?: string | null
+          moment_provenance?: Json | null
           notes?: string | null
           overlay_text?: Json | null
           performed_well?: boolean
@@ -1245,6 +1386,8 @@ export type Database = {
           photo_treatment?: Json | null
           platform?: string
           platform_post_id?: string | null
+          point_safety_audit?: Json | null
+          point_safety_score?: number | null
           provenance?: Json | null
           publish_error?: string | null
           published_at?: string | null
@@ -1294,6 +1437,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "workspace_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_items_moment_id_fkey"
+            columns: ["moment_id"]
+            isOneToOne: false
+            referencedRelation: "moments"
             referencedColumns: ["id"]
           },
           {
@@ -1790,12 +1940,14 @@ export type Database = {
           created_at: string
           generation_style: string
           id: string
+          kind: string
           location_id: string | null
           messages: Json | null
           outputs: Json | null
           owner_email: string | null
           owner_id: string | null
           paused_at: string | null
+          point: string | null
           prototype_id: string | null
           pull_quote_candidates: Json | null
           pull_quote_selected_id: string | null
@@ -1835,12 +1987,14 @@ export type Database = {
           created_at?: string
           generation_style?: string
           id?: string
+          kind?: string
           location_id?: string | null
           messages?: Json | null
           outputs?: Json | null
           owner_email?: string | null
           owner_id?: string | null
           paused_at?: string | null
+          point?: string | null
           prototype_id?: string | null
           pull_quote_candidates?: Json | null
           pull_quote_selected_id?: string | null
@@ -1880,12 +2034,14 @@ export type Database = {
           created_at?: string
           generation_style?: string
           id?: string
+          kind?: string
           location_id?: string | null
           messages?: Json | null
           outputs?: Json | null
           owner_email?: string | null
           owner_id?: string | null
           paused_at?: string | null
+          point?: string | null
           prototype_id?: string | null
           pull_quote_candidates?: Json | null
           pull_quote_selected_id?: string | null
@@ -1987,6 +2143,9 @@ export type Database = {
           parent_id: string | null
           patient_pseudonym: string | null
           render_error: string | null
+          render_proxy_bytes: number | null
+          render_proxy_generated_at: string | null
+          render_proxy_url: string | null
           render_status: string | null
           rendered_url: string | null
           segment_error: string | null
@@ -2047,6 +2206,9 @@ export type Database = {
           parent_id?: string | null
           patient_pseudonym?: string | null
           render_error?: string | null
+          render_proxy_bytes?: number | null
+          render_proxy_generated_at?: string | null
+          render_proxy_url?: string | null
           render_status?: string | null
           rendered_url?: string | null
           segment_error?: string | null
@@ -2107,6 +2269,9 @@ export type Database = {
           parent_id?: string | null
           patient_pseudonym?: string | null
           render_error?: string | null
+          render_proxy_bytes?: number | null
+          render_proxy_generated_at?: string | null
+          render_proxy_url?: string | null
           render_status?: string | null
           rendered_url?: string | null
           segment_error?: string | null
@@ -2683,34 +2848,52 @@ export type Database = {
         Row: {
           account_username: string | null
           captured_at: string
+          comments: number | null
           followers: number | null
           id: string
+          impressions: number | null
+          impressions_unique: number | null
+          likes: number | null
           platform: string
           post_count: number | null
           snapshot_at: string | null
           source: string
+          views: number | null
+          views_unique: number | null
           workspace_id: string
         }
         Insert: {
           account_username?: string | null
           captured_at?: string
+          comments?: number | null
           followers?: number | null
           id?: string
+          impressions?: number | null
+          impressions_unique?: number | null
+          likes?: number | null
           platform: string
           post_count?: number | null
           snapshot_at?: string | null
           source?: string
+          views?: number | null
+          views_unique?: number | null
           workspace_id: string
         }
         Update: {
           account_username?: string | null
           captured_at?: string
+          comments?: number | null
           followers?: number | null
           id?: string
+          impressions?: number | null
+          impressions_unique?: number | null
+          likes?: number | null
           platform?: string
           post_count?: number | null
           snapshot_at?: string | null
           source?: string
+          views?: number | null
+          views_unique?: number | null
           workspace_id?: string
         }
         Relationships: [
@@ -2726,7 +2909,9 @@ export type Database = {
       staff: {
         Row: {
           answer_review_enabled: boolean
+          archived_at: string | null
           blog_review_enabled: boolean
+          blog_target_nudged_month: string | null
           campaign_settings: Json | null
           capability_overrides: Json
           capture_upload_token: string | null
@@ -2762,7 +2947,9 @@ export type Database = {
         }
         Insert: {
           answer_review_enabled?: boolean
+          archived_at?: string | null
           blog_review_enabled?: boolean
+          blog_target_nudged_month?: string | null
           campaign_settings?: Json | null
           capability_overrides?: Json
           capture_upload_token?: string | null
@@ -2798,7 +2985,9 @@ export type Database = {
         }
         Update: {
           answer_review_enabled?: boolean
+          archived_at?: string | null
           blog_review_enabled?: boolean
+          blog_target_nudged_month?: string | null
           campaign_settings?: Json | null
           capability_overrides?: Json
           capture_upload_token?: string | null
@@ -4111,6 +4300,7 @@ export type Database = {
           asset_id: string | null
           last_used_at: string | null
           published_count: number | null
+          published_platforms: Json | null
           use_count: number | null
           workspace_id: string | null
         }
@@ -4231,12 +4421,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4260,11 +4450,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4285,11 +4475,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4310,11 +4500,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4327,11 +4517,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
