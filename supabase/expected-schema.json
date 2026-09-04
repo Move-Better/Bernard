@@ -318,6 +318,8 @@
     "model_marked_at",
     "model_note",
     "model_reasons",
+    "moment_id",
+    "moment_provenance",
     "notes",
     "overlay_text",
     "performed_well",
@@ -711,12 +713,18 @@
   "social_channel_snapshots": [
     "account_username",
     "captured_at",
+    "comments",
     "followers",
     "id",
+    "impressions",
+    "impressions_unique",
+    "likes",
     "platform",
     "post_count",
     "snapshot_at",
     "source",
+    "views",
+    "views_unique",
     "workspace_id"
   ],
   "staff": [

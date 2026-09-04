@@ -441,3 +441,13 @@ Resolves the known-limit clause in the 2026-07-22 `/week` chrome entry above: th
 **Case against the deferral.** A clinician who wants their quote to read cleanly could still be tripped by a grammar slip spellcheck won't catch; and if a future editor surface (blog/answer authoring) wanted richer proofreading, an engine built once could serve several. Rejected: the moment editor exists to repair ASR, not author prose, and no other surface has asked.
 
 **Revisit if** a paid/external clinic (not one of Q's internal-plan workspaces) explicitly asks for grammar/caps checking in an editing surface, or a product/frontier panel identifies proofreading as a retention lever with real evidence. Trigger-gated, no clock — do not re-scope on a hunch. Recorded in memory as `project-moments-review-rework`.
+
+## 2026-09-04 — IG reach instrumented for the reel kill criterion (migration 215, snapshot-social-posts)
+
+**Context.** The 2026-07-21 "Auto-draft Reels" kill criterion (rule by **2026-09-15**) requires "IG reach clearly up (bundle analytics)" — but `social_channel_snapshots` only carried `post_count`/`followers`. bundle.social's account-analytics items were found to already carry reach (`impressions`/`impressionsUnique`) plus views/likes/comments, retained as a **~31-day sliding window** — so any day not persisted is unrecoverable a month later, and the August before/after was days from aging out.
+
+**Built:** migration 215 adds `impressions`, `impressions_unique`, `views`, `views_unique`, `likes`, `comments` + a `(workspace_id, platform, snapshot_at)` unique key; the weekly cron now upserts bundle's whole retained series (daily rows, merge-duplicates), so a missed week self-heals and the first run backfilled August (daily from Aug 5).
+
+**How to read it for the ruling:** `impressions` is a TRAILING-WINDOW metric (moves down as well as up; window length undocumented by bundle), not cumulative — compare early-August rows vs September rows directly, don't diff like `post_count`. On IG `impressions == impressions_unique` on every observed row. Measured at build time (movebetter IG): ~8.2k on Aug 5 → ~17.7k peak Aug 30 → ~13.7k Sep 4.
+
+**Caveat:** pre-Aug-5 reach is gone (bundle's window) — the "before" for the ruling is early August, not July. Window semantics are observed, not documented; if bundle's numbers ever look implausible, re-probe the API before trusting a trend.

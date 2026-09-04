@@ -2,19 +2,29 @@ import { withSentry } from '../../_lib/sentry.js'
 export const config = { runtime: 'nodejs' }
 // GET /api/cron/snapshot-social-posts
 //
-// Weekly capture of each bundle.social workspace's ACCOUNT-level post/follower
-// counts into social_channel_snapshots — the /outcome-review adoption
-// denominator. bundle snapshots every connected account roughly daily, and the
-// snapshot's postCount is the account's cumulative total straight off the
-// platform profile — native posts included (verified live 2026-07-21 against
-// the movebetter IG). We persist our own rows because bundle's series
-// retention is undocumented; the monthly review diffs the two rows bracketing
-// a calendar month per (workspace, platform).
+// Weekly sync of each bundle.social workspace's ACCOUNT-level analytics into
+// social_channel_snapshots — the /outcome-review adoption denominator, and
+// (since migration 215) the IG reach series the 2026-09-15 reel kill
+// criterion reads. bundle snapshots every connected account roughly daily but
+// RETAINS only a ~31-day sliding window (measured 2026-09-04: exactly 31
+// items), so anything not persisted here is unrecoverable a month later.
 //
-// Weekly, not monthly, on purpose: a single failed monthly run loses the month
-// boundary for TWO review cycles. Weekly rows are tiny (a handful of accounts
-// per workspace) and self-heal — the review takes the row nearest each
-// boundary.
+// Each run therefore upserts bundle's ENTIRE retained series — one row per
+// daily item, deduped on (workspace_id, platform, snapshot_at) via the
+// migration-215 unique index + PostgREST merge-duplicates — rather than just
+// the newest item. Two properties fall out:
+//   - a missed weekly run self-heals completely (the next run re-pulls up to
+//     ~31 days), which the old latest-item-only shape could not do;
+//   - re-syncing an already-stored day is a harmless overwrite with the same
+//     values from the same source.
+//
+// Row semantics: postCount/followers are CUMULATIVE profile counters (native
+// posts included — verified live 2026-07-21 against the movebetter IG);
+// impressions/impressions_unique/views/views_unique/likes/comments are
+// TRAILING-WINDOW metrics (they move down as well as up day to day — verified
+// live 2026-09-04; on IG impressions == impressions_unique on every observed
+// item). The monthly review diffs cumulative counters across a month boundary
+// and reads the trailing-window metrics directly.
 //
 // Known platform quirk: Facebook pages may report postCount 0 (Meta doesn't
 // expose a reliable page post total). Rows are stored as reported; the
@@ -55,7 +65,7 @@ async function processWorkspace(ws, summary) {
     return
   }
 
-  // One snapshot per distinct connected account TYPE (bundle allows one active
+  // One series per distinct connected account TYPE (bundle allows one active
   // account per type per Team). Even an unhealthy account is worth reading —
   // bundle keeps serving the last snapshots it captured.
   const types = [...new Set((accounts || []).map((a) => a?.type).filter(Boolean))]
@@ -65,19 +75,28 @@ async function processWorkspace(ws, summary) {
   for (const type of types) {
     try {
       const snap = await publisher.getAccountSnapshots({ platformType: type })
-      const latest = snap?.snapshots?.[snap.snapshots.length - 1]
-      if (!latest) {
+      if (!snap?.snapshots?.length) {
         skipped.push(type)
         continue
       }
-      rows.push({
-        workspace_id:     ws.id,
-        platform:         type,
-        account_username: snap.username,
-        post_count:       latest.postCount,
-        followers:        latest.followers,
-        snapshot_at:      latest.at,
-      })
+      // The whole retained series, one row per daily item — deduped by the
+      // upsert below, so re-synced days are harmless (see header comment).
+      for (const s of snap.snapshots) {
+        rows.push({
+          workspace_id:       ws.id,
+          platform:           type,
+          account_username:   snap.username,
+          post_count:         s.postCount,
+          followers:          s.followers,
+          impressions:        s.impressions,
+          impressions_unique: s.impressionsUnique,
+          views:              s.views,
+          views_unique:       s.viewsUnique,
+          likes:              s.likes,
+          comments:           s.comments,
+          snapshot_at:        s.at,
+        })
+      }
     } catch (e) {
       // One unsupported/erroring account type must not lose the others.
       console.error('[cron/snapshot-social-posts] snapshot failed:', ws.slug, type, e?.message)
@@ -90,11 +109,17 @@ async function processWorkspace(ws, summary) {
     return
   }
 
-  const ins = await sb('social_channel_snapshots', {
-    method:  'POST',
-    headers: { Prefer: 'return=minimal' },
-    body:    JSON.stringify(rows),
-  })
+  // merge-duplicates (not ignore-): an existing row for the same instant gets
+  // its payload columns overwritten — same values from the same source, and it
+  // is what filled the reach columns onto pre-215 rows on the first run.
+  const ins = await sb(
+    'social_channel_snapshots?on_conflict=workspace_id,platform,snapshot_at',
+    {
+      method:  'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body:    JSON.stringify(rows),
+    }
+  )
   if (!ins.ok) {
     const text = await ins.text().catch(() => '')
     console.error('[cron/snapshot-social-posts] insert failed', ws.slug, ins.status, text.slice(0, 200))

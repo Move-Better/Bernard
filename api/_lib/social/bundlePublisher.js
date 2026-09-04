@@ -204,6 +204,29 @@ export function isReelPayload(uploads) {
   return video > 0 && image === 0
 }
 
+// Map one bundle account-analytics item to the snapshot shape
+// getAccountSnapshots returns (and cron/snapshot-social-posts persists).
+// Pure and exported so the field mapping is unit-testable: a renamed or
+// dropped field on bundle's side must surface as a null here, never as NaN or
+// undefined leaking into a DB row. Non-finite (missing/null/NaN) → null,
+// matching the table's "null = platform didn't report" convention.
+export function mapAccountSnapshotItem(i) {
+  const num = (v) => (Number.isFinite(v) ? v : null)
+  return {
+    at: i?.createdAt ?? null,
+    // Cumulative profile counters.
+    postCount: num(i?.postCount),
+    followers: num(i?.followers),
+    // Trailing-window metrics (see getAccountSnapshots' comment).
+    impressions: num(i?.impressions),
+    impressionsUnique: num(i?.impressionsUnique),
+    views: num(i?.views),
+    viewsUnique: num(i?.viewsUnique),
+    likes: num(i?.likes),
+    comments: num(i?.comments),
+  }
+}
+
 // Build the per-platform `data` block for postCreate. Pure — takes the resolved
 // bundle uploads (not our media entries) plus an optional already-uploaded cover
 // URL — so the format decision is unit-testable without an API key.
@@ -536,12 +559,16 @@ export class BundlePublisher extends SocialPublisher {
   }
 
   // Account-level analytics snapshots for one connected account — bundle
-  // captures roughly one per day, and each carries the account's CUMULATIVE
-  // post_count and follower count straight off the platform profile. postCount
-  // includes posts made natively outside Bernard/bundle, which is what makes it
-  // the adoption denominator (verified live 2026-07-21 against the movebetter
-  // IG: daily snapshots, postCount 189→193 over ten days). NOT part of the
-  // SocialPublisher contract — bundle-specific.
+  // captures roughly one per day and RETAINS only a ~31-day sliding window
+  // (verified live 2026-09-04 against the movebetter IG: exactly 31 items,
+  // oldest 30 days back). Each item carries two kinds of number:
+  //   - CUMULATIVE profile counters: postCount (native posts included — the
+  //     adoption denominator, verified live 2026-07-21) and followers.
+  //   - TRAILING-WINDOW metrics: impressions / impressionsUnique ("reach") /
+  //     views / viewsUnique / likes / comments. These move down as well as up
+  //     day to day, so they are a rolling window, NOT lifetime totals; on IG
+  //     impressions == impressionsUnique on every observed item.
+  // NOT part of the SocialPublisher contract — bundle-specific.
   //
   // Returns null for platforms bundle's account-analytics enum doesn't cover
   // (TWITTER/DISCORD/SLACK); otherwise { username, displayName, snapshots }
@@ -556,11 +583,7 @@ export class BundlePublisher extends SocialPublisher {
     })
     const items = Array.isArray(res?.items) ? res.items : []
     const snapshots = items
-      .map((i) => ({
-        at: i?.createdAt ?? null,
-        postCount: Number.isFinite(i?.postCount) ? i.postCount : null,
-        followers: Number.isFinite(i?.followers) ? i.followers : null,
-      }))
+      .map(mapAccountSnapshotItem)
       .filter((s) => s.at)
       .sort((a, b) => new Date(a.at) - new Date(b.at))
     return {
