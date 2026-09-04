@@ -12,6 +12,11 @@ Insights → Apple panel and the Settings → Integrations card render.
 Run it around the **7th**. Default is last month; pass a month to target one:
 `/bernard-apple-insights 2026-09`.
 
+**This also runs automatically** as the scheduled task
+`bernard-apple-insights-monthly` (9am on the 7th), which executes these same
+steps against the same endpoint. Use this command to run it early, re-run a
+month, or debug a failed run — not as the only path.
+
 ---
 
 ## Read this before running
@@ -72,46 +77,65 @@ through **Settings → Integrations → Apple Business Insights**, which already
 works and uses the same parser. Then record in memory that the email-body route
 is unavailable, so the next run does not retry it.
 
-## Step 3 — preview, and sanity-check before writing
+## Step 3 — preview (writes nothing)
 
-The endpoint is Clerk-admin-gated, so post from Q's authenticated Chrome
-(`mcp__claude-in-chrome__javascript_tool` on a `*.withbernard.ai` tab).
-`preview: true` **parses without saving** — it is the safe half of this routine
+Post to **`POST /api/cron/apple-import`** with `Bearer CRON_SECRET`. That route
+exists so this works headlessly — no browser, no Clerk session — and it shares
+every line of parsing, the location check, the row shape and the upsert with the
+Settings upload card via `api/_lib/appleImport.js`. Do NOT post from Q's Chrome
+to the Clerk endpoint; that was the original shape and it would drift from what
+the scheduled run actually does.
+
+`preview: true` **parses without saving**. It is the safe half of this routine
 and must always run first.
 
-```js
-const token = await window.Clerk.session.getToken()
-const r = await fetch('/api/integrations/apple/import', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-  body: JSON.stringify({
-    preview: true,
-    emailText: /* the PLAIN_TEXT body */,
-    sentAt:    /* the message's date, ISO */,
-    subject:   /* the message subject */,
-    locationId: /* the UUID from the table above */,
-  }),
-})
-window.__ap = await r.json(); r.status
+Load the secret in the same command that uses it (the mount is a FIFO; never
+`Read` it — it holds every secret — and never echo the value):
+
+```bash
+cd "/Users/qbook/Claude Projects/Bernard" && T=$(mktemp) && cat .env.bernard.1pw > "$T" && chmod 600 "$T" && CRON_SECRET="$(awk '/^CRON_SECRET=/{sub(/^CRON_SECRET=/,""); print}' "$T" | tr -d '\r')" && rm -f "$T" && [ -n "$CRON_SECRET" ] && echo "secret loaded" || echo "SECRET MISSING"
 ```
 
-Read `window.__ap` back in a SECOND call (an async result serializes as `{}`).
+If the mount reads empty or hangs, stop and ask Q to fully quit and reopen the
+1Password app — do not retry in a loop.
 
-Then **compare against the previous month before saving.** Query
-`apple_insights` for that location and eyeball the trend — Portland has run
-101–184 place-card views a month across the last year. A figure an order of
-magnitude off that band is a parse failure or a threshold artifact, not a real
-collapse. Show Q the numbers and the prior month side by side.
+(The awk deliberately uses `sub()` rather than awk's whole-record variable. A
+dollar sign immediately followed by a digit is a POSITIONAL ARGUMENT slot in a
+command body, substituted at load time — and this command takes a month
+argument, so it would be silently replaced and the secret read would break with
+no error and no warning. Never write that character pair anywhere in this file,
+including in a comment explaining it: the explanation corrupts itself.)
 
-## Step 4 — save
+Then per location, with the JSON written to a temp file (the body carries quotes
+and newlines, so do not inline it in the shell):
 
-Only after Q confirms the previewed numbers, re-post the identical body with
-`preview` removed. The upsert is keyed on (workspace, location, month), so
-re-running is safe and idempotent — it corrects a row rather than duplicating it.
+```json
+{ "locationId": "<uuid>", "emailText": "<PLAIN_TEXT body>",
+  "sentAt": "<message date, ISO>", "subject": "<subject>", "preview": true }
+```
 
-Report what landed: month, both locations, the six metrics, and any `warnings`
-the parser returned. A non-empty `warnings` array means a metric was missing —
-surface it, never paper over it.
+## Step 4 — sanity-check BEFORE saving
+
+Compare each previewed figure against the previous month:
+
+```sql
+select period_month, location_id, place_card_views, taps_from_search,
+       directions, photos, website, call
+from apple_insights order by period_month desc limit 8;
+```
+
+Portland has run roughly **101–184** place-card views a month across the last
+year. A figure an order of magnitude outside its own recent band is a parse
+failure or a threshold artifact, not a real collapse — do not save it, report it.
+
+## Step 5 — save
+
+Re-post the identical body with `preview` removed. The upsert is keyed on
+(workspace, location, month), so re-running is safe and idempotent — it corrects
+a row rather than duplicating it.
+
+Report the month, both locations, the six metrics, and any `warnings` the parser
+returned. A non-empty warnings array means a metric was missing — surface it.
 
 ---
 
