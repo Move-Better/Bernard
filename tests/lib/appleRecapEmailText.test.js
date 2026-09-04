@@ -74,6 +74,154 @@ describe('prepareRecapEmailText', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// A REAL Gmail-sourced recap does not render like the terse PDF fixture
+// above. Gmail's plaintext conversion of Apple's HTML renders each
+// interaction label's <strong> span as a literal markdown-style bold marker
+// glued directly to the value with NO whitespace: "*Directions*74", not
+// "Directions74" (PDF) or "Directions 74" (space-separated). The surrounding
+// prose ("Add More Photos to Your Location", "[image: ACTION_CALL]") is also
+// real — it exists specifically to prove the fix doesn't accidentally match
+// an earlier, unrelated occurrence of the same word.
+//
+// These two fixtures are transcribed verbatim (quoted-printable soft-wraps
+// removed, tracking URLs stripped) from the real August 2026 recap emails for
+// Move Better's two locations — see project memory
+// project-apple-business-insights.md for the source thread.
+
+const EMAIL_RECAP_PORTLAND = [
+  '---------- Forwarded message ---------',
+  'From: Apple Business <noreply@apple.com>',
+  'Date: Thu, Sep 3, 2026 at 4:27 PM',
+  'Subject: Your August Insights for Move Better, 237 NE Broadway.',
+  'To: <admin@movebetter.co>',
+  'Sign In',
+  '*Move Better*',
+  '237 NE Broadway Portland, OR 97232',
+  'Insights Summary',
+  'Aug 1 - 31',
+  'PLACE CARD VIEWS',
+  '165',
+  '[image: Chart]',
+  '50% from August last year',
+  'TAPS FROM SEARCH',
+  '101',
+  '[image: Chart]',
+  '68% from August last year',
+  'Trends',
+  '- *101*',
+  'This location reached an all-time high of *101* *monthly* taps from search results.',
+  '- *68%*',
+  'This location has *68%* *more* taps on search results compared to August last year.',
+  '- *50%*',
+  'This location has *50%* *more* views compared to August last year.',
+  'Place cards with more than 15 photos average 70% more engagement. Add More',
+  'Photos to Your Location',
+  'Place Card Interactions',
+  'See All',
+  '- [image: ACTION_DIRECTIONS]*Directions*74',
+  '40% from August last year',
+  '- [image: ACTION_GALLERY_ENGAGEMENT]*Photos*36',
+  '89% from August last year',
+  '- [image: ACTION_WEBSITE]*Website*4',
+  '0% from August last year',
+  '- [image: ACTION_CALL]*Call*7',
+  'To receive monthly insights for more locations or manage your emails,',
+  'go to Email Settings.',
+  'Sign in to see all your location’s data',
+  'Sign In',
+  'Sign In to Apple Business | Manage Email Settings | Support | Terms of Service',
+  '| Privacy Policy',
+  'Copyright © 2026 Apple Inc. All rights reserved.',
+].join(' ')
+
+const EMAIL_RECAP_VANCOUVER = [
+  '---------- Forwarded message ---------',
+  'From: Apple Business <noreply@apple.com>',
+  'Date: Thu, Sep 3, 2026 at 4:27 PM',
+  'Subject: Your August Insights for Move Better, 10303 NE Fourth Plain Blvd.',
+  'To: <admin@movebetter.co>',
+  'Sign In',
+  '*Move Better*',
+  '10303 NE Fourth Plain Blvd Vancouver, WA 98662',
+  'Insights Summary',
+  'Aug 1 - 31',
+  'PLACE CARD VIEWS',
+  '31',
+  '[image: Chart]',
+  '40% from August last year',
+  'TAPS FROM SEARCH',
+  '19',
+  '[image: Chart]',
+  '24% from August last year',
+  'Trends',
+  '- *24%*',
+  'This location has *24%* *less* taps on search results compared to August last year.',
+  'Place cards with more than 15 photos average 70% more engagement. Add More',
+  'Photos to Your Location',
+  'Place Card Interactions',
+  'See All',
+  '- [image: ACTION_DIRECTIONS]*Directions*20',
+  '17% from August last year',
+  '- [image: ACTION_GALLERY_ENGAGEMENT]*Photos*Not enough data',
+  '- [image: ACTION_WEBSITE]*Website*4',
+  '- [image: ACTION_CALL]*Call*Not enough data',
+  'To receive monthly insights for more locations or manage your emails,',
+  'go to Email Settings.',
+  'Sign in to see all your location’s data',
+  'Sign In',
+  'Sign In to Apple Business | Manage Email Settings | Support | Terms of Service',
+  '| Privacy Policy',
+  'Copyright © 2026 Apple Inc. All rights reserved.',
+].join(' ')
+
+describe('a real Gmail-forwarded recap (asterisk-glued labels)', () => {
+  it('parses all four interaction breakdown numbers, not just the two headline metrics', () => {
+    const parsed = parseAppleRecapText(prepareRecapEmailText(EMAIL_RECAP_PORTLAND, '2026-09-03T23:30:00Z'))
+    expect(parsed.ok).toBe(true)
+    expect(parsed.periodMonth).toBe('2026-08-01')
+    expect(parsed.metrics).toEqual({
+      placeCardViews: 165, tapsFromSearch: 101, directions: 74, photos: 36, website: 4, call: 7,
+    })
+    // Nothing was actually missing, so no false "Missing metric" warnings.
+    expect(parsed.warnings).toEqual([])
+  })
+
+  it('does not confuse "*Directions*74" for the unrelated "ACTION_DIRECTIONS" / "Add More Photos" text nearby', () => {
+    const parsed = parseAppleRecapText(prepareRecapEmailText(EMAIL_RECAP_PORTLAND, '2026-09-03T23:30:00Z'))
+    expect(parsed.metrics.directions).toBe(74)
+    expect(parsed.metrics.photos).toBe(36)
+  })
+
+  it('leaves a metric null (never fabricated) when Apple itself says "Not enough data", with no warning', () => {
+    const parsed = parseAppleRecapText(prepareRecapEmailText(EMAIL_RECAP_VANCOUVER, '2026-09-03T23:30:00Z'))
+    expect(parsed.ok).toBe(true)
+    expect(parsed.metrics).toEqual({
+      placeCardViews: 31, tapsFromSearch: 19, directions: 20, photos: null, website: 4, call: null,
+    })
+    expect(parsed.warnings).toEqual([])
+  })
+
+  it('DOES warn when a number is genuinely missing (not an Apple "Not enough data" case)', () => {
+    // Drop the entire Directions bullet (label, value, and its YoY line) out
+    // of an otherwise-normal recap: this is a real parse gap, not Apple
+    // declaring the metric unavailable, so it must surface in warnings
+    // instead of silently vanishing the way it did before this fix.
+    const broken = EMAIL_RECAP_PORTLAND.replace(
+      '- [image: ACTION_DIRECTIONS]*Directions*74 40% from August last year ',
+      '',
+    )
+    expect(broken).not.toBe(EMAIL_RECAP_PORTLAND) // guard against a silently-no-op replace
+    expect(broken).not.toMatch(/directions/i)
+
+    const parsed = parseAppleRecapText(prepareRecapEmailText(broken, '2026-09-03T23:30:00Z'))
+    expect(parsed.ok).toBe(true)
+    expect(parsed.metrics.directions).toBeNull()
+    expect(parsed.metrics.photos).toBe(36) // the other three metrics are unaffected
+    expect(parsed.warnings).toContain('Missing metric: directions.')
+  })
+})
+
 describe('apple import wiring', () => {
   // These originally scanned the route handler. The logic since moved into
   // _lib/appleImport.js so a second (cron) route could share it verbatim, so

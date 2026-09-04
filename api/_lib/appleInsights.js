@@ -29,12 +29,27 @@ function toInt(s) {
   return Number.isFinite(n) ? n : null
 }
 
-// "<LABEL> <digits>" — the number may be glued to the label ("Directions65")
-// or space-separated ("PLACE CARD VIEWS 143").
+// "<LABEL> <digits>" — the number may be glued to the label ("Directions65"),
+// space-separated ("PLACE CARD VIEWS 143"), or glued through a markdown-style
+// bold marker ("*Directions*74"). That last shape is not a PDF artifact: an
+// email-sourced recap is Apple's HTML converted to text/plain by Gmail (when
+// forwarded) or by whatever fetched the message body, and Gmail renders a
+// <strong>Directions</strong> span as *Directions* with no separating
+// whitespace before the value that follows it.
 function labelNumber(text, label) {
-  const re = new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*([0-9][0-9,]*)', 'i')
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const re = new RegExp(escaped + '\\*?\\s*([0-9][0-9,]*)', 'i')
   const m = text.match(re)
   return m ? toInt(m[1]) : null
+}
+
+// Apple itself declares some interaction metrics unavailable ("Not enough
+// data") rather than printing a number — that is a legitimate null, not a
+// parse failure, and must not be warned about the same way a truly-missing
+// number is.
+function labelHasNoData(text, label) {
+  const re = new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\*?\\s*Not enough data', 'i')
+  return re.test(text)
 }
 
 // Signed YoY from the sentence form: "42% more views" / "12% fewer taps".
@@ -101,6 +116,12 @@ export function parseAppleRecapText(raw) {
   if (locM) address = locM[1].trim()
 
   // --- Core metrics ----------------------------------------------------------
+  const INTERACTION_LABELS = [
+    ['directions', 'Directions'],
+    ['photos', 'Photos'],
+    ['website', 'Website'],
+    ['call', 'Call'],
+  ]
   const metrics = {
     placeCardViews: labelNumber(text, 'PLACE CARD VIEWS'),
     tapsFromSearch: labelNumber(text, 'TAPS FROM SEARCH'),
@@ -111,13 +132,18 @@ export function parseAppleRecapText(raw) {
   }
   if (metrics.placeCardViews == null) warnings.push('Missing metric: place card views.')
   if (metrics.tapsFromSearch == null) warnings.push('Missing metric: taps from search.')
+  for (const [key, label] of INTERACTION_LABELS) {
+    if (metrics[key] == null && !labelHasNoData(text, label)) {
+      warnings.push(`Missing metric: ${label.toLowerCase()}.`)
+    }
+  }
 
   // --- Year-over-year --------------------------------------------------------
   // Signed only for the two headline metrics (the sentence form states
   // direction). Interaction YoY is magnitude-only by design.
   const interactions = {}
   for (const [key, noun] of [['directions', 'Directions'], ['photos', 'Photos'], ['call', 'Call']]) {
-    const re = new RegExp(noun + '\\s*[0-9][0-9,]*\\s+(Over\\s+)?([0-9][0-9.]*)%\\s+from', 'i')
+    const re = new RegExp(noun + '\\*?\\s*[0-9][0-9,]*\\s+(Over\\s+)?([0-9][0-9.]*)%\\s+from', 'i')
     const m = text.match(re)
     if (m) interactions[key] = { magnitudePct: parseFloat(m[2]), atLeast: !!m[1] }
   }
