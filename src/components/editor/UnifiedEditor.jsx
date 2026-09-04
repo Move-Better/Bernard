@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowRight, Check, FolderOpen, ImageIcon, Loader2, Lock, Palette, Plus, Send, Sparkles, Upload, Video, X } from 'lucide-react'
@@ -25,7 +25,9 @@ import RegenerateCaptionButton, { canRegenerateCaption } from '@/components/edit
 import { apiFetch } from '@/lib/api'
 import { clipToMediaEntry, pickerItemToMediaEntry, mediaEntryKey, photoSourceUrl, isVideoEntry, slidesHaveText } from '@/lib/mediaEntry'
 import PhotoInspector from '@/components/story-detail/slide-editor/PhotoInspector'
-import { heroSlide, applyHeroFrame, HERO_ASPECT } from '@/lib/heroPhoto'
+import SlidePreview from '@/components/story-detail/slide-editor/SlidePreview'
+import { heroSlide, applyHeroFrame, HERO_ASPECT, HERO_DIMS, HERO_THEME } from '@/lib/heroPhoto'
+import { brandStyleForRender } from '@/lib/brandSwatches'
 import { resolveArchetype, ARCHETYPES, railFor, mediaTierFor, MEDIA_TIER } from '@/lib/editorArchetype'
 import { isPieceLocked } from '@/lib/publishLock'
 import { deriveSeoTitle, deriveMetaDescription, cleanBlogMarkdown, SEO_TITLE_MAX, META_DESC_MAX } from '@/lib/blogOutput'
@@ -281,38 +283,93 @@ function SuggestionThumb({ clip, attached, attaching, onAttach }) {
 // (useContentWorkflow → renderAndUploadHero), so every destination — including
 // the separate movebetter.co site — receives an already-cropped photo.
 function HeroPhotoPanel({ piece, updateItem }) {
+  const ws = useWorkspace()
+  const brandStyle = useMemo(() => brandStyleForRender(ws), [ws])
   const media = Array.isArray(piece.media_urls) ? piece.media_urls : []
   const heroIdx = media.findIndex((m) => m && !isVideoEntry(m))
   const hero = heroIdx >= 0 ? media[heroIdx] : null
+  const heroKey = hero ? mediaEntryKey(hero) : null
   const attachedKeys = new Set(media.map(mediaEntryKey))
-  const slide = hero ? heroSlide(hero) : { photo_idx: null, blocks: [] }
   const photoUrl = hero ? (photoSourceUrl(hero) || hero.thumbnailUrl) : null
 
-  function persist(nextMedia) {
+  // LOCAL authoritative frame (a one-photo pseudo-slide). The zoom slider, the
+  // colourist, and the drag/scroll canvas all read and write THIS — never the
+  // query cache — so a controlled slider can't snap back to a stale server value
+  // between a save and its echo, and a background refetch can't jump the crop
+  // mid-drag. (Philip's report: the zoom slider "moves on its own /
+  // unresponsive / bugging out" — every tick used to fire an immediate PATCH
+  // with no optimistic write, the exact anti-pattern the carousel SlideEditor
+  // avoids with local state + a debounced autosave.)
+  const [frame, setFrame] = useState(() => (hero ? heroSlide(hero) : { photo_idx: null, blocks: [] }))
+  // Re-seed ONLY on a genuine photo swap. heroKey is the entry IDENTITY (asset
+  // id / url), not its frame — so our OWN debounced save echoing back through
+  // the cache leaves heroKey unchanged and can't clobber a live edit. Only
+  // Replace / Remove (which change which entry is the hero) re-seed.
+  useEffect(() => {
+    setFrame(hero ? heroSlide(hero) : { photo_idx: null, blocks: [] })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heroKey])
+
+  // Debounced persist. We stash the FULLY-COMPUTED next media array (not just
+  // the frame) so a firing timer can't recompute against a stale hero, and so a
+  // structural Replace/Remove can cancel a pending frame-save that belongs to
+  // the OLD photo before it clobbers the new one.
+  const saveTimer = useRef(null)
+  const pendingMediaRef = useRef(null)
+  const flushRef = useRef(null)
+  useEffect(() => {
+    // Written in an effect, not during render (React Compiler forbids mutating a
+    // ref while rendering) — kept live so the unmount flush uses the latest
+    // piece / updateItem, not a stale first-render closure.
+    flushRef.current = () => {
+      if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+      const next = pendingMediaRef.current
+      pendingMediaRef.current = null
+      if (next && !isPieceLocked(piece)) updateItem.mutate({ id: piece.id, patch: { mediaUrls: next } })
+    }
+  })
+  // Flush any pending frame save on unmount — the author may navigate away
+  // mid-drag and there is no manual Save button to catch the last change.
+  useEffect(() => () => { flushRef.current?.() }, [])
+
+  // camelCase mediaUrls — the PATCH allowlist maps mediaUrls→media_urls; a
+  // snake_case key is silently dropped (see MediaPanel.attachEntry).
+  function persistNow(nextMedia) {
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+    pendingMediaRef.current = null
     if (isPieceLocked(piece)) return
-    // camelCase mediaUrls — the PATCH allowlist maps mediaUrls→media_urls; a
-    // snake_case key is silently dropped (see MediaPanel.attachEntry).
     updateItem.mutate({ id: piece.id, patch: { mediaUrls: nextMedia } })
   }
 
-  // PhotoInspector edits a pseudo-slide: framing (photo_fill/photo_offset/grade)
-  // or removal (photo_idx → null). Map both back onto the hero entry.
-  function handleChange(next) {
+  // A frame edit (zoom slider, colourist grade, or a drag/scroll on the canvas):
+  // update local state instantly, debounce the write. A removal (photo_idx null,
+  // from PhotoInspector's Remove) is structural — persist it immediately.
+  function handleFrameChange(next) {
     if (!hero) return
-    if (next?.photo_idx == null) { persist(media.filter((_, i) => i !== heroIdx)); return }
+    if (next?.photo_idx == null) {
+      setFrame({ photo_idx: null, blocks: [] })
+      persistNow(media.filter((_, i) => i !== heroIdx))
+      return
+    }
+    setFrame(next)
     const nextMedia = media.slice()
     nextMedia[heroIdx] = applyHeroFrame(hero, next)
-    persist(nextMedia)
+    pendingMediaRef.current = nextMedia
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    // 1500ms of quiet, matching SlideEditor's autosave debounce.
+    saveTimer.current = setTimeout(() => flushRef.current?.(), 1500)
   }
 
-  // Replace / first-attach — SwapAddPhoto hands back a normalized media entry
-  // (never a raw clip). A fresh photo starts unframed (no carried-over crop).
+  // Replace / first-attach — structural. Cancel any pending frame save (it
+  // belongs to the OLD photo; applying its crop to the new entry would corrupt
+  // it) and persist the new entry immediately; frame re-seeds unframed via
+  // heroKey. SwapAddPhoto hands back a normalized entry (never a raw clip).
   function handleAttach(entry) {
     if (!entry?.url) { toast.error('That file has no usable URL'); return }
     const nextMedia = media.slice()
     if (heroIdx >= 0) nextMedia[heroIdx] = { ...entry }
     else nextMedia.unshift({ ...entry })
-    persist(nextMedia)
+    persistNow(nextMedia)
   }
 
   return (
@@ -320,16 +377,35 @@ function HeroPhotoPanel({ piece, updateItem }) {
       <div className="shrink-0 border-b px-3 py-2">
         <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Photo</span>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+        {photoUrl && (
+          // Interactive reframe canvas — renders from LOCAL frame state so zoom /
+          // reposition are instant, and drag-to-reposition + scroll-to-zoom are
+          // real (the same canvas the carousel editor uses). 16:9 to match the
+          // published hero crop; HERO_DIMS pins the bitmap so it isn't stretched.
+          <div className="overflow-hidden rounded-xl border bg-muted" style={{ aspectRatio: HERO_ASPECT }}>
+            <SlidePreview
+              slide={frame}
+              photoUrl={photoUrl}
+              brandStyle={brandStyle}
+              theme={HERO_THEME}
+              aspect={HERO_ASPECT}
+              dims={HERO_DIMS}
+              onReframe={handleFrameChange}
+              className="h-full w-full cursor-move"
+            />
+          </div>
+        )}
         <PhotoInspector
-          slide={slide}
+          slide={frame}
           photoUrl={photoUrl}
           mediaUrls={hero ? [hero] : []}
           pieceId={piece.id}
           attachedKeys={attachedKeys}
           onAttachPhoto={handleAttach}
-          onChange={handleChange}
+          onChange={handleFrameChange}
           singleSlide
+          hidePhoto
           aspect={HERO_ASPECT}
           label="This photo"
         />
