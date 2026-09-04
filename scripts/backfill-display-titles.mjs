@@ -27,7 +27,7 @@ const LIMIT_ARG    = (() => {
   const i = process.argv.indexOf('--limit')
   return i >= 0 ? parseInt(process.argv[i + 1], 10) || null : null
 })()
-const MODEL       = 'google/gemini-3.6-flash' // gemini-2.5-flash has no announced shutdown date; 3.6 flash is simply newer
+const MODEL       = 'google/gemini-3.8-flash' // moved 3.6 -> 3.8 (2026-09-03), validated against real title-generation cases first, no regression
 const BATCH_SIZE  = 50
 const CONCURRENCY = 6
 

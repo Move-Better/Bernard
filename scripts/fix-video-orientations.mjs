@@ -166,7 +166,7 @@ async function extractFrame(input, atSeconds, outPath, { width = 512 } = {}) {
 }
 
 // ─── vision ────────────────────────────────────────────────────────────────
-const VISION_MODEL = 'google/gemini-3.6-flash' // same default as api/_lib/tagAsset.js (2.5-flash has no announced shutdown date; 3.6 flash is simply newer)
+const VISION_MODEL = 'google/gemini-3.8-flash' // same default as api/_lib/tagAsset.js -- moved 3.6 -> 3.8 (2026-09-03); not directly tested on rotation detection, but validated clean on the same single-image vision+structured-output archetype via real photo tagging
 const orientationSchema = z.object({
   correction: z.enum(['none', 'rotate_90_clockwise', 'rotate_90_counterclockwise', 'rotate_180']),
   confidence: z.enum(['high', 'medium', 'low']),
