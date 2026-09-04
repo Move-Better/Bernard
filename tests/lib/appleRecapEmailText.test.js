@@ -187,6 +187,19 @@ describe('a real Gmail-forwarded recap (asterisk-glued labels)', () => {
     expect(parsed.warnings).toEqual([])
   })
 
+  it('also parses the headline views/taps YoY sentence through the same asterisk wrapping ("*50%* *more* views")', () => {
+    // Gmail wraps BOTH the percentage and the more/fewer/less word in their
+    // own bold markers here, distinct from the label-glued form above.
+    const parsed = parseAppleRecapText(prepareRecapEmailText(EMAIL_RECAP_PORTLAND, '2026-09-03T23:30:00Z'))
+    expect(parsed.yoy.viewsPct).toBe(50)
+    expect(parsed.yoy.tapsPct).toBe(68)
+  })
+
+  it('signs the YoY sentence correctly ("*less*" -> negative) through the same wrapping', () => {
+    const parsed = parseAppleRecapText(prepareRecapEmailText(EMAIL_RECAP_VANCOUVER, '2026-09-03T23:30:00Z'))
+    expect(parsed.yoy.tapsPct).toBe(-24)
+  })
+
   it('does not confuse "*Directions*74" for the unrelated "ACTION_DIRECTIONS" / "Add More Photos" text nearby', () => {
     const parsed = parseAppleRecapText(prepareRecapEmailText(EMAIL_RECAP_PORTLAND, '2026-09-03T23:30:00Z'))
     expect(parsed.metrics.directions).toBe(74)
