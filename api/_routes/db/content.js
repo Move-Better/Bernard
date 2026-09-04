@@ -81,7 +81,7 @@ export async function dbErr(res, r, req, msg = 'Database error', status = 500) {
 // came from a kind='point' interview and render the Phase 2b safety chip
 // only there. Distinct alias path from MOMENT_EMBED's nested
 // moment.interview below — no collision, different attachment point.
-const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,content,overlay_text,slides,text_card,status,publish_error,scheduled_at,published_at,media_urls,platform_post_id,resolved_url,target_locations,location_id,location_overrides,notes,reviewed_by,approved_by,approved_at,reject_reason,reject_note,rejected_at,rejected_by,edit_diff,performed_well,is_model_post,model_reasons,model_note,model_marked_at,archived_at,hashtag_suggestions,provenance,voice_fidelity_score,voice_audit,point_safety_score,point_safety_audit,length_preset,series_id,series_part,series_total,photo_treatment,photo_composite_url,photo_template_id,aspect_ratio,seo_title,meta_description,format,format_source,media_source,created_at,updated_at,interview:interviews!interview_id(kind)'
+const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,content,overlay_text,slides,text_card,status,publish_error,scheduled_at,published_at,media_urls,platform_post_id,resolved_url,target_locations,location_id,location_overrides,notes,reviewed_by,approved_by,approved_at,reject_reason,reject_note,rejected_at,rejected_by,edit_diff,performed_well,is_model_post,model_reasons,model_note,model_marked_at,archived_at,hashtag_suggestions,provenance,voice_fidelity_score,voice_audit,point_safety_score,point_safety_audit,length_preset,series_id,series_part,series_total,photo_treatment,photo_composite_url,photo_template_id,aspect_ratio,seo_title,meta_description,format,format_source,media_source,moment_id,created_at,updated_at,interview:interviews!interview_id(kind)'
 
 // Slim shape for the Stories list (Cards / Pipeline / Calendar / Themes views).
 // Drops heavy columns (`content`, `media_urls`, `notes`, etc.) that the list
@@ -91,14 +91,22 @@ const SELECT = 'id,interview_id,brief_id,staff_id,staff_name,topic,platform,cont
 const SELECT_CARD = 'id,interview_id,brief_id,workspace_id,platform,status,scheduled_at,published_at,updated_at,provenance,series_id,series_part,series_total,voice_fidelity_score,voice_audit,point_safety_score,point_safety_audit,performed_well,interview:interviews!interview_id(kind)'
 
 // Moments IA ① — the detail read (and the PATCH echo that overwrites the
-// client's detail cache) embed the piece's banked moment via its plan atom, so
-// the publish editors can render MomentProvenance. Flattened to `moment` so
-// consumers never see the join scaffolding; null for legacy/atom-less pieces.
+// client's detail cache) embed the piece's banked moment so the publish editors
+// can render MomentProvenance. Flattened to `moment` so consumers never see the
+// join scaffolding; null for legacy/atom-less pieces.
+//
+// Two sources, direct first (migration 214): content_items.moment_id is stamped
+// at draft time and survives planner atom recycles; the plan_atoms join is the
+// legacy fallback for pre-214 rows whose atom happens to still exist. The atom
+// join alone was the original wiring, and it silently decayed — the planner
+// deletes/recreates atoms, so pieces lost their moment on every recycle.
 const MOMENT_EMBED =
+  'moment_direct:moments!moment_id(excerpt,score,interview:interviews!interview_id(topic,created_at)),' +
   'plan_atoms:content_plan_atoms!content_piece_id(moment:moments!moment_id(excerpt,score,interview:interviews!interview_id(topic,created_at)))'
 function attachMoment(row) {
   if (!row) return row
-  const m = (Array.isArray(row.plan_atoms) ? row.plan_atoms : []).find((pa) => pa?.moment)?.moment
+  const m = row.moment_direct
+    || (Array.isArray(row.plan_atoms) ? row.plan_atoms : []).find((pa) => pa?.moment)?.moment
   row.moment = m
     ? {
         excerpt: m.excerpt,
@@ -107,6 +115,7 @@ function attachMoment(row) {
         interviewDate: m.interview?.created_at || null,
       }
     : null
+  delete row.moment_direct
   delete row.plan_atoms
   return row
 }

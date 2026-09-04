@@ -98,7 +98,7 @@ async function predraftOneAtom({ ws, atom }) {
 
     // Generation + voice-judge core (shared with the interactive route).
     const {
-      caption, slides, voiceScore, voiceAudit, voiceAttempts, staffName, aiMessages, gbpContext,
+      caption, slides, voiceScore, voiceAudit, voiceAttempts, staffName, momentProvenance, aiMessages, gbpContext,
     } = await draftAtom({ ws, atom, interview })
 
     // Create the content_item. status='draft' + scheduled_at null — a pre-draft is
@@ -129,6 +129,10 @@ async function predraftOneAtom({ ws, atom }) {
       // slot SELECT above had to grow `format` for this — it was omitted, so
       // this path could not have inherited the plan even once.
       ...(contentFormatForAtom(atom) ? { format: contentFormatForAtom(atom), format_source: 'bernard' } : {}),
+      // Durable moment provenance (migration 214, P5 concordance) — same
+      // stamping as the interactive route: the atom join decays on planner
+      // recycles, so the moment rides on the piece itself from birth.
+      ...(atom.moment_id ? { moment_id: atom.moment_id, moment_provenance: momentProvenance } : {}),
     }
     const itemRes = await sb('content_items', { method: 'POST', body: JSON.stringify(itemPayload) })
     if (!itemRes.ok) {

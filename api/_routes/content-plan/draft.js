@@ -163,6 +163,7 @@ export default async function handler(req, res) {
       voiceAudit,
       voiceAttempts,
       staffName,
+      momentProvenance,
       aiMessages,
       gbpContext,
     } = await draftAtom({ ws, atom, interview })
@@ -195,6 +196,12 @@ export default async function handler(req, res) {
       // the raw signal for the confidence loop: a human changing this in the
       // editor re-stamps it 'human', and that delta is the override rate.
       ...(contentFormatForAtom(atom) ? { format: contentFormatForAtom(atom), format_source: 'bernard' } : {}),
+      // Durable moment provenance (migration 214, P5 concordance). The atom
+      // join (content_plan_atoms.moment_id → content_piece_id) decays when the
+      // planner recycles atoms, so the moment is stamped onto the piece itself
+      // at birth. moment_provenance freezes the draft-time score and survives
+      // even the FK going null (moment dies with its interview via CASCADE).
+      ...(atom.moment_id ? { moment_id: atom.moment_id, moment_provenance: momentProvenance } : {}),
     }
     const itemRes = await sb('content_items', {
       method: 'POST',

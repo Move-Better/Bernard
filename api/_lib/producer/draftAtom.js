@@ -193,6 +193,10 @@ export async function resolveModelExemplarsBlock({ workspaceId, platform }) {
  *   voiceAttempts: number,
  *   gate: 'passed'|'held'|'soft',
  *   staffName: string,
+ *   momentProvenance: object|null,    // draft-time freeze for content_items.moment_provenance
+ *                                     // ({score, moment_type, is_exemplar, cluster_id,
+ *                                     //   anchored, stamped_at}); null unless atom.moment_id
+ *                                     //   resolved to a live moments row
  *   model: string,
  *   aiMessages: object[],             // the exact messages the route reuses for GBP variants
  *   gbpContext: {                     // resolved grounding for the route's GBP loop
@@ -221,14 +225,29 @@ export async function draftAtom({ ws, atom, interview }) {
   // ON DELETE SET NULL race) or its anchor can't be resolved (time-coded).
   let moment = null
   let momentWin = null
+  let momentProvenance = null
   if (atom.moment_id) {
-    const mRes = await sb(`moments?id=eq.${atom.moment_id}&${wsFilter}&select=id,excerpt,anchor,hook,topic`)
+    const mRes = await sb(`moments?id=eq.${atom.moment_id}&${wsFilter}&select=id,excerpt,anchor,hook,topic,score,moment_type,is_exemplar,cluster_id`)
     if (mRes.ok) {
       const mRows = await mRes.json().catch(() => [])
       moment = mRows[0] || null
     }
     if (moment) {
       momentWin = momentWindow(turns, moment.anchor)
+      // Freeze the draft-time snapshot BEFORE the fallback null-out below.
+      // The moments row dies with its interview (CASCADE) and content_items
+      // .moment_id then goes null (SET NULL), so this jsonb is the only record
+      // of the moment's score that is guaranteed to survive on the piece —
+      // the P5 concordance reads it (migration 214). anchored:false means the
+      // row existed but generation fell back to the full transcript.
+      momentProvenance = {
+        score:       moment.score ?? null,
+        moment_type: moment.moment_type ?? null,
+        is_exemplar: moment.is_exemplar ?? null,
+        cluster_id:  moment.cluster_id ?? null,
+        anchored:    Boolean(momentWin),
+        stamped_at:  new Date().toISOString(),
+      }
       if (!momentWin) moment = null
     }
   }
@@ -495,6 +514,7 @@ export async function draftAtom({ ws, atom, interview }) {
     voiceAttempts,
     gate,
     staffName,
+    momentProvenance,
     model: 'anthropic/claude-sonnet-4-6',
     aiMessages,
     gbpContext: {
