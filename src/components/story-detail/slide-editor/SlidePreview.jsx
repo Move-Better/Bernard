@@ -4,7 +4,13 @@ import { AD_CAROUSEL_DIMS } from '@/lib/renderSlides'
 
 // ── Slide card ────────────────────────────────────────────────────────────────
 
-export default function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectPhoto, className, aspect }) {
+// `dims` explicitly overrides the AD_CAROUSEL_DIMS[aspect] lookup for the canvas
+// BITMAP. The carousel aspects ('1:1'/'4:5'/'9:16') live in that table, but a
+// blog/landing HERO frames at 16:9 (HERO_DIMS = [1600,900]) which the table
+// doesn't carry — without an explicit override the lookup would fall back to the
+// 4:5 bitmap while the CSS box is 16:9 and the browser would stretch it
+// non-uniformly (the exact warping the AD_CAROUSEL_DIMS comment below guards).
+export default function SlidePreview({ slide, photoUrl, brandStyle, theme, onReframe, onSelectPhoto, className, aspect, dims }) {
   const canvasRef = useRef(null)
   const dragRef = useRef(null)
   const movedRef = useRef(false)
@@ -19,7 +25,7 @@ export default function SlidePreview({ slide, photoUrl, brandStyle, theme, onRef
         // Story's forced 9:16 frame look warped/smeared when the bitmap stayed a
         // hardcoded 4:5 (SLIDE_W/SLIDE_H). Same dimension table the publish bake
         // (ensureRenderedSlides) already uses, so preview and output agree.
-        const [w, h] = AD_CAROUSEL_DIMS[aspect] || [SLIDE_W, SLIDE_H]
+        const [w, h] = dims || AD_CAROUSEL_DIMS[aspect] || [SLIDE_W, SLIDE_H]
         await renderFreeformSlide({
           sourceUrl: photoUrl || null,
           slide,
@@ -35,7 +41,7 @@ export default function SlidePreview({ slide, photoUrl, brandStyle, theme, onRef
     }
     draw()
     return () => { cancelled = true }
-  }, [slide, photoUrl, brandStyle, theme, aspect])
+  }, [slide, photoUrl, brandStyle, theme, aspect, dims])
 
   const canReframe = !!photoUrl && !!onReframe
   function onPointerDown(e) {

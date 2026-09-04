@@ -13,7 +13,11 @@ import { autoGradeFromImage } from './imageSampling'
 // and therefore the zoom/reposition the author sees — matches the shape the
 // published post actually crops to. The frame model (photo_fill / photo_offset)
 // is relative to this frame, so the aspect MUST match the bake's (HERO_DIMS).
-export default function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onAttachPhoto, onChange, singleSlide = false, aspect = '4 / 5', label = "This slide's photo" }) {
+// `hidePhoto` suppresses the built-in photo tile / empty-state — used when the
+// caller renders its own interactive reframe canvas above this inspector (the
+// blog/landing HERO panel), so the photo isn't shown twice. Replace / Remove
+// stay reachable as compact buttons; the zoom slider and colourist are unchanged.
+export default function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, attachedKeys, onAttachPhoto, onChange, singleSlide = false, aspect = '4 / 5', label = "This slide's photo", hidePhoto = false }) {
   // One photo control: the slide's current photo + Replace, or an empty state
   // that prompts a pick. Picking ALWAYS attaches+binds in one step (per-slide
   // model) — the old "use an attached photo" pool dropdown is gone. `replacing`
@@ -110,7 +114,31 @@ export default function PhotoInspector({ slide, photoUrl, mediaUrls, pieceId, at
       {/* The slide's photo — the photo IS the control: click it to open the
           picker (replace), the corner ✕ removes it. Picking attaches+binds in
           one step (per-slide model). Empty state prompts the first pick. */}
-      {hasPhoto ? (
+      {hidePhoto && hasPhoto ? (
+        // The interactive reframe canvas (rendered by the caller) shows the
+        // photo, so this inspector only needs Replace / Remove controls.
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setReplacing((o) => !o)}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-lg border-2 py-2 text-sm font-semibold transition-colors ${
+              replacing ? 'border-primary text-primary' : 'border-border text-foreground hover:border-primary'
+            }`}
+          >
+            <Repeat className="h-4 w-4" />
+            {replacing ? 'Choose below…' : 'Replace photo'}
+          </button>
+          <button
+            type="button"
+            onClick={removePhoto}
+            className="flex items-center justify-center gap-1.5 rounded-lg border-2 border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-destructive hover:text-destructive"
+            title="Remove photo"
+          >
+            <X className="h-4 w-4" />
+            Remove
+          </button>
+        </div>
+      ) : hasPhoto ? (
         <div className="relative">
           <button
             type="button"
