@@ -53,8 +53,11 @@ function labelHasNoData(text, label) {
 }
 
 // Signed YoY from the sentence form: "42% more views" / "12% fewer taps".
+// Same asterisk tolerance as labelNumber above — Gmail's plaintext rendering
+// wraps BOTH the percentage ("*50%*") and the more/fewer/less word ("*more*")
+// in their own bold markers, each glued with no separating whitespace.
 function sentenceYoY(text, noun) {
-  const re = new RegExp('([0-9][0-9.]*)\\s*%\\s+(more|fewer|less)\\s+' + noun, 'i')
+  const re = new RegExp('([0-9][0-9.]*)\\s*%\\*?\\s+\\*?(more|fewer|less)\\*?\\s+' + noun, 'i')
   const m = text.match(re)
   if (!m) return null
   const mag = parseFloat(m[1])
