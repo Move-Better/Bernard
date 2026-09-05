@@ -362,10 +362,15 @@ one has bitten. When changing any of these, change both in the same commit:
 | `brandRender.js` `resolveBrandColors()` | `src/lib/brandSwatches.js` |
 | `api/_lib/videoTemplates.js` | `src/lib/videoTemplateCapture.js` |
 | `api/_lib/captionOverlayDedup.js` `normCaptionText` | `VideoEditor.jsx` `normCaptionText` |
+| `karaokeCaptions.js` `buildKaraokeAss` `\k` word TIMING | `VideoEditor.jsx` CaptionOverlay `spoken = playClipT >= w.start` |
 
 Real failures from this list: the Size control previewing identically for Medium and Large while baking
 1.0× vs 1.35× (`vh` with a 40px clamp vs a frame-relative bake); `glow` previewing an accent halo for a
-commit after the bake moved to a dark one.
+commit after the bake moved to a dark one; the karaoke fill IGNORING inter-word silences — ASS `\k`
+packs syllables back-to-back from the line's Dialogue Start, so a word after a pause lit up early (up to
+~4s on a real reel) while the preview lights each word at its real start. Caption STYLE and caption
+TIMING are two separate mirror axes: when a "pacing" report survives a style fix (the outline/`CAPTION_STYLES`
+one), suspect the `\k` timing model, not the styles (#2707).
 
 **A `<video>`'s `src` and its `poster` are a mirror pair too — a fix that swaps the src to a clean
 source must swap the poster in the same breath, or the poster becomes a second surface carrying the
