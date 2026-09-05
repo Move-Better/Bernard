@@ -152,6 +152,36 @@ const CAPTION_STYLES = {
   pop:         { border: 1, underline: 0,  outline: 'black',  outlineMul: 1,   back: '&H64000000', anim: 'pop' },
 }
 
+// Karaoke \k timing for ONE caption line, honouring the SILENCES between words.
+// ASS fills each \k syllable back-to-back from the line's Dialogue Start, so a
+// naive {\k<dur>}word per word runs the highlight AHEAD of the spoken audio
+// wherever a word follows a pause — and ahead of the editor's live preview,
+// which lights each word at its real start (playClipT >= w.start in
+// VideoEditor.jsx). A single within-line pause of ~4s made a word fill ~4s
+// early: "the post went out with different pacing than the editing preview"
+// (Philip, feedback 9cf6b3d1). We prepend a \k equal to the gap since the
+// previous word onto the separator space, so the fill WAITS through the silence
+// and the burned caption tracks the audio — and the preview. The line's
+// Dialogue Start already equals line[0].start, so the first word needs no
+// leading gap. Exported for the caption-fidelity test.
+export function karaokeLineText(line) {
+  let cursor = line[0].start
+  const parts = []
+  for (let i = 0; i < line.length; i++) {
+    const w = line[i]
+    if (i > 0) {
+      // The separator space carries the silence: it fills (invisibly) over the
+      // gap so the NEXT word doesn't light up until it's actually spoken.
+      const gap = Math.max(0, Math.round((w.start - cursor) * 100))
+      parts.push(`{\\k${gap}} `)
+    }
+    const dur = Math.max(1, Math.round((w.end - w.start) * 100))
+    parts.push(`{\\k${dur}}${assEscape(w.word)}`)
+    cursor = w.end
+  }
+  return parts.join('')
+}
+
 export function buildKaraokeAss({ words, width, height, captionPos = 'top', accentColor = '#FFFFFF', fontSizePx, fontName = 'Inter', anim = 'none', style = 'bold' }) {
   if (!Array.isArray(words) || words.length === 0) return null
   // `end >= start` — zero-duration words are kept (see whisper.js). The \k
@@ -197,10 +227,7 @@ export function buildKaraokeAss({ words, width, height, captionPos = 'top', acce
     // keep the \k fill-to-accent timing.
     const text = effAnim === 'fade'
       ? prefix + line.map((w) => assEscape(w.word)).join(' ')
-      : prefix + line
-        .map((w) => `{\\k${Math.max(1, Math.round((w.end - w.start) * 100))}}${assEscape(w.word)} `)
-        .join('')
-        .trimEnd()
+      : prefix + karaokeLineText(line)
     events.push(`Dialogue: 0,${assTime(start)},${assTime(end)},Cap,,0,0,0,,${text}`)
   }
 
