@@ -130,6 +130,15 @@ with other sessions; read-only git only.
 - **Purely descriptive text nodes** (`el_text` that is a sublabel/insight sentence, e.g.
   MediaUploader's "Clinic, team, equipment, before/after, social", or a one-off insight line) →
   clicks on non-interactive copy. False positive unless the count is large and single-element.
+- **`$dead_click` with `el_text = None` on `/library`** → media-grid tiles are real `<button>`s with a
+  `pointer-events-none` `<img>`; clicking one opens a `[role="dialog"]` detail drawer (9 mutations). The
+  dead clicks are re-clicks on an already-selected tile. **False positive**, live-verified 2026-09-07.
+- **`$dead_click` with `el_text = None` on `/week`** → card images are `pointer-events-none` inside real
+  `<a>` links (SPA nav to the piece); a client-route change the heuristic can miss. **False positive**,
+  live-verified 2026-09-07.
+- **`$dead_click` with `el_text = None` on `/ads`** → ad-preview images render with a default cursor
+  (`cursor:auto`, no button/link wrapper) — non-interactive by design; nothing claims to be clickable.
+  **False positive**, live-verified 2026-09-07. (A click-to-zoom preview is a feature idea, not a bug.)
 
 For everything that is NOT filtered above, map selector/route → component (grep the repo) and put
 it on the candidate list with a provisional severity:
