@@ -282,95 +282,21 @@ function SuggestionThumb({ clip, attached, attaching, onAttach }) {
 // The framed hero is baked to a real 16:9 image at publish time
 // (useContentWorkflow → renderAndUploadHero), so every destination — including
 // the separate movebetter.co site — receives an already-cropped photo.
-function HeroPhotoPanel({ piece, updateItem }) {
+// `media`/`heroIdx`/`hero` and the live `frame` state are all LIFTED to
+// UnifiedEditor (see the hero block near its `return`) so this panel's own
+// canvas and the right-side PostPreview canvas read the exact same in-flight
+// frame — same principle as the client/server mirror pairs elsewhere in this
+// file, applied within the client: two renderers of one hero must never read
+// two different sources of truth. Before the lift, `frame` lived only here,
+// so PostPreview (a sibling, not a descendant) couldn't see it and only
+// showed the reframe/grade once the 1500ms debounced save round-tripped
+// (Philip's report, feedback 457f1cb8: "noticeable delay... to when the
+// change is reflected to the photo viewer... on the right").
+function HeroPhotoPanel({ piece, media, hero, frame, onFrameChange, onAttach }) {
   const ws = useWorkspace()
   const brandStyle = useMemo(() => brandStyleForRender(ws), [ws])
-  const media = Array.isArray(piece.media_urls) ? piece.media_urls : []
-  const heroIdx = media.findIndex((m) => m && !isVideoEntry(m))
-  const hero = heroIdx >= 0 ? media[heroIdx] : null
-  const heroKey = hero ? mediaEntryKey(hero) : null
   const attachedKeys = new Set(media.map(mediaEntryKey))
   const photoUrl = hero ? (photoSourceUrl(hero) || hero.thumbnailUrl) : null
-
-  // LOCAL authoritative frame (a one-photo pseudo-slide). The zoom slider, the
-  // colourist, and the drag/scroll canvas all read and write THIS — never the
-  // query cache — so a controlled slider can't snap back to a stale server value
-  // between a save and its echo, and a background refetch can't jump the crop
-  // mid-drag. (Philip's report: the zoom slider "moves on its own /
-  // unresponsive / bugging out" — every tick used to fire an immediate PATCH
-  // with no optimistic write, the exact anti-pattern the carousel SlideEditor
-  // avoids with local state + a debounced autosave.)
-  const [frame, setFrame] = useState(() => (hero ? heroSlide(hero) : { photo_idx: null, blocks: [] }))
-  // Re-seed ONLY on a genuine photo swap. heroKey is the entry IDENTITY (asset
-  // id / url), not its frame — so our OWN debounced save echoing back through
-  // the cache leaves heroKey unchanged and can't clobber a live edit. Only
-  // Replace / Remove (which change which entry is the hero) re-seed.
-  useEffect(() => {
-    setFrame(hero ? heroSlide(hero) : { photo_idx: null, blocks: [] })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heroKey])
-
-  // Debounced persist. We stash the FULLY-COMPUTED next media array (not just
-  // the frame) so a firing timer can't recompute against a stale hero, and so a
-  // structural Replace/Remove can cancel a pending frame-save that belongs to
-  // the OLD photo before it clobbers the new one.
-  const saveTimer = useRef(null)
-  const pendingMediaRef = useRef(null)
-  const flushRef = useRef(null)
-  useEffect(() => {
-    // Written in an effect, not during render (React Compiler forbids mutating a
-    // ref while rendering) — kept live so the unmount flush uses the latest
-    // piece / updateItem, not a stale first-render closure.
-    flushRef.current = () => {
-      if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
-      const next = pendingMediaRef.current
-      pendingMediaRef.current = null
-      if (next && !isPieceLocked(piece)) updateItem.mutate({ id: piece.id, patch: { mediaUrls: next } })
-    }
-  })
-  // Flush any pending frame save on unmount — the author may navigate away
-  // mid-drag and there is no manual Save button to catch the last change.
-  useEffect(() => () => { flushRef.current?.() }, [])
-
-  // camelCase mediaUrls — the PATCH allowlist maps mediaUrls→media_urls; a
-  // snake_case key is silently dropped (see MediaPanel.attachEntry).
-  function persistNow(nextMedia) {
-    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
-    pendingMediaRef.current = null
-    if (isPieceLocked(piece)) return
-    updateItem.mutate({ id: piece.id, patch: { mediaUrls: nextMedia } })
-  }
-
-  // A frame edit (zoom slider, colourist grade, or a drag/scroll on the canvas):
-  // update local state instantly, debounce the write. A removal (photo_idx null,
-  // from PhotoInspector's Remove) is structural — persist it immediately.
-  function handleFrameChange(next) {
-    if (!hero) return
-    if (next?.photo_idx == null) {
-      setFrame({ photo_idx: null, blocks: [] })
-      persistNow(media.filter((_, i) => i !== heroIdx))
-      return
-    }
-    setFrame(next)
-    const nextMedia = media.slice()
-    nextMedia[heroIdx] = applyHeroFrame(hero, next)
-    pendingMediaRef.current = nextMedia
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    // 1500ms of quiet, matching SlideEditor's autosave debounce.
-    saveTimer.current = setTimeout(() => flushRef.current?.(), 1500)
-  }
-
-  // Replace / first-attach — structural. Cancel any pending frame save (it
-  // belongs to the OLD photo; applying its crop to the new entry would corrupt
-  // it) and persist the new entry immediately; frame re-seeds unframed via
-  // heroKey. SwapAddPhoto hands back a normalized entry (never a raw clip).
-  function handleAttach(entry) {
-    if (!entry?.url) { toast.error('That file has no usable URL'); return }
-    const nextMedia = media.slice()
-    if (heroIdx >= 0) nextMedia[heroIdx] = { ...entry }
-    else nextMedia.unshift({ ...entry })
-    persistNow(nextMedia)
-  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -391,7 +317,7 @@ function HeroPhotoPanel({ piece, updateItem }) {
               theme={HERO_THEME}
               aspect={HERO_ASPECT}
               dims={HERO_DIMS}
-              onReframe={handleFrameChange}
+              onReframe={onFrameChange}
               className="h-full w-full cursor-move"
             />
           </div>
@@ -402,8 +328,8 @@ function HeroPhotoPanel({ piece, updateItem }) {
           mediaUrls={hero ? [hero] : []}
           pieceId={piece.id}
           attachedKeys={attachedKeys}
-          onAttachPhoto={handleAttach}
-          onChange={handleFrameChange}
+          onAttachPhoto={onAttach}
+          onChange={onFrameChange}
           singleSlide
           hidePhoto
           aspect={HERO_ASPECT}
@@ -1018,6 +944,109 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
   ]
   const activeKey = railItems.some((r) => r.key === tool) ? tool : 'publish'
 
+  // ── Hero photo (doc archetype) ────────────────────────────────────────────
+  // Lifted here (not local to HeroPhotoPanel) so HeroPhotoPanel's own reframe
+  // canvas AND the PostPreview canvas at the right read the exact same
+  // in-flight frame in the same render — mirroring how SlideEditor keeps
+  // `slides` as one top-level state feeding both its own canvas and
+  // PostPreview. Harmless for every non-doc archetype: `hero`/`heroIdx` just
+  // resolve against whatever media happens to be first, but handleHeroFrame*
+  // is only ever invoked by HeroPhotoPanel (doc-only), and previewMediaUrls
+  // below only applies the override when archetype === 'doc'.
+  const media = Array.isArray(piece.media_urls) ? piece.media_urls : []
+  const heroIdx = media.findIndex((m) => m && !isVideoEntry(m))
+  const hero = heroIdx >= 0 ? media[heroIdx] : null
+  const heroKey = hero ? mediaEntryKey(hero) : null
+
+  // LOCAL authoritative frame (a one-photo pseudo-slide). The zoom slider, the
+  // colourist, and the drag/scroll canvas all read and write THIS — never the
+  // query cache — so a controlled slider can't snap back to a stale server value
+  // between a save and its echo, and a background refetch can't jump the crop
+  // mid-drag. (Philip's report: the zoom slider "moves on its own /
+  // unresponsive / bugging out" — every tick used to fire an immediate PATCH
+  // with no optimistic write, the exact anti-pattern the carousel SlideEditor
+  // avoids with local state + a debounced autosave.)
+  const [heroFrame, setHeroFrame] = useState(() => (hero ? heroSlide(hero) : { photo_idx: null, blocks: [] }))
+  // Re-seed ONLY on a genuine photo swap. heroKey is the entry IDENTITY (asset
+  // id / url), not its frame — so our OWN debounced save echoing back through
+  // the cache leaves heroKey unchanged and can't clobber a live edit. Only
+  // Replace / Remove (which change which entry is the hero) re-seed.
+  useEffect(() => {
+    setHeroFrame(hero ? heroSlide(hero) : { photo_idx: null, blocks: [] })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heroKey])
+
+  // Debounced persist. We stash the FULLY-COMPUTED next media array (not just
+  // the frame) so a firing timer can't recompute against a stale hero, and so a
+  // structural Replace/Remove can cancel a pending frame-save that belongs to
+  // the OLD photo before it clobbers the new one.
+  const heroSaveTimer = useRef(null)
+  const heroPendingMediaRef = useRef(null)
+  const heroFlushRef = useRef(null)
+  useEffect(() => {
+    // Written in an effect, not during render (React Compiler forbids mutating a
+    // ref while rendering) — kept live so the unmount flush uses the latest
+    // piece / updateItem, not a stale first-render closure.
+    heroFlushRef.current = () => {
+      if (heroSaveTimer.current) { clearTimeout(heroSaveTimer.current); heroSaveTimer.current = null }
+      const next = heroPendingMediaRef.current
+      heroPendingMediaRef.current = null
+      if (next && !isPieceLocked(piece)) updateItem.mutate({ id: piece.id, patch: { mediaUrls: next } })
+    }
+  })
+  // Flush any pending frame save on unmount — the author may navigate away
+  // mid-drag and there is no manual Save button to catch the last change.
+  useEffect(() => () => { heroFlushRef.current?.() }, [])
+
+  // camelCase mediaUrls — the PATCH allowlist maps mediaUrls→media_urls; a
+  // snake_case key is silently dropped (see MediaPanel.attachEntry).
+  function persistHeroMediaNow(nextMedia) {
+    if (heroSaveTimer.current) { clearTimeout(heroSaveTimer.current); heroSaveTimer.current = null }
+    heroPendingMediaRef.current = null
+    if (isPieceLocked(piece)) return
+    updateItem.mutate({ id: piece.id, patch: { mediaUrls: nextMedia } })
+  }
+
+  // A frame edit (zoom slider, colourist grade, or a drag/scroll on the canvas):
+  // update local state instantly, debounce the write. A removal (photo_idx null,
+  // from PhotoInspector's Remove) is structural — persist it immediately.
+  function handleHeroFrameChange(next) {
+    if (!hero) return
+    if (next?.photo_idx == null) {
+      setHeroFrame({ photo_idx: null, blocks: [] })
+      persistHeroMediaNow(media.filter((_, i) => i !== heroIdx))
+      return
+    }
+    setHeroFrame(next)
+    const nextMedia = media.slice()
+    nextMedia[heroIdx] = applyHeroFrame(hero, next)
+    heroPendingMediaRef.current = nextMedia
+    if (heroSaveTimer.current) clearTimeout(heroSaveTimer.current)
+    // 1500ms of quiet, matching SlideEditor's autosave debounce.
+    heroSaveTimer.current = setTimeout(() => heroFlushRef.current?.(), 1500)
+  }
+
+  // Replace / first-attach — structural. Cancel any pending frame save (it
+  // belongs to the OLD photo; applying its crop to the new entry would corrupt
+  // it) and persist the new entry immediately; frame re-seeds unframed via
+  // heroKey. SwapAddPhoto hands back a normalized entry (never a raw clip).
+  function handleHeroAttach(entry) {
+    if (!entry?.url) { toast.error('That file has no usable URL'); return }
+    const nextMedia = media.slice()
+    if (heroIdx >= 0) nextMedia[heroIdx] = { ...entry }
+    else nextMedia.unshift({ ...entry })
+    persistHeroMediaNow(nextMedia)
+  }
+
+  // The preview always renders the hero entry with its LIVE (not-yet-persisted)
+  // frame applied, so the right-side canvas updates in the same render as the
+  // left panel's own canvas — not ~1.5s later when the debounced save
+  // round-trips through the server and back. No-op for every non-doc
+  // archetype (previewMediaUrls === media, same array reference as before).
+  const previewMediaUrls = (archetype === 'doc' && heroIdx >= 0)
+    ? media.map((m, i) => (i === heroIdx ? applyHeroFrame(hero, heroFrame) : m))
+    : media
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-card">
       {/* ── TOP BAR — shared EditorChrome (unified shell) ─────────────────── */}
@@ -1045,7 +1074,16 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
             // PhotoInspector at 16:9; every other archetype keeps the compact
             // attach/swap MediaPanel (reels/video, multi-image email/ad).
             archetype === 'doc'
-              ? <HeroPhotoPanel piece={piece} updateItem={updateItem} />
+              ? (
+                <HeroPhotoPanel
+                  piece={piece}
+                  media={media}
+                  hero={hero}
+                  frame={heroFrame}
+                  onFrameChange={handleHeroFrameChange}
+                  onAttach={handleHeroAttach}
+                />
+              )
               : <MediaPanel piece={piece} updateItem={updateItem} />
           ) : activeKey === 'text' ? (
             <TextPanel piece={piece} />
@@ -1064,7 +1102,7 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
             <PostPreview
               platform={piece.platform}
               content={typeof piece.content === 'string' ? piece.content : JSON.stringify(piece.content)}
-              mediaUrls={Array.isArray(piece.media_urls) ? piece.media_urls : []}
+              mediaUrls={previewMediaUrls}
               slides={Array.isArray(piece.slides) ? piece.slides : null}
               overlayText={piece.overlay_text || null}
               locationOverrides={piece.location_overrides || null}
