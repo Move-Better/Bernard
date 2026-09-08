@@ -12,7 +12,7 @@ import { mergeSlotsIntoCadence } from '../../_lib/cadenceSlots.js'
 import { computeChannelSilence } from '../../_lib/producer/publishSilence.js'
 import { isInstagramReel } from '../../../src/lib/mediaEntry.js'
 import { isTextOnlyPlatform } from '../../../src/lib/platformMediaKind.js'
-import { shapeApprovedBlog } from '../../_lib/approvedBlogs.js'
+import { shapeApprovedBlog, shapeRecentlyPublishedBlog } from '../../_lib/approvedBlogs.js'
 import { filterStalledApproved } from '../../_lib/stalledApproved.js'
 import { blogTargetFor, monthKey, progressFor } from '../../_lib/blogTarget.js'
 import { isEditor } from '../../../src/lib/roles.js'
@@ -241,6 +241,26 @@ export default async function handler(req, res) {
     return rows.map(shapeApprovedBlog)
   }
 
+  // "Recently published" author context for the strip above (feedback
+  // c4b8f7c9, 2026-09-06) — Philip: picking the next blog off the
+  // ready-to-publish list, a producer has no way to see who was published
+  // most recently, so two in a row from the same clinician is an easy miss.
+  // Same audience/gate as fetchApprovedBlogs — this only means something next
+  // to that list. Limit 2: enough to show a repeat, not a history page.
+  async function fetchRecentlyPublishedBlogs() {
+    if (!isEditor(auth.role)) return []
+    const r = await sb(
+      `content_items?workspace_id=eq.${ws.id}&platform=eq.blog&status=eq.published&select=id,staff_name,published_at&order=published_at.desc&limit=2`,
+    )
+    if (!r.ok) {
+      console.error('[week-summary] recently published blogs query failed:', r.status, (await r.text().catch(() => '')).slice(0, 300))
+      return []
+    }
+    const rows = await r.json()
+    if (!Array.isArray(rows)) return []
+    return rows.map(shapeRecentlyPublishedBlog)
+  }
+
   // Approved-but-never-published social posts — the stalled last click.
   //
   // The sibling of fetchApprovedBlogs above, born the same way: the first reel
@@ -274,11 +294,21 @@ export default async function handler(req, res) {
     return computeChannelSilence({ workspaceId: ws.id, sb, channels })
   }
 
-  const [{ scheduled, itemStatusMap }, heldAtoms, yourReview, approvedBlogs, myBlogTarget, silentChannels, stalledApproved] = await Promise.all([
+  const [
+    { scheduled, itemStatusMap },
+    heldAtoms,
+    yourReview,
+    approvedBlogs,
+    recentlyPublishedBlogs,
+    myBlogTarget,
+    silentChannels,
+    stalledApproved,
+  ] = await Promise.all([
     fetchAtomsAndDraftedItems(),
     fetchHeldAtoms(),
     fetchYourReview(),
     fetchApprovedBlogs(),
+    fetchRecentlyPublishedBlogs(),
     fetchMyBlogProgress(),
     fetchSilentChannels(),
     fetchStalledApproved(),
@@ -466,6 +496,7 @@ export default async function handler(req, res) {
     digest: digest ? { label: digest.label, frequency: digest.frequency, next_send: digest.next_send || null } : null,
     yourReview,
     approvedBlogs,
+    recentlyPublishedBlogs,
     myBlogTarget,
     silentChannels,
     stalledApproved,

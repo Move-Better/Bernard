@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { shapeApprovedBlog } from '../../api/_lib/approvedBlogs.js'
+import { shapeApprovedBlog, shapeRecentlyPublishedBlog } from '../../api/_lib/approvedBlogs.js'
 
 // The producer strip's whole job is answering "does this blog still need a hero
 // image?". The rule has to agree with what publish/website.js will actually
@@ -77,5 +77,29 @@ describe('shapeApprovedBlog — row shape', () => {
     const shaped = shapeApprovedBlog({ id: 'a', media_urls: [], content: 'secret body' })
     expect(shaped).not.toHaveProperty('content')
     expect(shaped).not.toHaveProperty('media_urls')
+  })
+})
+
+// feedback c4b8f7c9 (2026-09-06): a producer picking the next queued blog has
+// no visibility into who was published most recently. This pins the shape only
+// — the row must stay raw/un-deduplicated (a real back-to-back repeat, seen
+// live on movebetter 2026-09-06, is exactly the signal the strip exists for).
+describe('shapeRecentlyPublishedBlog — row shape', () => {
+  it('maps snake_case columns to the client contract', () => {
+    const row = { id: '908', staff_name: 'Zach Cullen', published_at: '2026-09-06T21:33:10Z' }
+    expect(shapeRecentlyPublishedBlog(row)).toEqual({
+      id: '908',
+      staffName: 'Zach Cullen',
+      publishedAt: '2026-09-06T21:33:10Z',
+    })
+  })
+
+  it('nulls a missing staff name rather than leaking undefined', () => {
+    expect(shapeRecentlyPublishedBlog({ id: 'a', published_at: null }).staffName).toBeNull()
+  })
+
+  it('does not leak raw columns the client contract never promised', () => {
+    const shaped = shapeRecentlyPublishedBlog({ id: 'a', staff_name: 'Zach', published_at: null, content: 'secret body' })
+    expect(shaped).not.toHaveProperty('content')
   })
 })

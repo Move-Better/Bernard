@@ -1517,6 +1517,25 @@ export default function YourWeek() {
   // span with no handler of its own. The chevron is the one open-this cue.
   // Kept in a calm --primary tint rather than amber: "needs hero" lights on
   // effectively every row, so amber here would stop carrying act-now signal.
+  // "Recently published" context line — feedback c4b8f7c9 (2026-09-06,
+  // Philip): picking a blog off the queue below with no visibility into who
+  // was published most recently makes it easy to publish the same clinician
+  // back-to-back. Deliberately just a caption, not a per-row badge or a
+  // reorder — Bernard doesn't pick for you here, it just tells you what
+  // already happened so you can. staffName is display text only; see
+  // approvedBlogs.js for why it must never be used to match identity.
+  const recentlyPublishedLine = data?.recentlyPublishedBlogs?.length
+    ? data.recentlyPublishedBlogs
+        .map((b) => {
+          const who = b.staffName || 'Someone'
+          const when = b.publishedAt
+            ? new Date(b.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: tz })
+            : null
+          return when ? `${who} (${when})` : who
+        })
+        .join(' · ')
+    : null
+
   const ApprovedBlogsSlice = data?.approvedBlogs?.length ? (
     <div className="rounded-xl border border-border bg-muted/40 p-3.5">
       <div className="mb-2 flex items-center gap-2">
@@ -1526,6 +1545,9 @@ export default function YourWeek() {
           {data.approvedBlogs.length}
         </span>
       </div>
+      {recentlyPublishedLine ? (
+        <p className="mb-2 text-2xs text-muted-foreground">Last published: {recentlyPublishedLine}</p>
+      ) : null}
       <div className="space-y-1.5">
         {data.approvedBlogs.map((blog) => (
           <Link
