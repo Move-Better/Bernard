@@ -52,6 +52,7 @@ describe('shapeApprovedBlog — row shape', () => {
     const row = {
       id: 'b33cdc9f',
       topic: 'Hip extension and opposite-shoulder stability',
+      staff_id: '9ad92a24-34ab-42cc-8cf4-74f582a2e504',
       staff_name: 'Dr. Q',
       approved_at: '2026-07-10T12:00:00Z',
       created_at: '2026-07-10T09:00:00Z',
@@ -61,10 +62,15 @@ describe('shapeApprovedBlog — row shape', () => {
       id: 'b33cdc9f',
       topic: 'Hip extension and opposite-shoulder stability',
       staffName: 'Dr. Q',
+      staffId: '9ad92a24-34ab-42cc-8cf4-74f582a2e504',
       approvedAt: '2026-07-10T12:00:00Z',
       createdAt: '2026-07-10T09:00:00Z',
       needsHero: true,
     })
+  })
+
+  it('nulls a missing staff_id rather than leaking undefined', () => {
+    expect(shapeApprovedBlog({ id: 'a', media_urls: [] }).staffId).toBeNull()
   })
 
   it('nulls an empty topic rather than leaking an empty string to the UI', () => {
@@ -86,16 +92,23 @@ describe('shapeApprovedBlog — row shape', () => {
 // live on movebetter 2026-09-06, is exactly the signal the strip exists for).
 describe('shapeRecentlyPublishedBlog — row shape', () => {
   it('maps snake_case columns to the client contract', () => {
-    const row = { id: '908', staff_name: 'Zach Cullen', published_at: '2026-09-06T21:33:10Z' }
+    const row = {
+      id: '908',
+      staff_id: '4dc8770f-fde4-43b5-8095-70412ecd8506',
+      staff_name: 'Zach Cullen',
+      published_at: '2026-09-06T21:33:10Z',
+    }
     expect(shapeRecentlyPublishedBlog(row)).toEqual({
       id: '908',
       staffName: 'Zach Cullen',
+      staffId: '4dc8770f-fde4-43b5-8095-70412ecd8506',
       publishedAt: '2026-09-06T21:33:10Z',
     })
   })
 
-  it('nulls a missing staff name rather than leaking undefined', () => {
+  it('nulls a missing staff name or staff_id rather than leaking undefined', () => {
     expect(shapeRecentlyPublishedBlog({ id: 'a', published_at: null }).staffName).toBeNull()
+    expect(shapeRecentlyPublishedBlog({ id: 'a', published_at: null }).staffId).toBeNull()
   })
 
   it('does not leak raw columns the client contract never promised', () => {

@@ -31,6 +31,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import MediaUsageBadge from '@/components/ui/MediaUsageBadge'
 import { stripStoryDatePrefix } from '@/lib/storyTitle'
+import { findRecentPublishMatch } from '@/lib/recentPublishMatch'
 
 // T3 — format badges shown on cards/slots. Mirrors the atom.format vocabulary
 // (api/_lib/atomPlan.js ATOM_FORMATS): post/reel/story. (Status-color legend
@@ -1549,7 +1550,18 @@ export default function YourWeek() {
         <p className="mb-2 text-2xs text-muted-foreground">Last published: {recentlyPublishedLine}</p>
       ) : null}
       <div className="space-y-1.5">
-        {data.approvedBlogs.map((blog) => (
+        {data.approvedBlogs.map((blog) => {
+          // Same-person flag, matched by staff_id (never the display name —
+          // see recentPublishMatch.js for why). Directly answers, at the row
+          // itself rather than only in the caption above, "is this the same
+          // clinician who was just published?"
+          const recentMatch = findRecentPublishMatch(blog, data?.recentlyPublishedBlogs)
+          const recentMatchNote = recentMatch?.publishedAt
+            ? `also published ${new Date(recentMatch.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: tz })}${
+                recentMatch.sameName ? '' : ` as ${recentMatch.staffName}`
+              }`
+            : null
+          return (
           <Link
             key={blog.id}
             to={`/publish/${blog.id}`}
@@ -1564,6 +1576,7 @@ export default function YourWeek() {
                   blog.approvedAt
                     ? `approved ${new Date(blog.approvedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: tz })}`
                     : null,
+                  recentMatchNote,
                 ]
                   .filter(Boolean)
                   .join(' · ')}
@@ -1580,7 +1593,8 @@ export default function YourWeek() {
             )}
             <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
           </Link>
-        ))}
+          )
+        })}
       </div>
     </div>
   ) : null
