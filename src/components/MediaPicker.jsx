@@ -192,6 +192,16 @@ export default function MediaPicker({ onSelect, onClose, multi = false }) {
         else next.set(asset.id, asset)
         return next
       })
+    } else if (asset.kind !== 'video') {
+      // A photo has nothing to warn about before committing (the too-long
+      // check below only applies to video), so requiring a second "Use This
+      // File" click is pure friction — and an easy-to-miss one, since nothing
+      // on screen signals that the first click didn't finish the job. Apply
+      // immediately, same as every other single-tap pick in the app (the
+      // Upload tab, the AI-picks grids). A video still goes through
+      // select-then-confirm so the reel-duration warning has a chance to
+      // render before the pick is committed.
+      onSelect(assetToPickerItem(asset))
     } else {
       setSelected(prev => (prev?.id === asset.id ? null : asset))
     }
