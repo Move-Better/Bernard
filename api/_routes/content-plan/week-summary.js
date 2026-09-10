@@ -230,7 +230,7 @@ export default async function handler(req, res) {
   async function fetchApprovedBlogs() {
     if (!isEditor(auth.role)) return []
     const r = await sb(
-      `content_items?workspace_id=eq.${ws.id}&platform=eq.blog&status=eq.approved&select=id,topic,staff_name,media_urls,approved_at,created_at&order=approved_at.desc.nullslast,created_at.desc`,
+      `content_items?workspace_id=eq.${ws.id}&platform=eq.blog&status=eq.approved&select=id,topic,staff_id,staff_name,media_urls,approved_at,created_at&order=approved_at.desc.nullslast,created_at.desc`,
     )
     if (!r.ok) {
       console.error('[week-summary] approved blogs query failed:', r.status, (await r.text().catch(() => '')).slice(0, 300))
@@ -250,7 +250,7 @@ export default async function handler(req, res) {
   async function fetchRecentlyPublishedBlogs() {
     if (!isEditor(auth.role)) return []
     const r = await sb(
-      `content_items?workspace_id=eq.${ws.id}&platform=eq.blog&status=eq.published&select=id,staff_name,published_at&order=published_at.desc&limit=2`,
+      `content_items?workspace_id=eq.${ws.id}&platform=eq.blog&status=eq.published&select=id,staff_id,staff_name,published_at&order=published_at.desc&limit=2`,
     )
     if (!r.ok) {
       console.error('[week-summary] recently published blogs query failed:', r.status, (await r.text().catch(() => '')).slice(0, 300))

@@ -15,7 +15,7 @@ import { pickHero } from './publishImageMirror.js'
 
 /**
  * @param {any} row a content_items row (platform 'blog', status 'approved')
- * @returns {{id: string, topic: string|null, staffName: string|null,
+ * @returns {{id: string, topic: string|null, staffName: string|null, staffId: string|null,
  *            approvedAt: string|null, createdAt: string|null, needsHero: boolean}}
  */
 export function shapeApprovedBlog(row) {
@@ -23,6 +23,11 @@ export function shapeApprovedBlog(row) {
     id: row.id,
     topic: row.topic || null,
     staffName: row.staff_name || null,
+    // Carried alongside staffName so the client can match "is this the same
+    // person as a recent publish" by identity (staff_id) rather than by the
+    // display string — see shapeRecentlyPublishedBlog below for why the name
+    // alone can't be trusted for that.
+    staffId: row.staff_id || null,
     approvedAt: row.approved_at || null,
     createdAt: row.created_at || null,
     // The blog hero IS media_urls[0] — there is no separate hero column; the
@@ -48,18 +53,20 @@ export function shapeApprovedBlog(row) {
 // movebetter 2026-09-06 — the last two published blogs were both the same
 // person), so collapsing repeats would hide the one thing worth showing.
 //
-// staffName is display-only here — do NOT use it to detect "same author as a
+// staffName is display-only — do NOT use it to detect "same author as a
 // queued blog" anywhere. staff_name is a denormalized snapshot that drifts
 // ("Zach Cullen" vs "Dr. Zachary Cullen" for the identical staff_id, confirmed
-// live); any future same-author matching must join on staff_id instead.
+// live); same-author matching (see src/lib/recentPublishMatch.js, which
+// consumes staffId from both shape functions here) joins on staff_id instead.
 /**
  * @param {any} row a content_items row (platform 'blog', status 'published')
- * @returns {{id: string, staffName: string|null, publishedAt: string|null}}
+ * @returns {{id: string, staffName: string|null, staffId: string|null, publishedAt: string|null}}
  */
 export function shapeRecentlyPublishedBlog(row) {
   return {
     id: row.id,
     staffName: row.staff_name || null,
+    staffId: row.staff_id || null,
     publishedAt: row.published_at || null,
   }
 }
