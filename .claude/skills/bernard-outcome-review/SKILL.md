@@ -39,6 +39,8 @@ f. **Adoption denominator** (the north star): Bernard-published posts vs the cli
    ```
    Run once with `<boundary>` = month start and once = month end; total = end − start per platform. Bernard's numerator is the existing published `content_items` count (metric b). Caveats: the delta is NET of deletions; a channel whose `post_count` sits at 0/null across snapshots isn't reporting a real total (Facebook pages sometimes don't — Meta exposes no reliable page post total) → fall back to a **manual profile check** for that channel and say so in the report. If the table has no row before the month start yet (instrumentation younger than the window), report the partial window explicitly rather than a made-up month.
 
+   **Do not conflate this table with per-post engagement.** `social_channel_snapshots` is ACCOUNT-level only; PER-POST engagement lives in `engagement_snapshots` (`source='bundle'`, keyed by `content_item_id`, written daily by `cron/refresh-engagement` at 1/3/7/30-day post-age checkpoints since 2026-07-09; `source='ga4'` for blog, `source='gbp'` dead-ended by the GBP quota block). The 2026-09-11 review wrote "per-post engagement isn't instrumented" into a kill-criteria ruling by missing this table — corrected in #2719. Before claiming any metric "isn't instrumented," grep for the candidate table's WRITERS (`grep -rln '<table>' api/`) and check row recency.
+
 ## Phase 3 — Top 3 gaps
 
 Rank every gap by (user-job impact × persistence), pick the top 3. For each: the evidence (numbers), the likely mechanism (grep the code far enough to name the seam, not to fix it), and a proposed fix scoped to ≤1 week. Where a decision-log kill criterion is hit or missed, say so explicitly — a hit kill criterion is a mandatory conversation, not a footnote.
