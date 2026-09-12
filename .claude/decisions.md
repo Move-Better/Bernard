@@ -6,7 +6,7 @@ Standing rule (see CLAUDE.md "Challenge gate"): planning sessions append decisio
 Full brief: `.claude/social-adoption-strategy-2026-07-21.md` (primary checkout) + memory `project-social-adoption-strategy`.
 
 - **Slots over iCal.** /week becomes a posting-schedule (per-channel weekly slots) + week board + month overview — NOT a literal day/week/month calendar. Why: at 5–15 posts/week, slots unify add-to-day, cadence config, and quiet days in one primitive; month-first grids are agency furniture. Revisit if staff ask for month-first planning after 4 weeks of real use.
-- **Auto-draft Reels.** Bernard auto-selects top-scored `video_segments` and renders karaoke-captioned reel DRAFTS into reel slots (deliberately crosses the old "detection-only" line). Humans approve every publish; `trust_stage` stays `approve_all`. Kill criterion: if by **2026-09-15** (~6 weeks post-T2) reels aren't publishing ≥2/week with IG reach clearly up (bundle analytics), stop and rethink the autonomy line or the UX.
+- **Auto-draft Reels.** Bernard auto-selects top-scored `video_segments` and renders karaoke-captioned reel DRAFTS into reel slots (deliberately crosses the old "detection-only" line). Humans approve every publish; `trust_stage` stays `approve_all`. Kill criterion: if by **2026-09-15** (~6 weeks post-T2) reels aren't publishing ≥2/week with IG reach clearly up (bundle analytics), stop and rethink the autonomy line or the UX. **Pre-hearing reading 2026-09-11 (outcome review): the criterion SPLITS.** Volume: MISS — 2 reels ever (08-25, 09-04, both verified live), ~0.7/wk. Reach: MET — IG trailing-window impressions avg 8.3k (wk of Aug 3) → 17.2k peak (wk of Aug 24, the first-reel week) → 14.8k (wk of Aug 31); +78% vs early Aug, attribution to reels suggestive not proven (August was also the best posting month ever). Rule at the 09-15 hearing on the split, with `.claude/outcome-reviews/2026-09.md` § Week-2 as the brief. **RULED at the hearing, 2026-09-11 (held 4 days early): HOLD — push approver attention.** Q kept the autonomy line: volume is an attention problem, not a pipeline problem (third consecutive single-approver week; the escalation email + the staffing conversation are the levers). New clock: re-rule **2026-10-15** with the same ≥2/wk bar. Lighter reel-specific review was declined (52% approved-unedited concordance reads against it, per the P5 entry); stop-and-rethink declined given reach MET and a proven, repeatable pathway.
 - **T1 closed-loop publishing.** Publish path must send Reels as Reels, honor editor aspect, verify post-publish (permalink → `resolved_url` → "Live ✓"), and alert on connection death day-0. Success bar: zero staff "rendered wrong" reports and ≥95% of published IG/FB rows carrying a verified live link. Revisit-by: **2026-09-01**. **Checked 2026-09-04 (outcome review): the verified-live half is MET — August final IG+FB 24/25 = 96%, with four consecutive 100% weeks closing the month. The rendered-wrong half was NOT clean: the 08-17 WYSIWYG mismatch and the 08-31 double-karaoke pair are exactly that class — each fixed same-week (#2638–#2649, #2686), so the verification loop works but render-fidelity variants keep recurring. Keep the fidelity metric on the monthly scoreboard rather than closing this entry.**
 - **T4 learning loop, full scope.** Reject-with-reason + pre-approve edit-diff mining + weekly "Bernard learned" digest + **day/time cadence learning** (extend `cadenceAdaptive.js` from "how many" to "when", with exploration slots into unproven windows). Why: silent rejection teaches nothing, and frozen `quiet_days`/`BEST_HOUR` defaults are self-sealing — no weekend inventory ⇒ no weekend data ⇒ Auto can never learn weekends.
 - **Approval stays heavy for now, by design.** Full-review-every-post is correct while trust is low; instrument edit-rate per lane so lanes can graduate to lighter review later. Don't hard-wire heavy review forever; don't lighten it before T1 receipts exist.
@@ -15,6 +15,8 @@ Full brief: `.claude/social-adoption-strategy-2026-07-21.md` (primary checkout) 
 ## 2026-07-21 — Instagram Story lane disabled until T3
 Q's call (outcome-review follow-up, AskUserQuestion): **disable, don't wire.** The 5/wk `instagram_story` cadence target never produced one published story — drafts are born `media_urls: []` (content-plan/draft.js) with no auto-attach step, and the lane's teaser-with-link premise is dead (bundle.social has no Story link sticker, PR #1854). Removed the `instagram_story` cadence prior (code fallback + `app_config.cadence_defaults`), dropped it from movebetter's `cadence_policy`/`enabled_outputs`, skipped 3 pending atoms, archived 6 media-less drafts (`archived_at`, reversible). Publish path (`bundlePublisher` STORY block) left intact.
 **Revive criterion:** when T3 slots ships, stories get a slot lane with media auto-attach (T2 reel pattern) — re-add the prior + re-enable the channel then, not before. Revisit-by: **2026-09-15** (with the T2 reels kill-criterion check).
+
+**RULED 2026-09-11 (kill-criteria hearing): stays disabled.** The technical revive condition is met (T3 slots live; the reel auto-attach pattern proven by 2 published reels) but Q declined revival while one approver carries the entire publish output and GBP already starves. Revive is re-tied to approval capacity (≥2 regular weekly approvers) — an event trigger, not a date.
 
 ## 2026-07-21 — T4 learning loop scoping (challenge gate)
 Track-level brief + Q's answers (AskUserQuestion): **go as briefed**, 4 sequential PRs (reject → edit-diff capture+digest → day/time proposal engine → digest/trust-metric close-out).
@@ -159,6 +161,10 @@ Measured at removal: **`workspace_photo_templates` and `workspace_video_template
 
 **Revisit-by: 2026-09-15.** Kill criteria: (a) Q saves a template and the next piece using it doesn't match what he approved — the split is wrong, fix the capture before adding features on top; (b) if templates are created and then never re-used, authoring was not the gap and the library is the wrong shape; (c) if the six uncapturable photo properties are what people actually want to reuse, extend the template block schema rather than continuing to name them as skipped.
 
+**Checked 2026-09-11 (outcome review, 4 days early):** both template tables still **0 rows ever** — nothing saved since removal. Per this entry's own framing, the continued zero says authoring was never the gap; nothing to rebuild. (a) and (c) never became testable (no template ever saved).
+
+**RULED 2026-09-11 (kill-criteria hearing): CLOSED.** Q confirmed: authoring was never the gap, nothing to rebuild. Save-as-template stays available in both editors; no further template investment unless someone actually saves one.
+
 ## 2026-07-27 — Weekends are a posting day by default; slots lay out evenly across the whole week
 Feedback (Philip, `/week`, 2026-07-26): *"Saturday and Sunday not treated as regular posting days."* Q's call (AskUserQuestion): open weekends as the **default for all clinics**, fix the toggle, keep volume **flat** (no added posts — the approval queue is the bottleneck), and the even layout must be **algorithmic, not a hardcoded per-workspace blob**. Shipped #2389 + a data backfill of all 7 active workspaces.
 
@@ -170,6 +176,10 @@ Feedback (Philip, `/week`, 2026-07-26): *"Saturday and Sunday not treated as reg
 
 **Revisit-by: 2026-09-15.** Kill criteria: (a) clinics toggle weekends back OFF at scale (`quiet_days` re-including sat/sun on several workspaces) → weekends-open was the wrong default; revert the seed to `['sat','sun']` and make it an onboarding question instead. (b) Weekend posts publish but underperform weekday engagement badly (bundle analytics) → reconsider flat-volume weekend slots. (c) If nobody uses the now-working toggle to shape their week, the even auto-layout is good enough and needs no per-slot editor.
 
+**Checked 2026-09-11 (outcome review):** (a) not hit — all 7 workspaces still `quiet_days: []`, and 7 weekend publishes landed since 08-22, so weekend inventory is real. (b) unmeasurable as written: per-post engagement isn't instrumented (snapshots are account-level trailing-window reach only). (c) matches (a) — nobody has touched the toggle, and the even layout is delivering. Default stands.
+
+**RULED 2026-09-11 (kill-criteria hearing): default stands; instrument the engagement half.** (a)/(c) are settled — weekends stay open by default. For (b), Q chose to BUILD per-post engagement capture (bundle analytics per content item) rather than drop the criterion; re-rule (b) once ~4 weeks of per-post data exist. Entry stays open for that half only; build chip spawned at the hearing.
+
 ## 2026-07-27 — Google Business post length halved (targets + prompt beats)
 GBP posts were running ~1400 chars against a 1500 hard cap. Root cause was two-part, and the second half is why shortening the number alone would have been a no-op: (1) both angles sat in the `medium` lane, so the `indepth` dial inflated them 1.15x — contradicting `socialLengthTargets.js`'s own rule that the dial decides how deep the DEEP posts go; (2) the prompt demanded five substantive beats that cannot fit the stated 518–897 target, so the model resolved the conflict in favour of structure and ignored the range on **all 14** of movebetter's GBP posts.
 
@@ -178,6 +188,10 @@ GBP posts were running ~1400 chars against a 1500 hard cap. Root cause was two-p
 **Also this session (#2390):** `regenerate.js` and `reviseContentItem.js` never got the #2181 caption clamp, so both could write over-cap captions — one live LinkedIn draft sat at 3,015 against a 3,000 ceiling and Approve refused it. Same divergence class as the #2278 sibling-dedup miss in the same file.
 
 **Revisit-by: 2026-09-15** (with the T2 reel check). Kill criteria: (a) GBP engagement/clicks drop materially against the pre-change baseline → the old length was doing work and the short lane is wrong for this clinic; (b) staff routinely hand-lengthen GBP drafts back past ~700 chars (visible in `edit_diff`) → the target is now too tight, raise the `short` baselines rather than moving the lane back; (c) if output still clusters above range after this, the beats are still overselling the target and need cutting again — not a smaller number.
+
+**Checked 2026-09-11 (outcome review):** (b)/(c) not hit — all 4 GBP posts published since 08-15 run 344–505 chars, squarely in-lane; no hand-lengthening evident in shipped output. (a) remains unmeasured (GBP engagement not instrumented). Lane holds.
+
+**RULED 2026-09-11 (kill-criteria hearing): CLOSED — lane holds.** (b)/(c) never hit; Q closed with (a) deliberately unmeasured (no GBP engagement instrumentation just to serve this entry). The short lane is the standing default; reopen only on a staff report or real engagement evidence.
 
 ## 2026-07-27 — Interviews become a moment bank; drafting moves to demand-pull
 Q, in a planning session on whether interview→12-drafts is the right flow: *"We need the content to be flexible to the clinic's needs, not the clinic meeting the needs of the content."*
@@ -191,6 +205,10 @@ Q, in a planning session on whether interview→12-drafts is the right flow: *"W
 **Case against, considered:** the interview-time payoff loop ("20 min = a week of content") weakens — Q ruled it moot (an interview still equals content; only WHEN changes). Video coupling — resolved by cutting clips at capture into the library (Lane A) so composition stays bank-driven. Cross-interview redundancy in the bank is the real new risk; dedup/clustering at ingest is a P2 hard requirement, not polish.
 
 **Revisit-by: 2026-09-15.** Kill criteria: (a) publish rate on bank-composed pieces is not clearly above the 38.7% batch baseline within 4 weeks of P3 — the bank moved the problem, not solved it; (b) planner hit-rate stays low (weeks keep falling back to thin plans despite a populated bank) — extraction/dedup quality is wrong, stop and fix before P4; (c) Q spot-checks find composed pieces drifting from their moment's verbatim meaning — tighten the anchor/judge before any P5 talk; (d) stale-draft count regrows after P1 — the cleanup semantics are wrong.
+
+**Checked 2026-09-11 (outcome review, on live `moment_id` provenance):** (a) **MET — 56%** publish rate on moment-stamped pieces (28/50), clearly above the 38.7% baseline. (d) not hit — 0 stale drafts >14d, sixth clean window. (b)/(c) are Q-judgment/planner reads for the hearing, not DB-measurable here.
+
+**RULED 2026-09-11 (kill-criteria hearing): (a)/(d) MET and settled; (b)/(c) deferred to ~2026-10-02** (Q: revisit in 3 weeks) for his read on planner hit-rate and verbatim spot-checks after more time with the bank's output. The bank model is validated on both measurable halves.
 
 ## 2026-07-27 — Caption spell-check: native yes, harper.js grammar no (Philip feedback, challenge gate)
 Philip (movebetter) asked for spell + grammar underlining in the caption boxes. Shipped **native browser spellcheck** — `spellCheck`+`lang="en"` on both caption textareas (UnifiedEditor WordsPanel + SlideEditor CaptionPanel, #2395), covering the misspelling half at 0 KB / $0.
@@ -223,6 +241,8 @@ Mockups on real prod data with signal rules applied to all 7 workspaces: artifac
 
 **Revisit-by: 2026-09-15** (rides the bank decision's date). Additional kill criteria: (e) if On-hand browse sees ~zero use by then, demote /moments browse depth — the audience call was wrong; (f) if a fired Home nudge produces no capture within 2 weeks on a low workspace, rethink the restock loop (silent priming may be the honest answer).
 
+**RULED 2026-09-11 (kill-criteria hearing) on kill (e) — first PostHog measurement possible (project 473748):** /moments browse saw a launch spike (37 visits in week 1) then a 0–3 visits/wk trickle since mid-August, almost entirely Philip. Q chose **4 more weeks** — the 09-01 review-queue rework (#2687) changed how /moments is used, so re-measure ~**2026-10-15** on post-rework data before any demotion. (f) remains untested (no restock-nudge firing measured).
+
 ## 2026-07-28 — P5 (approve-once) NOT built; the missed slots are an attention problem, so ship the nudge
 Challenge gate run on P5 at Q's request, one day after the moment bank (P1–P4) went live. A fresh no-stake critic session attacked the brief. **Chosen (Q, from four options): build the Standing Producer escalation email instead; re-open P5 at the 2026-09-15 revisit with concordance data.**
 
@@ -251,6 +271,10 @@ Challenge gate run on P5 at Q's request, one day after the moment bank (P1–P4)
 
 **Same-day update — 2026-09-04 (afternoon):** the re-spawned chip shipped. #2701 (migration 214) added `content_items.moment_id` (FK → moments, ON DELETE SET NULL) + `moment_provenance` jsonb frozen at draft time, stamped by both moment-anchored draft paths, and backfilled all 37 joinable rows that afternoon — verified 37/37 stamped + provenance-frozen, 0 joinable-unstamped. The evidence base stops evaporating from 09-04; the hearing still rules on the frozen 08-21 cohort (n=31, 40–53% unedited) since pre-09-04 losses are unrecoverable.
 
+**Unlock condition (b) measured on live provenance — 2026-09-11 (outcome review): NOT MET.** The stamped cohort reached exactly 50 pieces (the volume bar), publish rate 56% (28/50), but only **15 of 29 approved pieces are unedited (52%)** vs the ≥95% bar — consistent with the frozen 08-21 cohort's 40–53%, now on current data. Conditions (a) (attention was eventually bought — LinkedIn converted via the normal path) and (b) both read against unlocking; P5 stays locked by this entry's own terms going into the 09-15 hearing.
+
+**RULED 2026-09-11 (kill-criteria hearing): P5 stays LOCKED.** Q confirmed the entry's own terms — 52% approved-unedited vs the ≥95% bar means humans change half of what they approve, so approve-once would ship the unedited version. Not killed: keep measuring the unedited rate at monthly outcome reviews; re-hear only if it approaches the bar.
+
 ## 2026-07-29 — ProducerHome: a real home screen for the producer role, built full-sprint
 
 **Job.** A producer (or owner, who does the same work) opens Bernard and knows, without archaeology, every checkpoint they're gating, what to do first, and how their job changed since last week.
@@ -268,6 +292,8 @@ Challenge gate run on P5 at Q's request, one day after the moment bank (P1–P4)
 **Build order:** P1 checkpoint endpoint + ProducerHome + tier-filtered nav + clinician-side surfacing of the routed-away checkpoints (so routing isn't a dead end) → P2 pipeline/channel health → P3 `product_updates` generator + feed → P4 weekly coaching card. Shipped as one full sprint per Q's request (not staged across separate go/no-go checkpoints).
 
 **Kill criterion — revisit-by 2026-09-15.** If 4 weeks post-ship the producer's stale-approval count (>14d) hasn't measurably dropped and PostHog shows no regular weekly visits to the checkpoint queue, the page isn't earning attention either — fall back to escalation-email-only per the P5 pattern rather than continuing to invest in this surface.
+
+**RULED 2026-09-11 (kill-criteria hearing): MET — KEEP; entry closed.** First PostHog measurement (project 473748): Philip visited the checkpoint queue in all 7 weeks since ship (4–17 visits/wk) and Q weekly as well; stale social approvals went 9 → 0, with the only remaining stale items 5 approved blogs (the separate two-step publish thread, due 2026-10-15). Both halves of the kill criterion read keep.
 
 ## 2026-07-29 — Explicit post formats: Reel is a choice, carousels can mix photo+video
 
@@ -357,6 +383,10 @@ Resolves the known-limit clause in the 2026-07-22 `/week` chrome entry above: th
 
 **Kill criterion — revisit-by 2026-09-15.** If the chip fires on a channel Q considers healthy (e.g. one that batches its whole week on one day by design), the 7-day/no-target-awareness of the threshold is wrong — make it relative to the channel's own posting rhythm rather than a flat week. If it never fires again after this one catch, treat that as the signal working, not as evidence to remove it.
 
+**Checked 2026-09-11 (outcome review):** the chip's condition is currently true for GBP — 9 days silent on a 3/wk-target channel with 3 fresh drafts ready — a legitimate catch, not a healthy-channel false positive. No false-positive report from Q since ship. Signal working as designed.
+
+**RULED 2026-09-11 (kill-criteria hearing): working as designed; entry closed.** The GBP catch (10 days silent at hearing time, 5 unpublished GBP drafts in queue) is a validated true positive; zero false positives since ship. GBP's underlying attention problem rides the reel ruling's approver-attention push, not any chip change.
+
 ## 2026-08-10 — Render at 1080-class, not 4K: an undocumented ceiling made explicit
 
 **Trigger.** Chasing a 3.1 GB 4K master that was blocking the reel queue, Q asked whether any social lane can use 4K, and whether that ceiling is a platform limit or ours. Neither the code nor the decisions log answered it.
@@ -431,6 +461,10 @@ Resolves the known-limit clause in the 2026-07-22 `/week` chrome entry above: th
 
 **First measurement — 2026-08-28 (outcome review):** blog `bbe26988` (approved 08-07) published 2026-08-28 00:20 — the first blog publish in 73 days, inside the nudge era. Criterion trending MET on n=1; 6 approved blogs still waiting, so the 09-15 check should confirm the trickle continued rather than close on a single publish.
 
+**Checked 2026-09-11 (outcome review, 4 days early): MET.** Three blog publishes in the nudge era (08-28, 08-30, 09-06) — the trickle continued past n=1. Publish-on-approve does not need to be built on this criterion's terms. Residual watch: 4 approved blogs still waiting (all >14d) and no new blog draft created since 08-20 — the pipe is draining without refilling; that belongs to the 2026-10-15 words-gate follow-up, where the early read is good (`staff.voice_notes` populated on 2 staff — the learning wiring fired).
+
+**RULED 2026-09-11 (kill-criteria hearing): MET confirmed.** Publish-on-approve stays unbuilt. Residual watch re-verified at the hearing: a 5th approved blog crossed the >14d stale line (oldest waiting since 06-18) and still no new blog draft since 08-20 — both stay on the 2026-10-15 words-gate check.
+
 ## 2026-08-29 — Blog collapses to ONE approval (the clinician's); edit-learning wired to fire on approve
 
 **Context.** Philip's feedback (`3b7f432c`): a blog showing green "Approved" next to amber "Approve the story's words first" — "Is this the normal process? Or an error?" Triaged as a copy fix; two rounds of mockups were rejected by Q with "this is still confusing… I think there should just be 1 Approve for blogs." The confusion was the model, not the wording.
@@ -464,3 +498,10 @@ Resolves the known-limit clause in the 2026-07-22 `/week` chrome entry above: th
 **How to read it for the ruling:** `impressions` is a TRAILING-WINDOW metric (moves down as well as up; window length undocumented by bundle), not cumulative — compare early-August rows vs September rows directly, don't diff like `post_count`. On IG `impressions == impressions_unique` on every observed row. Measured at build time (movebetter IG): ~8.2k on Aug 5 → ~17.7k peak Aug 30 → ~13.7k Sep 4.
 
 **Caveat:** pre-Aug-5 reach is gone (bundle's window) — the "before" for the ruling is early August, not July. Window semantics are observed, not documented; if bundle's numbers ever look implausible, re-probe the API before trusting a trend.
+
+
+## 2026-09-11 — Kill-criteria hearing (the 09-15 slate, held 4 days early)
+
+All ten open criteria due 09-15 were ruled with Q (AskUserQuestion), on the Week-2 outcome-review brief re-verified live at hearing time — every number held; two drifts since the morning run: GBP 9 → 10 days silent (5 unpublished GBP drafts in queue), and a 5th approved blog crossed the >14d stale line. The two PostHog-gated halves (ProducerHome visits, /moments browse) were measured for the first time, interactively (HogQL, project 473748). Rulings, each stamped on its own entry above: **Reels HOLD** (approver-attention push, re-rule 2026-10-15); **Stories stay disabled** (revive gated on ≥2 regular approvers); **moment bank (a)/(d) MET**, (b)/(c) deferred to ~2026-10-02; **P5 stays locked**; **weekend default stands** with per-post engagement instrumentation chosen for (b) (build chip spawned); **GBP short lane CLOSED**; **templates CLOSED**; **publish-silence chip working-as-designed, closed**; **ProducerHome MET, closed**; **/moments browse gets 4 more weeks** (re-measure 2026-10-15); **blog nudge MET confirmed**.
+
+Standing non-build finding surfaced to Q at the hearing: one approver has carried the entire publish output for three consecutive weeks, and GBP is starving on attention with drafts ready — a staffing conversation, not a feature gap.
