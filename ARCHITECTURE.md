@@ -526,6 +526,15 @@ sentinel snapshot (`stats.unavailable=true`) so the UI shows "not available" ins
 and catchUp stops re-forcing it. Old posts published under a prior connection are orphaned (the direct
 reconnect mints a new account `externalId`) and can't be retro-linked.
 
+**`social_channel_snapshots.platform` stores bundle's UPPERCASE enum (`INSTAGRAM`, `FACEBOOK`,
+`LINKEDIN`, `YOUTUBE`) — not our lowercase channel keys.** The weekly snapshot cron persists
+bundle's `platformType` verbatim (migration 215 added the reach columns), while `content_items.platform`
+and `cadence_policy` use lowercase (`instagram`, `gbp`). A lowercase filter against the snapshots
+table silently returns ZERO rows — which reads exactly like "no reach data was ever captured"
+(hit 2026-09-11 re-verifying the reel kill criterion: a verified brief quoted numbers a fresh
+lowercase-filtered query said didn't exist). Any join or comparison between snapshots and content
+rows needs an explicit case mapping; check `select distinct platform` before trusting an empty result.
+
 **Core publish execution is reusable — call it, don't re-derive it.** `api/_routes/publish/
 social.js` exports `runBundlePublish(workspace, {...})` — the channel-resolution + fan-out
 logic with the HTTP req/res stripped off, returning `{ status, body }`. Both that file's own
