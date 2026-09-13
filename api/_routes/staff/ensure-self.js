@@ -26,10 +26,15 @@
 // Idempotent: safe to call on every load. Scoped by workspace_id + user_id, so
 // it can never touch another tenant's data or another user's row.
 //
-// permission_tier is intentionally left null on create — /api/workspace/me
-// resolves a null tier to the 'clinician' default template for non-admins (and
-// 'owner' for org admins via the isOrgAdmin short-circuit), so provisioning the
-// row never changes the caller's authorization.
+// Access and Role from the invite: /api/workspace/invite puts the chosen tier
+// and staff_type on the invitation's public_metadata, which Clerk copies onto
+// the membership. Steps 2–4 write them onto the row they claim or create — the
+// invite was already an owner's decision about this person. When the
+// membership carries no invite metadata (older invites, the founder),
+// permission_tier is left as before: /api/workspace/me resolves a null tier to
+// the 'clinician' default template for non-admins (and 'owner' for org admins
+// via the isOrgAdmin short-circuit). Step 1 never rewrites an existing row, so
+// provisioning cannot change an established person's authorization.
 
 export const config = { runtime: 'nodejs' }
 
@@ -37,6 +42,7 @@ import { createClerkClient } from '@clerk/backend'
 import { requireRole } from '../../_lib/auth.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
+import { inviteAccessFromMetadata, staffColumnsFromInvite } from '../../_lib/teamAccess.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -48,7 +54,7 @@ function clerk() {
   return _clerk
 }
 
-const CLINICIAN_FIELDS = 'id,workspace_id,name,user_id,permission_tier,created_at'
+const CLINICIAN_FIELDS = 'id,workspace_id,name,user_id,permission_tier,staff_type,created_at'
 
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -69,12 +75,12 @@ function sb(path, init = {}) {
 // first's row. Returns the claimed row, or null if the row was already claimed
 // (lost the race) or the write failed (caller falls through to the next step
 // rather than stranding the user).
-async function tryClaim(rowId, wsFilter, userId) {
+async function tryClaim(rowId, wsFilter, userId, inviteCols = {}) {
   const claimRes = await sb(
     `staff?id=eq.${encodeURIComponent(rowId)}&user_id=is.null&${wsFilter}&select=${CLINICIAN_FIELDS}`,
     {
       method: 'PATCH',
-      body: JSON.stringify({ user_id: userId, updated_at: new Date().toISOString() }),
+      body: JSON.stringify({ user_id: userId, ...inviteCols, updated_at: new Date().toISOString() }),
     }
   )
   if (!claimRes.ok) {
@@ -83,6 +89,22 @@ async function tryClaim(rowId, wsFilter, userId) {
   }
   const claimed = await claimRes.json()
   return Array.isArray(claimed) && claimed.length > 0 ? claimed[0] : null
+}
+
+// Role + Access the invite carried, from this user's membership in the
+// workspace's Clerk org. Best-effort: a Clerk failure provisions the row
+// exactly as it did before invites carried access.
+async function inviteAccessFor(userId, orgId) {
+  if (!orgId) return { tier: null, staffType: null }
+  try {
+    const list = await clerk().users.getOrganizationMembershipList({ userId, limit: 100 })
+    const rows = list?.data ?? list ?? []
+    const membership = Array.isArray(rows) ? rows.find((m) => m?.organization?.id === orgId) : null
+    return inviteAccessFromMetadata(membership?.publicMetadata)
+  } catch (e) {
+    console.error('[clinicians/ensure-self] membership lookup failed:', e?.message)
+    return { tier: null, staffType: null }
+  }
 }
 
 // Derive a sensible display label for a freshly-invited user who may not have
@@ -152,6 +174,8 @@ export default async function handler(req, res) {
   // supplied. Keeps the ilike query and the insert bounded.
   name = name.slice(0, 200)
 
+  const inviteCols = staffColumnsFromInvite(await inviteAccessFor(userId, ws.clerk_org_id))
+
   // 2. Claim a matching proxy row by EMAIL (admin pre-recorded this person;
   //    user_id null). created_by_email is stable across the Clerk display-name
   //    drift that broke name-matching — see the resolution-order note above.
@@ -172,7 +196,7 @@ export default async function handler(req, res) {
         ? proxies.find((p) => (p.created_by_email || '').toLowerCase() === wanted)
         : null
       if (target) {
-        const claimed = await tryClaim(target.id, wsFilter, userId)
+        const claimed = await tryClaim(target.id, wsFilter, userId, inviteCols)
         if (claimed) return res.status(200).json({ staffMember: claimed, created: false })
         // Lost the race or the write failed — fall through to the name match.
       }
@@ -185,7 +209,7 @@ export default async function handler(req, res) {
   if (byNameRes.ok) {
     const byName = await byNameRes.json()
     if (byName.length > 0) {
-      const claimed = await tryClaim(byName[0].id, wsFilter, userId)
+      const claimed = await tryClaim(byName[0].id, wsFilter, userId, inviteCols)
       if (claimed) return res.status(200).json({ staffMember: claimed, created: false })
       // Lost the race or claim failed — fall through to create our own row.
     }
@@ -200,6 +224,7 @@ export default async function handler(req, res) {
       user_id: userId,
       created_by_id: userId,
       created_by_email: createdByEmail,
+      ...inviteCols,
     }),
   })
   if (!createRes.ok) {

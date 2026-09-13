@@ -740,6 +740,8 @@
     "created_at",
     "created_by_email",
     "created_by_id",
+    "deactivated_at",
+    "deactivated_by",
     "default_audience",
     "default_story_type",
     "default_tone",

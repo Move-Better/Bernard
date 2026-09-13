@@ -79,6 +79,9 @@ const NOT_AI_TEXT = {
   '_lib/practiceMemoryRag.js': 'content: is a chat message, not a column',
   // Handout body is a separate document pipeline, not a social/blog draft.
   'handout/create.js': 'handout document, not a reviewed content draft',
+  // Deactivation handover reassigns staff_id/staff_name on open drafts; the
+  // `content:` it matches is a count in the summary object, never text.
+  '_lib/teamAccess.js': 'handover reassigns ownership only; content: is a count',
 }
 
 describe('every AI-text writer to content_items sanitizes dashes', () => {

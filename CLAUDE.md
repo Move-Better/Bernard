@@ -807,6 +807,8 @@ Rule: before ANY staff delete or merge, count children per `staff_id` across all
 
 Prefer the atomic, collision-safe `merge_staff(source, target, workspace)` SQL function (migration 112, extended in 191 to include `moments`) over hand-rolled deletes — it repoints all 13 FKs + the campaigns array, blocks cross-workspace merges, and de-dups the 3 child tables that carry a `staff_id`-bearing unique index (`staff_voice_phrases`, `staff_corpus_documents`, `staff_recipes` one-default). Do NOT combine the repoint `UPDATE`s and the staff `DELETE` in a single multi-CTE statement: data-modifying CTEs share one snapshot, so the cascade-vs-repoint interaction is unpredictable. Sequence them (repoint, verify zero children, then delete) or call the function. This same repoint-then-delete discipline applies to any future table whose FKs cascade — re-discover the FK graph from `information_schema` before assuming the list of children.
 
+**Delete and merge are for DUPLICATE rows, never for someone who left.** A departure is **deactivated** (`staff.deactivated_at`, migration 216 — Staff profile → Settings → Access): their Clerk login, tier and history stay, open work moves to a successor, and Reactivate restores everything. `merge_staff` on a departure rewrites their uploads and approvals under the successor's name. Full model in ARCHITECTURE.md "Someone who leaves is DEACTIVATED".
+
 ## Blob store
 All production media lives in a single Vercel Blob store (`bernard-prod`, prefix `t4otw6ecf8ztxfeq`), attached to the `bernard` Vercel project on team `movebetter`. `BLOB_READ_WRITE_TOKEN` in `.env.local` / Vercel env points to this store.
 

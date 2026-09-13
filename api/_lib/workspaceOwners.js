@@ -83,7 +83,7 @@ export async function listWorkspaceOwnerUserIds(workspace, sb, clerk, logTag = '
   try {
     const r = await sb(
       `staff?workspace_id=eq.${workspace.id}&permission_tier=eq.${OWNER_TIER}` +
-      `&user_id=not.is.null&select=user_id`,
+      `&user_id=not.is.null&deactivated_at=is.null&select=user_id`,
     )
     if (r.ok) {
       for (const row of await r.json()) {
@@ -94,7 +94,43 @@ export async function listWorkspaceOwnerUserIds(workspace, sb, clerk, logTag = '
     console.error(`${logTag} owner-tier staff lookup failed for ${workspace.id}:`, e?.message)
   }
 
+  // 3. A deactivated person is not an owner for mailing purposes, even when
+  //    they are still a Clerk org admin (deactivation keeps the membership).
+  for (const uid of await listDeactivatedUserIds(workspace, sb, logTag)) owners.delete(uid)
+
   return owners
+}
+
+/**
+ * Clerk user IDs whose access an owner has switched off in this workspace
+ * (staff.deactivated_at set — migration 216). Every recipient list for a
+ * nudge, digest or alert removes these.
+ *
+ * Fails toward an EMPTY set on error, i.e. toward still emailing someone who
+ * left, which is logged — the alternative failure (emailing nobody) would
+ * silence the whole team's notifications on a transient blip.
+ *
+ * @returns {Promise<Set<string>>}
+ */
+export async function listDeactivatedUserIds(workspace, sb, logTag = '[workspaceOwners]') {
+  const out = new Set()
+  if (!workspace?.id) return out
+  try {
+    const r = await sb(
+      `staff?workspace_id=eq.${workspace.id}&deactivated_at=not.is.null` +
+      `&user_id=not.is.null&select=user_id`,
+    )
+    if (!r.ok) {
+      console.error(`${logTag} deactivated staff lookup failed for ${workspace.id}: status=${r.status}`)
+      return out
+    }
+    for (const row of await r.json()) {
+      if (row?.user_id) out.add(row.user_id)
+    }
+  } catch (e) {
+    console.error(`${logTag} deactivated staff lookup failed for ${workspace.id}:`, e?.message)
+  }
+  return out
 }
 
 /**

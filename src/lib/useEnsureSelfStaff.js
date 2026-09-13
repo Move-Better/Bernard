@@ -9,10 +9,12 @@
 // clinician summaries cache so useSelfStaffId resolves and the menu item
 // appears — no interview required.
 //
-// Gated on CAP_INTERVIEW_START: only members who can be interviewed (the
-// talent — owner + clinician tiers by default) get a Self row. Producer- and
-// viewer-only seats are deliberately skipped so they don't get an empty
-// staff profile they'll never use.
+// Runs for EVERY member, not only those who can be interviewed. It used to be
+// gated on interview.start so producer/viewer seats got no empty profile, but
+// the row is now where a person's access lives: ensure-self writes the Access
+// and Role their invite chose onto it, and the deactivation gate reads it. A
+// viewer with no row would keep whatever the workspace default grants. And
+// every role can share their story (Q, 2026-09-13).
 //
 // One-shot per mount via a ref (mirrors the kickoff-effect guard pattern in
 // CLAUDE.md) so a transient failure can't turn into a request storm.
@@ -22,17 +24,11 @@ import { useUser } from '@clerk/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
 import { useWorkspace } from '@/lib/WorkspaceContext'
-import { usePermission } from '@/lib/usePermission'
 import { useStaffSummaries } from '@/lib/queries'
-import { CAP_INTERVIEW_START } from '@/lib/capabilities'
 
 export function useEnsureSelfStaff() {
   const { user, isLoaded } = useUser()
   const ws = useWorkspace()
-  const { has } = usePermission()
-  // Snapshot to a stable boolean — `has` is a fresh closure every render, so
-  // depending on it directly would re-run the effect on every parent re-render.
-  const canInterview = has(CAP_INTERVIEW_START)
   const { data: summaries, isSuccess } = useStaffSummaries()
   const qc = useQueryClient()
   const attemptedRef = useRef(false)
@@ -44,8 +40,6 @@ export function useEnsureSelfStaff() {
     // Note: switching workspace is always a hard subdomain navigation (full
     // reload), so ws.id never changes in place — the mount-scoped guard is safe.
     if (!ws?.id) return
-    // Only the talent gets a Self profile; skip producer/viewer-only seats.
-    if (!canInterview) return
     // Wait for the summaries fetch to actually resolve — a null match while the
     // query is still loading is not evidence that the row is missing.
     if (!isSuccess) return
@@ -76,5 +70,5 @@ export function useEnsureSelfStaff() {
         console.warn('[ensure-self-clinician] provisioning failed:', e?.message)
       }
     })()
-  }, [isLoaded, user?.id, user?.fullName, ws?.id, canInterview, isSuccess, summaries, qc])
+  }, [isLoaded, user?.id, user?.fullName, ws?.id, isSuccess, summaries, qc])
 }

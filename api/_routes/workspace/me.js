@@ -485,6 +485,9 @@ async function handler(req, res) {
         // bound to this workspace's org, it forces a token-refresh refetch —
         // the slim response means the server didn't see a matching JWT.
         slim_branding:    true,
+        // An owner switched this person's access off (migration 216). The SPA
+        // shows the "access is switched off" screen instead of retrying.
+        access_deactivated: auth.reason === 'deactivated',
         id:               workspace.id,
         slug:             workspace.slug,
         clerk_org_id:     workspace.clerk_org_id,

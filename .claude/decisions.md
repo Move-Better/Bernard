@@ -509,3 +509,17 @@ Resolves the known-limit clause in the 2026-07-22 `/week` chrome entry above: th
 All ten open criteria due 09-15 were ruled with Q (AskUserQuestion), on the Week-2 outcome-review brief re-verified live at hearing time — every number held; two drifts since the morning run: GBP 9 → 10 days silent (5 unpublished GBP drafts in queue), and a 5th approved blog crossed the >14d stale line. The two PostHog-gated halves (ProducerHome visits, /moments browse) were measured for the first time, interactively (HogQL, project 473748). Rulings, each stamped on its own entry above: **Reels HOLD** (approver-attention push, re-rule 2026-10-15); **Stories stay disabled** (revive gated on ≥2 regular approvers); **moment bank (a)/(d) MET**, (b)/(c) deferred to ~2026-10-02; **P5 stays locked**; **weekend default stands** with per-post engagement instrumentation chosen for (b) (build chip spawned); **GBP short lane CLOSED**; **templates CLOSED**; **publish-silence chip working-as-designed, closed**; **ProducerHome MET, closed**; **/moments browse gets 4 more weeks** (re-measure 2026-10-15); **blog nudge MET confirmed**.
 
 Standing non-build finding surfaced to Q at the hearing: one approver has carried the entire publish output for three consecutive weeks, and GBP is starving on attention with drafts ready — a staffing conversation, not a feature gap.
+
+## 2026-09-13 — People who leave are deactivated, not removed; invites carry Role + Access
+
+**Context.** Philip left Move Better. He was that single approver: 58 of the last 65 movebetter approvals in 60 days. Bernard had no offboarding at all: removing someone from the Clerk org touched nothing in Bernard, and the only staff tools were delete and `merge_staff`, both built for duplicate rows. He may return as a part-time contractor, so his login has to survive.
+
+**Decision (Q, 2026-09-13).**
+- **Deactivate, never remove from Clerk.** `staff.deactivated_at` (migration 216) switches access off in `requireRole`; login, tier, overrides and history are kept; Reactivate restores them. Mirrors Deep Thought #1074.
+- **Hand over open work to a successor** chosen at deactivation (drafts, unpublished answers, campaign targets); published history keeps the original name. Philip's successor is Aj Adams, promoted to producer.
+- **Invite asks Role and Access separately.** Role = `staff_type` (Clinician / Support staff); Access = `permission_tier` (Producer / Team member / Viewer). The `clinician` tier is shown as **Team member** because every role can share their story. No owner-approval step: the invite already is one.
+- Philip's company email was replaced by his personal one in Bernard's Clerk only (Deep Thought is a separate Clerk instance).
+
+**Case against.** It's a feature for a few events a year; a runbook and a script would have covered Philip. Accepted anyway because the gap was not only procedural: on the internal plan, lowering someone's tier restricts almost nothing (every member resolves to admin), so a script could not have actually switched access off. The gate had to be in code.
+
+**Kill criterion / revisit.** Trigger-gated, no clock: if a deactivated person is ever found reaching a route, or still receiving a nudge or digest, the gate or a recipient filter missed a path — fix the path and extend `tests/lib/deactivatedRecipients.test.js`. Revisit the handover scope if a successor reports work that should have moved and didn't.

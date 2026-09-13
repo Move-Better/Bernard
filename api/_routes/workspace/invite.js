@@ -4,7 +4,13 @@
 // workspace subdomain. This bypasses the apex onboarding wizard, which can
 // strand invited users if Clerk's server-side membership propagates slowly.
 //
-// Body: { email: string }
+// Body: { email: string, tier?: 'producer'|'clinician'|'viewer', staffType?: 'clinician'|'non_clinical_staff' }
+//   tier      — Access: what they can do. 'clinician' is shown as "Team member".
+//   staffType — Role: what they do. Every role can share their story.
+// Both ride on the invitation's public_metadata, which Clerk copies onto the
+// membership; /api/staff/ensure-self applies them when the person first signs
+// in. Owners are Clerk org admins and are not set here.
+//
 // Auth: Bearer JWT, members.invite capability required.
 // Runtime: nodejs
 
@@ -15,6 +21,7 @@ import { workspaceContext } from '../../_lib/workspaceContext.js'
 import { requireRole, requireCapability } from '../../_lib/auth.js'
 import { CAP_MEMBERS_INVITE } from '../../_lib/capabilities.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
+import { INVITE_TIERS, STAFF_TYPES } from '../../_lib/teamAccess.js'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -47,6 +54,10 @@ async function handler(req, res) {
   if (!email || !EMAIL_RE.test(email)) {
     return res.status(400).json({ error: 'invalid-email' })
   }
+  const tier = body.tier ?? 'clinician'
+  if (!INVITE_TIERS.includes(tier)) return res.status(400).json({ error: 'invalid-tier' })
+  const staffType = body.staffType ?? 'clinician'
+  if (!STAFF_TYPES.includes(staffType)) return res.status(400).json({ error: 'invalid-staff-type' })
 
   // Send via Clerk org invitations API. redirect_url goes to the workspace
   // subdomain so the invited user lands directly in the app — not the apex.
@@ -64,6 +75,7 @@ async function handler(req, res) {
         email_address: email,
         role: 'org:member',
         redirect_url: redirectUrl,
+        public_metadata: { bernard_tier: tier, bernard_staff_type: staffType },
       }),
     }
   )
@@ -83,7 +95,7 @@ async function handler(req, res) {
   }
 
   const inv = await r.json().catch(() => null)
-  return res.status(200).json({ id: inv?.id, email })
+  return res.status(200).json({ id: inv?.id, email, tier, staffType })
 }
 
 export default withSentry(handler)

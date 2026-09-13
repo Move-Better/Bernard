@@ -119,7 +119,8 @@ export const DEFAULT_TEMPLATES = Object.freeze({
     ],
   },
   clinician: {
-    label: 'Clinician',
+    // Stored tier value stays 'clinician'; shown as "Team member" (Q, 2026-09-13).
+    label: 'Team member',
     capabilities: [
       CAP_INTERVIEW_START,
       CAP_CONTENT_APPROVE,

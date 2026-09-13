@@ -134,7 +134,7 @@ async function handler(req, res) {
       // query itself, so a clinician already stamped for this month is never
       // even considered.
       const staffRes = await sb(
-        `staff?workspace_id=eq.${ws.id}&blog_review_enabled=is.true&user_id=not.is.null` +
+        `staff?workspace_id=eq.${ws.id}&blog_review_enabled=is.true&user_id=not.is.null&deactivated_at=is.null` +
         `&or=(blog_target_nudged_month.is.null,blog_target_nudged_month.neq.${month})` +
         `&select=id,name,user_id,blog_target_nudged_month`
       )

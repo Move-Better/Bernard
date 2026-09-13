@@ -113,7 +113,7 @@ async function handler(req, res) {
       // for the "who asked" line. Both come from the same staff table.
       const staffIds = [...new Set(pending.map((m) => m.staff_id))]
       const staffRes = await sb(
-        `staff?workspace_id=eq.${ws.id}&id=in.(${staffIds.join(',')})&select=id,name,user_id`
+        `staff?workspace_id=eq.${ws.id}&id=in.(${staffIds.join(',')})&select=id,name,user_id,deactivated_at`
       )
       const staffRows = staffRes.ok ? await staffRes.json().catch(() => []) : []
       const staffById = new Map(staffRows.map((s) => [s.id, s]))
@@ -131,6 +131,13 @@ async function handler(req, res) {
       const perWorkspace = []
       for (const [staffId, rows] of byStaff) {
         const staff = staffById.get(staffId)
+        if (staff?.deactivated_at) {
+          // Access switched off — never email someone who left. Deactivating
+          // normally releases these holds already (api/_lib/teamAccess.js);
+          // this covers a quote sent back to them afterwards.
+          perWorkspace.push({ staff: staff.name, skipped: 'deactivated', count: rows.length })
+          continue
+        }
         if (!staff?.user_id) {
           // An unclaimed staff row has no inbox. Their quotes stay pending and
           // unstamped, so this resolves itself the day the account is linked.

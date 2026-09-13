@@ -31,6 +31,7 @@ import VoiceFreshnessCard from '@/components/VoiceFreshnessCard'
 import VoicePlaybackCard from '@/components/VoicePlaybackCard'
 import VoiceCloneCard from '@/components/VoiceCloneCard'
 import { DisplayNameCard } from '@/components/DisplayNameCard'
+import TeamAccessCard from '@/components/TeamAccessCard'
 import { formatDate, formatRelativeDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -506,6 +507,7 @@ export default function StaffProfile() {
           )}
           {role === 'admin' && <BlogReviewCard staffMember={staffMember} />}
           {role === 'admin' && <StaffRecipeCard staffMember={staffMember} />}
+          <TeamAccessCard staffMember={staffMember} staffList={staffList} />
           {canPurge && (
             <div className="mt-4 pt-6 border-t border-destructive/20">
               <p className="text-2xs font-semibold uppercase tracking-widest text-destructive/70 mb-3">Danger zone</p>

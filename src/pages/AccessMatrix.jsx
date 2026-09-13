@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate } from 'react-router-dom'
-import { Shield, Lock, Check, Minus, AlertTriangle, UserCheck, GitMerge, UserPlus, Mail, X } from 'lucide-react'
+import { Shield, Lock, Check, Minus, AlertTriangle, UserCheck, GitMerge, UserPlus, Mail } from 'lucide-react'
 import { apiFetch } from '../lib/api.js'
 import { useAppMutation } from '../lib/useAppMutation.js'
 import { toast } from '../lib/toast'
@@ -25,7 +25,21 @@ const TIER_PILL = {
   clinician: 'bg-info/10 text-info',
   viewer:    'bg-muted text-muted-foreground',
 }
-const TIER_LABEL = { owner: '★ Owner', producer: 'Producer', clinician: 'Clinician', viewer: 'Viewer' }
+// 'clinician' is the stored permission_tier value; on screen it is "Team member"
+// because everyone on staff can share their story, not only clinicians
+// (Q, 2026-09-13). What someone DOES lives separately in staff_type (Role).
+const TIER_LABEL = { owner: '★ Owner', producer: 'Producer', clinician: 'Team member', viewer: 'Viewer' }
+const STAFF_TYPE_LABEL = { clinician: 'Clinician', non_clinical_staff: 'Support staff' }
+
+const ROLE_OPTIONS = [
+  { value: 'clinician', label: 'Clinician', hint: 'Treats patients. Their posts can speak clinically.' },
+  { value: 'non_clinical_staff', label: 'Support staff', hint: 'Front desk, admin, marketing. Their posts share the team side of the practice.' },
+]
+const ACCESS_OPTIONS = [
+  { value: 'producer', label: 'Producer', hint: "Approves and publishes anyone's posts and runs Moments." },
+  { value: 'clinician', label: 'Team member', hint: 'Shares their story and approves their own posts and moments.' },
+  { value: 'viewer', label: 'Viewer', hint: 'Read-only.' },
+]
 
 // Decorative identity palette — see file header. Must not include --primary (#0C7580)
 // or --action (#d97706); #db2777 (rose) and #64748b (slate) replace those two collisions.
@@ -51,22 +65,31 @@ export default function AccessMatrix() {
     enabled: has('members.invite'),
   })
 
-  // Invite panel state
+  // Invite panel state. Role = what they do (staff_type); Access = what they
+  // can do (permission_tier). Both ride the invitation into ensure-self.
   const [showInvite, setShowInvite] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteStaffType, setInviteStaffType] = useState('clinician')
+  const [inviteTier, setInviteTier] = useState('clinician')
+
+  function resetInvite() {
+    setShowInvite(false)
+    setInviteEmail('')
+    setInviteStaffType('clinician')
+    setInviteTier('clinician')
+  }
 
   const inviteMutation = useAppMutation({
-    mutationFn: (email) =>
+    mutationFn: ({ email, tier, staffType }) =>
       apiFetch('/api/workspace/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, tier, staffType }),
       }),
     errorMessage: 'Could not send invite',
-    onSuccess: (_data, email) => {
+    onSuccess: (_data, { email }) => {
       toast.success(`Invite sent to ${email}`)
-      setInviteEmail('')
-      setShowInvite(false)
+      resetInvite()
       queryClient.invalidateQueries({ queryKey: ['access-matrix'] })
     },
     onError: (err) => {
@@ -80,8 +103,23 @@ export default function AccessMatrix() {
     e.preventDefault()
     const email = inviteEmail.trim().toLowerCase()
     if (!email) return
-    inviteMutation.mutate(email)
+    inviteMutation.mutate({ email, tier: inviteTier, staffType: inviteStaffType })
   }
+
+  const reactivateMutation = useAppMutation({
+    mutationFn: ({ staffId }) =>
+      apiFetch('/api/staff/access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reactivate', staffId }),
+      }),
+    errorMessage: 'Could not turn access back on',
+    onSuccess: (_data, { name }) => {
+      toast.success(`${name}'s access is back on`)
+      queryClient.invalidateQueries({ queryKey: ['access-matrix'] })
+      queryClient.invalidateQueries({ queryKey: ['staff'] })
+    },
+  })
 
   // Local, editable overrides keyed by staff id: { [id]: { [cap]: bool } }
   const [localOverrides, setLocalOverrides] = useState({})
@@ -157,7 +195,9 @@ export default function AccessMatrix() {
     const effective = hasOverride ? ovr : tierDefault
     const ownerOnly = OWNER_ONLY_CAPABILITIES.has(cap)
     const locked = isOwner || ownerOnly
-    const clickable = !person.pending && !person.is_self && !isOwner && !ownerOnly
+    // A deactivated person keeps their overrides for when they're reactivated;
+    // editing them while access is off would change nothing they can see.
+    const clickable = !person.pending && !person.deactivated_at && !person.is_self && !isOwner && !ownerOnly
     return { effective, hasOverride, locked, clickable, isOwner, tierDefault }
   }
 
@@ -213,33 +253,70 @@ export default function AccessMatrix() {
           easy to spot custom access as the team grows.
         </p>
 
-        {/* Inline invite form */}
+        {/* Inline invite form: email, Role (what they do), Access (what they can do) */}
         {showInvite && (
-          <form onSubmit={handleInviteSubmit} className="mt-3 flex items-center gap-2 max-w-sm">
-            <input
-              type="email"
-              required
-              placeholder="colleague@example.com"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              className="flex-1 rounded-lg border border-border bg-card px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              autoFocus
-            />
-            <button
-              type="submit"
-              disabled={inviteMutation.isPending}
-              className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 transition"
-            >
-              {inviteMutation.isPending ? 'Sending…' : 'Send invite'}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowInvite(false); setInviteEmail('') }}
-              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition"
-              aria-label="Cancel"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
+          <form onSubmit={handleInviteSubmit} className="mt-3 rounded-xl border border-border bg-card p-4 space-y-4 max-w-3xl">
+            <label className="block text-xs font-semibold">
+              Email
+              <input
+                type="email"
+                required
+                placeholder="colleague@example.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-primary/40"
+                autoFocus
+              />
+            </label>
+            {[
+              { legend: 'Role', hint: 'What they do. Everyone can share their story, whatever their role.', name: 'invite-role', value: inviteStaffType, set: setInviteStaffType, options: ROLE_OPTIONS, cols: 'sm:grid-cols-2' },
+              { legend: 'Access', hint: 'What they can do in Bernard. Owners are set in Members.', name: 'invite-access', value: inviteTier, set: setInviteTier, options: ACCESS_OPTIONS, cols: 'sm:grid-cols-3' },
+            ].map((g) => (
+              <fieldset key={g.name}>
+                <legend className="text-xs font-semibold">{g.legend}</legend>
+                <p className="text-2xs text-muted-foreground">{g.hint}</p>
+                <div className={`mt-1.5 grid grid-cols-1 ${g.cols} gap-2`}>
+                  {g.options.map((o) => {
+                    const on = g.value === o.value
+                    return (
+                      <label
+                        key={o.value}
+                        className={`flex gap-2 rounded-lg border px-3 py-2 cursor-pointer transition ${on ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40'}`}
+                      >
+                        <input
+                          type="radio"
+                          name={g.name}
+                          value={o.value}
+                          checked={on}
+                          onChange={() => g.set(o.value)}
+                          className="mt-0.5 accent-primary"
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-xs font-semibold">{o.label}</span>
+                          <span className="block text-2xs text-muted-foreground leading-snug">{o.hint}</span>
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </fieldset>
+            ))}
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={resetInvite}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-border bg-card text-foreground hover:bg-muted/40 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={inviteMutation.isPending}
+                className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 transition"
+              >
+                {inviteMutation.isPending ? 'Sending…' : 'Send invite'}
+              </button>
+            </div>
           </form>
         )}
       </div>
@@ -343,14 +420,27 @@ export default function AccessMatrix() {
                         </span>
                         <div className="min-w-0">
                           <div className="font-semibold text-xs leading-tight flex items-center gap-1.5 truncate">
-                            <span className={person.pending ? 'opacity-60' : ''}>{person.name}</span>
+                            <span className={person.pending || person.deactivated_at ? 'opacity-60' : ''}>{person.name}</span>
                             {person.is_self && <span className="text-3xs text-muted-foreground">&middot; you</span>}
                             {person.pending && <span className="px-1.5 py-px rounded-full text-3xs font-bold bg-action/10 text-action">invite pending</span>}
+                            {person.deactivated_at && <span className="px-1.5 py-px rounded-full text-3xs font-bold bg-destructive/10 text-destructive">deactivated</span>}
                           </div>
                           <div className="mt-1 flex items-center gap-1.5">
                             <span className={`px-2 py-px rounded-full text-3xs font-bold ${TIER_PILL[person.permission_tier] || TIER_PILL.viewer}`}>
                               {TIER_LABEL[person.permission_tier] || person.permission_tier}
                             </span>
+                            <span className="text-3xs text-muted-foreground">
+                              {STAFF_TYPE_LABEL[person.staff_type] || STAFF_TYPE_LABEL.clinician}
+                            </span>
+                            {person.deactivated_at && (
+                              <button
+                                onClick={() => reactivateMutation.mutate({ staffId: person.id, name: person.name })}
+                                disabled={reactivateMutation.isPending}
+                                className="text-3xs font-semibold text-primary hover:underline disabled:opacity-50"
+                              >
+                                Reactivate
+                              </button>
+                            )}
                             {dirtyIds.has(person.id) && (
                               <button onClick={() => resetPerson(person.id)} className="text-3xs text-[hsl(var(--owner-accent))] hover:underline">reset</button>
                             )}

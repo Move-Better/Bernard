@@ -14,6 +14,7 @@ import { resolveCapabilities, CAP_MEMBERS_INVITE } from '../../_lib/capabilities
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { fetchClerkMembers } from '../../_lib/clerkOrg.js'
 import { listWorkspaceOwnerUserIds } from '../../_lib/workspaceOwners.js'
+import { inviteAccessFromMetadata } from '../../_lib/teamAccess.js'
 import { createClerkClient } from '@clerk/backend'
 
 let _clerk = null
@@ -55,7 +56,7 @@ async function handler(req, res) {
   try {
     const sres = await fetch(
       `${SUPA}/rest/v1/staff?workspace_id=eq.${workspace.id}` +
-        `&select=id,name,legal_name,permission_tier,staff_type,capability_overrides,user_id,eleven_voice_id,created_by_email,created_at` +
+        `&select=id,name,legal_name,permission_tier,staff_type,capability_overrides,user_id,eleven_voice_id,created_by_email,created_at,deactivated_at,deactivated_by` +
         `&order=name.asc`,
       { headers: { apikey: SROLE, Authorization: `Bearer ${SROLE}` } }
     )
@@ -90,6 +91,7 @@ async function handler(req, res) {
         capability_overrides: s.capability_overrides || {},
         user_id: s.user_id || null,
         has_voice_clone: !!s.eleven_voice_id,
+        deactivated_at: s.deactivated_at || null,
         pending: false,
         // tier-only set (no overrides) — lets the client diff each cell
         tier_capabilities: resolveCapabilities(effectiveTier, workspace),
@@ -110,21 +112,29 @@ async function handler(req, res) {
         if (cres.ok) {
           const body = await cres.json()
           const list = Array.isArray(body?.data) ? body.data : []
-          pending = list.map((inv) => ({
-            id: `invite_${inv.id}`,
-            name: inv.email_address,
-            legal_name: null,
-            permission_tier: 'clinician',
-            staff_type: 'clinician',
-            capability_overrides: {},
-            user_id: null,
-            producer_onboarded_at: null,
-            has_voice_clone: false,
-            pending: true,
-            tier_capabilities: resolveCapabilities('clinician', workspace),
-            resolved_capabilities: resolveCapabilities('clinician', workspace),
-            is_self: false,
-          }))
+          pending = list.map((inv) => {
+            // Show the Access and Role the invite will apply (api/_lib/teamAccess.js).
+            // Same variable for display and resolution, as for staff rows above.
+            // An invite can never carry 'owner' (teamAccess.INVITE_TIERS).
+            const invited = inviteAccessFromMetadata(inv.public_metadata)
+            const effectiveTier = invited.tier || 'clinician'
+            return {
+              id: `invite_${inv.id}`,
+              name: inv.email_address,
+              legal_name: null,
+              permission_tier: effectiveTier,
+              staff_type: invited.staffType || 'clinician',
+              capability_overrides: {},
+              user_id: null,
+              producer_onboarded_at: null,
+              has_voice_clone: false,
+              deactivated_at: null,
+              pending: true,
+              tier_capabilities: resolveCapabilities(effectiveTier, workspace),
+              resolved_capabilities: resolveCapabilities(effectiveTier, workspace),
+              is_self: false,
+            }
+          })
         }
       }
     } catch (e) {
