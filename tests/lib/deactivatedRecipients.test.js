@@ -30,7 +30,11 @@ describe('recipient queries skip deactivated people', () => {
   )
 
   it('engagement-digest also cleans a hand-set recipient list', () => {
-    expect(DIGEST).toMatch(/listDeactivatedUserIds\(ws, sb/)
+    // Calling the lookup is not enough — a mutant that fetched the set and
+    // then ignored it survived the call-only version of this assertion. Pin
+    // that the result actually filters the recipients.
+    expect(DIGEST).toMatch(/const gone = await listDeactivatedUserIds\(ws, sb/)
+    expect(DIGEST).toMatch(/recipientUserIds = recipientUserIds\.filter\(\(uid\) => !gone\.has\(uid\)\)/)
   })
 
   it('blog-target-nudge only nudges active reviewers', () => {
