@@ -16,7 +16,7 @@
 
 import { sendEmail } from './notifyAdmin.js'
 import { recordAgentAction } from './agentActions.js'
-import { ownerEmail } from './workspaceOwner.js'
+import { alertRecipientEmails } from './workspaceOwner.js'
 
 // bundle social-account type → the name a clinic would recognise.
 const TYPE_LABELS = {
@@ -72,8 +72,9 @@ export async function notifyChannelHealth({ workspace, unhealthy }) {
       detail:         { channels: unhealthy.map((a) => ({ type: a.type || null, reason: a.reason || null })) },
     })
 
-    const to = await ownerEmail(workspace.created_by_clerk_user_id)
-    if (!to) {
+    // Founder, or every active owner when the founder has been deactivated.
+    const to = await alertRecipientEmails(workspace, { logTag: '[notifyChannelHealth]' })
+    if (to.length === 0) {
       console.warn('[notifyChannelHealth] no owner email for workspace', workspace.id)
       return { ok: false, skipped: true }
     }

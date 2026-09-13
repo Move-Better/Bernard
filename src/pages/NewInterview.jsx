@@ -19,6 +19,7 @@ import { getOrCreateStaff, createInterview } from '@/lib/api'
 import MicCheck from '@/components/MicCheck'
 import PipelineStepper from '@/components/PipelineStepper'
 import { useStaff, useStaffRecipes, useCreateStaffRecipe } from '@/lib/queries'
+import { pickableStaff } from '@/lib/activeStaff'
 import { getSuggestedTopics } from '@/lib/topicSuggestions'
 import { getVoiceModes, getPatientPrototypesUi } from '@/lib/prompts'
 import { useWorkspace } from '@/lib/WorkspaceContext'
@@ -91,7 +92,10 @@ export default function NewInterview() {
   // Resolve typed clinician name → existing clinician row (case-insensitive)
   // so we can fetch their recipes. If they don't exist yet (first interview),
   // recipes stay empty and the UI uses generic defaults.
-  const { data: staffForSuggestions = [], isLoading: staffLoading } = useStaff()
+  // People who left (migration 216) are neither suggested nor matched, so a
+  // typed name can't quietly attach a new interview to their old profile.
+  const { data: allStaff = [], isLoading: staffLoading } = useStaff()
+  const staffForSuggestions = pickableStaff(allStaff)
   const resolvedStaff = useMemo(() => {
     const name = staffName.trim().toLowerCase()
     if (!name) return null

@@ -10,7 +10,7 @@
 
 import { sendEmail } from './notifyAdmin.js'
 import { recordAgentAction } from './agentActions.js'
-import { ownerEmail } from './workspaceOwner.js'
+import { alertRecipientEmails } from './workspaceOwner.js'
 
 
 import { supabaseRest } from './supabaseRest.js'
@@ -44,7 +44,7 @@ export async function notifyPublishFailure({ workspaceId, item, reason }) {
     if (!workspaceId || !item?.id) return { ok: false, skipped: true }
 
     const wsRes = await sb(
-      `workspaces?id=eq.${workspaceId}&select=slug,display_name,created_by_clerk_user_id,producer_config&limit=1`
+      `workspaces?id=eq.${workspaceId}&select=id,slug,display_name,clerk_org_id,created_by_clerk_user_id,producer_config&limit=1`
     )
     const ws = wsRes.ok ? (await wsRes.json().catch(() => []))[0] : null
 
@@ -64,8 +64,9 @@ export async function notifyPublishFailure({ workspaceId, item, reason }) {
       contentItemId:  item.id,
     })
 
-    const to = await ownerEmail(ws?.created_by_clerk_user_id)
-    if (!to) {
+    // Founder, or every active owner when the founder has been deactivated.
+    const to = await alertRecipientEmails(ws, { logTag: '[notifyPublishFailure]' })
+    if (to.length === 0) {
       console.warn('[notifyPublishFailure] no owner email for workspace', workspaceId)
       return { ok: false, skipped: true }
     }
