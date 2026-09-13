@@ -22,6 +22,7 @@ import {
 import { listContentPieces, createContentPiece, segmentMediaAsset } from '@/lib/contentLib'
 import { PLATFORM_META, statusMetaFor } from '@/lib/contentMeta'
 import { useStaffSummaries } from '@/lib/queries'
+import { pickableStaff } from '@/lib/activeStaff'
 import { useUserRole } from '@/lib/useUserRole'
 import { toast, runWithToast } from '@/lib/toast'
 import ContentBriefDetail from './ContentBriefDetail'
@@ -939,7 +940,8 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">(unattributed)</SelectItem>
-                  {staff.map((c) => (
+                  {/* People who left aren't offered; a current attribution to one stays visible. */}
+                  {pickableStaff(staff, staffId).map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>

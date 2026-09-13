@@ -643,7 +643,7 @@ export default function StaffProfile() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Select a staff member…</SelectItem>
-                {staffList.filter((s) => s.id !== staffId).map((s) => (
+                {staffList.filter((s) => s.id !== staffId && !s.deactivated_at).map((s) => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                 ))}
               </SelectContent>

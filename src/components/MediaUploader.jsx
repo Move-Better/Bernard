@@ -8,6 +8,7 @@ import {
 import { useUploadProgress } from '@/lib/UploadProgressContext'
 import { listCollections } from '@/lib/collectionsLib'
 import { fetchStaff } from '@/lib/api'
+import { pickableStaff } from '@/lib/activeStaff'
 
 // Asset purpose is the primary fork — it decides which downstream pipeline
 // the upload feeds. We render the choice as deliberate cards (not a dropdown)
@@ -211,7 +212,8 @@ export default function MediaUploader({ onUploaded, createdBy }) {
       .then((rows) => { if (!cancelled) setCollections(Array.isArray(rows) ? rows : []) })
       .catch(() => { if (!cancelled) setCollections([]) })
     fetchStaff()
-      .then((rows) => { if (!cancelled) setStaff(Array.isArray(rows) ? rows : []) })
+      // A new upload can't be attributed to someone who left (migration 216).
+      .then((rows) => { if (!cancelled) setStaff(pickableStaff(rows)) })
       .catch(() => { if (!cancelled) setStaff([]) })
     return () => { cancelled = true }
   }, [])

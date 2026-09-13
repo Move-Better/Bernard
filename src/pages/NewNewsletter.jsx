@@ -13,6 +13,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { getOrCreateStaff, createInterview } from '@/lib/api'
 import MicCheck from '@/components/MicCheck'
 import { useStaff, useCampaigns, useUpsertCampaign } from '@/lib/queries'
+import { pickableStaff } from '@/lib/activeStaff'
 import { getVoiceModes } from '@/lib/prompts'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -53,7 +54,9 @@ export default function NewNewsletter() {
   const workspace = useWorkspace()
   const VOICE_MODES = getVoiceModes(workspace)
 
-  const { data: staffList = [], isLoading: staffLoading } = useStaff()
+  // People who left (migration 216) aren't suggested or matched for new work.
+  const { data: allStaffList = [], isLoading: staffLoading } = useStaff()
+  const staffList = pickableStaff(allStaffList)
   const { data: campaigns = [], isLoading: campaignsLoading } = useCampaigns()
   const upsertCampaign = useUpsertCampaign()
 

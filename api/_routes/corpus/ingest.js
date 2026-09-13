@@ -88,7 +88,8 @@ export default async function handler(req, res) {
   if (requestedStaffId && (auth.role === 'owner' || auth.role === 'producer')) {
     // Verify the supplied staffId belongs to this workspace.
     const checkRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/staff?id=eq.${requestedStaffId}&workspace_id=eq.${ws.id}&select=id&limit=1`,
+      // deactivated_at=is.null: no new corpus is attributed to someone who left.
+      `${SUPABASE_URL}/rest/v1/staff?id=eq.${requestedStaffId}&workspace_id=eq.${ws.id}&deactivated_at=is.null&select=id&limit=1`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     )
     if (!checkRes.ok) return dbErr(res, checkRes, 'Staff lookup failed')

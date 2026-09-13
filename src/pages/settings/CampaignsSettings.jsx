@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { apiFetch } from '@/lib/api'
 import { useStaffSummaries, useLocations } from '@/lib/queries'
+import { pickableStaff } from '@/lib/activeStaff'
 import { toast } from '@/lib/toast'
 import { useUserRole } from '@/lib/useUserRole'
 import { usePermission } from '@/lib/usePermission'
@@ -542,7 +543,10 @@ function Field({ label, hint, children }) {
 // principle. The underlying field name target_staff_ids stays for
 // schema continuity; only the UI label changed.
 function StaffTargetPicker({ selected, onChange }) {
-  const { data: staff = [], isLoading } = useStaffSummaries()
+  const { data: allStaff = [], isLoading } = useStaffSummaries()
+  // People who left aren't offered as new targets; one already targeted stays
+  // visible so it can be un-ticked.
+  const staff = pickableStaff(allStaff, selected)
   const selectedSet = new Set(selected || [])
 
   function toggle(id) {

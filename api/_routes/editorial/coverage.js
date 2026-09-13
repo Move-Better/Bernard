@@ -66,7 +66,9 @@ export default async function handler(req, res) {
 
   // --- Pull staff + their assets in one fetch each (small workspaces) ---
   // 1. Workspace staff
-  const staffRes = await sb(`staff?workspace_id=eq.${ws.id}&select=id,name&order=name.asc`)
+  // Active people only: someone who left (migration 216) would otherwise sit in
+  // the roster as a permanent coverage gap.
+  const staffRes = await sb(`staff?workspace_id=eq.${ws.id}&deactivated_at=is.null&select=id,name&order=name.asc`)
   if (!staffRes.ok) return res.status(500).json({ error: 'db_error_staff' })
   const staff = await staffRes.json().catch(async (e) => { console.error('[coverage] staff JSON parse failed:', e.message, await staffRes.text().catch(() => '(body unreadable)')); return null })
   if (!staff) return res.status(500).json({ error: 'db_error_staff_parse' })

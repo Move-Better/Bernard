@@ -83,7 +83,9 @@ export default async function handler(req, res) {
 
   const wsRes = await sb(
     'workspaces?status=eq.active&publish_provider=eq.bundle&bundle_team_id=not.is.null' +
-    '&select=id,slug,display_name,bundle_team_id,created_by_clerk_user_id,producer_config'
+    // clerk_org_id: alert recipients fall back to the workspace's owners when
+    // the founder has been deactivated (api/_lib/workspaceOwner.js).
+    '&select=id,slug,display_name,bundle_team_id,clerk_org_id,created_by_clerk_user_id,producer_config'
   )
   if (!wsRes.ok) {
     console.error('[check-channel-health] workspace fetch failed:', wsRes.status)
