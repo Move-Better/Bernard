@@ -124,6 +124,8 @@ export function WorkspaceProvider({ children }) {
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return
     if (!data?.row?.slim_branding) return
+    // Access switched off by an owner — a fresh token won't change that.
+    if (data.row.access_deactivated) return
     if (slimRecoveryRef.current >= 3) return
     slimRecoveryRef.current += 1
     qc.fetchQuery({

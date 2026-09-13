@@ -94,7 +94,7 @@ async function resolveRecipients(ws) {
 
   const r = await sb(
     `staff?workspace_id=eq.${ws.id}&permission_tier=eq.producer` +
-    `&user_id=not.is.null&select=user_id`
+    `&user_id=not.is.null&deactivated_at=is.null&select=user_id`
   )
   if (r.ok) {
     for (const s of (await r.json().catch(() => [])) || []) {

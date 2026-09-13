@@ -1771,7 +1771,7 @@ export default function YourWeek() {
           <StatusLegend />
           <PageHelp pageKey="your-week" variant="default" />
           <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-2xs font-medium text-muted-foreground">
-            <Shield className="h-3 w-3" aria-hidden="true" /> {isEditor ? 'Producer' : 'Clinician'} view
+            <Shield className="h-3 w-3" aria-hidden="true" /> {isEditor ? 'Producer' : 'Team member'} view
           </span>
         </div>
       </div>

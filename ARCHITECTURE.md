@@ -123,6 +123,42 @@ workspace's owners" must go through `workspaceOwners.js` (or `auth.isOrgAdmin` f
 `permission_tier === 'owner'` directly.** `tests/lib/notifierRecipientParity.test.js` and
 `tests/lib/accessMatrixOwnerDisplay.test.js` guard the crons and the Access Matrix respectively.
 
+### Someone who leaves is DEACTIVATED, never deleted or merged — `staff.deactivated_at`
+
+Migration 216. An owner deactivates a person from their staff profile (Settings tab → Access,
+`src/components/TeamAccessCard.jsx` → `POST /api/staff/access`). Deactivation keeps the Clerk login,
+org membership, `permission_tier`, `capability_overrides` and every stamp, so **Reactivate** restores
+exactly what they had. Deleting or `merge_staff`-ing a departure is wrong: merge rewrites their history
+(uploads, approvals) under someone else's name, and a Clerk removal loses a login they may need again
+(Philip, 2026-09-13, may return as a contractor).
+
+- **The gate lives in `requireRole`** (`isDeactivatedInWorkspace`, 30s cache, cleared at once on the
+  instance that deactivates). Every route and `requireTier` / `requireCapability` inherit it. It had to
+  go there, not in a tier check: on `plan='internal'` workspaces `requireRole` makes every member an
+  admin, so dropping someone to `viewer` restricts almost nothing. Fails OPEN on a lookup error (it runs
+  on every request) — logged, never cached.
+- **The client** gets `access_deactivated: true` on `/api/workspace/me`'s slim shape and renders the
+  "access is switched off" screen instead of the app (and skips slim-shape recovery).
+- **Handover moves OPEN work only** (`api/_lib/teamAccess.js`): `content_items` in draft / in_review /
+  approved / failed and unpublished `answers` go to the chosen successor; campaign targets are swapped;
+  a quote sent back to them for review keeps its speaker and only the hold is released. Published,
+  scheduled and archived rows keep the original name. The upload token is revoked. Hand over first,
+  switch off last, so a failure part-way leaves them active and the request is retryable.
+- **Recipient lists skip them**: `listWorkspaceOwnerUserIds` drops deactivated Clerk admins,
+  `listDeactivatedUserIds` cleans hand-set lists, and the producer / blog-reviewer / send-back queries
+  filter `deactivated_at=is.null`. Guarded by `tests/lib/deactivatedRecipients.test.js`.
+
+**Adding a person:** the invite carries **Role** (`staff_type`: Clinician / Support staff) and
+**Access** (`permission_tier`: Producer / Team member / Viewer) on the Clerk invitation's
+`public_metadata`, which Clerk copies onto the membership; `staff/ensure-self.js` writes them onto the
+row it claims or creates. `ensure-self` runs for every member, since the row is where access lives. The
+tier value `clinician` is shown as **"Team member"** — every role can share their story; the stored
+value is unchanged.
+
+**Rule: when adding any new notifier, digest or nudge that mails staff, filter out deactivated people**
+(`deactivated_at=is.null` on a staff query, or `listDeactivatedUserIds`). Nothing errors when you miss
+it — the email just reaches someone who left, at their personal address.
+
 ### Capability keys are PERSISTED — renaming one is a data migration, not a code edit
 
 The capability-id strings in `ALL_CAPABILITIES` (`api/_lib/capabilities.js` + its `src/lib/`

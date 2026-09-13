@@ -483,6 +483,29 @@ function OrgGate({ clerkOrgId, children }) {
   return children
 }
 
+// Shown instead of the app when an owner has switched this person's access off
+// (staff.deactivated_at — migration 216). Their Clerk login still works on
+// purpose, so without this they would sign in to a shell of failing requests.
+function AccessDeactivated({ workspaceName }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="max-w-sm text-center space-y-3 p-8 border rounded-xl shadow-sm">
+        <ShieldOff className="h-8 w-8 mx-auto text-muted-foreground" aria-hidden="true" />
+        <h2 className="font-semibold text-lg">Your Bernard access is switched off</h2>
+        <p className="text-sm text-muted-foreground">
+          Your account is kept. Ask a {workspaceName || 'workspace'} owner to turn it back on.
+        </p>
+        <button
+          onClick={() => window.Clerk?.signOut()}
+          className="text-sm text-primary underline-offset-4 hover:underline"
+        >
+          Sign out
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // Legacy gate: email-domain check. Used for legacy per-brand Vercel deployments
 // (SUPABASE_URL points to per-brand DB; /api/workspace/me returns 404), and for
 // local dev where there's no subdomain. Can be retired once Phase 2 cutover
@@ -824,6 +847,7 @@ function ProtectedApp() {
     // Hold workspace-gated content until the /api/workspace/me fetch resolves
     // so we don't flash the wrong guard (Org vs Domain).
     if (isLoading) return <AppBoot signedIn />
+    if (ws?.access_deactivated) return <AccessDeactivated workspaceName={ws.display_name || ws.app_name} />
     return ws?.clerk_org_id
       ? <OrgGate clerkOrgId={ws.clerk_org_id}><AppRoutes /></OrgGate>
       : <DomainGuard><AppRoutes /></DomainGuard>

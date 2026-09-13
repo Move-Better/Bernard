@@ -83,7 +83,9 @@ export function tierLabel(tier) {
   switch (tier) {
     case TIER_OWNER:     return 'Owner'
     case TIER_PRODUCER:  return 'Producer'
-    case TIER_CLINICIAN: return 'Clinician'
+    // Stored value stays 'clinician'; every role can share their story, so the
+    // access level is shown as "Team member" (Q, 2026-09-13).
+    case TIER_CLINICIAN: return 'Team member'
     case TIER_VIEWER:    return 'Viewer'
     default:             return tier || ''
   }

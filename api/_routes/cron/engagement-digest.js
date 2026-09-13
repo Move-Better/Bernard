@@ -33,7 +33,7 @@ import { createClerkClient } from '@clerk/backend'
 import { buildDigest } from '../../_lib/engagementDigestEmail.js'
 import { verifyCronSecret } from '../../_lib/auth.js'
 import { computeTrustMetrics } from '../../_lib/trustMetrics.js'
-import { listWorkspaceOwnerUserIds } from '../../_lib/workspaceOwners.js'
+import { listWorkspaceOwnerUserIds, listDeactivatedUserIds } from '../../_lib/workspaceOwners.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -266,13 +266,18 @@ async function handler(req, res) {
         const owners = await listWorkspaceOwnerUserIds(ws, sb, clerk, '[engagement-digest]')
         const pRes = await sb(
           `staff?workspace_id=eq.${ws.id}&permission_tier=eq.producer` +
-          `&user_id=not.is.null&select=user_id`
+          `&user_id=not.is.null&deactivated_at=is.null&select=user_id`
         )
         if (pRes.ok) {
           const rows = await pRes.json()
           for (const r of rows) if (r.user_id) owners.add(r.user_id)
         }
         recipientUserIds = [...owners]
+      } else {
+        // An explicit list is set by hand and never cleaned up when someone
+        // leaves, so drop anyone whose access has been switched off.
+        const gone = await listDeactivatedUserIds(ws, sb, '[engagement-digest]')
+        recipientUserIds = recipientUserIds.filter((uid) => !gone.has(uid))
       }
 
       if (recipientUserIds.length === 0) {

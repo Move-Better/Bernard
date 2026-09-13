@@ -121,7 +121,7 @@ export const DEFAULT_TEMPLATES = Object.freeze({
     ],
   },
   clinician: {
-    label: 'Clinician',
+    label: 'Team member',
     capabilities: [
       CAP_INTERVIEW_START,
       CAP_CONTENT_APPROVE,

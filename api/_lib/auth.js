@@ -65,27 +65,79 @@ function setCachedUser(userId, user) {
   _userCache.set(userId, { user, expiresAt: Date.now() + USER_TTL_MS })
 }
 
-// Workspace-plan lookup by Clerk org id. Used to grant admin-equivalent role
-// to every member of an 'internal' workspace (Move Better-owned tenants).
-// Same 60s TTL as user cache — plan changes are operational and rare.
-const _orgPlanCache = new Map() // clerkOrgId → { plan, expiresAt }
+// Workspace lookup by Clerk org id: plan (to grant admin-equivalent role to
+// every member of an 'internal' workspace — Move Better-owned tenants) and id
+// (for the deactivation gate below). Same 60s TTL as user cache — plan
+// changes are operational and rare.
+const _orgWorkspaceCache = new Map() // clerkOrgId → { plan, id, expiresAt }
 const ORG_PLAN_TTL_MS = 60_000
 
-async function lookupWorkspacePlanByOrgId(orgId) {
+async function lookupWorkspaceByOrgId(orgId) {
   if (!orgId) return null
-  const cached = _orgPlanCache.get(orgId)
-  if (cached && Date.now() < cached.expiresAt) return cached.plan
+  const cached = _orgWorkspaceCache.get(orgId)
+  if (cached && Date.now() < cached.expiresAt) return cached
   if (!SUPABASE_URL || !SUPABASE_KEY) return null
   try {
-    const r = await supabaseRest(`workspaces?clerk_org_id=eq.${encodeURIComponent(orgId)}&select=plan&limit=1`)
+    const r = await supabaseRest(`workspaces?clerk_org_id=eq.${encodeURIComponent(orgId)}&select=id,plan&limit=1`)
     if (!r.ok) return null
     const rows = await r.json().catch(() => null)
-    const plan = Array.isArray(rows) && rows[0] ? (rows[0].plan || null) : null
-    _orgPlanCache.set(orgId, { plan, expiresAt: Date.now() + ORG_PLAN_TTL_MS })
-    return plan
+    const row = Array.isArray(rows) && rows[0] ? rows[0] : null
+    const entry = { plan: row?.plan || null, id: row?.id || null, expiresAt: Date.now() + ORG_PLAN_TTL_MS }
+    _orgWorkspaceCache.set(orgId, entry)
+    return entry
   } catch (e) {
-    console.error('[auth] lookupWorkspacePlanByOrgId failed:', e?.message)
+    console.error('[auth] lookupWorkspaceByOrgId failed:', e?.message)
     return null
+  }
+}
+
+// ── Deactivation gate ───────────────────────────────────────────────────────
+// staff.deactivated_at set = an owner switched this person's access off
+// (someone who left — migration 216). They keep their Clerk login, org
+// membership, tier and history, so reactivating restores everything; they just
+// reach nothing. Checked inside requireRole so every route — and requireTier /
+// requireCapability, which call it — inherits the gate. That matters most on
+// 'internal' plans, where requireRole makes every member an admin and a tier
+// change alone restricts almost nothing.
+//
+// Fails OPEN on a lookup error: this runs on every authenticated request, and
+// a PostgREST blip must not lock the whole team out. Errors are logged and
+// never cached, so the next request re-checks. The 30s cache bounds how long a
+// deactivation takes to reach other warm instances; the instance that performs
+// it clears its own entry at once (invalidateDeactivation).
+const _deactivatedCache = new Map() // `${userId}|${workspaceId}` → { deactivated, expiresAt }
+const DEACTIVATED_TTL_MS = 30_000
+
+export function invalidateDeactivation(userId, workspaceId) {
+  _deactivatedCache.delete(`${userId}|${workspaceId}`)
+}
+
+export async function isDeactivatedInWorkspace(userId, workspaceId, rest = supabaseRest) {
+  if (!userId || !workspaceId) return false
+  const key = `${userId}|${workspaceId}`
+  const cached = _deactivatedCache.get(key)
+  if (cached && Date.now() < cached.expiresAt) return cached.deactivated
+  try {
+    const r = await rest(
+      `staff?user_id=eq.${encodeURIComponent(userId)}` +
+      `&workspace_id=eq.${encodeURIComponent(workspaceId)}` +
+      `&deactivated_at=not.is.null&select=id&limit=1`
+    )
+    if (!r.ok) {
+      console.error(`[auth] deactivation lookup failed: status=${r.status}`)
+      return false
+    }
+    const rows = await r.json().catch(() => null)
+    if (!Array.isArray(rows)) {
+      console.error('[auth] deactivation lookup: bad response shape')
+      return false
+    }
+    const deactivated = rows.length > 0
+    _deactivatedCache.set(key, { deactivated, expiresAt: Date.now() + DEACTIVATED_TTL_MS })
+    return deactivated
+  } catch (e) {
+    console.error('[auth] deactivation lookup threw:', e?.message)
+    return false
   }
 }
 
@@ -139,9 +191,15 @@ export async function requireRole(req, allowedRoles = null, { orgId = null } = {
   // every org member — full feature + admin access without per-user grants.
   const metadataRole   = (user.publicMetadata?.role || 'clinician').toLowerCase()
   const isOrgAdmin     = payload.org_role === 'org:admin'
-  const wsPlan         = await lookupWorkspacePlanByOrgId(payload.org_id)
-  const internalBypass = wsPlan === 'internal'
+  const wsRow          = await lookupWorkspaceByOrgId(payload.org_id)
+  const internalBypass = wsRow?.plan === 'internal'
   const role = (isOrgAdmin || internalBypass) ? 'admin' : metadataRole
+
+  // Switched off by an owner (migration 216). Checked before the allow-list so
+  // no role — and no org-admin or internal-plan bypass — lets them through.
+  if (wsRow?.id && await isDeactivatedInWorkspace(userId, wsRow.id)) {
+    return { ok: false, reason: 'deactivated', userId }
+  }
   if (allowedRoles && allowedRoles.length && !allowedRoles.includes(role)) {
     return { ok: false, reason: 'forbidden', role, userId }
   }

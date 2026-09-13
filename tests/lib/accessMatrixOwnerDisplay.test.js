@@ -38,9 +38,9 @@ describe('access-matrix API resolves owners from Clerk before returning them', (
     // All three must share one variable, or a future edit can drift the
     // display tier out of sync with the tier actually used to resolve
     // capabilities — reintroducing the under-resolved-capabilities half of the
-    // bug even if the display half stays fixed. The pending-invite branch is
-    // hardcoded 'clinician' by design (an unaccepted invite is never an
-    // owner) and is deliberately excluded — it's a different object literal.
+    // bug even if the display half stays fixed. The pending-invite branch now
+    // carries the tier the invite chose (never 'owner' — teamAccess.INVITE_TIERS)
+    // and follows the same rule, under the same variable name.
     const permTier = [...src.matchAll(/permission_tier:\s*(\w+)/g)].map((m) => m[1])
       .filter((v) => v !== "'clinician'" && v !== 'clinician')
     const tierCaps = [...src.matchAll(/tier_capabilities:\s*resolveCapabilities\((\w+)/g)].map((m) => m[1])
