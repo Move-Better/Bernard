@@ -358,13 +358,24 @@ one has bitten. When changing any of these, change both in the same commit:
 |---|---|
 | `api/_lib/gradeParams.js` | `src/lib/gradeParams.js` |
 | `brandRenderVideo.js` `CAPTION_BASE_FS` × `OVERLAY_SIZE_SCALE` | `video-editor/captions.js` `CAPTION_BASE_FS_PCT` / `CAPTION_SIZE_SCALE` |
-| `karaokeCaptions.js` `CAPTION_STYLES` | `video-editor/captions.js` `captionCss()` |
+| `karaokeCaptions.js` `CAPTION_STYLES` | `video-editor/captions.js` `captionCss()` — **colours test-enforced**, see below |
 | `brandRender.js` `resolveBrandColors()` | `src/lib/brandSwatches.js` |
 | `api/_lib/videoTemplates.js` | `src/lib/videoTemplateCapture.js` |
 | `api/_lib/captionOverlayDedup.js` `normCaptionText` | `video-editor/captions.js` `normCaptionText` |
 | `karaokeCaptions.js` `buildKaraokeAss` `\k` word TIMING | `video-editor/Canvas.jsx` `spoken = playClipT >= w.start` |
 | `karaokeCaptions.js` `sliceWordsToWindow` / `groupWordsIntoLines` | `video-editor/captions.js` `sliceWords` / `groupLines` |
 | `api/_lib/transcriptCuts` | `video-editor/cuts.js` |
+
+**The caption COLOUR half of this table is now enforced rather than remembered.**
+`tests/lib/videoEditorCaptions.test.js` builds the ASS for every preset with the real
+`buildKaraokeAss` and asserts the preview's spoken/upcoming colours equal the bake's
+`PrimaryColour`/`SecondaryColour`. Don't hand-verify that pair — and if you add a preset
+to `CAPTION_STYLES`, the test covers it automatically the moment it appears in
+`CAPTION_STYLE_OPTS`. It was written after `word_box` AND `underline` were found painting
+the spoken word white while the bake painted it the tenant accent (#2731) — two presets
+whose whole job is per-word emphasis, showing no highlight at all in the editor. Still NOT
+covered: the underline rule's PLACEMENT (ASS `Underline` is style-level so the bake
+underlines both states; the preview underlines only the spoken word — deliberate).
 
 Real failures from this list: the Size control previewing identically for Medium and Large while baking
 1.0× vs 1.35× (`vh` with a 40px clamp vs a frame-relative bake); `glow` previewing an accent halo for a
