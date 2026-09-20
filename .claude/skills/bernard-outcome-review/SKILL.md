@@ -73,6 +73,10 @@ The report has two readers, and they get two separate layers. **Q reads the brie
 
 Status is a colored dot with a fixed meaning so it never has to be re-argued: 🟢 on track, 🟡 needs a look, 🔴 needs a decision or is broken. Use these thresholds and state the number next to the dot: posts published 🟢 ≥70% of target, 🟡 40-69%, 🔴 <40%; stuck or failed 🟢 none, 🟡 any channel silent 8-14 days, 🔴 any failed publish or any channel silent over 14 days; waiting for approval 🟢 nothing older than 14 days, 🟡 anything older than 14 days; confirmed live 🟢 ≥95%, 🟡 85-94%, 🔴 <85%; staff feedback 🟢 all triaged, 🟡 any untriaged; reels 🟢 ≥2 a week, 🟡 1, 🔴 0. "Compared with" is always last week or the target, never blank.
 
+Two cases the thresholds above do not cover:
+- **Nothing to measure: ⚪.** When the underlying count is zero, so the measure has no value (nothing was published, so there is nothing to confirm live), show ⚪ and write "Nothing to check". "Compared with" still shows the last measured value. ⚪ must never hide a problem: if the reason there is nothing to measure is itself the problem, another row has to show it (usually "Posts published" or "Stuck or failed").
+- **A signal that goes quiet is never plain green.** If a count that was above zero for at least two weeks in a row falls to zero (feedback reports, approvals, uploads), the row is 🟡 at minimum whatever the thresholds say, and "In plain words" says what went quiet and why, if known. 🟢 on a zero is only for measures where zero is the goal, such as failed publishes.
+
 **Top problems.** At most three, ranked by how much they hurt. Each is exactly three short lines:
 - **What's happening:** the plain fact with its numbers.
 - **Why it matters:** the consequence for the clinic, in one sentence.
