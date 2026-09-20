@@ -47,9 +47,49 @@ Rank every gap by (user-job impact × persistence), pick the top 3. For each: th
 
 ## Phase 4 — Deliver
 
-1. Write the report to the PRIMARY checkout (absolute path — a worktree copy strands it, same rule as audit-history): `/Users/qbook/Claude Projects/Bernard/.claude/outcome-reviews/YYYY-MM.md` — scoreboard table with deltas vs last month, then the top-3 gaps.
-2. Spawn one `spawn_task` chip per actionable gap (self-contained prompt, file paths included).
-3. Update `.claude/decisions.md`: stamp revisit-by items checked, note kill criteria hit/missed.
-4. Tell Q the top 3 in plain language — one short paragraph each, numbers first. If the scoreboard is genuinely healthy, say so and stop; don't invent gaps to fill a quota.
+The report has two readers, and they get two separate layers. **Q reads the brief. The technical detail exists so the brief can be checked, not so Q has to read it.** Phases 1-3 stay as dense and precise as they need to be; this phase is where they get translated.
+
+1. **Write the report to the PRIMARY checkout** (absolute path — a worktree copy strands it, same rule as audit-history): `/Users/qbook/Claude Projects/Bernard/.claude/outcome-reviews/YYYY-MM.md`. Each run adds ONE new dated section **directly under the file's title, above every older section** (newest on top). A section has exactly two parts, in this order:
+   - `### The short version` — the brief, in the format below. Nothing technical.
+   - `### Technical detail (for audit)` — the full scoreboard, queries' results, deltas, mechanisms, and decision-log readings, as dense as needed. PR numbers, migration numbers, table and column names all belong here and only here.
+2. **Spawn one `spawn_task` chip per actionable gap** (self-contained prompt, file paths included). The chip's `tldr` follows the plain-language rules below; its `prompt` can be as technical as the spawned session needs.
+3. **Update `.claude/decisions.md`**: stamp revisit-by items checked and kill criteria hit or missed. Each stamp is **at most two sentences**: the verdict (met / not met / not measurable) and the one number that decided it. The supporting measurements live in the report's technical section; do not copy them into the decision log.
+4. **Tell Q the brief** — paste "The short version" as your final message, unchanged. No extra summary in different words, no second layer of detail. If the scoreboard is genuinely healthy, say so in the headline and stop; don't invent gaps to fill a quota.
+
+### The brief — fixed shape, in this order
+
+**Headline.** One sentence, the overall verdict, e.g. "Good week: 7 of 15 posts went out, but Google Business went quiet."
+
+**Scorecard.** A table with exactly these six rows, every run, so Q can compare week to week at a glance. Columns: `Area | Status | This week | Compared with | In plain words`.
+
+| Area | What it measures |
+|---|---|
+| Posts published | Published posts against the weekly target, all channels together |
+| Reels | Reels published this week, and reels ever |
+| Stuck or failed | Channels with no post for over 7 days, plus any failed publishes |
+| Waiting for approval | Drafts waiting, and the age of the oldest |
+| Posts confirmed live | Share of published Instagram and Facebook posts with a verified live link |
+| Staff feedback | Reports received, and how many are already fixed |
+
+Status is a colored dot with a fixed meaning so it never has to be re-argued: 🟢 on track, 🟡 needs a look, 🔴 needs a decision or is broken. Use these thresholds and state the number next to the dot: posts published 🟢 ≥70% of target, 🟡 40-69%, 🔴 <40%; stuck or failed 🟢 none, 🟡 any channel silent 8-14 days, 🔴 any failed publish or any channel silent over 14 days; waiting for approval 🟢 nothing older than 14 days, 🟡 anything older than 14 days; confirmed live 🟢 ≥95%, 🟡 85-94%, 🔴 <85%; staff feedback 🟢 all triaged, 🟡 any untriaged; reels 🟢 ≥2 a week, 🟡 1, 🔴 0. "Compared with" is always last week or the target, never blank.
+
+**Top problems.** At most three, ranked by how much they hurt. Each is exactly three short lines:
+- **What's happening:** the plain fact with its numbers.
+- **Why it matters:** the consequence for the clinic, in one sentence.
+- **What I need from you:** a specific decision or action, or "Nothing, this is already being handled" naming who or what is handling it.
+
+**Coming up.** Decisions and check-dates falling in the next 14 days, one line each, saying what is being decided in plain words ("Decide whether reels are worth continuing"), never the internal name of the check. Omit the section if there are none.
+
+**Good news.** One or two lines on what is working. Omit if there is nothing genuine.
+
+### Plain-language rules for the brief (and for chip `tldr`s)
+
+- **Length:** the brief fits on one screen, about 250 words excluding the scorecard.
+- **Banned in the brief:** PR numbers (#2701), migration numbers, table or column names, and the terms *cohort, instrumented, trailing-window, kill criterion, provenance, snapshot, resolved_url, waitUntil*. If a technical idea matters, say what it means for the clinic instead.
+- **Say it this way:** "kill criterion" → "the check we set"; "not instrumented" → "we can't measure this yet"; "resolved_url set" → "confirmed live"; "silence alarm" → "no post in over a week"; "approver count" → "people approving posts"; "fidelity" → "posts matching what was approved".
+- **Every number carries a comparison.** Not "47% delivery" but "7 of 15 posts (47%), up from 6 of 15 last week". A bare percentage is not a finding.
+- **One name per thing, every run.** Don't call the same channel by three labels or the same idea by three phrases across weeks.
+- **A problem is only a problem if it asks something of Q or of the system.** Facts with no consequence go in the technical section, not the brief.
+- **Check the brief before sending:** could someone who has never opened the codebase read every line and know what to do? If a line fails that, rewrite it or move it to the technical section.
 
 Never approve, publish, or mutate live content during the review (read-only against prod; the accidental-Approve near-miss of 2026-07-16 is the cautionary tale).
