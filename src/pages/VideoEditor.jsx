@@ -47,6 +47,13 @@ import { detectFaceCenterX } from '@/lib/faceReframe'
 import { FORMATS, FORMAT_KEYS, channelFor, defaultFormatFor, normalizeFormat } from '@/lib/videoFormats'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import { listRevisions, saveRevision } from '@/lib/editorRevisions'
+import {
+  CAPTION_BASE_FS_PCT, CAPTION_SIZE_SCALE, CAPTION_STYLE_OPTS,
+  captionCss, sliceWords, groupLines, normCaptionText,
+} from './video-editor/captions'
+import {
+  FILLERS, fillerKey, totalCutCli, addRange, subRange, inCut, silenceRanges,
+} from './video-editor/cuts'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 // Output shape (Reel / Feed / Wide), the channel each bakes through, and the
@@ -73,99 +80,6 @@ const HEX6_RE = /^#[0-9a-fA-F]{6}$/
 // videoTemplateCapture.js); lower_third and callout are per-clip annotations.
 const OVERLAY_ROLES = [['hook_card', 'Hook card'], ['title', 'Title'], ['lower_third', 'Caption bar'], ['callout', 'Callout']]
 const ROLE_FS = { title: 0.044, lower_third: 0.030, callout: 0.034, hook_card: 0.040 }
-// Caption preview sizing — client mirror of CAPTION_BASE_FS (0.068) and
-// OVERLAY_SIZE_SCALE in api/_lib/brandRenderVideo.js, expressed in cqw (percent
-// of the video frame's width) so the preview and the bake agree.
-// KEEP IN SYNC — a Size control that previews one size and exports another is
-// worse than no control, because it teaches the user the wrong thing.
-const CAPTION_BASE_FS_PCT = 6.8
-const CAPTION_SIZE_SCALE = { small: 0.75, medium: 1.0, large: 1.35 }
-const CAPTION_STYLE_OPTS = [
-  { id: 'bold', label: 'Bold' },
-  { id: 'word_box', label: 'Word box' },
-  { id: 'accent_fill', label: 'Accent fill' },
-  { id: 'glow', label: 'Glow' },
-  { id: 'underline', label: 'Underline' },
-  { id: 'pop', label: 'Pop' },
-]
-// Per-glyph black OUTLINE ring, em-scaled so it tracks the Size control — the
-// preview mirror of the ASS bake's outline (karaokeCaptions.js: every style draws
-// an outline of width max(2, fontSize×0.08) × outlineMul). Without it the plain
-// outline styles (bold / underline / pop) read as a SOFT drop-shadow in the
-// editor and a HARD-outlined caption once baked — Philip's "the karaoke style
-// does not match what was done in editing" report. Box/halo styles (word_box,
-// accent_fill, glow) already carry their own contrast treatment, matching how
-// the bake gives them a box/soft-halo rather than relying on a plain outline.
-function ringShadow(mul = 1) {
-  const w = (0.055 * mul).toFixed(3)
-  const d = (0.039 * mul).toFixed(3)
-  return `${w}em 0 #000,-${w}em 0 #000,0 ${w}em #000,0 -${w}em #000,` +
-    `${d}em ${d}em #000,-${d}em ${d}em #000,${d}em -${d}em #000,-${d}em -${d}em #000,` +
-    '0 2px 8px rgba(0,0,0,.5)'
-}
-// Preview styling per caption preset (approximates the ASS bake). Returns the
-// spoken-word style, the upcoming-word style, and any container wrap. KEEP IN
-// SYNC with CAPTION_STYLES in api/_lib/karaokeCaptions.js — the preview and the
-// bake styling the same clip differently is exactly the drift this mirrors out.
-function captionCss(style, accent) {
-  // Fallback must equal the bake-side default accent (brandRender.js
-  // DEFAULT_ACCENT). caption.accent is seeded from the tenant workspace on
-  // hydrate, so this only paints the pre-hydrate frame / a pathological draft —
-  // never a Bernard PRODUCT color (that would put app chrome into tenant content).
-  const a = accent || WORKSPACE_DEFAULT_ACCENT
-  switch (style) {
-    case 'word_box':    return { active: { color: '#fff', background: 'rgba(0,0,0,.72)', padding: '0 5px', borderRadius: 4 }, base: { color: '#fff', background: 'rgba(0,0,0,.72)', padding: '0 5px', borderRadius: 4 }, wrap: {} }
-    // base is DARK, not white: the spoken word is white here, so a white base
-    // erases the highlight entirely. Words light up as they're said.
-    case 'accent_fill': return { active: { color: '#fff' }, base: { color: '#1A1A1A' }, wrap: { background: a, padding: '3px 10px', borderRadius: 8 } }
-    // The halo is dark, matching the bake. An accent halo around an accent-
-    // filled spoken word is the same hue on itself — no contrast at any alpha.
-    case 'glow':        return { active: { color: a, textShadow: '0 0 14px rgba(0,0,0,.8), 0 2px 6px rgba(0,0,0,.65)' }, base: { color: '#fff', textShadow: '0 0 14px rgba(0,0,0,.8), 0 2px 6px rgba(0,0,0,.65)' }, wrap: {} }
-    case 'underline':   return { active: { color: '#fff', borderBottom: `3px solid ${a}`, textShadow: ringShadow(1) }, base: { color: '#fff', textShadow: ringShadow(1) }, wrap: {} }
-    case 'pop':         return { active: { color: a, display: 'inline-block', transform: 'scale(1.14)', textShadow: ringShadow(1) }, base: { color: '#fff', textShadow: ringShadow(1) }, wrap: {} }
-    default:            return { active: { color: a, textShadow: ringShadow(1) }, base: { color: '#fff', textShadow: ringShadow(1) }, wrap: {} } // bold
-  }
-}
-
-// Slice whole-source words to a clip window, rebased to 0 (mirrors the server's
-// sliceWordsToWindow — the editor preview must match the bake).
-function sliceWords(words, startSec, durationSec) {
-  if (!Array.isArray(words)) return []
-  const s = Math.max(0, startSec || 0); const end = s + Math.max(0, durationSec || 0)
-  const out = []
-  for (const w of words) {
-    if (!w) continue
-    const ws = Number(w.start); const we = Number(w.end)
-    if (!Number.isFinite(ws) || !Number.isFinite(we)) continue
-    // Zero-duration words are real (Whisper's 20ms frame hop) and are a POINT,
-    // not a span — kept when s <= t < end. Mirrors the server's sliceWordsToWindow.
-    const isPoint = we === ws
-    if (isPoint ? (ws < s || ws >= end) : (we <= s || ws >= end)) continue
-    const word = String(w.word || '').trim(); if (!word) continue
-    const start = Math.max(0, ws - s); const wEnd = Math.min(end - s, we - s)
-    if (wEnd >= start) out.push({ word, start, end: wEnd })
-  }
-  return out
-}
-// Greedy phrase grouping (≤5 words / ≤26 chars), mirrors groupWordsIntoLines.
-function groupLines(words) {
-  const lines = []; let cur = []; let chars = 0
-  for (const w of words) {
-    const wl = (w.word.length || 0) + 1
-    if (cur.length && (cur.length >= 5 || chars + wl > 26)) { lines.push(cur); cur = []; chars = 0 }
-    cur.push(w); chars += wl
-  }
-  if (cur.length) lines.push(cur)
-  return lines.map((ws) => ({ start: ws[0].start, end: ws[ws.length - 1].end, words: ws, text: ws.map((w) => w.word).join(' ') }))
-}
-
-// Trim, lowercase, collapse whitespace — mirror of normCaptionText in
-// api/_lib/captionOverlayDedup.js (the src/ ↔ api/ boundary forbids sharing it,
-// so keep the two identical). Used to skip a manual overlay that merely
-// duplicates a spoken caption line, so the preview matches the deduped bake.
-function normCaptionText(s) {
-  return String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
-}
 
 // ── CANVAS ───────────────────────────────────────────────────────────────────
 function Canvas({ ctx }) {
@@ -867,39 +781,6 @@ function MomentsInspector({ ctx }) {
 // Thin icon rail (v3) — picks the inspector tool. "Text" selects the latest
 // overlay (or adds one). Replaces the old Layers/Transcript rail.
 // ── Edit-by-transcript (WS4) ──────────────────────────────────────────────────
-// Client mirror of api/_lib/transcriptCuts (keep in lockstep). Cuts are clip-
-// relative {start,end} ranges removed from the clip; the render trims+concats the
-// kept ranges and re-times the captions onto the compacted timeline.
-const FILLERS = new Set(['um', 'umm', 'uh', 'uhh', 'uhm', 'erm', 'hmm', 'mm', 'mhm'])
-const SILENCE_GAP = 0.6
-const fillerKey = (w) => w.toLowerCase().replace(/[^a-z]/g, '')
-function normCutsCli(cuts, dur) {
-  const cs = (cuts || []).map((c) => ({ start: Math.max(0, Math.min(dur, +c.start || 0)), end: Math.max(0, Math.min(dur, +c.end || 0)) }))
-    .filter((c) => c.end - c.start > 0.02).sort((a, b) => a.start - b.start)
-  const out = []
-  for (const c of cs) { const last = out[out.length - 1]; if (last && c.start <= last.end + 0.01) last.end = Math.max(last.end, c.end); else out.push({ ...c }) }
-  return out
-}
-const totalCutCli = (cuts, dur) => normCutsCli(cuts, dur).reduce((s, c) => s + (c.end - c.start), 0)
-const addRange = (cuts, r, dur) => normCutsCli([...cuts, r], dur)
-function subRange(cuts, r, dur) {
-  const out = []
-  for (const c of normCutsCli(cuts, dur)) {
-    if (r.end <= c.start || r.start >= c.end) { out.push(c); continue }
-    if (c.start < r.start) out.push({ start: c.start, end: r.start })
-    if (r.end < c.end) out.push({ start: r.end, end: c.end })
-  }
-  return out
-}
-const inCut = (t, cuts) => cuts.some((c) => t >= c.start && t < c.end)
-function silenceRanges(words, dur) {
-  const out = []
-  for (let i = 0; i < words.length - 1; i++) {
-    const gap = words[i + 1].start - words[i].end
-    if (gap > SILENCE_GAP) out.push({ start: +(words[i].end + 0.05).toFixed(2), end: +(words[i + 1].start - 0.05).toFixed(2) })
-  }
-  return out.filter((r) => r.end - r.start > 0.1 && r.end <= dur)
-}
 
 function TranscriptInspector({ ctx }) {
   const { words, cuts, toggleWordCut, editWord, logCaptionCorrection, addCuts, clearCuts, durationSec, genCaptions, genCaptionsPending } = ctx
