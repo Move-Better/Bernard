@@ -28,6 +28,7 @@ import { streamMessage } from '@/lib/claude'
 import { getOnboardingInterviewSystemPrompt } from '@/lib/prompts'
 import MicCheck from '@/components/MicCheck'
 import { createTtsPlayer, primeAudioPlayback, onAudioPlaybackFailure } from '@/lib/tts'
+import { detectAndStripStopPhrase, isTransientStreamError } from '@/lib/interviewSignals'
 
 const COMPLETE_TOKEN = 'INTERVIEW_COMPLETE'
 
@@ -35,46 +36,8 @@ const COMPLETE_TOKEN = 'INTERVIEW_COMPLETE'
 // turn. Without a cap, a stuck mic can spin forever (especially on iOS).
 const RESTART_CAP = 30
 
-// End-of-turn phrases — matched at the end of a final transcript so the user
-// can say "done" / "that's all" instead of tapping the mic.
-const STOP_PHRASES = [
-  "that's all",
-  "that's it",
-  "i'm done",
-  "i am done",
-  "send it",
-  "send that",
-  "submit",
-  "done",
-]
-
 // The five interview areas used for the stage progress rail.
 const STAGE_NAMES = ['Origin', 'Who you serve', 'Philosophy', 'Voice & tone', 'Topic seeds']
-
-function detectAndStripStopPhrase(transcript) {
-  const normalized = transcript.trimEnd().toLowerCase()
-  for (const phrase of STOP_PHRASES) {
-    if (normalized.endsWith(phrase)) {
-      const stripped = transcript.trimEnd()
-      const cleaned = stripped.slice(0, stripped.length - phrase.length).trimEnd()
-      return cleaned.length > 0 ? cleaned : ''
-    }
-  }
-  return null
-}
-
-// Is a stream failure worth auto-retrying? Auth (401/403) and rate-limit (429)
-// won't recover on retry; everything else (gateway blips, 5xx, timeouts) is
-// transient and safe to re-run the turn for.
-function isTransientStreamError(e) {
-  const status = e?.status
-  if (status === 401 || status === 403 || status === 429) return false
-  if (typeof status === 'number' && status >= 400 && status < 500) return false
-  // 529 = AI gateway overloaded (transient); other 5xx may include structural errors
-  // (invalid model, quota hard-stop) but we can't distinguish without parsing the body.
-  // Retry once is acceptable for structural errors — the 3-retry max is the real cap.
-  return true
-}
 
 // Detect and strip the completion marker from a streaming assistant message.
 function detectComplete(raw) {
