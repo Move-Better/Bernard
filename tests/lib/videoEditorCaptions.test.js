@@ -6,12 +6,29 @@ import {
 import { sliceWordsToWindow, groupWordsIntoLines } from '../../api/_lib/karaokeCaptions.js'
 import { normCaptionText as serverNormCaptionText } from '../../api/_lib/captionOverlayDedup.js'
 import { CAPTION_BASE_FS } from '../../api/_lib/brandRenderVideo.js'
+import { buildKaraokeAss } from '../../api/_lib/karaokeCaptions.js'
 import { WORKSPACE_DEFAULT_ACCENT } from '@/lib/brandSwatches'
 
 // Caption preview logic, extracted from VideoEditor.jsx. Every function here is
 // one half of a client/server mirror pair whose agreement was previously
 // asserted only by a code comment. A preview that styles or times a clip
 // differently from the bake teaches the user the wrong thing.
+
+// ASS colours are &HAABBGGRR -- byte-reversed from hex. Converting here rather
+// than hardcoding expected values keeps the assertion honest if the accent changes.
+// #fff and #FFFFFF are the same colour; expand shorthand so the comparison is
+// about the COLOUR, not the notation.
+function cssHex(c) {
+  const v = String(c).trim().toUpperCase()
+  const m = /^#([0-9A-F])([0-9A-F])([0-9A-F])$/.exec(v)
+  return m ? `#${m[1]}${m[1]}${m[2]}${m[2]}${m[3]}${m[3]}` : v
+}
+
+function assToHex(c) {
+  const m = /^&H([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})$/.exec(c.trim())
+  if (!m) throw new Error(`not an ASS colour: ${c}`)
+  return `#${(m[4] + m[3] + m[2]).toUpperCase()}`
+}
 
 const WORDS = [
   { word: 'one', start: 0, end: 0.5 },
@@ -137,42 +154,39 @@ describe('captionCss', () => {
     }
   })
 
-  // word_box is a KNOWN DRIFT (see the dedicated test below), so it is excluded
-  // here by name rather than by weakening the rule for everyone.
-  const DRIFTED = ['word_box']
-
   it('never renders the spoken and upcoming word identically', () => {
     // Karaoke works by swapping base -> active per word. If a preset made them
     // equal, the per-word timing would be computed and thrown away.
-    const checked = CAPTION_STYLE_OPTS.filter(({ id }) => !DRIFTED.includes(id))
-    expect(checked.length).toBeGreaterThan(0) // non-vacuity
-    for (const { id } of checked) {
+    expect(CAPTION_STYLE_OPTS.length).toBeGreaterThan(0) // non-vacuity
+    for (const { id } of CAPTION_STYLE_OPTS) {
       expect(JSON.stringify(captionCss(id, ACCENT).active), id)
         .not.toBe(JSON.stringify(captionCss(id, ACCENT).base))
     }
   })
 
-  // ── KNOWN PREVIEW/BAKE DRIFT, pinned rather than fixed ──────────────────────
-  // This PR is a verbatim extraction; changing captionCss changes rendered
-  // output and is a design decision, so the bug is recorded here instead.
+  // ── ENFORCED MIRROR: preview text colour == bake text colour ────────────────
+  // Replaces a hand-maintained "keep these in sync" comment. This compares the
+  // preview against the ASS the real generator emits, so it cannot go stale the
+  // way a documented claim can — and it is what caught word_box and underline
+  // previewing the spoken word white while the bake painted it the accent.
   //
-  // On the BAKE (api/_lib/karaokeCaptions.js buildKaraokeAss), word_box has
-  // neither `whiteText` nor a `secondary` override, so:
-  //     primary   (spoken)   = assColor(accentColor)   -> the ACCENT
-  //     secondary (upcoming) = white
-  // i.e. the exported video DOES light each word up in the accent colour.
-  //
-  // The preview below returns white for BOTH states, so the editor shows no
-  // per-word highlight at all and shows the spoken word in the wrong colour.
-  // This is the same shape as the accent_fill bug the server already fixed.
-  //
-  // The fix is almost certainly `active: { color: a, ... }`. When someone makes
-  // it, this test fails and points at DRIFTED above — delete both.
-  it('word_box preview does NOT match the bake (known drift)', () => {
-    const css = captionCss('word_box', ACCENT)
-    expect(css.active.color).toBe('#fff')   // bake paints this ACCENT
-    expect(css.base.color).toBe('#fff')     // bake paints this white (correct)
-    expect(css.active.color).not.toBe(ACCENT)
+  // NOT covered: the underline RULE's placement. ASS Underline is style-level so
+  // the bake underlines both states; the preview underlines only the spoken word.
+  // Deliberate, and a different axis from colour.
+  it('paints the spoken and upcoming word the same colours the bake does', () => {
+    const words = [{ word: 'a', start: 0, end: 0.5 }, { word: 'b', start: 0.6, end: 1 }]
+    let checked = 0
+    for (const { id } of CAPTION_STYLE_OPTS) {
+      const style = buildKaraokeAss({ words, width: 1080, height: 1920, accentColor: ACCENT, style: id })
+        .split('\n').find((l) => l.startsWith('Style: Cap')).split(',')
+      const bakeSpoken = assToHex(style[3])   // PrimaryColour
+      const bakeUpcoming = assToHex(style[4]) // SecondaryColour
+      const css = captionCss(id, ACCENT)
+      expect(cssHex(css.active.color), `${id} spoken`).toBe(bakeSpoken)
+      expect(cssHex(css.base.color), `${id} upcoming`).toBe(bakeUpcoming)
+      checked++
+    }
+    expect(checked).toBe(CAPTION_STYLE_OPTS.length) // non-vacuity
   })
 
   it('accent_fill uses a DARK base, not white, inside its accent wrap', () => {
