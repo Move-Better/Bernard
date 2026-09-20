@@ -523,3 +523,40 @@ Standing non-build finding surfaced to Q at the hearing: one approver has carrie
 **Case against.** It's a feature for a few events a year; a runbook and a script would have covered Philip. Accepted anyway because the gap was not only procedural: on the internal plan, lowering someone's tier restricts almost nothing (every member resolves to admin), so a script could not have actually switched access off. The gate had to be in code.
 
 **Kill criterion / revisit.** Trigger-gated, no clock: if a deactivated person is ever found reaching a route, or still receiving a nudge or digest, the gate or a recipient filter missed a path — fix the path and extend `tests/lib/deactivatedRecipients.test.js`. Revisit the handover scope if a successor reports work that should have moved and didn't.
+
+## 2026-09-20 — God-file split: extract the testable logic, stop short of decomposing components
+
+**Context.** A god-file audit ranked the codebase by size x churn x seams x test reachability.
+Three Tier-1 files: `VideoEditor.jsx` (2,663), `InterviewSession.jsx` (2,575), `YourWeek.jsx` (2,387).
+Shipped in three PRs (#2724, #2726, #2728): the pure logic came out into tested modules and
+`VideoEditor.jsx`'s components were moved verbatim. `VideoEditor.jsx` 2,663 -> 1,408; 56 new tests;
+`interviewSignals.js`, `weekDates.js`, `video-editor/captions.js`, `video-editor/cuts.js`.
+
+**Decision (2026-09-20).** Do NOT proceed to decomposing the remaining two main components
+(`InterviewSession` 2,052 lines / 40 `useRef`; `YourWeek` ~1,400). Line count is not the defect driver
+here, and the evidence says so:
+
+- Fix/revert rate over 6 months: `InterviewSession` **37%** — BELOW the 40% repo-wide baseline, despite
+  being the largest single component in the codebase. `YourWeek` and `VideoEditor` sit at 57%.
+- **36-42% of those "fixes" are cross-cutting sweeps that merely touched the file** (a11y labels, design
+  tokens, `enforceLimit` rounds, audit rounds). Those are sweep-inclusion, not defect density, and
+  splitting a file does not reduce them by one line.
+- Read in bulk, the real bugs are **visual/layout** (cropping, overflow, pointer-events, pill sizing),
+  **product decisions** (what a button does, which cards show), and **cross-cutting concerns** (publish
+  lock, photo reuse). Essentially none are state-locality bugs — the class a component split addresses.
+
+**Case against the decision.** A 2,052-line component is genuinely hard to read, and the two files are
+high-churn so parallel sessions will collide in them. Accepted anyway: a state decomposition is not a
+verbatim move, cannot be proven by diff, and `InterviewSession` has zero component tests while its most
+dangerous state is the `useRef` cluster driving a live audio/streaming session. Risk/reward is inverted
+versus the extractions that did ship. (Caveat: `fix(` prefixes are a proxy — the direction is solid, the
+exact percentages are not load-bearing.)
+
+**Still available, low risk:** a B-style verbatim move of `YourWeek`'s 654 lines of presentational
+components (`PlanCard`, `AddToDayModal`, `DayPlanCard`, ...) -> ~1,400 lines. Same provable shape as
+#2728. Not recommended on its own merits; worth it only if someone is already in that file.
+
+**Kill criterion / revisit.** Trigger-gated, no clock: revisit if a defect is ever credibly attributed to
+not being able to find or coordinate state within one of these components — that is the failure mode the
+split would prevent, and it has not occurred. Re-running the fix-rate comparison is one command; do that
+before acting on a "this file is too big" instinct.
