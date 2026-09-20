@@ -30,37 +30,14 @@ import { getBrandInterviewSystemPrompt } from '@/lib/prompts'
 import MicCheck from '@/components/MicCheck'
 import BrandBriefView from '@/components/BrandBriefView'
 import { createTtsPlayer, primeAudioPlayback, onAudioPlaybackFailure } from '@/lib/tts'
+import { detectAndStripStopPhrase, isTransientStreamError } from '@/lib/interviewSignals'
 
 const COMPLETE_TOKEN = 'INTERVIEW_COMPLETE'
 const RESTART_CAP = 30
 
-const STOP_PHRASES = [
-  "that's all", "that's it", "i'm done", "i am done",
-  "send it", "send that", "submit", "done",
-]
-
 // The five brand areas used for the stage progress rail. Order + count mirror
 // the [STAGE:1-5] mapping in getBrandInterviewSystemPrompt.
 const STAGE_NAMES = ['The feel', 'References', 'Patients', 'The tension', 'Identity']
-
-function detectAndStripStopPhrase(transcript) {
-  const normalized = transcript.trimEnd().toLowerCase()
-  for (const phrase of STOP_PHRASES) {
-    if (normalized.endsWith(phrase)) {
-      const stripped = transcript.trimEnd()
-      const cleaned = stripped.slice(0, stripped.length - phrase.length).trimEnd()
-      return cleaned.length > 0 ? cleaned : ''
-    }
-  }
-  return null
-}
-
-function isTransientStreamError(e) {
-  const status = e?.status
-  if (status === 401 || status === 403 || status === 429) return false
-  if (typeof status === 'number' && status >= 400 && status < 500) return false
-  return true
-}
 
 function detectComplete(raw) {
   if (!raw.includes(COMPLETE_TOKEN)) return { text: raw, complete: false }
