@@ -357,12 +357,14 @@ one has bitten. When changing any of these, change both in the same commit:
 | Server (bake) | Client (preview) |
 |---|---|
 | `api/_lib/gradeParams.js` | `src/lib/gradeParams.js` |
-| `brandRenderVideo.js` `CAPTION_BASE_FS` × `OVERLAY_SIZE_SCALE` | `VideoEditor.jsx` `CAPTION_BASE_FS_PCT` / `CAPTION_SIZE_SCALE` |
-| `karaokeCaptions.js` `CAPTION_STYLES` | `VideoEditor.jsx` `captionCss()` |
+| `brandRenderVideo.js` `CAPTION_BASE_FS` × `OVERLAY_SIZE_SCALE` | `video-editor/captions.js` `CAPTION_BASE_FS_PCT` / `CAPTION_SIZE_SCALE` |
+| `karaokeCaptions.js` `CAPTION_STYLES` | `video-editor/captions.js` `captionCss()` |
 | `brandRender.js` `resolveBrandColors()` | `src/lib/brandSwatches.js` |
 | `api/_lib/videoTemplates.js` | `src/lib/videoTemplateCapture.js` |
-| `api/_lib/captionOverlayDedup.js` `normCaptionText` | `VideoEditor.jsx` `normCaptionText` |
-| `karaokeCaptions.js` `buildKaraokeAss` `\k` word TIMING | `VideoEditor.jsx` CaptionOverlay `spoken = playClipT >= w.start` |
+| `api/_lib/captionOverlayDedup.js` `normCaptionText` | `video-editor/captions.js` `normCaptionText` |
+| `karaokeCaptions.js` `buildKaraokeAss` `\k` word TIMING | `video-editor/Canvas.jsx` `spoken = playClipT >= w.start` |
+| `karaokeCaptions.js` `sliceWordsToWindow` / `groupWordsIntoLines` | `video-editor/captions.js` `sliceWords` / `groupLines` |
+| `api/_lib/transcriptCuts` | `video-editor/cuts.js` |
 
 Real failures from this list: the Size control previewing identically for Medium and Large while baking
 1.0× vs 1.35× (`vh` with a 40px clamp vs a frame-relative bake); `glow` previewing an accent halo for a
@@ -457,7 +459,7 @@ Two rules, both pinned by `tests/lib/captionStyleContrast.test.js`, both violate
 ## `gradeToCanvasFilter` is the carousel BAKE, not just a preview
 
 `src/lib/gradeParams.js` `gradeToCanvasFilter()` feeds three places: the Brand vibe preview
-(`BrandKit.jsx`), the video editor preview (`VideoEditor.jsx`), **and `overlayTemplates.js:1525`, which is
+(`BrandKit.jsx`), the video editor preview (`video-editor/Canvas.jsx`), **and `overlayTemplates.js:1525`, which is
 the carousel slide bake**. A change here alters published images, not only what someone sees while
 editing. (2026-07-25: a flat `hue-rotate(185deg)` on any cool grade — the sepia scaled with warmth, the
 rotation did not — was spinning skin tones to cyan in *published* carousels for the two stock vibes with
