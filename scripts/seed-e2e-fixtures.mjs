@@ -14,6 +14,12 @@
 //
 // Reads .env.local first when MULTITENANT_DATABASE_URL is not already set so
 // it works the same way locally as `npm run backup:db` does.
+//
+// --cleanup-only: skip the staff upsert and only run the fixture prune at the
+// bottom. The e2e workflow runs this after the Playwright smoke so the
+// interview the smoke just created never lingers in prod between merges —
+// an 11-day-old leftover fixture was read as a real stalled user by the
+// 2026-10-01 outcome review.
 
 import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
@@ -38,6 +44,7 @@ async function resolveConnectionString() {
 
 const WORKSPACE_SLUG = process.env.E2E_WORKSPACE_SLUG || 'movebetter-people'
 const STAFF_NAME = process.env.E2E_FIXTURE_STAFF_NAME || 'E2E Smoke Staff'
+const CLEANUP_ONLY = process.argv.includes('--cleanup-only')
 
 const connectionString = await resolveConnectionString()
 try {
@@ -79,6 +86,11 @@ try {
   if (existing.rows[0]) {
     staffId = existing.rows[0].id
     console.log(`✓ Fixture staff member already present: ${existing.rows[0].id} — ${existing.rows[0].name}`)
+  } else if (CLEANUP_ONLY) {
+    // The prune below keys on the fixture staff id, so with no fixture staff
+    // member there can be no fixture interviews either — nothing to clean.
+    console.log('✓ No fixture staff member found — nothing to clean up.')
+    process.exit(0)
   } else {
     const inserted = await client.query(
       `insert into staff (workspace_id, name, created_by_id, created_by_email)
@@ -90,8 +102,11 @@ try {
     console.log(`✓ Seeded fixture staff member: ${inserted.rows[0].id} — ${inserted.rows[0].name}`)
   }
 
-  // Prune interviews + downstream content_items created by previous smoke
-  // runs to keep the prod workspace tidy. Recognized by their fixture
+  // Prune fixture interviews + downstream content_items to keep the prod
+  // workspace tidy. Runs twice per smoke: here at seed time (the safety net
+  // for runs that died before cleaning up) and again after the Playwright
+  // step via --cleanup-only (so the interview the smoke just created never
+  // lingers in prod until the next merge). Recognized by their fixture
   // staff member + the well-known "safe to delete" topic prefix used in the
   // spec. content_items get auto-created only when an interview status
   // flips to 'completed' (the smoke leaves status='in_progress'), so this

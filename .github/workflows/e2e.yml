@@ -96,6 +96,22 @@ jobs:
           CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
         run: npm run e2e
 
+      # Delete the fixture interview the smoke just created so it never
+      # lingers in prod between merges — an 11-day-old leftover fixture was
+      # read as a real stalled user by the 2026-10-01 outcome review. The
+      # seed step's prune above remains the safety net for runs that die
+      # before reaching this step. continue-on-error because a transient
+      # cleanup failure shouldn't redden an otherwise-green smoke; the next
+      # run's seed prune picks the row up anyway.
+      - name: Clean up fixture data
+        if: always()
+        continue-on-error: true
+        env:
+          MULTITENANT_DATABASE_URL: ${{ secrets.MULTITENANT_DATABASE_URL }}
+          E2E_WORKSPACE_SLUG: movebetter
+          E2E_FIXTURE_STAFF_NAME: E2E Smoke Staff
+        run: npm run e2e:cleanup
+
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
