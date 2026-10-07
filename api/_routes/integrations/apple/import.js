@@ -18,9 +18,14 @@ import {
 // location). We parse the six Core metrics + headline YoY, upsert one row per
 // (workspace, location, month), and DISCARD the source — extract-only.
 //
-// Two input shapes, one parser:
-//   { pdfBase64, filename?, locationId? }          -- the uploaded recap PDF
-//   { emailText, sentAt?, subject?, locationId? }   -- the recap EMAIL's body
+// Three input shapes, one parser:
+//   { pdfBase64, filename?, locationId? }                   -- the uploaded recap PDF
+//   { emailHtml, sentAt?, subject?, locationId? }            -- the recap EMAIL's HTML body (preferred)
+//   { emailText, sentAt?, subject?, locationId? }            -- the recap EMAIL's plain-text body (fallback)
+//
+// emailHtml wins over emailText when both are supplied — see
+// _lib/appleInsights.js htmlToRecapText for why a plaintext conversion can
+// silently glue a metric value to its own YoY percentage.
 //
 // All parsing, the location check, the row shape and the upsert live in
 // _lib/appleImport.js, shared verbatim with POST /api/cron/apple-import (the
