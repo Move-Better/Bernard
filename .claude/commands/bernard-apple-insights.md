@@ -30,9 +30,12 @@ month, or debug a failed run — not as the only path.
   a month. Full findings: memory `project-apple-business-insights`.
 - **Never invent a number.** If a metric will not parse, leave it null and say so.
   A plausible-looking wrong figure here silently corrupts a trend nobody re-checks.
-- **The recaps only started arriving at `drq@` after 2026-09-03.** Earlier months
-  went to `admin@movebetter.co` and were deleted. Months before September 2026
-  are not recoverable by this route.
+- **Recaps before September 2026 (which went to `admin@movebetter.co` and were
+  deleted before `drq@` was added to the account) are not recoverable by this
+  route.** August 2026 onward is imported. As of the September run, the recap
+  was found in the connector's mailbox with no manual admin@→drq@ forward
+  needed — if a future run finds zero recaps where it previously found two,
+  check whether that's changed rather than assuming it still holds.
 
 ## Locations
 
@@ -59,15 +62,26 @@ Broadway."* Expect **two** messages, one per location. If you find zero, say so
 plainly and stop — do not fall back to the dashboard. If you find one, import it
 and report the missing location rather than silently doing half the job.
 
-## Step 2 — read each message as text
+## Step 2 — read each message as HTML, not plain text
 
 ```
-get_message  messageId: <id>  messageFormat: PLAIN_TEXT
+get_message  messageId: <id>  messageFormat: FULL_CONTENT
 ```
 
-**Check the body actually contains the numbers** — it must carry both
-`Insights Summary` and `PLACE CARD VIEWS`. The parser is label-anchored, so
-layout does not matter, but those labels must be present.
+Use the `htmlBody` field, NOT `plaintextBody`. **Confirmed 2026-10-07 (#2736):
+Apple's recap markup puts every number in its own isolated element with zero
+literal whitespace between adjacent tags, so Gmail's plaintext conversion
+glues a metric's value straight onto its own YoY percentage whenever the
+percentage isn't phrased as "Over 100%"** —
+`PLACE CARD VIEWS22391% from September last year` is really 223 views / 91%
+YoY, not 22391. This fires silently (no parser warning) on most months. The
+import endpoint now parses `emailHtml` directly via `htmlToRecapText()`,
+which fixes this structurally — pass the raw HTML, don't hand-correct text.
+
+**Check the body actually contains the numbers** — `htmlBody` must carry both
+`Insights Summary` and `PLACE CARD VIEWS` as text somewhere in the markup. The
+parser is label-anchored, so layout does not matter, but those labels must be
+present.
 
 **If they are not, the numbers live only in the PDF attachment — STOP.** The
 Gmail connector returns attachment ids, never bytes, and there is no
@@ -110,9 +124,14 @@ Then per location, with the JSON written to a temp file (the body carries quotes
 and newlines, so do not inline it in the shell):
 
 ```json
-{ "locationId": "<uuid>", "emailText": "<PLAIN_TEXT body>",
+{ "locationId": "<uuid>", "emailHtml": "<the raw htmlBody, verbatim>",
   "sentAt": "<message date, ISO>", "subject": "<subject>", "preview": true }
 ```
+
+`emailHtml` wins over `emailText` if you ever pass both — prefer `emailHtml`
+alone. The body includes a large inline `<style>` block; that's fine, it's
+well under the endpoint's 1MB cap and the parser strips it before extracting
+anything.
 
 ## Step 4 — sanity-check BEFORE saving
 
@@ -139,20 +158,18 @@ returned. A non-empty warnings array means a metric was missing — surface it.
 
 ---
 
-## Status — the email path is UNVERIFIED as of 2026-09-03
+## Status
 
-`prepareRecapEmailText` + the endpoint's text branch are unit-tested and
-mutation-tested, and `parseAppleRecapText` is the same function that produced
-Bernard's correct June (143) and July (172) figures from real recap PDFs.
+The email path is verified and running on the HTML body as of 2026-10-07
+(#2736) — not the plaintext body, which Gmail's own conversion renders with
+no separator between a metric's value and its own YoY percentage on most
+months (see Step 2). `htmlToRecapText()` + `parseAppleRecapText()` are unit-
+and mutation-tested against real recap shapes from both Portland and
+Vancouver. June through September 2026 are imported for both locations;
+anything before September arrived by manual admin@→drq@ forward, September
+arrived unaided.
 
-But **no real Apple recap EMAIL has ever been parsed** — the ones that would
-have proven it were deleted from `admin@`, and `drq@` was only added to the
-Apple Business account on 2026-09-03. So the open question is narrow and
-specific: *does Apple's email body carry the metric labels, or only a PDF?*
-
-Step 2 answers that on the first real run. Whichever way it goes, write the
-answer into memory `project-apple-business-insights` so the next run starts from
-a fact instead of this caveat.
-
-**Also outstanding:** August 2026 was never imported and cannot be recovered by
-this route. Bernard's last Apple row is July 2026.
+If a saved metric ever looks implausible again, don't assume the glue bug is
+back without checking — read memory `project-apple-business-insights` for the
+full diagnosis and fix history, and append whatever you find so the next run
+starts from a fact.
