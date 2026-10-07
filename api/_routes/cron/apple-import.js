@@ -19,7 +19,13 @@
 // Auth: Bearer CRON_SECRET.
 // Body (JSON):
 //   locationId  uuid    required — workspace_locations.id the recap belongs to
-//   emailText   string  required — the recap email's plain-text body
+//   emailHtml   string  preferred — the recap email's HTML body (htmlBody from
+//                       a FULL_CONTENT Gmail fetch). Structurally unambiguous —
+//                       see appleInsights.js htmlToRecapText for why this beats
+//                       emailText. Wins over emailText when both are supplied.
+//   emailText   string  fallback — the recap email's plain-text body. A
+//                       plaintext conversion can glue a metric's value to its
+//                       own YoY percentage with no separator; prefer emailHtml.
 //   sentAt      string  optional — the message's date (ISO); fallback for the year
 //   subject     string  optional — recorded in raw_extract for traceability
 //   preview     bool    optional — parse and return WITHOUT saving

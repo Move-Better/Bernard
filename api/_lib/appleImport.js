@@ -10,11 +10,12 @@
 //
 // Extract-only: the PDF/email text is parsed and DISCARDED. We store numbers.
 
-import { parseAppleRecapPdf, parseAppleRecapText, prepareRecapEmailText } from './appleInsights.js'
+import { parseAppleRecapPdf, parseAppleRecapText, prepareRecapEmailText, htmlToRecapText } from './appleInsights.js'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const MAX_PDF_BYTES = 5 * 1024 * 1024
 const MAX_TEXT_CHARS = 200_000
+const MAX_HTML_CHARS = 1_000_000
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -33,14 +34,31 @@ function sb(path, init = {}) {
 
 export { UUID_RE, MAX_TEXT_CHARS }
 
-// Parse a recap from either input shape. Returns the parser's own result, or a
-// { status } describing why we could not even get that far.
-export async function parseAppleRecapInput({ pdfBase64, emailText, sentAt }) {
+// Parse a recap from any of three input shapes. Returns the parser's own
+// result, or a { status } describing why we could not even get that far.
+//
+// HTML takes priority over plaintext when both are supplied: it carries real
+// structural boundaries a plaintext conversion can destroy (see
+// htmlToRecapText in appleInsights.js for the mechanism and why it matters —
+// most months, without this, a glued value+percentage silently corrupts).
+export async function parseAppleRecapInput({ pdfBase64, emailText, emailHtml, sentAt }) {
+  const hasHtml = typeof emailHtml === 'string' && emailHtml.trim().length > 0
   const hasPdf = typeof pdfBase64 === 'string' && pdfBase64.length > 0
   const hasText = typeof emailText === 'string' && emailText.trim().length > 0
 
-  if (!hasPdf && !hasText) return { status: 'missing_pdf' }
-  if (hasText && emailText.length > MAX_TEXT_CHARS) return { status: 'invalid_text_size' }
+  if (!hasHtml && !hasPdf && !hasText) return { status: 'missing_pdf' }
+  if (hasHtml && emailHtml.length > MAX_HTML_CHARS) return { status: 'invalid_text_size' }
+  if (!hasHtml && hasText && emailText.length > MAX_TEXT_CHARS) return { status: 'invalid_text_size' }
+
+  if (hasHtml) {
+    try {
+      const flattened = htmlToRecapText(emailHtml)
+      return { status: 'ok', hasText: true, parsed: parseAppleRecapText(prepareRecapEmailText(flattened, sentAt ?? null)) }
+    } catch (e) {
+      console.error('[appleImport] html parse failed:', e?.message)
+      return { status: 'parse_failed' }
+    }
+  }
 
   if (hasText) {
     try {

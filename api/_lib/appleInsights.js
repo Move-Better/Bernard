@@ -15,6 +15,19 @@
 //    72 29% from June last year Trends 29% This location has 29% more taps ...
 //    42% This location has 42% more views ... Directions65 8% from June last
 //    year Photos55 Over 100% from June last year Website3 Call8 100% ..."
+//
+// EMAIL-SOURCED recaps need an extra step before any of the above applies.
+// Confirmed 2026-10-07 by reading the real HTML of two live recaps: Apple's
+// markup puts every number in its OWN element (a bar-chart-total-value span,
+// an ACTION_DIRECTIONS__value span, a YoY-percent span several divs later)
+// with ZERO literal whitespace between adjacent tags. A plaintext conversion
+// that doesn't synthesize whitespace at block boundaries then glues a value
+// straight onto its own YoY percentage — "223" + "91%" becomes "22391%" —
+// whenever nothing else (no "Over", no literal space in a text node)
+// separates them in the source. This fires on every metric whose YoY change
+// isn't phrased as "Over 100%", i.e. most months, and it's silent: the
+// corrupted number parses as a plausible-looking integer, not a crash.
+// htmlToRecapText() below is the fix — see its own comment.
 
 import { extractText, getDocumentProxy } from 'unpdf'
 
@@ -50,6 +63,40 @@ function labelNumber(text, label) {
 function labelHasNoData(text, label) {
   const re = new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\*?\\s*Not enough data', 'i')
   return re.test(text)
+}
+
+// Normalize an Apple recap's raw HTML body into the flattened-text shape
+// parseAppleRecapText expects, WITHOUT the gluing defect a plaintext
+// conversion introduces (see the top-of-file comment for the mechanism).
+//
+// The fix is structural, not a digit-splitting heuristic: reinsert a real
+// separator at every block-level tag boundary (div/p/li/ul/ol/tr/table/h#/br)
+// BEFORE stripping tags, so numbers that live in sibling block elements stay
+// separated downstream. Inline elements (span/strong/a) are left alone —
+// those are exactly the glued-by-design shapes ("Directions65",
+// "*Directions*74") that labelNumber() already tolerates via its \s*
+// (zero-or-more) matching, and inserting whitespace there would be harmless
+// but unnecessary.
+export function htmlToRecapText(html) {
+  let text = String(html || '')
+  // Drop style/script wholesale — their contents can carry stray digits or
+  // label-shaped words that would otherwise leak into the flattened text.
+  text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+  text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+  const BLOCK = '(?:div|p|li|ul|ol|tr|table|h[1-6]|br)'
+  text = text.replace(new RegExp(`</${BLOCK}\\s*>`, 'gi'), ' ')
+  text = text.replace(new RegExp(`<${BLOCK}(?:\\s[^>]*)?>`, 'gi'), ' ')
+  text = text.replace(/<[^>]+>/g, '')
+  // The handful of entities Apple's markup actually uses — not a general
+  // HTML-entity decoder.
+  text = text
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&quot;/gi, '"')
+  return text.replace(/\s+/g, ' ').trim()
 }
 
 // Signed YoY from the sentence form: "42% more views" / "12% fewer taps".
