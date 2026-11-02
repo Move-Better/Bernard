@@ -46,6 +46,9 @@ import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { getCredential } from '../_lib/getCredential.js'
 import { workspaceScope } from '../_lib/workspaceScope.js'
+import { resolveReceiverTopic } from '../_lib/receiverTopic.js'
+import { classifyTopic } from '../_lib/topicClassifier.js'
+import { supabaseRest } from '../_lib/supabaseRest.js'
 import { requireRole } from '../_lib/auth.js'
 import { enforceLimit } from '../_lib/ratelimit.js'
 import { rewriteMarkdownImageUrls } from '../_lib/publishImageMirror.js'
@@ -125,7 +128,7 @@ async function handler(req, res) {
     (await getCredential(workspaceId, 'astro_github')) ||
     (await getCredential(workspaceId, 'website'))
   if (astroCred?.secret) {
-    return publishToAstro(res, payload, astroCred, workspaceSlug)
+    return publishToAstro(res, payload, astroCred, workspaceSlug, scope.workspace.publish_topics, workspaceId)
   }
 
   return res.status(503).json({ error: 'not_configured' })
@@ -133,20 +136,32 @@ async function handler(req, res) {
 
 // ── Astro mode ────────────────────────────────────────────────────────────────
 
-async function publishToAstro(res, payload, cred, workspaceSlug) {
+async function publishToAstro(res, payload, cred, workspaceSlug, publishTopics, workspaceId) {
   const secret = cred.secret
   const url = cred.config?.url
   if (!url) {
     return res.status(503).json({ error: 'not_configured', message: 'Astro+GitHub publish URL is not set in the workspace credential config.' })
   }
 
-  // Normalize topic against the Astro receiver's allowed enum. Without this,
-  // freeform topics fail movebetter.co's content schema. This is Astro-only —
-  // WordPress has its own tag/category system and should receive the raw topic.
-  // (Previously applied in the shared dispatch block, which caused WordPress
-  // posts to lose their topic field when the slug didn't match the Astro enum.)
-  const topicMap = normalizeTopicForReceiver(payload.topic, workspaceSlug)
-  const normalizedTopic = topicMap.normalized ? topicMap.normalized : (topicMap.dropped ? null : payload.topic)
+  // Resolve the topic against the workspace's own publish_topics (the receiver's
+  // enum). Rules first; anything they cannot map is classified by a model
+  // constrained to that list. A publish NEVER blocks on topic: the receiver
+  // would otherwise turn an off-list slug into "general" and leave the raw slug
+  // in frontmatter. How the topic was chosen is recorded for the topic-review
+  // audit. Astro-only; WordPress receives the raw topic.
+  const topicMap = resolveReceiverTopic(payload.topic, publishTopics)
+  let normalizedTopic = payload.topic
+  let topicChoice = null // { topic, via, confidence } — recorded after a successful publish
+  if (topicMap.status === 'mapped') {
+    normalizedTopic = topicMap.topic
+    topicChoice = { topic: topicMap.topic, via: topicMap.via, confidence: 1 }
+  } else if (topicMap.status === 'unmapped') {
+    const c = await classifyTopic({
+      rawTopic: payload.topic, title: payload.title, description: payload.description, allowed: topicMap.allowed,
+    })
+    normalizedTopic = c.topic
+    topicChoice = c
+  }
 
   const body = {
     slug:        payload.slug,
@@ -199,6 +214,7 @@ async function publishToAstro(res, payload, cred, workspaceSlug) {
     const postUrl = (payload.packageId && data.postUrl)
       ? applyUtmToUrl(data.postUrl, { channel: 'blog', packageId: payload.packageId, campaignSlug: payload.campaignSlug })
       : data.postUrl
+    await recordTopicChoice(payload, topicChoice, workspaceId)
     return res.status(200).json({ success: true, slug: data.slug, commitUrl: data.commitUrl, postUrl })
   }
   if (upstream.status === 409) {
@@ -468,68 +484,22 @@ async function resolveTags(wp, names) {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-// Per-receiver topic enums + alias maps. Only workspaces with a
-// receiver that enforces a fixed topic taxonomy need an entry here;
-// every other workspace gets {} (no normalization) and the receiver
-// either accepts arbitrary topics (animals) or ignores the field.
-//
-// `enum`: the exact list the receiver's content schema accepts.
-// `aliases`: known kebab-cased values Bernard might generate from a
-//   freeform workspace topic, mapped to the closest enum slug. Keep
-//   this targeted — broad string-similarity matching is a footgun.
-//   Anything not in `enum` or `aliases` falls through to "general".
-const RECEIVER_TOPIC_RULES = {
-  'movebetter-people': {
-    enum: new Set([
-      'breathing', 'bracing', 'hinging', 'assessment', 'pain-science',
-      'chronic-pain', 'low-back-pain', 'neck-pain', 'knee-pain',
-      'postpartum', 'injury-recovery', 'surgery-alternatives', 'recovery',
-      'movement-mechanics', 'strength-training', 'running', 'nutrition',
-      'mindset', 'healthcare-system', 'general',
-    ]),
-    aliases: {
-      'knee-pain-with-running':        'knee-pain',
-      'running-knee-pain':             'knee-pain',
-      'knee-injury':                   'knee-pain',
-      'lower-back-pain':               'low-back-pain',
-      'lower-back':                    'low-back-pain',
-      'low-back':                      'low-back-pain',
-      'back-pain':                     'low-back-pain',
-      'neck':                          'neck-pain',
-      'pelvic-floor':                  'postpartum',
-      'postnatal':                     'postpartum',
-      'rehab':                         'injury-recovery',
-      'rehabilitation':                'injury-recovery',
-      'recovery-rehab':                'recovery',
-      'movement':                      'movement-mechanics',
-      'mechanics':                     'movement-mechanics',
-      'strength':                      'strength-training',
-      'training':                      'strength-training',
-      'run':                           'running',
-      'jogging':                       'running',
-      'mental-health':                 'mindset',
-      'healthcare':                    'healthcare-system',
-      'insurance':                     'healthcare-system',
-    },
-  },
-}
-
-function normalizeTopicForReceiver(rawTopic, workspaceSlug) {
-  if (typeof rawTopic !== 'string' || !rawTopic.trim()) return { normalized: null, dropped: false }
-  const rules = RECEIVER_TOPIC_RULES[workspaceSlug]
-  if (!rules) return { normalized: null, dropped: false }
-
-  const slug = rawTopic.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  if (!slug) return { normalized: null, dropped: false }
-  if (rules.enum.has(slug)) return { normalized: slug, dropped: false }
-  if (rules.aliases[slug] && rules.enum.has(rules.aliases[slug])) {
-    return { normalized: rules.aliases[slug], dropped: false }
+// Stamps how the receiver topic was chosen on the content item so the monthly
+// topic review can list the guesses (via 'classifier'|'fallback'). Best-effort:
+// the post is already live, so a failed stamp is logged and never surfaces.
+async function recordTopicChoice(payload, choice, workspaceId) {
+  if (!choice || !payload.contentItemId || !workspaceId) return
+  try {
+    const r = await supabaseRest(
+      `content_items?id=eq.${encodeURIComponent(payload.contentItemId)}&workspace_id=eq.${encodeURIComponent(workspaceId)}`,
+      { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({
+        publish_topic: { ...choice, raw: payload.topic || null, at: new Date().toISOString() },
+      }) },
+    )
+    if (!r.ok) console.warn('[publish/website] publish_topic stamp failed:', r.status)
+  } catch (e) {
+    console.warn('[publish/website] publish_topic stamp failed:', e?.message)
   }
-  // Unknown — let the receiver's `.catch('general')` handle final
-  // fallback. Dropping the field keeps the build green without
-  // hard-coding 'general' on our end (so if the receiver enum drifts,
-  // we don't fight it).
-  return { normalized: null, dropped: true }
 }
 
 function wpRestRoot(url) {

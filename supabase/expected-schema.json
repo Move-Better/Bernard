@@ -332,6 +332,7 @@
     "point_safety_score",
     "provenance",
     "publish_error",
+    "publish_topic",
     "published_at",
     "region",
     "reject_note",
