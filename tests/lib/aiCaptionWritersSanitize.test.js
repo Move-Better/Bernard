@@ -65,6 +65,7 @@ const NOT_AI_TEXT = {
   // The clinician's own edit. A dash they typed on purpose is theirs to keep;
   // sanitizing human prose here would be the tool overruling the author.
   '_routes/db/content.js': 'human edit path',
+  'publish/website.js': 'stamps a topic slug + metadata (publish_topic), no prose',
   // Caption arrives from the request body, i.e. already reviewed by a person.
   '_routes/editorial/clip-to-post.js': 'caption supplied by caller',
   '_routes/editorial/youtube-create.js': 'description typed/confirmed in the request body',
