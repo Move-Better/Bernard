@@ -1,13 +1,13 @@
 // GET /api/cron/sync-author-corpus
 //
 // Weekly cron that mirrors Q's completed interviews from the clinical workspace
-// (movebetter-people) into the book workspace (qbook) as interview_transcript_full
+// (movebetter) into the book workspace (qbook) as interview_transcript_full
 // chunks — so the Author Mode /write corpus stays current without Q having to
 // do anything. Only Q's own interviews (matched by user_id) cross over; other
-// clinicians' interviews in movebetter-people never leave that workspace.
+// clinicians' interviews in movebetter never leave that workspace.
 //
 // Logic:
-//   1. Resolve source workspace (movebetter-people) + Q's clinician there
+//   1. Resolve source workspace (movebetter) + Q's clinician there
 //   2. Resolve target workspace (qbook) + Q's clinician there (same user_id)
 //   3. Find all completed interviews in source with message content
 //   4. Skip any already indexed in target's practice_memory_chunks
@@ -28,7 +28,12 @@
 
 export const config = { runtime: 'nodejs', maxDuration: 300 }
 
-const SOURCE_SLUG = 'movebetter-people'
+// Was 'movebetter-people', renamed to 'movebetter'. The stale slug made this cron
+// throw "Source workspace not found" every Sunday (swallowed into a 200) and the
+// qbook corpus stopped growing on 2026-06-07. Slugs are mutable: if this ever
+// changes again, the cron fails again, so check qbook's newest
+// interview_transcript_full chunk after any workspace rename.
+const SOURCE_SLUG = 'movebetter'
 const TARGET_SLUG = 'qbook'
 
 import { indexInterviewTranscriptFull } from '../../_lib/practiceMemoryRag.js'
@@ -70,7 +75,7 @@ export async function syncAuthorCorpus({ log = false, dryRun = false } = {}) {
 
   // The Clerk user_id of the account that owns both workspaces — set via the
   // CORPUS_SYNC_USER_ID env var. The source clinician must be resolved by this id,
-  // never by row age: if movebetter-people onboards a second clinician whose staff
+  // never by row age: if movebetter onboards a second clinician whose staff
   // row predates Q's, an oldest-row lookup would index the wrong person's interviews
   // into the qbook (Author Mode) corpus.
   const Q_USER_ID = process.env.CORPUS_SYNC_USER_ID
