@@ -25,7 +25,7 @@ uploaded videos."
 4. **Accuracy is better than Whisper on paper**, but the model card lists hallucinated
    speech as a known risk and says nothing about silence. Bernard's silent-b-roll
    hallucination filter stays regardless of vendor.
-5. **Recommendation (updated 2026-11-05 after the bake-off below):** Scribe v2 via the gateway is the default to ship for the February deadline; it beat Whisper on real clinic footage on every axis karaoke captions care about, and Gemini returned nothing. Nemotron is still the untested challenger, blocked only on a DeepInfra key. Original plan: run one bake-off harness
+5. **Recommendation (updated 2026-11-05 after the bake-off below):** Scribe v2 via the gateway is the default to ship for the February deadline; it beat Whisper on real clinic footage on every axis karaoke captions care about, and Gemini returned nothing. Nemotron, measured afterwards, has the best word timing of the four but invents fluent sentences on silent b-roll that the hallucination filter cannot catch, so it is not the b-roll default; it is the better choice for a clean-audio lane or as a voice-over script source behind an energy gate. Original plan: run one bake-off harness
    on real Bernard assets across the three candidates that keep word timestamps:
    `elevenlabs/scribe-v2` (already on the gateway, already a vendor), Nemotron 3.5 Transcribe
    via DeepInfra, and `google/gemini-3.5-transcribe` (gateway). Pick on measured timestamp
@@ -190,7 +190,7 @@ per clip with ffmpeg (16 kHz mono MP3) so every vendor hears identical bytes. 73
 | Scribe v2 | ElevenLabs direct | 20/20 | 1.3 s | 1701 | 2.5 % | 0.9 % (9 clips) | 0 | 14 clips ≥2 speakers | 26 s |
 | Scribe v2 | AI Gateway REST | 20/20 | 1.7 s | 1709 | 3.2 % | 1.4 % (9 clips) | 0 | 14 clips | 36 s |
 | `gemini-3.5-transcribe` | AI Gateway REST **and** AI SDK 7.0.163 `transcribe()` | 20/20 HTTP 200 | 1.9 s | **0 on every clip** | – | – | – | – | 39 s |
-| Nemotron 3.5 Transcribe | DeepInfra | **not run** | | | | | | | |
+| Nemotron 3.5 Transcribe | DeepInfra | run later same day, see next subsection | | | | | | | |
 
 "Stacked-start" = a word whose start equals the previous word's start. That is the karaoke pile-up
 artefact: the bake renders both words in the same 10 ms slot and the line reads as duplicated or
@@ -220,9 +220,7 @@ What the numbers and the baked frames actually showed:
   WAV, with and without a language hint, via REST and via the current SDK. Gateway cost metadata still
   charged $0.0097 for a 109 s clip ($0.32/hr, 3× Scribe's $0.0033 on the same clip). Not a request-shape
   problem on our side; a provider/gateway-beta problem. Re-check before ever shortlisting it again.
-- **Nemotron was not measured** because Bernard has no DeepInfra account. The harness has the slot wired
-  (`DEEPINFRA_API_KEY`, OpenAI-compatible multipart, `verbose_json` word+segment). Minting the key is a
-  Q action; re-running only that vendor is one command (below).
+- **Nemotron was measured later the same day** once Q minted a DeepInfra key; see "Nemotron measured" below.
 - **One Scribe frame showed two caption lines overlapping** ("good, you're good." drawn over "tight, tight.
   Oh. You're") on `0f236696`. That is `groupWordsIntoLines` producing two Dialogue events whose windows
   overlap when a word's `end` runs past the next line's `start`; it is a property of the line grouper,
@@ -232,10 +230,65 @@ What the numbers and the baked frames actually showed:
 **Reading:** on real clinic footage Scribe v2 beats the incumbent on every axis this feature cares
 about (fewer stacked words, no silent-clip invention, keeps speech Whisper drops, 2× faster, speaker
 labels for free, same vendor as the voice clone), and it is already reachable through the gateway with
-word timing in `providerMetadata.elevenlabs.words`. Nemotron remains the untested challenger on cost
-and on "readable" transcripts. The decision does not have to wait for it: Scribe v2 is a safe default
-for the February deadline, and Nemotron can be measured against it with the same harness the day a
-DeepInfra key exists.
+word timing in `providerMetadata.elevenlabs.words`. Nemotron was then measured (next subsection): best word timing of the four, but it invents speech on
+quiet clips, which disqualifies it for b-roll without an energy gate. Scribe v2 stays the default.
+
+### Nemotron measured (2026-11-05, later the same day, once a DeepInfra key existed)
+
+Same 20 clips, same cached audio, re-run with `whisper`, `scribe`, `nemotron` (bare) and
+`nemotron-prompt` (`language=en` plus a one-line clinic-gym vocabulary prompt). DeepInfra route,
+OpenAI-compatible `verbose_json`. Second Scribe run included so run-to-run variance is visible.
+
+| vendor | words (stored Whisper = 1460) | zero-duration | stacked-start | timing vs fresh Whisper (median / p90 abs) | word edit rate vs Whisper | speakers | realtime factor |
+|---|---|---|---|---|---|---|---|
+| whisper-1 | 1524 | 6.7 % | 4.7 % | – | – | none | 12× |
+| Scribe v2 (run 2) | 1781 | 3.3 % | 1.2 % | 0.02 s / 0.36 s | 0.40 | 15 clips | 28× |
+| Nemotron bare | 1679 | **0.0 %** | 1.9 % | −0.02 s / 0.31 s | 0.43 | none via DeepInfra | 16× |
+| Nemotron + prompt | 1690 | **0.0 %** | 1.7 % | −0.01 s / **0.28 s** | 0.39 | none | 17× |
+
+**Word timing: Nemotron is the best of the four.** No zero-duration words at all (its CTC alignment
+gives every word a real span), the tightest agreement with Whisper on shared words, and stacked words
+well under Whisper's. On clean, close-mic speech the transcripts are near-identical to Scribe's
+(clip `35baf738` differs by one full stop; the 109 s Gary interview differs mostly in filler words
+Scribe keeps and Nemotron drops, which is the "readable" bias the model card describes).
+
+**Content on hard audio: Nemotron is the worst of the four, and in the way that matters most for
+b-roll.** It invents fluent speech where there is none or where the audio is faint:
+
+- `4b9880b6` (5 s, −34 dB, two people doing a balance drill, no real speech): Scribe returned
+  nothing; Whisper returned its stock "Thank you for watching my video", which the filter catches;
+  Nemotron returned *"I don't think that law is still very common nowadays. I certainly use it when I
+  tell people, though."* and with the prompt *"Oh, wait. So while she's getting ready, can someone get
+  her a mirror?"* Both are fluent, specific, and pass `isHallucinatedTranscript`, which only knows
+  Whisper's filler phrases. Baked, that sentence sits in orange karaoke over a silent exercise clip.
+- `0f236696` (13 s, loud gym, a clinician shouting cues): Scribe and Whisper both got "Stay tight in
+  the middle"; Nemotron bare produced *"Hey Michael, remember, we did it. Mike this, Oh, you said, she
+  Easter did"*, identical on three repeats (so deterministic, not a sampling fluke). The prompt
+  recovered about half of it.
+- `00cb52bd`, `f5f870f9` (faint speech under noise): Nemotron produced plausible but wrong sentences
+  ("Is there room for the potato") where Scribe produced the right ones.
+
+A vocabulary prompt helps Nemotron measurably on noisy speech (edit rate 0.43 → 0.39, p90 timing
+0.31 → 0.28 s) and does nothing for silence. There is no per-word confidence in DeepInfra's response
+to gate on, and the model card's `no_speech_prob`/`avg_logprob` fields come back as literal zeros.
+
+**Scribe is not deterministic either.** Run 1 vs run 2 on the same bytes: `00cb52bd` went from 0 words
+to 77; `bb736750` from 4 to 4 with different text; the spoken clips moved by ±1–6 words. Timing on
+words both runs heard was identical. Any vendor's result on marginal audio is a sample.
+
+**Reading after measuring Nemotron:** it does not change the recommendation. For a product whose
+input is clinic b-roll, where a large share of clips are quiet or ambient and every transcript is
+burned into a public reel, a model that returns nothing on silence beats one with better timing that
+returns a confident sentence. Nemotron's timing edge (no zero-duration words, p90 0.28 s) is real and
+would make it the pick for a clean-audio workload like the longform interview lane, but it would
+need a silence/energy gate in front of it that Scribe does not need. Scribe v2 via the gateway stays
+the default for the February swap. The one thing worth carrying from Nemotron: its "readable"
+transcript is a better voice-over script source than Scribe's verbatim one, so a future voice-over
+feature could call it on clips the energy gate has already passed.
+
+Contact sheets for every claim above are reproducible with `transcription-bakeoff-render.mjs`
+against the `out2` run; the two decisive ones are `647aecbc` (Scribe vs Nemotron+prompt tracking a
+crowd) and `4b9880b6` (Nemotron captioning silence).
 
 ### Reproducing
 
@@ -247,7 +300,7 @@ node scripts/transcription-bakeoff.mjs --ids <ids.txt> --out <dir> --concurrency
 node scripts/transcription-bakeoff-render.mjs --out <dir> --asset <uuid> --url <blob_url> --vendors whisper,scribe
 ```
 
-Add `--vendors nemotron` to run only the DeepInfra slot once the key exists. The 20 asset ids used:
+`nemotron` and `nemotron-prompt` need `DEEPINFRA_API_KEY` on the mount (present since 2026-11-05). The 20 asset ids used:
 `fc1c28ad 876872d8 46013c99 449637f4 35baf738 da222163 996cb7e4 0f236696 c4fae4b8 07d1d45d 16b45b86
 26a2a5a1 383aab99 647aecbc 5342c5fc 3d100ef5` (spoken) and `4b9880b6 f5f870f9 bb736750 00cb52bd`
 (quiet b-roll); full UUIDs resolve with `select id from media_assets where id::text like '<prefix>%'`.
@@ -257,10 +310,10 @@ REST for the gateway so it does not depend on that.
 ## Things not verified here
 
 - DeepInfra's maximum upload size for this model (not stated anywhere found).
-- Whether DeepInfra's `verbose_json` words carry the `speaker` field the model produces.
+- ~~Whether DeepInfra's `verbose_json` words carry the `speaker` field the model produces.~~ They do not (2026-11-05): no `speaker` on any word, `no_speech_prob`/`avg_logprob` are literal zeros.
 - ~~Whether `google/gemini-3.5-transcribe` returns word-level timing through the gateway.~~ Measured 2026-11-05: it returns nothing at all through the gateway (see bake-off results).
 - Whether Nemotron 3.5 Transcribe is on build.nvidia.com today (sources are late October).
-- Any WER on actual clinic footage for Nemotron. The Scribe/Whisper numbers in the bake-off section are measured on 20 real clips; the Nemotron numbers above are still public benchmarks.
+- ~~Any WER on actual clinic footage for Nemotron.~~ Measured 2026-11-05 on the same 20 clips; see the bake-off section.
 
 ## Sources
 
