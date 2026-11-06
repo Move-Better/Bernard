@@ -24,7 +24,7 @@ import { join } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import ffmpegPath from 'ffmpeg-static'
-import { transcribeToSegments } from './whisper.js'
+import { transcribeToSegments } from './transcribe.js'
 
 const FFMPEG_BIN = process.env.FFMPEG_PATH || ffmpegPath || 'ffmpeg'
 

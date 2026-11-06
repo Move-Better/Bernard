@@ -11,7 +11,7 @@
 //
 // Response: { staffId, interviewId }
 //
-// Requires OPENAI_API_KEY for Whisper. The handler returns a clear 500 if the
+// Requires ELEVENLABS_API_KEY (Scribe v2). The handler returns a clear 500 if the
 // key is missing so the error is obvious in Vercel logs.
 //
 // Runtime notes:
@@ -35,10 +35,11 @@ import { createClerkClient } from '@clerk/backend'
 import { requireRole } from './_lib/auth.js'
 import { workspaceContext } from './_lib/workspaceContext.js'
 import { enforceLimit } from './_lib/ratelimit.js'
+import { transcribeBufferToText } from './_lib/transcribe.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
-const OPENAI_KEY   = process.env.OPENAI_API_KEY
+const SCRIBE_KEY   = process.env.ELEVENLABS_API_KEY
 
 // 25 MB — OpenAI Whisper's hard limit per file.
 const WHISPER_MAX_BYTES = 25 * 1024 * 1024
@@ -109,8 +110,8 @@ export default async function handler(req, res) {
 
   // ── 1. Buffer audio body ──────────────────────────────────────────────────
   // We buffer (rather than stream) so the same bytes go to Blob upload AND
-  // to the Whisper FormData POST without a second round-trip to the blob URL.
-  // The 25MB Whisper limit bounds the maximum buffer size.
+  // to the transcription POST without a second round-trip to the blob URL.
+  // The cap bounds the buffer, not the vendor (Scribe accepts far larger).
   let audioBuffer
   try {
     audioBuffer = await readBody(req, WHISPER_MAX_BYTES)
@@ -137,33 +138,18 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: 'Audio upload failed — please try again.' })
   }
 
-  // ── 3. Transcribe via OpenAI Whisper ─────────────────────────────────────
-  if (!OPENAI_KEY) {
-    console.error('[voice-memo] OPENAI_API_KEY is not set — transcription unavailable')
-    return res.status(500).json({ error: 'Transcription service is not configured on this deployment. Set OPENAI_API_KEY.' })
+  // ── 3. Transcribe via Scribe (shared seam: api/_lib/transcribe.js) ──────
+  if (!SCRIBE_KEY) {
+    console.error('[voice-memo] ELEVENLABS_API_KEY is not set — transcription unavailable')
+    return res.status(500).json({ error: 'Transcription service is not configured on this deployment. Set ELEVENLABS_API_KEY.' })
   }
 
   let transcript
   try {
-    // Whisper requires a multipart/form-data POST with the audio file.
-    // Use the file extension as a hint so Whisper picks the right decoder.
+    // File extension is a hint so the vendor picks the right decoder.
     const ext  = rawFilename.split('.').pop()?.toLowerCase() || 'webm'
-    const form = new FormData()
-    form.append('file', new Blob([audioBuffer], { type: contentType }), `audio.${ext}`)
-    form.append('model', 'whisper-1')
-    form.append('response_format', 'text')
-
-    const wRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${OPENAI_KEY}` },
-      body: form,
-    })
-    if (!wRes.ok) {
-      const errTxt = await wRes.text().catch(() => '')
-      throw new Error(`Whisper ${wRes.status}: ${errTxt.slice(0, 200)}`)
-    }
-    transcript = (await wRes.text()).trim()
-    if (!transcript) throw new Error('Whisper returned an empty transcript')
+    transcript = await transcribeBufferToText(audioBuffer, { fileName: `audio.${ext}`, mimeType: contentType })
+    if (!transcript) throw new Error('Transcription returned an empty transcript')
   } catch (e) {
     console.error(`[voice-memo] transcription error for ws=${ws.slug}: ${e?.message}`)
     return res.status(502).json({ error: 'transcription_failed' })

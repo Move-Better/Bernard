@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { isHallucinatedTranscript } from '../../api/_lib/whisper.js'
+import { isHallucinatedTranscript } from '../../api/_lib/transcribe.js'
 
 // Whisper returns its YouTube-outro filler on silent audio instead of nothing.
 // These are the FOUR texts actually observed in prod on 2026-07-25, across 17
 // of 448 transcripts — every one of them the entire transcript, never a phrase
-// appended to real speech. See api/_lib/whisper.js.
+// appended to real speech. See api/_lib/transcribe.js.
 const OBSERVED_IN_PROD = [
   ['Thank you for watching', 13],
   ['Thanks for watching', 2],

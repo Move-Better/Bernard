@@ -13,7 +13,7 @@
 
 // USD rate card (provider list prices, rounded conservatively).
 export const RATES = {
-  transcribePerSec: 0.006 / 60,   // Whisper $0.006/min
+  transcribePerSec: 0.22 / 3600,  // ElevenLabs Scribe v2 USD 0.22/hr (swapped from Whisper 2026-11)
   // voice_sec counts LIVE VOICE-INTERVIEW seconds (interviews.realtime_voice_
   // seconds — OpenAI Realtime), not TTS narration. ~$0.18/min is a blended
   // input+output audio rate for a realtime conversation.

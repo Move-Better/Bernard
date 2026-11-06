@@ -75,13 +75,13 @@
  *   node scripts/backfill-transcript-words.mjs --fill-empty --dry-run
  *   node scripts/backfill-transcript-words.mjs --fill-empty --purpose=interview
  *
- * Requires: MULTITENANT_DATABASE_URL + OPENAI_API_KEY.
+ * Requires: MULTITENANT_DATABASE_URL + ELEVENLABS_API_KEY.
  */
 
 import pg from 'pg'
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { unlink as unlinkP, stat as statP } from 'node:fs/promises'
-import { transcribeToSegmentsAndWords } from '../api/_lib/whisper.js'
+import { transcribeToSegmentsAndWords } from '../api/_lib/transcribe.js'
 import { runFfmpegWithRetry } from './lib/ffmpegRun.mjs'
 
 // ---------------------------------------------------------------------------
@@ -124,8 +124,8 @@ try {
 
 const dbUrl = process.env.MULTITENANT_DATABASE_URL
 if (!dbUrl) { console.error('ERROR: MULTITENANT_DATABASE_URL not set'); process.exit(1) }
-if (!RESTORE_FILE && !process.env.OPENAI_API_KEY) {
-  console.error('ERROR: OPENAI_API_KEY not set'); process.exit(1)
+if (!RESTORE_FILE && !process.env.ELEVENLABS_API_KEY) {
+  console.error('ERROR: ELEVENLABS_API_KEY not set'); process.exit(1)
 }
 if (/REDACTED/.test(dbUrl)) {
   console.error('ERROR: MULTITENANT_DATABASE_URL is redacted (vercel env pull strips Sensitive vars).')

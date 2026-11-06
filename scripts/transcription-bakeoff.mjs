@@ -23,7 +23,7 @@ import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync }
 import { readFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import path from 'node:path'
-import { isHallucinatedTranscript } from '../api/_lib/whisper.js'
+import { isHallucinatedTranscript } from '../api/_lib/transcribe.js'
 
 const args = parseArgs(process.argv.slice(2))
 const OUT = path.resolve(args.out || './bakeoff-out')

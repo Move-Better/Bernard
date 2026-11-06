@@ -27,7 +27,7 @@ import ffmpegPath from 'ffmpeg-static'
 import sharp from 'sharp'
 import { buildBrandOverlaySvg, resolveBrandColors } from './brandRender.js'
 import { getBrandFont, ensureFontconfig } from './brandFonts.js'
-import { transcribeToSrt, transcribeToWords } from './whisper.js'
+import { transcribeToSrt, transcribeToWords } from './transcribe.js'
 import { buildKaraokeAss } from './karaokeCaptions.js'
 import { normalizeCuts, keptRanges, remapWords, remapOverlays, buildCutFilter, totalCut } from './transcriptCuts.js'
 import { gradeToFfmpeg } from './gradeParams.js'
@@ -453,7 +453,7 @@ export async function renderVideoChannel({ videoUrl, channel, captionText, works
       // No audio extract, no Whisper — the karaoke ASS is built from these below,
       // byte-identical to the live pass for the same words, at zero re-transcribe
       // cost. (Output audio is still mapped from the source in the final ffmpeg.)
-      // `end >= start` keeps zero-duration words (see whisper.js) — dropping
+      // `end >= start` keeps zero-duration words (see transcribe.js) — dropping
       // them here would undo the write-time fix in transit.
       karaokeWords = captionWords.filter(
         (w) => w && w.word && Number.isFinite(w.start) && Number.isFinite(w.end) && w.end >= w.start,

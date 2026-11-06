@@ -510,7 +510,7 @@ function CostBlock({ units, prevUnits, weekOffset, rangeLabel, mtdTotal, ytdTota
         </span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-border">
-        <CostLine icon={Mic} label="Transcription" units={`${fmtMinutes(u.transcribe_sec)} of audio · Whisper`} value={lines.transcription} />
+        <CostLine icon={Mic} label="Transcription" units={`${fmtMinutes(u.transcribe_sec)} of audio · Scribe`} value={lines.transcription} />
         <CostLine icon={Sparkles} label="AI writing" units={`${u.pieces} pieces · Claude`} value={lines.writing} />
         <CostLine icon={Video} label="Video / audio" units={`${fmtMinutes(u.video_sec)} encoded · Mux + ffmpeg`} value={lines.video} />
         <CostLine icon={Volume2} label="Voice interviews" units={`${fmtMinutes(u.voice_sec)} live voice · OpenAI Realtime`} value={lines.voice} />
