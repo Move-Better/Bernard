@@ -96,8 +96,9 @@ describe('normalizeScribeResponse', () => {
 })
 
 // The seam must stay single: no batch transcription may call OpenAI directly
-// again. The two realtime paths (realtime-session.js, twilioSip.js) use a
-// different, streaming model and are deliberately outside this guard.
+// again. The two realtime paths (realtime-session.js, twilioSip.js) produce
+// their transcript inside OpenAI's speech-to-speech session, so they stay on
+// an OpenAI model — pinned below to the one with no announced shutdown.
 describe('no batch caller bypasses the transcription seam', () => {
   const walk = (dir, out = []) => {
     for (const name of readdirSync(dir)) {
@@ -119,6 +120,20 @@ describe('no batch caller bypasses the transcription seam', () => {
   it('every batch caller imports the seam', () => {
     for (const p of ['api/voice-memo.js', 'api/handout/create.js', 'api/demo/transcribe.js', 'api/_lib/seminarTranscribe.js', 'api/_lib/brandRenderVideo.js', 'api/_lib/segmentDetect.js', 'api/_lib/callTranscript.js']) {
       expect(readFileSync(p, 'utf8')).toMatch(/from '(\.\.?\/)+(_lib\/)?transcribe\.js'/)
+    }
+  })
+  // OpenAI's 2026-08-26 notice retires whisper-1, gpt-4o-transcribe and
+  // gpt-4o-mini-transcribe (all variants) on 2027-02-26. Nothing under api/
+  // may name one as a model again.
+  it('no api/ file names a transcription model on the 2027-02-26 shutdown list', () => {
+    const offenders = files.filter((p) => /['"](gpt-4o-mini-transcribe|gpt-4o-transcribe)(-[a-z0-9-]+)?['"]/.test(readFileSync(p, 'utf8')))
+    expect(offenders).toEqual([])
+  })
+  it('both realtime paths set the in-session transcription model to gpt-live-transcribe', () => {
+    for (const p of ['api/realtime-session.js', 'api/_lib/twilioSip.js']) {
+      const src = readFileSync(p, 'utf8')
+      const models = [...src.matchAll(/transcription:\s*\{\s*model:\s*'([^']+)'/g)].map((m) => m[1])
+      expect(models, p).toEqual(['gpt-live-transcribe'])
     }
   })
 })
