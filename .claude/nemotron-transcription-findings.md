@@ -1,4 +1,4 @@
-# Nemotron 3.5 for transcription in Bernard — findings (2026-11-03)
+# Nemotron 3.5 for transcription in Bernard — findings (2026-11-03, bake-off added 2026-11-05)
 
 Research only. No code changed. Asked: "research using Nemotron 3.5 for transcription in
 Bernard instead of what is currently used — this would be used for adding voice-over to
@@ -25,7 +25,7 @@ uploaded videos."
 4. **Accuracy is better than Whisper on paper**, but the model card lists hallucinated
    speech as a known risk and says nothing about silence. Bernard's silent-b-roll
    hallucination filter stays regardless of vendor.
-5. **Recommendation:** do not adopt Nemotron on its own merits yet. Run one bake-off harness
+5. **Recommendation (updated 2026-11-05 after the bake-off below):** Scribe v2 via the gateway is the default to ship for the February deadline; it beat Whisper on real clinic footage on every axis karaoke captions care about, and Gemini returned nothing. Nemotron is still the untested challenger, blocked only on a DeepInfra key. Original plan: run one bake-off harness
    on real Bernard assets across the three candidates that keep word timestamps:
    `elevenlabs/scribe-v2` (already on the gateway, already a vendor), Nemotron 3.5 Transcribe
    via DeepInfra, and `google/gemini-3.5-transcribe` (gateway). Pick on measured timestamp
@@ -176,13 +176,91 @@ One throwaway harness, same shape as the OLD-vs-NEW recipe in CLAUDE.md:
 Only then pick, then do the swap in `whisper.js` plus the four inline callers, update
 `costEstimate.js`, and keep `isHallucinatedTranscript` in place for every vendor.
 
+## Bake-off results (2026-11-05) — measured on 20 real `media_assets`
+
+Harness: `scripts/transcription-bakeoff.mjs` (runs the clips) + `scripts/transcription-bakeoff-render.mjs`
+(bakes each vendor's words into the real clip with the production `buildKaraokeAss` → ffmpeg-static
+`ass=` filter and tiles frames). Nothing is written to the DB or blob storage. Audio is extracted once
+per clip with ffmpeg (16 kHz mono MP3) so every vendor hears identical bytes. 731 s of audio in total:
+16 spoken clips (interview + b-roll with speech, 13–114 s) and 4 quiet b-roll clips (mean −31 to −36 dB).
+
+| vendor | route | ok | median wall / clip | words (stored Whisper = 1460) | zero-duration words | stacked-start words | silent-clip hallucination | speakers labelled | total wall for 731 s audio |
+|---|---|---|---|---|---|---|---|---|---|
+| `whisper-1` (fresh run) | OpenAI direct | 20/20 | 2.8 s | 1505 | 6.6 % | 4.9 % (12 clips) | 1 ("Thank you for watching my video", caught by filter) | 0 | 56 s |
+| Scribe v2 | ElevenLabs direct | 20/20 | 1.3 s | 1701 | 2.5 % | 0.9 % (9 clips) | 0 | 14 clips ≥2 speakers | 26 s |
+| Scribe v2 | AI Gateway REST | 20/20 | 1.7 s | 1709 | 3.2 % | 1.4 % (9 clips) | 0 | 14 clips | 36 s |
+| `gemini-3.5-transcribe` | AI Gateway REST **and** AI SDK 7.0.163 `transcribe()` | 20/20 HTTP 200 | 1.9 s | **0 on every clip** | – | – | – | – | 39 s |
+| Nemotron 3.5 Transcribe | DeepInfra | **not run** | | | | | | | |
+
+"Stacked-start" = a word whose start equals the previous word's start. That is the karaoke pile-up
+artefact: the bake renders both words in the same 10 ms slot and the line reads as duplicated or
+garbled speech. Timing agreement between Scribe and fresh Whisper on words both heard: median offset
+0.02 s, p90 0.36 s, so the two mostly agree on *when*; the disagreement is on *what* and on gaps.
+
+What the numbers and the baked frames actually showed:
+
+- **Whisper drops speech on noisy clips.** Asset `647aecbc` (48 s, a crowd/gym clip): Whisper returned
+  17 words, Scribe 64. Baked, the Whisper caption "got this What's up Thanks" sits on screen for ~15 s
+  while people are clearly talking; the Scribe bake follows the conversation ("You do this every year?
+  No, this is our first time"). This is the current production behaviour.
+- **Whisper's stacked zero-duration words are visible in the bake.** On `0f236696` the Whisper line
+  reads "Keep it in Keep it" and "in If you're blue stay"; the Scribe bake of the same seconds reads
+  "Squeeze your abs. Tight," and "Squeeze your glutes. Stay". Scribe also returns punctuation, which the
+  karaoke line-grouper currently throws away but a voice-over script would keep.
+- **Silence: Scribe returns empty, Whisper invents.** On the quietest clip (`4b9880b6`, −34 dB) Whisper
+  produced the classic "Thank you for watching my video" (the filter caught it); both Scribe routes
+  returned nothing. On the other three quiet clips there IS faint real speech and the vendors disagree
+  on how much of it to transcribe. Keep `isHallucinatedTranscript` on whichever vendor wins; it cost
+  nothing and still fired once in 20.
+- **Scribe is not deterministic between routes.** Same model, same bytes: direct vs gateway differed on
+  two quiet clips (`00cb52bd`: 0 vs 18 words; `bb736750`: 4 vs 0) and by ±1–3 words on four spoken
+  ones. Timing on shared words was identical. Expect run-to-run variance on marginal audio.
+- **Gemini 3.5 Transcribe is unusable through the gateway today.** HTTP 200, 336 audio input tokens
+  billed, zero output tokens, empty `text`, empty `segments`, no warning, on all 20 clips, as MP3 and as
+  WAV, with and without a language hint, via REST and via the current SDK. Gateway cost metadata still
+  charged $0.0097 for a 109 s clip ($0.32/hr, 3× Scribe's $0.0033 on the same clip). Not a request-shape
+  problem on our side; a provider/gateway-beta problem. Re-check before ever shortlisting it again.
+- **Nemotron was not measured** because Bernard has no DeepInfra account. The harness has the slot wired
+  (`DEEPINFRA_API_KEY`, OpenAI-compatible multipart, `verbose_json` word+segment). Minting the key is a
+  Q action; re-running only that vendor is one command (below).
+- **One Scribe frame showed two caption lines overlapping** ("good, you're good." drawn over "tight, tight.
+  Oh. You're") on `0f236696`. That is `groupWordsIntoLines` producing two Dialogue events whose windows
+  overlap when a word's `end` runs past the next line's `start`; it is a property of the line grouper,
+  not the vendor, and Whisper's quantised ends happen to hide it. Worth a clamp in `buildKaraokeAss`
+  (end of line N ≤ start of line N+1) before any vendor swap.
+
+**Reading:** on real clinic footage Scribe v2 beats the incumbent on every axis this feature cares
+about (fewer stacked words, no silent-clip invention, keeps speech Whisper drops, 2× faster, speaker
+labels for free, same vendor as the voice clone), and it is already reachable through the gateway with
+word timing in `providerMetadata.elevenlabs.words`. Nemotron remains the untested challenger on cost
+and on "readable" transcripts. The decision does not have to wait for it: Scribe v2 is a safe default
+for the February deadline, and Nemotron can be measured against it with the same harness the day a
+DeepInfra key exists.
+
+### Reproducing
+
+From the repo root, with the keys exported from the 1Password mount (`SUPABASE_SERVICE_KEY`,
+`OPENAI_API_KEY`, `ELEVENLABS_API_KEY`, `AI_GATEWAY_API_KEY`, optional `DEEPINFRA_API_KEY`):
+
+```
+node scripts/transcription-bakeoff.mjs --ids <ids.txt> --out <dir> --concurrency 3
+node scripts/transcription-bakeoff-render.mjs --out <dir> --asset <uuid> --url <blob_url> --vendors whisper,scribe
+```
+
+Add `--vendors nemotron` to run only the DeepInfra slot once the key exists. The 20 asset ids used:
+`fc1c28ad 876872d8 46013c99 449637f4 35baf738 da222163 996cb7e4 0f236696 c4fae4b8 07d1d45d 16b45b86
+26a2a5a1 383aab99 647aecbc 5342c5fc 3d100ef5` (spoken) and `4b9880b6 f5f870f9 bb736750 00cb52bd`
+(quiet b-roll); full UUIDs resolve with `select id from media_assets where id::text like '<prefix>%'`.
+Note the repo's `node_modules` carried `ai` 7.0.2 against a declared `^7.0.92`; the harness uses plain
+REST for the gateway so it does not depend on that.
+
 ## Things not verified here
 
 - DeepInfra's maximum upload size for this model (not stated anywhere found).
 - Whether DeepInfra's `verbose_json` words carry the `speaker` field the model produces.
-- Whether `google/gemini-3.5-transcribe` returns word-level timing through the gateway.
+- ~~Whether `google/gemini-3.5-transcribe` returns word-level timing through the gateway.~~ Measured 2026-11-05: it returns nothing at all through the gateway (see bake-off results).
 - Whether Nemotron 3.5 Transcribe is on build.nvidia.com today (sources are late October).
-- Any WER on actual clinic footage. Every number above is a public benchmark.
+- Any WER on actual clinic footage for Nemotron. The Scribe/Whisper numbers in the bake-off section are measured on 20 real clips; the Nemotron numbers above are still public benchmarks.
 
 ## Sources
 
