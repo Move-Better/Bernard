@@ -32,7 +32,7 @@ const RAW_DIR = path.join(OUT, 'raw')
 for (const d of [OUT, AUDIO_DIR, RAW_DIR]) mkdirSync(d, { recursive: true })
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wrqfrjhevkbbheymzezy.supabase.co'
-const VENDORS = (args.vendors || 'whisper,scribe,scribe-gw,gemini,nemotron').split(',').map((s) => s.trim()).filter(Boolean)
+const VENDORS = (args.vendors || 'whisper,scribe,scribe-gw,gemini,nemotron,nemotron-prompt').split(',').map((s) => s.trim()).filter(Boolean)
 const LIMIT = Number(args.limit) || Infinity
 const ASSET_CONCURRENCY = Number(args.concurrency) || 2
 
@@ -111,7 +111,17 @@ const vendors = {
     return gateway(mp3, 'google/gemini-3.5-transcribe', {})
   },
 
-  async nemotron(mp3) {
+  async nemotron(mp3) { return nemotron(mp3, {}) },
+
+  // Same model with a language hint and a generic domain prompt. Measured 2026-11-05: on a noisy
+  // gym clip the bare call misheard nearly every word; the prompt recovered most of it.
+  async 'nemotron-prompt'(mp3) {
+    return nemotron(mp3, { language: 'en', prompt: 'A chiropractor coaching a patient through exercises in a clinic gym. Short cues about posture, bracing, glutes, hips, breathing.' })
+  },
+}
+
+async function nemotron(mp3, extra) {
+  {
     const key = process.env.DEEPINFRA_API_KEY
     if (!key) return { status: 0, skipped: 'DEEPINFRA_API_KEY not set' }
     const form = new FormData()
@@ -120,11 +130,12 @@ const vendors = {
     form.append('response_format', 'verbose_json')
     form.append('timestamp_granularities[]', 'word')
     form.append('timestamp_granularities[]', 'segment')
+    for (const [k, v] of Object.entries(extra)) form.append(k, v)
     const r = await fetch('https://api.deepinfra.com/v1/openai/audio/transcriptions', { method: 'POST', headers: { Authorization: `Bearer ${key}` }, body: form })
     const raw = await r.json().catch(() => null)
     if (!r.ok) return { status: r.status, raw }
     return { status: r.status, raw, text: raw.text, words: (raw.words || []).map((w) => ({ word: w.word, start: w.start, end: w.end, speaker: w.speaker })), segments: (raw.segments || []).map((s) => ({ start: s.start, end: s.end, text: s.text })) }
-  },
+  }
 }
 
 async function gateway(mp3, modelId, providerOptions) {
