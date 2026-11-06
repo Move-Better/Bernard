@@ -28,15 +28,15 @@ import { join } from 'node:path'
 import ffmpegPath from 'ffmpeg-static'
 
 import { supabaseRest } from './supabaseRest.js'
-const OPENAI_KEY = process.env.OPENAI_API_KEY
-const WHISPER_URL = 'https://api.openai.com/v1/audio/transcriptions'
+import { transcribeBufferToText } from './transcribe.js'
+const SCRIBE_KEY = process.env.ELEVENLABS_API_KEY
 
-// Segment length. At mono 16kbps MP3 a 10-min segment is ~1.2 MB — far under
-// Whisper's 25 MB cap — and ~12 segments cover a 2-hour talk. Each Whisper call
+// Segment length. At mono 16kbps MP3 a 10-min segment is ~1.2 MB and ~12
+// segments cover a 2-hour talk. Each transcription call
 // transcribes ≤10 min of audio (~30–60s wall), so a bounded-concurrency batch
 // finishes well inside one 300s function budget.
 const SEGMENT_SECONDS = 600
-// Bounded concurrency for the Whisper fan-out. Enough to parallelize a 2-hour
+// Bounded concurrency for the transcription fan-out. Enough to parallelize a 2-hour
 // talk into ~2 waves without tripping rate limits.
 const MAX_CONCURRENT = 6
 
@@ -126,26 +126,16 @@ async function transcribeChunk(filePath) {
   const { size } = await stat(filePath)
   if (size === 0) return ''
   const buf = await readFile(filePath)
-  const form = new FormData()
-  form.append('file', new Blob([buf], { type: 'audio/mpeg' }), filePath.split('/').pop())
-  form.append('model', 'whisper-1')
-  form.append('response_format', 'text')
-  // Hard timeout on the OpenAI call. Without it, a hung Whisper request would
-  // hold the worker slot until the 300s Vercel wall SIGKILLs the instance — and
-  // a SIGKILL does NOT run our `finally`/catch, so the interview would strand at
+  // Hard timeout on the vendor call. Without it, a hung request would hold the
+  // worker slot until the 300s Vercel wall SIGKILLs the instance — and a SIGKILL
+  // does NOT run our `finally`/catch, so the interview would strand at
   // transcribe_status='processing' forever with no terminal write. Aborting at
   // 120s surfaces a normal error → the catch flips the row to 'failed'.
-  const res = await fetch(WHISPER_URL, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${OPENAI_KEY}` },
-    body: form,
+  return transcribeBufferToText(buf, {
+    fileName: filePath.split('/').pop(),
+    mimeType: 'audio/mpeg',
     signal: AbortSignal.timeout(120_000),
   })
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    throw new Error(`Whisper ${res.status}: ${body.slice(0, 200)}`)
-  }
-  return (await res.text()).trim()
 }
 
 // Transcribe all segments with bounded concurrency, preserving order.
@@ -195,9 +185,9 @@ export async function transcribeSeminar({ interviewId }) {
     return { ok: false, error: 'interview not found' }
   }
 
-  if (!OPENAI_KEY) {
+  if (!SCRIBE_KEY) {
     await setStatus(interviewId, 'failed', {}, { workspaceId, onlyIfProcessing: true })
-    return { ok: false, error: 'OPENAI_API_KEY not set' }
+    return { ok: false, error: 'ELEVENLABS_API_KEY not set' }
   }
   if (!audioUrl) {
     await setStatus(interviewId, 'failed', {}, { workspaceId, onlyIfProcessing: true })

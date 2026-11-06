@@ -32,8 +32,9 @@ export const config = {
 }
 
 import { enforceLimit } from '../_lib/ratelimit.js'
+import { transcribeBufferToText } from '../_lib/transcribe.js'
 
-const OPENAI_KEY = process.env.OPENAI_API_KEY
+const SCRIBE_KEY = process.env.ELEVENLABS_API_KEY
 
 // Hard ceiling on the request body. A 90-second demo clip is ~1–2 MB even at a
 // generous bitrate; 8 MB leaves headroom for odd codecs while bounding both
@@ -110,9 +111,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'empty_audio', message: 'No audio came through — try again.' })
   }
 
-  // ── Transcribe via OpenAI Whisper ──────────────────────────────────────────
-  if (!OPENAI_KEY) {
-    console.error('[demo/transcribe] OPENAI_API_KEY is not set — transcription unavailable')
+  // ── Transcribe via Scribe (shared seam: api/_lib/transcribe.js) ───────────
+  if (!SCRIBE_KEY) {
+    console.error('[demo/transcribe] ELEVENLABS_API_KEY is not set — transcription unavailable')
     return res.status(500).json({
       error: 'not_configured',
       message: 'The demo is temporarily unavailable. Please try again later.',
@@ -122,21 +123,7 @@ export default async function handler(req, res) {
   let transcript
   try {
     const ext = extForContentType(contentType)
-    const form = new FormData()
-    form.append('file', new Blob([audioBuffer], { type: contentType }), `demo.${ext}`)
-    form.append('model', 'whisper-1')
-    form.append('response_format', 'text')
-
-    const wRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${OPENAI_KEY}` },
-      body: form,
-    })
-    if (!wRes.ok) {
-      const errTxt = await wRes.text().catch(() => '')
-      throw new Error(`Whisper ${wRes.status}: ${errTxt.slice(0, 200)}`)
-    }
-    transcript = (await wRes.text()).trim()
+    transcript = await transcribeBufferToText(audioBuffer, { fileName: `demo.${ext}`, mimeType: contentType })
   } catch (e) {
     console.error(`[demo/transcribe] transcription error: ${e?.stack || e?.message}`)
     return res.status(502).json({

@@ -77,7 +77,7 @@ export function sliceWordsToWindow(words, startSec, durationSec) {
     const we = Number(w.end)
     if (!Number.isFinite(ws) || !Number.isFinite(we)) continue
     // Zero-duration words (end === start) are real — see the note in
-    // whisper.js. They are a POINT, not a span, so they need their own
+    // transcribe.js. They are a POINT, not a span, so they need their own
     // containment test: a span is outside when it ends at/before the window
     // start, but a point at exactly `s` is INSIDE it.
     const isPoint = we === ws
@@ -184,7 +184,7 @@ export function karaokeLineText(line) {
 
 export function buildKaraokeAss({ words, width, height, captionPos = 'top', accentColor = '#FFFFFF', fontSizePx, fontName = 'Inter', anim = 'none', style = 'bold' }) {
   if (!Array.isArray(words) || words.length === 0) return null
-  // `end >= start` — zero-duration words are kept (see whisper.js). The \k
+  // `end >= start` — zero-duration words are kept (see transcribe.js). The \k
   // duration below already floors at 1 centisecond, so a point word renders as
   // a 10ms highlight rather than being dropped from the line.
   const usable = words.filter((w) => w && w.word && Number.isFinite(w.start) && Number.isFinite(w.end) && w.end >= w.start)
@@ -220,9 +220,19 @@ export function buildKaraokeAss({ words, width, height, captionPos = 'top', acce
 
   const prefix = entrancePrefix(effAnim)
   const events = ['Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text']
-  for (const line of groupWordsIntoLines(usable)) {
+  const lines = groupWordsIntoLines(usable)
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
     const start = line[0].start
-    const end = line[line.length - 1].end + 0.12   // brief tail so the last word lingers
+    // Brief tail so the last word lingers — but never past the next line's
+    // start, or two Dialogue events overlap and libass draws both lines at
+    // once (seen on a real Scribe transcript in the 2026-11 bake-off, where a
+    // word's end ran past the following line's first word). Whisper's
+    // quantised ends happened to hide this; it is a property of the grouper,
+    // not the vendor. Keep at least a 10 ms span so a point line still renders.
+    const rawEnd = line[line.length - 1].end + 0.12
+    const next = lines[i + 1]
+    const end = next ? Math.max(start + 0.01, Math.min(rawEnd, next[0].start)) : rawEnd
     // 'fade' has no per-word karaoke (a cross-fading line reads calmer); pop/none
     // keep the \k fill-to-accent timing.
     const text = effAnim === 'fade'

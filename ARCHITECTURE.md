@@ -334,7 +334,7 @@ crashes often have empty `.message`.
 ### `AbortSignal.timeout()` on every external fetch — mandatory
 
 Every `fetch()` call that reaches Supabase REST, an external API (ElevenLabs, Mux, Runway,
-Google OAuth, OpenAI Whisper, Buffer, Resend, Stripe, etc.), or any other network resource
+Google OAuth, ElevenLabs Scribe, Buffer, Resend, Stripe, etc.), or any other network resource
 **must** carry `AbortSignal.timeout(N)`. Without it, a slow or unresponsive upstream holds the
 Vercel function slot open until the 300s wall — burning a slot that could serve other requests.
 
@@ -368,7 +368,7 @@ file's own header comment for the full `opts` contract (`timeoutMs`, `contentTyp
 - `workspaceContext()` cache-miss fetch: 10s (critical path — affects every request)
 - `workspaceById()` background fetch: 10s
 - Google OAuth token exchange/refresh: 15s
-- ElevenLabs, OpenAI Whisper, standard external APIs: 15–30s
+- ElevenLabs (TTS + Scribe transcription), standard external APIs: 15–30s
 - Runway video submit: 30s; poll: 15s; large download: 120s
 - Jina AI, import-url fetches: 25s
 

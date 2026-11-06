@@ -290,6 +290,17 @@ Contact sheets for every claim above are reproducible with `transcription-bakeof
 against the `out2` run; the two decisive ones are `647aecbc` (Scribe vs Nemotron+prompt tracking a
 crowd) and `4b9880b6` (Nemotron captioning silence).
 
+### Shipped (2026-11-05)
+
+Batch transcription moved to Scribe v2 in `api/_lib/transcribe.js` (replaces `whisper.js`): all five
+exported shapes kept, segments and SRT derived from Scribe's word stream with pure tested helpers,
+`transcribeWithSpeakers` now returns real speaker turns, `transcribeBufferToText` added for the four
+handlers that held upload bytes (voice memo, handout, demo, seminar chunks), which no longer call
+OpenAI directly. The hallucination filter stays. `buildKaraokeAss` now clamps each line's End to the
+next line's Start (the overlap found above). `ELEVENLABS_API_KEY` already existed on prod and preview.
+Still on OpenAI: the two realtime paths (`realtime-session.js`, `twilioSip.js`, `gpt-4o-mini-transcribe`),
+which are a different, streaming problem and still need a home before 2027-02-26.
+
 ### Reproducing
 
 From the repo root, with the keys exported from the 1Password mount (`SUPABASE_SERVICE_KEY`,
