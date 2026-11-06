@@ -298,8 +298,38 @@ exported shapes kept, segments and SRT derived from Scribe's word stream with pu
 handlers that held upload bytes (voice memo, handout, demo, seminar chunks), which no longer call
 OpenAI directly. The hallucination filter stays. `buildKaraokeAss` now clamps each line's End to the
 next line's Start (the overlap found above). `ELEVENLABS_API_KEY` already existed on prod and preview.
-Still on OpenAI: the two realtime paths (`realtime-session.js`, `twilioSip.js`, `gpt-4o-mini-transcribe`),
-which are a different, streaming problem and still need a home before 2027-02-26.
+The two realtime paths (`realtime-session.js`, `twilioSip.js`) are a different, streaming problem; see
+the Realtime section below.
+
+## Realtime interview paths (2026-11-05)
+
+Both live-interview paths (`api/realtime-session.js` for the browser WebRTC interview, `api/_lib/twilioSip.js`
+for the outbound phone call) get their user-side transcript from `audio.input.transcription.model` INSIDE
+OpenAI's speech-to-speech session: the deltas arrive on the same data channel / SIP session as Bernard's
+voice. That makes the model choice inseparable from the OpenAI session. A second stream to
+`elevenlabs/scribe-v2-realtime` would need the browser to fork the microphone into a second WebSocket
+(and reconcile two transcripts of one utterance), and the SIP path never has the audio server-side at all.
+So the realtime half stays on OpenAI, on whichever model it names as the successor.
+
+Checked against the vendor's own pages on 2026-11-05 (raw HTML, not a summary):
+
+| Source | What it says |
+|---|---|
+| `developers.openai.com/api/docs/deprecations` | `whisper-1`, `gpt-4o-transcribe`, `gpt-4o-mini-transcribe` (+ dated variants, `-diarize`): shutdown 2027-02-26, replacement **`gpt-live-transcribe` or `gpt-transcribe`** |
+| `…/guides/realtime-transcription` | "Start with `gpt-live-transcribe`" — "returns transcript deltas as speech arrives and a final transcript when your application commits each audio turn"; `gpt-transcribe` only when transcription must begin after a committed turn or you need detected-language output |
+| `…/reference/…/client_secrets/create` | `session.audio.input.transcription.model` for a `type: "realtime"` session enumerates `gpt-live-transcribe` and `gpt-transcribe` alongside the retiring ids |
+| Empirical mint | `POST /v1/realtime/client_secrets` with `gpt-realtime-2.1` + `transcription: { model: 'gpt-live-transcribe' }` returned 200 and echoed the model back (same for `gpt-transcribe`); 60-second secret, nothing else created |
+
+Shipped: both paths now set `gpt-live-transcribe`. The `.delta` cadence the browser UI relies on
+(`PhoneCall.jsx` renders `conversation.item.input_audio_transcription.delta` as an italic partial turn,
+then promotes on `.completed`) is exactly what the vendor documents for this model; `gpt-transcribe` was
+not chosen because it waits for the committed turn, which is the whisper-1 behaviour we moved away from.
+The client's hallucination filter (`isLikelyWhisperHallucination`, short-speech suppression) is unchanged
+and still applies. `tests/lib/transcribeShapes.test.js` now pins both files to `gpt-live-transcribe` and
+fails if any `api/` file names a shutdown-listed transcription model again.
+
+Still OpenAI-dependent, by design: `gpt-realtime-2.1` itself (the voice model) has no announced shutdown.
+Re-check the deprecations page when it does.
 
 ### Reproducing
 

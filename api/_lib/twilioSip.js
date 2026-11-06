@@ -145,7 +145,10 @@ export async function acceptOpenAiCall({ callId, instructions }) {
     audio: {
       output: { voice: REALTIME_VOICE },
       input: {
-        transcription: { model: 'gpt-4o-mini-transcribe' },
+        // gpt-live-transcribe: OpenAI's named successor to gpt-4o-mini-transcribe
+        // (shutdown 2027-02-26); same in-session transcript, streams deltas.
+        // Keep in step with api/realtime-session.js.
+        transcription: { model: 'gpt-live-transcribe' },
         // Semantic VAD (v1.1): a model decides when the clinician has actually
         // FINISHED a thought, instead of a fixed silence timer. The pilot's
         // server_vad @ 2500ms silence still cut the clinician off on a

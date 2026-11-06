@@ -13,7 +13,7 @@
 //   3. This handler verifies the workspace has realtime_voice_enabled=true,
 //      auth + tenant ownership, and that the interview belongs to the active
 //      workspace. Then it POSTs OpenAI's /v1/realtime/client_secrets with the
-//      Bernard voice + Whisper input transcription enabled.
+//      Bernard voice + gpt-live-transcribe input transcription enabled.
 //   4. Returns { clientSecret, expiresAt, model } to the browser.
 //   5. The full system prompt is sent BY THE BROWSER via a session.update
 //      data-channel event once the WebRTC connection is established — this
@@ -192,11 +192,16 @@ export default async function handler(req, res) {
       input: {
         // Streaming transcription. whisper-1 (our first pick) only emits a
         // single end-of-turn .completed event — no live partial deltas — so
-        // the user couldn't see their words appear while speaking. Switched
-        // to gpt-4o-mini-transcribe which streams .delta events every
-        // ~200-500ms during the utterance. Cheaper than gpt-4o-transcribe,
-        // good enough accuracy for interview-grade transcripts.
-        transcription: { model: 'gpt-4o-mini-transcribe' },
+        // the user couldn't see their words appear while speaking. We then
+        // ran gpt-4o-mini-transcribe, which streams .delta events every
+        // ~200-500ms during the utterance; OpenAI shuts it down 2027-02-26
+        // (deprecations page, 2026-08-26 notice) and names gpt-live-transcribe
+        // as the replacement that "returns transcript deltas as speech
+        // arrives". The transcript is produced INSIDE this speech-to-speech
+        // session, so the model must be one OpenAI accepts here (a separate
+        // Scribe stream would mean a second mic tap in the browser).
+        // Verified 2026-11-05: /v1/realtime/client_secrets accepts this id.
+        transcription: { model: 'gpt-live-transcribe' },
         // Turn-detection — third revision after smokes #2 and #3.
         //
         // The breakthrough learning from smoke #3: Whisper hallucinates on
