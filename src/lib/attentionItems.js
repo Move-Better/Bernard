@@ -268,7 +268,9 @@ export function buildAttentionItems({
       kind: 'blog',
       title: stripStoryDatePrefix(post.title || post.topic) || 'Blog draft',
       meta: 'Blog draft waiting on your read',
-      to: '/week',
+      // Straight to the draft, where the author approves it (one approval is
+      // the whole approval for a blog, 2026-08-29). /week was a list to hunt in.
+      to: post.id ? `/publish/${post.id}` : '/week',
       cta: 'Read',
       sortAt: Date.parse(post.created_at || '') || 0,
     })
