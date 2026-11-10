@@ -136,12 +136,7 @@ function HealthCell({ ch }) {
   )
 }
 
-// `embedded`: true when rendered as a section inside CombinedHome (an
-// owner who is ALSO a clinician — see .claude/decisions.md 2026-07-29
-// "combined owner home"). Suppresses the standalone page greeting in favor
-// of a section label, since CombinedHome owns the single page-level
-// greeting.
-export default function ProducerHome({ embedded = false }) {
+export default function ProducerHome() {
   useDocumentTitle('Home')
   const { user } = useUser()
   const ws = useWorkspace()
@@ -155,9 +150,8 @@ export default function ProducerHome({ embedded = false }) {
   const selfStaffId = useSelfStaffId()
 
   // Own approvals: the same three already-own-scoped sources TeamHome reads
-  // (shared query keys, so CombinedHome pays for them once). Not fetched when
-  // embedded: CombinedHome's practice section below already lists them.
-  const ownEnabled = !embedded && !!selfStaffId
+  // (shared query keys, so switching Home views pays for them once).
+  const ownEnabled = !!selfStaffId
   const { data: weekData } = useQuery({
     queryKey: ['week-summary'], queryFn: () => apiFetch('/api/content-plan/week-summary'),
     staleTime: 5 * 60_000, refetchOnWindowFocus: false, enabled: ownEnabled,
@@ -181,7 +175,7 @@ export default function ProducerHome({ embedded = false }) {
   const queue = data?.queue || []
   const ledger = data?.ledger || { yours: [], clinicians: [] }
   // Your own pending work is not "waiting on your clinicians" — it is yours
-  // (the row above when standalone, the practice section when embedded).
+  // (the row above).
   const waiting = (data?.waitingOnClinicians || []).filter((w) => !selfStaffId || w.staffId !== selfStaffId)
   const channels = data?.health?.channels || []
 
@@ -210,24 +204,13 @@ export default function ProducerHome({ embedded = false }) {
   }
 
   return (
-    <div className={embedded ? 'flex flex-col gap-6' : 'flex flex-col gap-6 py-6'}>
+    <div className="flex flex-col gap-6 py-6">
       <div>
-        {embedded ? (
-          // Name the hat. CombinedHome stacks this queue above Home's practice
-          // card, and without saying which role each section speaks to, two
-          // lists of work on one page read as one list that disagrees with
-          // itself (Q, 2026-08-11).
-          <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-            Your queue <span className="text-muted-foreground/70">· as the producer</span>
-          </h2>
-        ) : (
-          // ViewAsSwitch renders only for an owner (an owner with no clinician
-          // profile lands here rather than on CombinedHome).
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground">{greeting}</h1>
-            <ViewAsSwitch />
-          </div>
-        )}
+        {/* ViewAsSwitch renders only for an owner previewing the producer view. */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground">{greeting}</h1>
+          <ViewAsSwitch />
+        </div>
         {!isLoading && (
           <p className="mt-0.5 text-sm text-muted-foreground">
             {headline}
@@ -238,7 +221,7 @@ export default function ProducerHome({ embedded = false }) {
       </div>
 
       <section>
-        {!embedded && <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Your queue</h2>}
+        <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Your queue</h2>
         {isLoading ? <QueueSkeleton /> : (
           queue.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
