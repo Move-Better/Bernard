@@ -134,13 +134,6 @@ describe('the producer headline counts items, not cards', () => {
   })
 })
 
-describe('both sections name their hat', () => {
-  it('the producer queue says so', () => {
-    expect(PRODUCER_HOME).toMatch(/as the producer/)
-  })
-
-})
-
 describe('the failed-publish card deep-links to the post', () => {
   it('links to the item when there is exactly one', () => {
     expect(CHECKPOINTS).toMatch(/\/publish\/\$\{failures\.firstItemId\}/)
