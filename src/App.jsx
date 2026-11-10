@@ -16,11 +16,11 @@ import {
 } from '@clerk/react'
 import Layout from '@/components/Layout'
 import { getPendingAnnouncement } from '@/lib/announcements'
-import { usePermissionTier } from '@/lib/usePermissionTier'
-import { useUserRole } from '@/lib/useUserRole'
+import { useExperience } from '@/lib/useExperience'
+import { EXPERIENCE_OWNER, EXPERIENCE_PRODUCER } from '@/lib/experience'
 import { useSelfStaffId } from '@/lib/useSelfStaffId'
 import { BERNARD_PRIMARY_HSL } from '@/lib/brand'
-const Home = lazy(() => import('@/pages/Home'))
+const TeamHome = lazy(() => import('@/pages/TeamHome'))
 const ProducerHome = lazy(() => import('@/pages/ProducerHome'))
 const CombinedHome = lazy(() => import('@/pages/CombinedHome'))
 const WhatsNew = lazy(() => import('@/pages/WhatsNew'))
@@ -585,13 +585,19 @@ function guarded(node) {
 // keyed on whether they have their own linked staff/clinician profile
 // (useSelfStaffId). An owner with no staff row (purely administrative) still
 // gets ProducerHome alone.
+//
+// 2026-11-09 (Q, "One screen per role"): the fork now reads useExperience(),
+// the same decision the sidebar reads, so the two can never disagree. The
+// person's Access level alone picks the screen. Team members get TeamHome (two
+// jobs: the weekly call and approving their own work). Before this, the tier
+// read in /api/workspace/me had failed for everyone since 2026-05-29, so every
+// Move Better login fell through to the owner branch.
 function HomeRouter() {
-  const { isOwner, isProducer, tier } = usePermissionTier()
-  const { role } = useUserRole()
+  const { experience } = useExperience()
   const selfStaffId = useSelfStaffId()
-  const isOwnerEquivalent = isOwner || (!tier && role === 'admin')
-  if (isOwnerEquivalent) return selfStaffId ? <CombinedHome /> : <ProducerHome />
-  return isProducer ? <ProducerHome /> : <Home />
+  if (experience === EXPERIENCE_OWNER) return selfStaffId ? <CombinedHome /> : <ProducerHome />
+  if (experience === EXPERIENCE_PRODUCER) return <ProducerHome />
+  return <TeamHome />
 }
 
 // Legacy redirect: /output/:staffId/:interviewId → /stories/:interviewId

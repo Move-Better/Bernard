@@ -443,6 +443,14 @@ function sanitizePublishIntent(value, existing) {
   return out
 }
 
+// Columns the caller's tier read selects from `staff`. Exported so a test can
+// check every one exists in supabase/expected-schema.json: a single missing
+// column makes PostgREST reject the read, the handler's best-effort branch
+// returns null, and every user's tier silently becomes null. That happened from
+// 2026-05-29 to 2026-11-09 (producer_onboarded_at), which put every Move Better
+// login on the owner's screen.
+export const TIER_ROW_SELECT = 'permission_tier,capability_overrides'
+
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
@@ -572,7 +580,7 @@ async function handler(req, res) {
           const ctr = await sb(
             `staff?user_id=eq.${encodeURIComponent(auth.userId)}` +
             `&workspace_id=eq.${encodeURIComponent(workspace.id)}` +
-            `&select=permission_tier,producer_onboarded_at,capability_overrides&limit=1`
+            `&select=${TIER_ROW_SELECT}&limit=1`
           )
           if (ctr.ok) {
             const rows = await ctr.json().catch(() => [])
@@ -626,7 +634,11 @@ async function handler(req, res) {
     ])
 
     const current_user_tier = tierRow?.permission_tier || null
-    const current_user_producer_onboarded_at = tierRow?.producer_onboarded_at || null
+    // producer_onboarded_at was never created in prod (migration 093 targeted the
+    // pre-rename `clinicians` table and was not applied), and asking for it made
+    // PostgREST reject the whole tier read. Kept in the response as null so an
+    // older client that reads it still gets the shape it expects.
+    const current_user_producer_onboarded_at = null
     const current_user_capability_overrides = tierRow?.capability_overrides || {}
 
     // Phase 4 PR 3: resolve the user's effective capability set. Matches the

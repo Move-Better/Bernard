@@ -9,7 +9,7 @@ import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
   Check, UserCircle, Mic2, BookOpen, PenLine, Pickaxe, Wrench,
   LayoutDashboard, Newspaper, FolderOpen, BarChart3, CalendarRange, Megaphone,
-  TrendingUp, Gauge, Globe, Bot,
+  TrendingUp, Gauge, Globe, Bot, MoreHorizontal,
 } from 'lucide-react'
 import { FeedbackWidget } from '@/components/FeedbackWidget'
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,8 @@ import { workspace as STATIC_WORKSPACE } from '@/lib/workspace'
 import { BERNARD_LOGO_URL, BERNARD_LOGO_LIGHT_URL } from '@/lib/brand'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useUserRole } from '@/lib/useUserRole'
-import { usePermissionTier } from '@/lib/usePermissionTier'
+import { useExperience } from '@/lib/useExperience'
+import { NAV_LAYOUT, BOTTOM_LINKS, EXPERIENCE_OWNER } from '@/lib/experience'
 import { usePlatformAdmin } from '@/lib/usePlatformAdmin'
 import { usePermission } from '@/lib/usePermission'
 import {
@@ -33,99 +34,65 @@ import TrialBanner from '@/components/TrialBanner'
 
 const APP_BYLINE = 'Voice-faithful clinical content'
 
-// Primary navigation, grouped to mirror the producer journey. The first
-// (unlabelled) group holds the two top-level surfaces — Home (personal) and
-// Overview (clinic-wide) — then the work spine (Produce), the asset pool
-// (Library), and the standalone Tools. The active item tracks the current
-// stage as the user moves through the flow. All items have icons so they
-// render correctly in collapsed (icon-only) mode.
-const NAV_SECTIONS = [
-  {
-    items: [
-      // No capability gate — Home now forks by permission_tier (HomeRouter in
-      // App.jsx) so it's meaningful for every role, including producers, who
-      // previously had no Home nav link at all because CAP_INTERVIEW_START
-      // (clinician-only by default) hid it (found while adding ProducerHome,
-      // 2026-07-29 — see .claude/decisions.md).
-      { to: '/',         label: 'Home',     match: (p) => p === '/',                  icon: LayoutDashboard },
-      // Analytics — grouped flyout for the tenant-facing measurement surfaces
-      // (Overview, Insights, SEO). Collapses 3 top-level icons into 1; each
-      // item keeps its own gating and still routes to its existing page.
-      // Usage (internal adoption metrics, not clinic performance) lives in
-      // the Tools flyout below, next to Admin — same audience, same purpose.
-      {
-        label: 'Analytics', icon: BarChart3,
-        flyoutItems: [
-          // Overview — clinic-wide board (recap + calendar + campaigns). Editor-gated.
-          { to: '/overview', label: 'Overview', hint: 'Clinic', match: (p) => p.startsWith('/overview'), icon: Building2,
-            requiresEditor: true },
-          // Insights — per-asset performance dashboard. Editor-gated like Overview.
-          { to: '/analytics', label: 'Insights', hint: 'Performance', match: (p) => p.startsWith('/analytics'), icon: BarChart3,
-            requiresEditor: true },
-          // SEO Opportunities — search demand → content + advisory site fixes. Editor-gated.
-          { to: '/seo', label: 'SEO', hint: 'Opportunities', match: (p) => p.startsWith('/seo'), icon: TrendingUp,
-            requiresEditor: true },
-        ],
-      },
-    ],
+// Every sidebar destination, keyed. WHICH of these a person sees, and in what
+// grouping, is decided per screen by NAV_LAYOUT in @/lib/experience (Q,
+// 2026-11-09: the person's Access level picks their screen). Each item keeps
+// its own gates below, applied on top of the layout. All items have icons so
+// they render correctly in collapsed (icon-only) mode.
+//
+// Hiding an item is presentation, not authorization: every route stays
+// reachable by URL and every server check is unchanged.
+const NAV_ITEMS = {
+  // No capability gate — Home forks by screen (HomeRouter in App.jsx), so it's
+  // meaningful for every role.
+  home:      { to: '/', label: 'Home', match: (p) => p === '/', icon: LayoutDashboard },
+  // Analytics flyout children (owner). Editor-gated.
+  overview:  { to: '/overview', label: 'Overview', hint: 'Clinic', match: (p) => p.startsWith('/overview'), icon: Building2, requiresEditor: true },
+  insights:  { to: '/analytics', label: 'Insights', hint: 'Performance', match: (p) => p.startsWith('/analytics'), icon: BarChart3, requiresEditor: true },
+  seo:       { to: '/seo', label: 'SEO', hint: 'Opportunities', match: (p) => p.startsWith('/seo'), icon: TrendingUp, requiresEditor: true },
+  // Your week (F2.3) — the plan/review hub: review + approve the composed week.
+  week:      { to: '/week', label: 'Your week', hint: 'Plan · approve', match: (p) => p.startsWith('/week'), icon: CalendarRange, requiresEditor: true },
+  // Bernard — the Standing Producer's workday feed. Only once the workspace
+  // has hired Bernard (producer_config.enabled).
+  producer:  { to: '/producer', label: 'Bernard', hint: 'Workday', match: (p) => p.startsWith('/producer'), icon: Bot, showWhen: (ws) => ws?.producer_config?.enabled },
+  stories:   { to: '/stories', label: 'Stories', hint: 'Stories', match: (p) => p.startsWith('/stories'), icon: Newspaper, requiresCapability: CAP_INTERVIEW_START },
+  // Team-member screen: the same Stories list, filtered to their own.
+  'my-stories': {
+    to: (selfStaffId) => (selfStaffId ? `/stories?staff=${encodeURIComponent(selfStaffId)}` : '/stories?owner=me'),
+    label: 'My stories', match: (p) => p.startsWith('/stories'), icon: Newspaper,
   },
-  {
-    label: 'Produce',
-    items: [
-      // Your week (F2.3) — the Strategist's plan/review hub: review + approve the
-      // composed week. Supersedes the Review Inbox (which redirects to /week).
-      { to: '/week',       label: 'Your week',  hint: 'Plan · approve',  match: (p) => p.startsWith('/week'),     icon: CalendarRange,
-        requiresEditor: true },
-      // Bernard — the Standing Producer's workday feed. Only appears once the
-      // workspace has hired Bernard (producer_config.enabled); any member sees it.
-      { to: '/producer',   label: 'Bernard',    hint: 'Workday',         match: (p) => p.startsWith('/producer'), icon: Bot,
-        showWhen: (ws) => ws?.producer_config?.enabled },
-      { to: '/stories',    label: 'Stories',    hint: 'Stories',         match: (p) => p.startsWith('/stories'),  icon: Newspaper,
-        requiresCapability: CAP_INTERVIEW_START, hideForProducer: true },
-      // Moment Miner — the cutting desk (video → clips). Sits between Stories and
-      // Publish so the Produce section reads as the pipeline: words → cut →
-      // assemble/ship. Still gated on the workspace's video pipeline opt-in.
-      { to: '/moments',    label: 'Moments', hint: 'Moments',        match: (p) => p.startsWith('/moments') || p.startsWith('/slate'), icon: Pickaxe },
-      // Ads — ad-creative export hub (Library/Moment Miner exports collect here,
-      // grouped by campaign). Editor-gated like the other producer surfaces.
-      { to: '/ads',        label: 'Ads',        hint: 'Paid creative', match: (p) => p.startsWith('/ads'), icon: Megaphone,
-        requiresEditor: true },
-    ],
-  },
-  {
-    label: 'Library',
-    items: [
-      { to: '/library', label: 'Library', match: (p) => p.startsWith('/library'), icon: FolderOpen },
-    ],
-  },
-  {
-    label: 'Tools',
-    items: [
-      // Tools — grouped flyout for the lower-frequency surfaces (Book, Write,
-      // Pre-Visit, Usage, Admin). Collapses 5 top-level icons into 1.
-      {
-        label: 'Tools', icon: Wrench,
-        flyoutItems: [
-          { to: '/book',      label: 'Book',      match: (p) => p.startsWith('/book'),      icon: BookOpen,
-            requiresCapability: CAP_INTERVIEW_START, hideForProducer: true },
-          { to: '/write',     label: 'Write',     match: (p) => p.startsWith('/write'),     icon: PenLine,
-            hideWhenBookMode: 'group', requiresCapability: CAP_INTERVIEW_START, hideForProducer: true },
-          { to: '/pre-visit', label: 'Pre-Visit', match: (p) => p.startsWith('/pre-visit'), icon: Mic2,
-            requiresCapability: CAP_INTERVIEW_START, hideForProducer: true },
-          // Usage — per-workspace adoption dashboard (internal metrics, not
-          // clinic performance — grouped with Admin, not Analytics).
-          // Admin/owner-gated (per-staff data).
-          { to: '/usage', label: 'Usage', hint: 'Adoption', match: (p) => p.startsWith('/usage'), icon: Gauge,
-            requiresAdmin: true },
-          // Admin — cross-tenant global usage. Visible only to platform operators
-          // (Clerk publicMetadata.platform_admin), distinct from per-workspace admin.
-          { to: '/admin', label: 'Admin', hint: 'All tenants', match: (p) => p.startsWith('/admin'), icon: Globe,
-            requiresPlatformAdmin: true },
-        ],
-      },
-    ],
-  },
-]
+  // Moments — the cutting desk (video → clips).
+  moments:   { to: '/moments', label: 'Moments', hint: 'Moments', match: (p) => p.startsWith('/moments') || p.startsWith('/slate'), icon: Pickaxe },
+  // Ads — ad-creative export hub. Editor-gated.
+  ads:       { to: '/ads', label: 'Ads', hint: 'Paid creative', match: (p) => p.startsWith('/ads'), icon: Megaphone, requiresEditor: true },
+  library:   { to: '/library', label: 'Library', match: (p) => p.startsWith('/library'), icon: FolderOpen },
+  // Tools flyout children (owner).
+  book:      { to: '/book', label: 'Book', match: (p) => p.startsWith('/book'), icon: BookOpen, requiresCapability: CAP_INTERVIEW_START },
+  write:     { to: '/write', label: 'Write', match: (p) => p.startsWith('/write'), icon: PenLine, hideWhenBookMode: 'group', requiresCapability: CAP_INTERVIEW_START },
+  previsit:  { to: '/pre-visit', label: 'Pre-Visit', match: (p) => p.startsWith('/pre-visit'), icon: Mic2, requiresCapability: CAP_INTERVIEW_START },
+  // Usage — per-workspace adoption dashboard. Admin/owner-gated (per-staff data).
+  usage:     { to: '/usage', label: 'Usage', hint: 'Adoption', match: (p) => p.startsWith('/usage'), icon: Gauge, requiresAdmin: true },
+  // Admin — cross-tenant global usage. Platform operators only.
+  admin:     { to: '/admin', label: 'Admin', hint: 'All tenants', match: (p) => p.startsWith('/admin'), icon: Globe, requiresPlatformAdmin: true },
+}
+
+const FLYOUT_ICONS = { Analytics: BarChart3, Tools: Wrench, More: MoreHorizontal }
+
+/** Turn a NAV_LAYOUT entry into the item shape the sidebar renders. */
+function layoutSections(experience, selfStaffId) {
+  const resolve = (key) => {
+    const def = NAV_ITEMS[key]
+    if (!def) return null
+    return { ...def, key, to: typeof def.to === 'function' ? def.to(selfStaffId) : def.to }
+  }
+  return (NAV_LAYOUT[experience] || NAV_LAYOUT[EXPERIENCE_OWNER]).map((section) => ({
+    label: section.label,
+    items: section.items.map((it) => (typeof it === 'string'
+      ? resolve(it)
+      : { label: it.label, icon: FLYOUT_ICONS[it.label] || Wrench, flyoutItems: it.items.map(resolve).filter(Boolean) }
+    )).filter(Boolean),
+  }))
+}
 
 function readCollapsed() {
   try { return localStorage.getItem('sidebar-collapsed') === 'true' } catch (_e) { return false }
@@ -136,7 +103,8 @@ export default function Layout({ children }) {
   const { role, isEditor } = useUserRole()
   const { isPlatformAdmin } = usePlatformAdmin()
   const { has: hasCapability } = usePermission()
-  const { isProducer } = usePermissionTier()
+  const { experience } = useExperience()
+  const bottom = new Set(BOTTOM_LINKS[experience] || BOTTOM_LINKS[EXPERIENCE_OWNER])
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const ws = useWorkspace()
@@ -163,10 +131,6 @@ export default function Layout({ children }) {
     if (it.requiresPlatformAdmin && !isPlatformAdmin) return false
     if (it.hideWhenBookMode && ws?.book_mode === it.hideWhenBookMode) return false
     if (it.showWhen && !it.showWhen(ws)) return false
-    // ProducerHome (2026-07-29): a producer is not a clinician and shouldn't
-    // see clinical CAPTURE surfaces in nav — their own checkpoints route
-    // through Home/Your week/Moments instead. Owners keep full nav.
-    if (it.hideForProducer && isProducer) return false
     return true
   }
   // Resolve each section's items: a flyout group's own children are filtered
@@ -178,13 +142,14 @@ export default function Layout({ children }) {
     const items = it.flyoutItems.filter(itemVisible)
     return items.length ? { ...it, flyoutItems: items } : null
   }
-  const navSections = NAV_SECTIONS
-    .map((s) => ({ ...s, items: s.items.filter(itemVisible).map(resolveItem).filter(Boolean) }))
+  const sections = layoutSections(experience, selfStaffId)
+  const navSections = sections
+    .map((s) => ({ ...s, items: s.items.filter((it) => it.flyoutItems || itemVisible(it)).map(resolveItem).filter(Boolean) }))
     .filter((s) => s.items.length > 0)
   // Mobile drawer flattens flyout groups back into individual links — the
   // drawer already scrolls a full-height sheet, so there's no crowding
   // pressure that the desktop flyouts exist to relieve.
-  const mobileNavSections = NAV_SECTIONS
+  const mobileNavSections = sections
     .map((s) => ({ ...s, items: s.items.flatMap((it) => (it.flyoutItems ? it.flyoutItems : [it])).filter(itemVisible) }))
     .filter((s) => s.items.length > 0)
 
@@ -289,7 +254,7 @@ export default function Layout({ children }) {
 
         {/* Bottom section: secondary links + user button + collapse toggle */}
         <div className="border-t border-sidebar-border px-2 py-2 space-y-0.5">
-          {role === 'admin' && (
+          {bottom.has('synthesis') && role === 'admin' && (
             <SidebarNavLink
               to="/synthesis"
               label="Knowledge synthesis"
@@ -298,7 +263,7 @@ export default function Layout({ children }) {
               collapsed={collapsed}
             />
           )}
-          {hasCapability(CAP_SETTINGS_VIEW) && (
+          {bottom.has('settings') && hasCapability(CAP_SETTINGS_VIEW) && (
             <SidebarNavLink
               to="/settings/workspace"
               label="Settings"
@@ -307,7 +272,7 @@ export default function Layout({ children }) {
               collapsed={collapsed}
             />
           )}
-          {selfStaffId && hasCapability(CAP_INTERVIEW_START) && (
+          {bottom.has('profile') && selfStaffId && (
             <SidebarNavLink
               to={`/staff/${selfStaffId}`}
               label="My profile"
@@ -424,28 +389,28 @@ export default function Layout({ children }) {
             ))}
           </div>
           <div className="pt-3 mt-2 border-t space-y-1 overflow-y-auto">
-            {role === 'admin' && hasCapability(CAP_SETTINGS_VIEW) && (
+            {bottom.has('synthesis') && role === 'admin' && hasCapability(CAP_SETTINGS_VIEW) && (
               <DrawerClose asChild>
                 <Link to="/synthesis" className="flex items-center gap-2 px-3 py-3 rounded-md text-sm text-muted-foreground active:bg-accent/30">
                   <Layers className="h-4 w-4" /> Knowledge synthesis
                 </Link>
               </DrawerClose>
             )}
-            {hasCapability(CAP_SETTINGS_EDIT) && (
+            {bottom.has('settings') && hasCapability(CAP_SETTINGS_EDIT) && (
               <DrawerClose asChild>
                 <Link to="/settings/workspace" className="flex items-center gap-2 px-3 py-3 rounded-md text-sm text-muted-foreground active:bg-accent/30">
                   <Building2 className="h-4 w-4" /> Workspace settings
                 </Link>
               </DrawerClose>
             )}
-            {hasCapability(CAP_BRAND_KIT_EDIT) && (
+            {bottom.has('settings') && hasCapability(CAP_BRAND_KIT_EDIT) && (
               <DrawerClose asChild>
                 <Link to="/settings/brand-kit" className="flex items-center gap-2 px-3 py-3 rounded-md text-sm text-muted-foreground active:bg-accent/30">
                   <Palette className="h-4 w-4" /> Brand Kit
                 </Link>
               </DrawerClose>
             )}
-            {selfStaffId && hasCapability(CAP_INTERVIEW_START) && (
+            {bottom.has('profile') && selfStaffId && (
               <DrawerClose asChild>
                 <Link to={`/staff/${selfStaffId}`} className="flex items-center gap-2 px-3 py-3 rounded-md text-sm text-muted-foreground active:bg-accent/30">
                   <UserCircle className="h-4 w-4" /> My staff profile
@@ -457,7 +422,7 @@ export default function Layout({ children }) {
                 <UserCircle className="h-4 w-4" /> Account &amp; security
               </Link>
             </DrawerClose>
-            {hasCapability(CAP_INTEGRATIONS_CONNECT) && (
+            {bottom.has('settings') && hasCapability(CAP_INTEGRATIONS_CONNECT) && (
               <DrawerClose asChild>
                 <Link to="/settings/integrations" className="flex items-center gap-2 px-3 py-3 rounded-md text-sm text-muted-foreground active:bg-accent/30">
                   <Settings className="h-4 w-4" /> Integrations
