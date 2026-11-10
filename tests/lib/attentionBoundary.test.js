@@ -6,7 +6,6 @@ import { buildAttentionItems, KIND_OWNER } from '../../src/lib/attentionItems.js
 const read = (rel) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8')
 const CHECKPOINTS = read('../../api/_routes/producer/checkpoints.js')
 const PRODUCER_HOME = read('../../src/pages/ProducerHome.jsx')
-const HOME = read('../../src/pages/Home.jsx')
 
 const NOW = Date.parse('2026-08-11T12:00:00Z')
 const DAY = 24 * 60 * 60 * 1000
@@ -99,9 +98,6 @@ describe('one item, one region', () => {
     }
   })
 
-  it('Home passes its embedded flag through as the boundary signal', () => {
-    expect(HOME).toMatch(/producerSurfaceShown:\s*embedded/)
-  })
 })
 
 describe('the producer headline counts items, not cards', () => {
@@ -143,17 +139,6 @@ describe('both sections name their hat', () => {
     expect(PRODUCER_HOME).toMatch(/as the producer/)
   })
 
-  it('the practice card says so', () => {
-    expect(HOME).toMatch(/as a clinician/)
-  })
-
-  it('the practice label is shared, not duplicated per render state', () => {
-    // The skeleton and the loaded page each used to carry their own copy of
-    // this string, so changing one alone made the label flicker mid-load.
-    const uses = HOME.match(/<PracticeSectionLabel \/>/g) || []
-    expect(uses.length).toBe(2)
-    expect(HOME.match(/as a clinician/g)?.length).toBe(1)
-  })
 })
 
 describe('the failed-publish card deep-links to the post', () => {

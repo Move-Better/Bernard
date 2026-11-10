@@ -18,6 +18,7 @@ import {
 import TrendStrip from '@/components/insights/TrendStrip'
 import LearningPanel from '@/components/producer/LearningPanel'
 import CheckInCard from '@/components/producer/CheckInCard'
+import CoachingCard from '@/components/producer-home/CoachingCard'
 import AppleBusinessInsightsCard from '@/components/AppleBusinessInsightsCard'
 import GoogleBusinessAnalyticsCard from '@/components/GoogleBusinessAnalyticsCard'
 import { useUserRole } from '@/lib/useUserRole'
@@ -1319,6 +1320,9 @@ export default function Analytics() {
               page is for. The check-in still REACHES the owner — as a due
               checkpoint in the ProducerHome queue that links to #checkin here
               — so moving it off the home page doesn't bury the loop. */}
+          {/* Bernard's weekly note moved here from the owner Home (simplicity
+              audit 2026-11-09): it restated the inbox's counts a third time. */}
+          <CoachingCard />
           <div id="checkin" className="scroll-mt-20"><CheckInCard /></div>
           <LearningPanel />
         </div>

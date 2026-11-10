@@ -18,11 +18,10 @@ import Layout from '@/components/Layout'
 import { getPendingAnnouncement } from '@/lib/announcements'
 import { useExperience } from '@/lib/useExperience'
 import { EXPERIENCE_OWNER, EXPERIENCE_PRODUCER } from '@/lib/experience'
-import { useSelfStaffId } from '@/lib/useSelfStaffId'
 import { BERNARD_PRIMARY_HSL } from '@/lib/brand'
 const TeamHome = lazy(() => import('@/pages/TeamHome'))
 const ProducerHome = lazy(() => import('@/pages/ProducerHome'))
-const CombinedHome = lazy(() => import('@/pages/CombinedHome'))
+const OwnerHome = lazy(() => import('@/pages/OwnerHome'))
 const WhatsNew = lazy(() => import('@/pages/WhatsNew'))
 const Welcome = lazy(() => import('@/pages/Welcome'))
 const CapturePicker = lazy(() => import('@/pages/CapturePicker'))
@@ -592,10 +591,13 @@ function guarded(node) {
 // jobs: the weekly call and approving their own work). Before this, the tier
 // read in /api/workspace/me had failed for everyone since 2026-05-29, so every
 // Move Better login fell through to the owner branch.
+//
+// 2026-11-09 (simplicity audit, option B): owners get OwnerHome, one ranked
+// inbox, in place of CombinedHome's two stacked screens. It hides its own
+// clinician column for an owner with no staff row, so one screen serves both.
 function HomeRouter() {
   const { experience } = useExperience()
-  const selfStaffId = useSelfStaffId()
-  if (experience === EXPERIENCE_OWNER) return selfStaffId ? <CombinedHome /> : <ProducerHome />
+  if (experience === EXPERIENCE_OWNER) return <OwnerHome />
   if (experience === EXPERIENCE_PRODUCER) return <ProducerHome />
   return <TeamHome />
 }
