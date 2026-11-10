@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Mic, MessageSquareText, Presentation, Link as LinkIcon, FileText, Camera, Zap, Mail, PenSquare } from 'lucide-react'
+import { ArrowLeft, Mic, MessageSquareText, Link as LinkIcon, FileText, Camera, Zap, Mail, PenSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -262,27 +262,8 @@ export default function CapturePicker() {
           <p className="text-xs text-muted-foreground">High-quality video in one tap, straight from your home screen</p>
         </div>
       </button>
-
-      {/* Seminar / Talk — Phase 2 placeholder. Visible-but-disabled so users
-          know it's coming; prevents the picker from looking incomplete. */}
-      <div>
-        <div
-          className="rounded-lg border border-dashed bg-muted/30 p-4 flex items-start gap-3 opacity-70"
-          aria-disabled="true"
-        >
-          <div className="h-10 w-10 rounded-md bg-muted text-muted-foreground flex items-center justify-center shrink-0">
-            <Presentation className="h-5 w-5" />
-          </div>
-          <div className="flex-1">
-            <div className="font-medium text-foreground">Seminar / Talk <span className="ml-2 text-xs font-normal text-muted-foreground">— coming soon</span></div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Upload a long recording (45+ min) from a seminar or public talk.
-              Pipeline extracts chapters, audience Q&A, and ready-to-publish
-              pieces. Available shortly after the June 25 capture.
-            </p>
-          </div>
-        </div>
-      </div>
+      {/* A disabled "Seminar / Talk — coming soon" card lived here, still
+          promising a June 25 date. Removed 2026-11-09 (simplicity audit). */}
     </div>
   )
 }
