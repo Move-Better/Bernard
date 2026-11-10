@@ -114,3 +114,19 @@ describe('the router and the sidebar read the same decision', () => {
     expect(read('../../src/components/Layout.jsx')).toMatch(/useExperience\(\)/)
   })
 })
+
+describe('See Bernard as wiring', () => {
+  const read = (rel) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8')
+  const SWITCH = read('../../src/components/ViewAsSwitch.jsx')
+  it('the switch and the banner render nothing for anyone who is not the owner', () => {
+    const guards = SWITCH.match(/if \(actual !== EXPERIENCE_OWNER\b/g) || []
+    expect(guards.length).toBe(2)
+  })
+  it('the way back is on every page (banner in the app shell)', () => {
+    expect(read('../../src/components/Layout.jsx')).toMatch(/<ViewAsBanner \/>/)
+  })
+  it('the stored choice goes through effectiveExperience, never straight into the screen', () => {
+    const hook = read('../../src/lib/useExperience.js')
+    expect(hook).toMatch(/experience: effectiveExperience\(actual, viewAs\)/)
+  })
+})

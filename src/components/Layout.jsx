@@ -31,6 +31,7 @@ import {
   CAP_BRAND_KIT_EDIT, CAP_INTERVIEW_START,
 } from '@/lib/capabilities'
 import TrialBanner from '@/components/TrialBanner'
+import { ViewAsBanner } from '@/components/ViewAsSwitch'
 
 const APP_BYLINE = 'Voice-faithful clinical content'
 
@@ -350,6 +351,7 @@ export default function Layout({ children }) {
         </header>
 
         <TrialBanner />
+        <ViewAsBanner />
 
         <main className={fullBleed ? 'px-4 sm:px-6 lg:px-8 py-8' : 'container py-8'}>
           {children}
