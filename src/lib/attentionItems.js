@@ -107,7 +107,9 @@ export function lastSpokeLabel(at, now) {
  * mockup rather than drawing a plausible-looking list).
  */
 export function isHiddenStaff(person) {
-  return !!person?.archived_at
+  // Deactivated people (staff.deactivated_at, migration 216) have left; a
+  // "Start" button to interview them is a dead end (audit 2026-11-09).
+  return !!person?.archived_at || !!person?.deactivated_at
 }
 
 /**

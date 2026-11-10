@@ -197,6 +197,19 @@ describe('archived staff never reach a clinician-facing list', () => {
     expect(isHiddenStaff({ name: 'e2e', archived_at: null })).toBe(false)
     expect(isHiddenStaff({ name: 'Dr. Q', archived_at: '2026-01-01T00:00:00Z' })).toBe(true)
   })
+
+  it('leaves a deactivated person out of slipping (no Start button for someone who left)', () => {
+    const { counts, items } = buildAttentionItems({
+      staff: [
+        person({ id: 'active', name: 'Dr. Q' }),
+        person({ id: 'gone', name: 'Philip', deactivated_at: '2026-09-13T00:00:00Z' }),
+      ],
+      now: NOW,
+    })
+    expect(counts.slipping).toBe(1)
+    expect(items.some((i) => i.key === 'overdue:gone')).toBe(false)
+    expect(isHiddenStaff({ name: 'Philip', archived_at: null, deactivated_at: '2026-09-13T00:00:00Z' })).toBe(true)
+  })
 })
 
 describe('overdue threshold', () => {
