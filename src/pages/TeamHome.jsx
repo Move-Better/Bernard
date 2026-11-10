@@ -19,7 +19,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { greetingFor } from '@/components/home/helpers'
 import { getSuggestedTopics } from '@/lib/topicSuggestions'
 import { restockNudgeState } from '@/lib/onHand'
-import { ownApprovalItems } from '@/lib/ownApprovals'
+import { ownApprovalItems, approvedWaitingNote } from '@/lib/ownApprovals'
 import PageHelp from '@/components/PageHelp'
 import WeeklyCallHero from '@/components/home/WeeklyCallHero'
 import ResumeStrip from '@/components/home/ResumeStrip'
@@ -123,6 +123,7 @@ export default function TeamHome() {
   const greeting = greetingFor(user, ws)
   const queueLoading = weekLoading || answersLoading || clinicalLoading
   const n = approvals.length
+  const waitingNote = queueLoading ? '' : approvedWaitingNote(weekData?.myApprovedBlogs ?? [], n)
 
   return (
     <div className="flex flex-col gap-6">
@@ -166,6 +167,11 @@ export default function TeamHome() {
           </div>
         ) : n > 0 && (
           <ul>{approvals.map((item) => <ApprovalRow key={item.key} item={item} />)}</ul>
+        )}
+        {waitingNote && (
+          <p className={`bg-muted/40 px-5 py-3.5 text-sm text-muted-foreground ${n > 0 ? 'border-t border-border' : ''}`}>
+            {waitingNote}
+          </p>
         )}
       </section>
 

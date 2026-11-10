@@ -63,3 +63,32 @@ export function ownApprovalSummary(items = []) {
   const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
   return `${list} ${items.length === 1 ? 'needs' : 'need'}`
 }
+
+/**
+ * The footnote under "Waiting on your OK" (mockup Clinician.dc.html): the
+ * person's own approved blogs that have not gone out yet, so they know the
+ * next step belongs to someone else. "You already approved" only when the
+ * approval is actually theirs (approvedByYou from week-summary).
+ *
+ * @param {Array<{topic?: string|null, approvedByYou?: boolean}>} blogs  week-summary myApprovedBlogs
+ * @param {number} pendingCount  how many rows are in the list above it
+ * @returns {string} '' when there is nothing to say
+ */
+export function approvedWaitingNote(blogs = [], pendingCount = 0) {
+  const n = blogs.length
+  if (!n) return ''
+  const lead = pendingCount > 0 ? 'Nothing else needs you. ' : ''
+  const allYours = blogs.every((b) => b.approvedByYou)
+  const title = n === 1 && blogs[0].topic ? `, “${blogs[0].topic}”,` : ''
+  let body
+  if (n === 1) {
+    body = allYours
+      ? `1 blog you already approved${title} is waiting to be published.`
+      : `1 of your blogs${title} is approved and waiting to be published.`
+  } else {
+    body = allYours
+      ? `${n} blogs you already approved are waiting to be published.`
+      : `${n} of your blogs are approved and waiting to be published.`
+  }
+  return `${lead}${body} That step is not yours.`
+}
