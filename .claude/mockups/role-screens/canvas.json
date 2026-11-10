@@ -1,0 +1,35 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-10T03:17:22Z" },
+  "title": "Bernard screens by role",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1440, "h": 900, "title": "Today: every login gets this screen" },
+    "Clinician.dc.html": { "x": 0, "y": 1500, "w": 1440, "h": 980, "title": "Proposed: Team member screen (shown as Tyler)", "expand": "fill" },
+    "Producer.dc.html": { "x": 1520, "y": 1500, "w": 1440, "h": 1340, "title": "Proposed: Producer screen (shown as Aj)", "expand": "fill" },
+    "Owner.dc.html": { "x": 3040, "y": 1500, "w": 1440, "h": 1340, "title": "Proposed: Owner screen (Dr. Q)", "expand": "fill" }
+  },
+  "order": ["Main.dc.html", "Clinician.dc.html", "Producer.dc.html", "Owner.dc.html"],
+  "notes": {
+    "t-today": { "x": 0, "y": -260, "text": "Today: one screen for all 7 people", "kind": "title1", "maxW": 1440 },
+    "t-proposed": { "x": 0, "y": 1240, "text": "Proposed: your access level picks your screen", "kind": "title1", "maxW": 4480 },
+    "n-today": {
+      "x": 1520, "y": 0, "w": 600, "fill": "orange",
+      "text": "MEASURED NOV 9\nAll 7 active people get this same screen: Dr. Q (owner), Aj and Alli (producers), Sophie, Tyler, Whitney and Zach (team members).\n\nSidebar: Create plus 16 places. Home, Overview, Insights, SEO, Your week, Bernard, Stories, Moments, Ads, Library, Book, Pre-Visit, Usage, Knowledge synthesis, Settings, My profile.\n\nHome: the producer's queue stacked on top of the clinician's home.\n\nWhy: Bernard's lookup of each person's access level has been failing silently since late May, so everyone reads as \"no level set\". At Move Better that means owner.\n\nThe picture is the test login, whose level is Team member. Dr. Q's own login showed the same queue and the same numbers."
+    },
+    "n-clinician": {
+      "x": 0, "y": 2560, "w": 640, "fill": "teal",
+      "text": "TEAM MEMBER SCREEN\nRule: your Access level picks your screen. Team member gets this one.\n\nSidebar goes from 16 places to 4: Home, My stories (the Stories list, filtered to yours), Library, My profile. The other 12 leave the sidebar but still open by link for anyone the server allows.\n\nHome is two jobs. 1) Start your call. 2) Waiting on your OK: only things from your own interviews that only you can approve. Other people's posts and the \"who is overdue\" list are gone from this screen. Make a point moves below the two jobs.\n\nThe rule applied to today's real rows:\nTyler: 1 blog, 1 answer (drawn)\nSophie: 2 blogs\nZach: 0 blogs, 4 answers\nWhitney: nothing waiting\n\nOpen question: answers and word sign-offs on this list, or blogs only? With blogs only, Zach's list is empty while 4 answers wait on him."
+    },
+    "n-producer": {
+      "x": 1520, "y": 2920, "w": 640, "fill": "teal",
+      "text": "PRODUCER SCREEN\nSidebar goes from 16 places to 9: Home, Your week, Moments, Library, Insights, More (Ads, Bernard), Settings, My profile. Gone from the sidebar: Overview, SEO, Stories, Book, Pre-Visit, Usage, Knowledge synthesis.\n\nHome is today's producer queue, unchanged, with one fix. Aj also does interviews. Today his own 3 blog drafts and 1 word sign-off show as \"waiting on your clinicians, not on your queue\", a dead end when the clinician is you. They become one row he can act on.\n\nRule: a producer or owner who has their own interviews sees their own approvals as theirs.\nApplied: Aj gets the row (4 items). Alli has no interviews, so no row.\n\nThe checkpoint ledger, Bernard's note and What's new continue below, unchanged."
+    },
+    "n-owner": {
+      "x": 3040, "y": 2920, "w": 640, "fill": "teal",
+      "text": "OWNER SCREEN\nSidebar: unchanged, all 16 places.\nHome: unchanged. Your queue as the producer, then your practice as a clinician.\n\nOne addition: \"See Bernard as\", so you can open the Producer or Team member screen and see exactly what staff see. It only changes what is drawn. Your permissions stay the owner's.\n\nOpen question: is today's two-part home what you mean by full control, or do you want a different owner home?"
+    }
+  },
+  "designSystems": []
+}

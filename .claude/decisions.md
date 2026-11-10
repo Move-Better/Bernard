@@ -560,3 +560,22 @@ components (`PlanCard`, `AddToDayModal`, `DayPlanCard`, ...) -> ~1,400 lines. Sa
 not being able to find or coordinate state within one of these components — that is the failure mode the
 split would prevent, and it has not occurred. Re-running the fix-rate comparison is one command; do that
 before acting on a "this file is too big" instinct.
+
+## 2026-11-09 — One screen per role, picked by Access level (challenge gate; mockups signed off)
+
+**Job.** A team member opens Bernard and sees only their two jobs: start the weekly call, approve what came from their own interviews. A producer sees the social output queue. The owner keeps full control.
+
+**Evidence (measured 2026-11-09).** All 7 active movebetter people get the identical screen: Create plus 16 sidebar places, and CombinedHome (producer queue stacked on the clinician home). Cause: `/api/workspace/me` selects `staff.producer_onboarded_at`, which does not exist in prod (migration 093 never applied), so the tier read fails silently and `current_user_tier` is null for everyone; on an internal plan null means owner. Confirmed by `information_schema`, a direct 42703, and live responses for the e2e login and Q's own (both null). Approval work sitting on the people who gave the interviews: 6 blog drafts, 5 answers, 1 word sign-off, oldest 160 days.
+
+**Composition.** `staff.permission_tier` → one pure `experienceFor()` function → (a) the sidebar item list and (b) HomeRouter. Server checks unchanged: hidden places stay reachable by URL for anyone the server allows.
+
+**Decisions (Q, AskUserQuestion, 2026-11-09).**
+- Access level alone picks the screen. Clerk org-admin rights (Whitney, Alli) keep working but do not change the screen.
+- Team member: sidebar Create, Home, My stories (Stories filtered to own), Library, My profile. Home = weekly-call card, then "Waiting on your OK" with ALL their own approvals (blogs first, then answers and word sign-offs), then Make a point. No clinic-wide rows, no "slipping" list.
+- Producer: sidebar Home, Your week, Moments, Library, Insights, More (Ads, Bernard), Settings, My profile. Home = today's ProducerHome plus one actionable row for approvals from their own interviews (Aj: 3 blogs + 1 word sign-off, today shown as "waiting on your clinicians").
+- Owner: unchanged sidebar and CombinedHome, plus a "See Bernard as" switch (presentation only; permissions stay owner).
+- Mockups: `.claude/mockups/role-screens/` (Main = today, Clinician, Producer, Owner).
+
+**Case against.** Hiding screens is not the bottleneck; the one-approver queue is. Accepted because the simple screen puts each clinician's own stalled approvals in front of them, which is that bottleneck's other half.
+
+**Kill criterion — revisit-by 2026-12-14.** If 4 weeks after ship the clinician-owned backlog (blog drafts + answers + word sign-offs, 12 today) has not dropped, and PostHog shows team members not opening Home weekly, the screen is not earning attention: stop investing in it and fall back to the escalation nudge.
