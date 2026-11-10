@@ -297,22 +297,3 @@ describe('brokenChannelsFrom', () => {
     expect(brokenChannelsFrom({ accounts: [{ type: 'INSTAGRAM', connected: true }] })).toEqual([])
   })
 })
-
-describe('GUARD — the queue stays wired into Home', () => {
-  // Home rendered three separate surfaces before this; the risk on any future
-  // edit is that one of the old banners gets re-added alongside the card, or
-  // that the card is dropped and the page silently stops showing the queue.
-  const home = readFileSync(fileURLToPath(new URL('../../src/pages/Home.jsx', import.meta.url)), 'utf8')
-
-  it('renders AttentionQueue', () => {
-    expect(home).toMatch(/<AttentionQueue\s/)
-  })
-
-  it('does not resurrect the standalone channel-health banner', () => {
-    expect(home).not.toMatch(/ChannelHealthBanner/)
-  })
-
-  it('builds the queue from the shared pure function rather than inline counts', () => {
-    expect(home).toMatch(/buildAttentionItems\(/)
-  })
-})

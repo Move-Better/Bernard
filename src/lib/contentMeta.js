@@ -53,6 +53,14 @@ export const PLATFORM_META = {
 // GBP's 1500 is not a gate either — it is clamped sentence-aware at publish
 // (see AUTO_CLAMP_PLATFORMS below); the warning here just lets the author fix
 // it before it ships shortened.
+// A channel's display name. Raw keys used to leak onto tiles, so Google
+// Business read "Gbp" (audit 2026-11-09). Blog stays "Blog": it names a
+// channel, and PLATFORM_META's "Blog Post" names a piece.
+export function channelName(platform) {
+  if (platform === 'blog') return 'Blog'
+  return PLATFORM_META[platform]?.label || platform
+}
+
 export const CAPTION_LIMITS = {
   gbp:              1500,
   twitter:          280,

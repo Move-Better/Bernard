@@ -18,7 +18,7 @@ import ErrorState from '@/components/ErrorState'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { greetingFor } from '@/components/home/helpers'
-import { PLATFORM_META } from '@/lib/contentMeta'
+import { channelName } from '@/lib/contentMeta'
 import CoachingCard from '@/components/producer-home/CoachingCard'
 import { useSelfStaffId } from '@/lib/useSelfStaffId'
 import { ViewAsSwitch } from '@/components/ViewAsSwitch'
@@ -113,13 +113,8 @@ function LedgerGroup({ title, items }) {
   )
 }
 
-// The tile used to print the raw key, so Google Business read "Gbp" here and
-// nowhere else (audit 2026-11-09). Blog stays "Blog": it names a channel, and
-// PLATFORM_META's "Blog Post" names a piece.
-export function channelName(platform) {
-  if (platform === 'blog') return 'Blog'
-  return PLATFORM_META[platform]?.label || platform
-}
+// Lives in contentMeta so the owner Home names channels the same way.
+export { channelName }
 
 function HealthCell({ ch }) {
   const pill = ch.status === 'stalled'
