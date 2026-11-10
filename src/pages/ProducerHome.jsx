@@ -18,6 +18,7 @@ import ErrorState from '@/components/ErrorState'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { greetingFor } from '@/components/home/helpers'
+import { PLATFORM_META } from '@/lib/contentMeta'
 import CoachingCard from '@/components/producer-home/CoachingCard'
 import UpdatesFeed from '@/components/producer-home/UpdatesFeed'
 
@@ -83,6 +84,14 @@ function LedgerGroup({ title, items }) {
   )
 }
 
+// The tile used to print the raw key, so Google Business read "Gbp" here and
+// nowhere else (audit 2026-11-09). Blog stays "Blog": it names a channel, and
+// PLATFORM_META's "Blog Post" names a piece.
+export function channelName(platform) {
+  if (platform === 'blog') return 'Blog'
+  return PLATFORM_META[platform]?.label || platform
+}
+
 function HealthCell({ ch }) {
   const pill = ch.status === 'stalled'
     ? 'bg-destructive/10 text-destructive'
@@ -94,7 +103,7 @@ function HealthCell({ ch }) {
   const label = ch.status === 'stalled' ? 'stalled' : ch.status === 'lagging' ? 'lagging' : ch.status === 'unknown' ? 'no data' : 'on pace'
   return (
     <div className="rounded-md border border-border bg-card px-2.5 py-2 text-xs">
-      <div className="text-muted-foreground capitalize">{ch.platform}</div>
+      <div className="text-muted-foreground capitalize">{channelName(ch.platform)}</div>
       <div className="mt-0.5 flex items-center gap-1.5 font-bold tabular-nums">
         {ch.daysIdle == null ? '—' : `${ch.daysIdle}d`}
         <span className={`rounded-full px-1.5 py-0.5 text-2xs font-bold ${pill}`}>{label}</span>
