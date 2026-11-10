@@ -8,6 +8,8 @@
 import { requireRole }      from '../../_lib/auth.js'
 import { workspaceContext } from '../../_lib/workspaceContext.js'
 
+export const NOTICE_WINDOW_DAYS = 14
+
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 
@@ -37,8 +39,12 @@ export default async function handler(req, res) {
   // `page_url` (where) were already stored but never surfaced — the banner said
   // only "the issue you reported is resolved", which is useless to someone who
   // has filed six reports. Quoting them back is the point (Q, 2026-08-11).
+  // Notices expire NOTICE_WINDOW_DAYS after the fix. The reporter was already
+  // emailed; a banner still on Home months later (a July test row was, on
+  // 2026-11-09) is clutter, not news. Dismissing still clears it sooner.
+  const since = new Date(Date.now() - NOTICE_WINDOW_DAYS * 86_400_000).toISOString()
   const q = `feedback?workspace_id=eq.${wsCtx.id}&user_id=eq.${encodeURIComponent(auth.userId)}` +
-    `&resolved_at=not.is.null&acknowledged_at=is.null` +
+    `&resolved_at=gte.${encodeURIComponent(since)}&acknowledged_at=is.null` +
     `&select=id,message,page_url,created_at,resolved_note,resolved_at&order=resolved_at.desc&limit=10`
 
   const r = await sb(q)
