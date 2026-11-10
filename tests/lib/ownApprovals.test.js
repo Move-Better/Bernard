@@ -79,3 +79,50 @@ describe('ProducerHome own work', () => {
     expect(src).toMatch(/ownApprovalItems\(\{/)
   })
 })
+
+import { approvedWaitingNote } from '../../src/lib/ownApprovals.js'
+
+describe('approvedWaitingNote (the footnote from the signed-off mockup)', () => {
+  it('reads like the mockup for one blog the person approved', () => {
+    expect(approvedWaitingNote([{ topic: 'Translating what is done in clinic to the real world', approvedByYou: true }], 2))
+      .toBe('Nothing else needs you. 1 blog you already approved, “Translating what is done in clinic to the real world”, is waiting to be published. That step is not yours.')
+  })
+  it('does not say "you approved" when someone else signed it off', () => {
+    const note = approvedWaitingNote([{ topic: 'X', approvedByYou: false }], 0)
+    expect(note).toBe('1 of your blogs, “X”, is approved and waiting to be published. That step is not yours.')
+    expect(note).not.toMatch(/you already approved/)
+  })
+  it('one approval that is not yours flips the whole sentence', () => {
+    const note = approvedWaitingNote([{ approvedByYou: true }, { approvedByYou: false }], 0)
+    expect(note).toBe('2 of your blogs are approved and waiting to be published. That step is not yours.')
+  })
+  it('several, all yours', () => {
+    expect(approvedWaitingNote([{ approvedByYou: true }, { approvedByYou: true }, { approvedByYou: true }], 1))
+      .toBe('Nothing else needs you. 3 blogs you already approved are waiting to be published. That step is not yours.')
+  })
+  it('"Nothing else needs you" only when rows sit above it', () => {
+    expect(approvedWaitingNote([{ topic: 'X', approvedByYou: true }], 0)).not.toMatch(/^Nothing else/)
+    expect(approvedWaitingNote([{ topic: 'X', approvedByYou: true }], 1)).toMatch(/^Nothing else needs you\. /)
+  })
+  it('nothing approved, nothing said', () => {
+    expect(approvedWaitingNote([], 3)).toBe('')
+    expect(approvedWaitingNote(undefined, 0)).toBe('')
+  })
+})
+
+describe('week-summary myApprovedBlogs', () => {
+  const WS = readFileSync(fileURLToPath(new URL('../../api/_routes/content-plan/week-summary.js', import.meta.url)), 'utf8')
+  const fn = WS.slice(WS.indexOf('async function fetchMyApprovedBlogs()'), WS.indexOf('\n  }\n', WS.indexOf('async function fetchMyApprovedBlogs()')))
+  it('reads only the caller\'s own approved blogs, in this workspace', () => {
+    expect(fn).toMatch(/workspace_id=eq\.\$\{ws\.id\}&staff_id=eq\.\$\{sf\.id\}&platform=eq\.blog&status=eq\.approved/)
+    expect(fn).toMatch(/approvedByYou: b\.approved_by === clerkUserId/)
+  })
+  it('is the LAST entry of the positional Promise.all, and its name is last in the destructure', () => {
+    expect(WS).toMatch(/stalledApproved,\n    myApprovedBlogs,\n  \] = await Promise\.all\(\[/)
+    expect(WS).toMatch(/fetchStalledApproved\(\),\n    fetchMyApprovedBlogs\(\),\n  \]\)/)
+  })
+  it('TeamHome renders the note from it', () => {
+    const home = readFileSync(fileURLToPath(new URL('../../src/pages/TeamHome.jsx', import.meta.url)), 'utf8')
+    expect(home).toMatch(/approvedWaitingNote\(weekData\?\.myApprovedBlogs \?\? \[\], n\)/)
+  })
+})

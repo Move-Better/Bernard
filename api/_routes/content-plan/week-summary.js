@@ -184,6 +184,33 @@ export default async function handler(req, res) {
     }))
   }
 
+  // The signed-in person's OWN approved blogs that have not gone out yet — the
+  // footnote under the team home's "Waiting on your OK" (Q, 2026-11-09, mockup
+  // .claude/mockups/role-screens/Clinician.dc.html). Same own-row scoping as
+  // fetchYourReview, so no role gate: it only ever returns the caller's work.
+  // approved_by holds the approver's Clerk user id, which says whether "you
+  // already approved" is true or someone else signed it off.
+  async function fetchMyApprovedBlogs() {
+    if (!clerkUserId) return []
+    const sf = await myStaffRow()
+    if (!sf) return []
+    const r = await sb(
+      `content_items?workspace_id=eq.${ws.id}&staff_id=eq.${sf.id}&platform=eq.blog&status=eq.approved&select=id,topic,approved_at,approved_by&order=approved_at.asc.nullslast&limit=20`,
+    )
+    if (!r.ok) {
+      console.error('[week-summary] my approved blogs query failed:', r.status, (await r.text().catch(() => '')).slice(0, 300))
+      return []
+    }
+    const rows = await r.json().catch(() => [])
+    if (!Array.isArray(rows)) return []
+    return rows.map((b) => ({
+      id: b.id,
+      topic: b.topic || null,
+      approved_at: b.approved_at || null,
+      approvedByYou: b.approved_by === clerkUserId,
+    }))
+  }
+
   // The signed-in clinician's own progress against the 1-blog-per-month target.
   //
   // Strictly their own number and shown only on their own strip — this is a
@@ -303,6 +330,7 @@ export default async function handler(req, res) {
     myBlogTarget,
     silentChannels,
     stalledApproved,
+    myApprovedBlogs,
   ] = await Promise.all([
     fetchAtomsAndDraftedItems(),
     fetchHeldAtoms(),
@@ -312,6 +340,7 @@ export default async function handler(req, res) {
     fetchMyBlogProgress(),
     fetchSilentChannels(),
     fetchStalledApproved(),
+    fetchMyApprovedBlogs(),
   ])
 
   const byPlatform = {}
@@ -500,5 +529,6 @@ export default async function handler(req, res) {
     myBlogTarget,
     silentChannels,
     stalledApproved,
+    myApprovedBlogs,
   })
 }
