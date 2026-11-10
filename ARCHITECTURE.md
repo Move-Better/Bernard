@@ -2146,3 +2146,30 @@ that against near-zero data — the review queue shipped un-backfilled
 (migration 198), so check actual reject volume before assuming this is ready.
 Deliberately NOT cleared on Restore: the reason stays valid signal even if a
 human reconsiders this one instance later.
+
+## Role screens — one pure decision, presentation only
+
+Which screen a person sees (owner, producer, team member) comes from ONE pure
+function, `experienceFor()` in `src/lib/experience.js`, keyed on
+`staff.permission_tier` (falling back to the legacy role only when there is no
+tier; Clerk org-admin never changes it). `useExperience()` feeds both the
+sidebar (`Layout.jsx` reads `NAV_LAYOUT` / `BOTTOM_LINKS`) and `HomeRouter`
+in `App.jsx`, so the two cannot disagree. Decision and mockups:
+`.claude/decisions.md` "One screen per role".
+
+- **Hiding is presentation only.** A page left off a role's sidebar is still
+  routable and still guarded by the same server checks as before. Never gate
+  data on the experience; gate it on `requireRole` / the tier as today.
+- **Adding a sidebar item** means adding it to `NAV_ITEMS` in `Layout.jsx` AND
+  to the role lists in `NAV_LAYOUT`. `tests/lib/experience.test.js` fails if a
+  layout names a key with no item.
+- **The tier must be read.** `workspace/me.js` selects `TIER_ROW_SELECT`; a
+  select that drops `permission_tier` silently puts everyone on the fallback
+  (that was the bug #2750 fixed, pinned by `workspaceMeTierSelect.test.js`).
+- **"See Bernard as"** (owner only) stores a view choice that always passes
+  through `effectiveExperience()`, which can only narrow, never lift a non-owner
+  to the owner screen. The owner keeps owner permissions and their own data.
+- **The team-member home shows only the viewer's own rows.** Its sources are
+  own-scoped server-side (week-summary `yourReview` / `myApprovedBlogs`, answers,
+  my-clinical-checkpoints). Do not feed it a clinic-wide list such as
+  `approvedBlogs`, which is editor-gated for a reason.
