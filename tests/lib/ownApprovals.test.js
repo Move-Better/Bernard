@@ -41,3 +41,41 @@ describe('ownApprovalItems', () => {
     expect(items).toEqual([])
   })
 })
+
+import { ownApprovalSummary } from '../../src/lib/ownApprovals.js'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
+describe('ownApprovalSummary', () => {
+  it("phrases Aj's real queue (3 blogs, 1 words approval)", () => {
+    const items = ownApprovalItems({
+      now: NOW,
+      wordsApprovals: [{ id: 'w1', topic: 'Repetition', created_at: '2026-10-07' }],
+      yourReview: [
+        { id: 'b1', topic: 'First Visit', created_at: '2026-08-17' },
+        { id: 'b2', topic: 'Repetition', created_at: '2026-10-07' },
+        { id: 'b3', topic: 'Repetition', created_at: '2026-10-07' },
+      ],
+    })
+    expect(ownApprovalSummary(items)).toBe('3 blog drafts and 1 words approval need')
+    expect(items[0].to).toBe('/publish/b1')
+  })
+  it('singular agrees', () => {
+    const items = ownApprovalItems({ now: NOW, yourAnswerReview: [{ id: 'a1', question: 'Q', created_at: '2026-07-04' }] })
+    expect(ownApprovalSummary(items)).toBe('1 drafted answer needs')
+  })
+  it('empty is empty', () => {
+    expect(ownApprovalSummary([])).toBe('')
+  })
+})
+
+describe('ProducerHome own work', () => {
+  const src = readFileSync(fileURLToPath(new URL('../../src/pages/ProducerHome.jsx', import.meta.url)), 'utf8')
+  it('drops the signed-in person from "waiting on your clinicians"', () => {
+    expect(src).toMatch(/waitingOnClinicians \|\| \[\]\)\.filter\(\(w\) => !selfStaffId \|\| w\.staffId !== selfStaffId\)/)
+  })
+  it('renders the own-approvals row from ownApprovalItems', () => {
+    expect(src).toMatch(/<OwnApprovalsRow items=\{ownItems\} \/>/)
+    expect(src).toMatch(/ownApprovalItems\(\{/)
+  })
+})

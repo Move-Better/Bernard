@@ -20,6 +20,8 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { greetingFor } from '@/components/home/helpers'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import CoachingCard from '@/components/producer-home/CoachingCard'
+import { useSelfStaffId } from '@/lib/useSelfStaffId'
+import { ownApprovalItems, ownApprovalSummary } from '@/lib/ownApprovals'
 import UpdatesFeed from '@/components/producer-home/UpdatesFeed'
 
 function tierClass(tier) {
@@ -60,6 +62,32 @@ function QueueCard({ item, rank }) {
         {item.ctaLabel}
       </Link>
     </div>
+  )
+}
+
+// A producer who also gives interviews (Aj) used to see their own blog drafts
+// and word sign-offs only as "waiting on your clinicians, not on your queue",
+// a dead end when the clinician is you. Q, 2026-11-09: a producer or owner
+// with their own interviews sees their own approvals as theirs, in one row.
+function OwnApprovalsRow({ items }) {
+  if (!items.length) return null
+  const first = items[0]
+  return (
+    <section aria-labelledby="own-approvals" className="flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+      <div className="min-w-0 flex-1 basis-96">
+        <h2 id="own-approvals" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">From your own interviews</h2>
+        <p className="mt-0.5 text-sm font-semibold text-foreground">{ownApprovalSummary(items)} your OK</p>
+        <p className="mt-0.5 text-sm text-muted-foreground max-w-[64ch]">
+          These came from interviews you gave, so only you can approve them. First up: &ldquo;{first.title}&rdquo;.
+        </p>
+      </div>
+      <Link
+        to={first.to}
+        className="shrink-0 inline-flex items-center min-h-11 rounded-md border border-primary bg-card px-3 text-xs font-semibold text-primary hover:bg-primary/10"
+      >
+        Review yours
+      </Link>
+    </section>
   )
 }
 
@@ -128,10 +156,37 @@ export default function ProducerHome({ embedded = false }) {
     staleTime: 60_000,
   })
 
+  const selfStaffId = useSelfStaffId()
+
+  // Own approvals: the same three already-own-scoped sources TeamHome reads
+  // (shared query keys, so CombinedHome pays for them once). Not fetched when
+  // embedded: CombinedHome's practice section below already lists them.
+  const ownEnabled = !embedded && !!selfStaffId
+  const { data: weekData } = useQuery({
+    queryKey: ['week-summary'], queryFn: () => apiFetch('/api/content-plan/week-summary'),
+    staleTime: 5 * 60_000, refetchOnWindowFocus: false, enabled: ownEnabled,
+  })
+  const { data: answerData } = useQuery({
+    queryKey: ['answers-review-nudge'], queryFn: () => apiFetch('/api/answers'),
+    staleTime: 5 * 60_000, refetchOnWindowFocus: false, enabled: ownEnabled,
+  })
+  const { data: clinicalData } = useQuery({
+    queryKey: ['my-clinical-checkpoints'], queryFn: () => apiFetch('/api/producer/my-clinical-checkpoints'),
+    staleTime: 5 * 60_000, refetchOnWindowFocus: false, enabled: ownEnabled,
+  })
+  const ownItems = ownEnabled ? ownApprovalItems({
+    yourReview: weekData?.yourReview ?? [],
+    yourAnswerReview: answerData?.answers ?? [],
+    wordsApprovals: clinicalData?.wordsApprovalItems ?? [],
+    supersessions: clinicalData?.supersessionItems ?? [],
+  }) : []
+
   const greeting = greetingFor(user, ws)
   const queue = data?.queue || []
   const ledger = data?.ledger || { yours: [], clinicians: [] }
-  const waiting = data?.waitingOnClinicians || []
+  // Your own pending work is not "waiting on your clinicians" — it is yours
+  // (the row above when standalone, the practice section when embedded).
+  const waiting = (data?.waitingOnClinicians || []).filter((w) => !selfStaffId || w.staffId !== selfStaffId)
   const channels = data?.health?.channels || []
 
   // Honest headline (Q, 2026-08-11). This line used to count CARDS — "you're
@@ -194,6 +249,8 @@ export default function ProducerHome({ embedded = false }) {
             </div>
           )
         )}
+
+        {!isLoading && ownItems.length > 0 && <div className="mt-3"><OwnApprovalsRow items={ownItems} /></div>}
 
         {!isLoading && waiting.length > 0 && (
           <div className="mt-3 flex flex-col gap-1.5">
