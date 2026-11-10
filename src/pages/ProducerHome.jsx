@@ -21,6 +21,7 @@ import { greetingFor } from '@/components/home/helpers'
 import { PLATFORM_META } from '@/lib/contentMeta'
 import CoachingCard from '@/components/producer-home/CoachingCard'
 import { useSelfStaffId } from '@/lib/useSelfStaffId'
+import { ViewAsSwitch } from '@/components/ViewAsSwitch'
 import { ownApprovalItems, ownApprovalSummary } from '@/lib/ownApprovals'
 import UpdatesFeed from '@/components/producer-home/UpdatesFeed'
 
@@ -225,7 +226,12 @@ export default function ProducerHome({ embedded = false }) {
             Your queue <span className="text-muted-foreground/70">· as the producer</span>
           </h2>
         ) : (
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground">{greeting}</h1>
+          // ViewAsSwitch renders only for an owner (an owner with no clinician
+          // profile lands here rather than on CombinedHome).
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground">{greeting}</h1>
+            <ViewAsSwitch />
+          </div>
         )}
         {!isLoading && (
           <p className="mt-0.5 text-sm text-muted-foreground">

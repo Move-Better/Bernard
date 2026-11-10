@@ -15,6 +15,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { greetingFor } from '@/components/home/helpers'
 import ProducerHome from '@/pages/ProducerHome'
 import Home from '@/pages/Home'
+import { ViewAsSwitch } from '@/components/ViewAsSwitch'
 
 export default function CombinedHome() {
   useDocumentTitle('Home')
@@ -26,10 +27,13 @@ export default function CombinedHome() {
     <div className="flex flex-col gap-8 py-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground">{greeting}</h1>
+        <div className="flex flex-wrap items-center gap-4">
+        <ViewAsSwitch />
         <nav className="flex gap-1 text-sm font-semibold" aria-label="Jump to section">
           <a href="#your-queue" className="rounded-md px-3 py-1.5 text-primary hover:bg-primary/10">Your queue</a>
           <a href="#your-practice" className="rounded-md px-3 py-1.5 text-primary hover:bg-primary/10">Your practice</a>
         </nav>
+        </div>
       </div>
 
       <div id="your-queue" className="scroll-mt-20">
