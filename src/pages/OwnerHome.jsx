@@ -45,15 +45,17 @@ const TONE = {
 function InboxRow({ row, n }) {
   const tone = TONE[rankTone(row.rank)]
   return (
-    <li className={`flex items-center gap-3 border-t border-border px-4 py-3.5 first:border-t-0 sm:px-5 ${tone.row}`}>
+    // On a phone the button wraps under the text (indented to line up with it)
+    // instead of squeezing the title to a word per line.
+    <li className={`flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border px-4 py-3.5 first:border-t-0 sm:flex-nowrap sm:px-5 ${tone.row}`}>
       <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${tone.badge}`}>{n}</span>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-[1_1_14rem]">
         <h3 className="text-sm font-semibold text-foreground">{row.title}</h3>
         {row.why && <p className="mt-0.5 text-sm text-muted-foreground max-w-[70ch]">{row.why}</p>}
       </div>
       <Link
         to={row.to}
-        className="inline-flex min-h-10 shrink-0 items-center gap-0.5 rounded-md bg-primary px-3.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+        className="ml-9 inline-flex min-h-10 shrink-0 items-center gap-0.5 rounded-md bg-primary px-3.5 sm:ml-0 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
       >
         {row.cta} <ChevronRight className="h-4 w-4" aria-hidden="true" />
       </Link>
