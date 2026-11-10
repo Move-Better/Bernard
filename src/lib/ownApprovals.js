@@ -39,3 +39,27 @@ export function ownApprovalItems({ yourReview = [], yourAnswerReview = [], words
     .filter((i) => OWN_KIND_ORDER.includes(i.kind))
     .sort((a, b) => (rank(a.kind) - rank(b.kind)) || (a.sortAt - b.sortAt))
 }
+
+const NOUNS = {
+  blog: ['blog draft', 'blog drafts'],
+  answer: ['drafted answer', 'drafted answers'],
+  words: ['words approval', 'words approvals'],
+  supersession: ['thinking update', 'thinking updates'],
+}
+
+/**
+ * "3 blog drafts and 1 words approval need" — the counted phrase for a row
+ * that summarises own approvals. Kinds in OWN_KIND_ORDER; the verb agrees with
+ * the total.
+ */
+export function ownApprovalSummary(items = []) {
+  const counts = new Map()
+  for (const i of items) counts.set(i.kind, (counts.get(i.kind) || 0) + 1)
+  const parts = OWN_KIND_ORDER.filter((k) => counts.get(k)).map((k) => {
+    const n = counts.get(k)
+    return `${n} ${NOUNS[k][n === 1 ? 0 : 1]}`
+  })
+  if (!parts.length) return ''
+  const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+  return `${list} ${items.length === 1 ? 'needs' : 'need'}`
+}
