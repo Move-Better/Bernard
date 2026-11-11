@@ -1,74 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import {
-  Settings, Mic2, Radio, Puzzle, Palette, Users, CreditCard, MapPin,
-  Sliders, Target, Zap, LayoutGrid, Shield, Compass, Brain, Music, Film,
-} from 'lucide-react'
 import { useUserRole } from '@/lib/useUserRole'
 import { LoadingState } from '@/components/ui/LoadingState'
-
-// Flat list used for the mobile chip rail. Order mirrors the desktop
-// sidebar reading order so muscle memory carries across breakpoints.
-// Children of "Bernard" are inlined here since the mobile rail has no
-// hierarchy.
-const MOBILE_NAV = [
-  { to: '/settings/brand-identity',          label: 'Identity',         icon: Compass },
-  { to: '/settings/workspace/voice',          label: 'Voice',            icon: Mic2 },
-  { to: '/settings/brand-kit',               label: 'Look',              icon: Palette },
-  { to: '/settings/workspace',                label: 'General',          icon: Settings,   exact: true },
-  { to: '/settings/workspace/interview',      label: 'Interview setup',  icon: Sliders },
-  { to: '/settings/workspace/locations',      label: 'Locations',        icon: MapPin },
-  { to: '/settings/workspace/channels',       label: 'Channels',  icon: Radio },
-  { to: '/settings/campaigns',               label: 'Campaigns',         icon: Target },
-  { to: '/settings/practice-brain',          label: 'Clinic knowledge',    icon: Brain },
-  { to: '/settings/integrations',            label: 'Integrations',      icon: Puzzle },
-  { to: '/settings/music',                   label: 'Music',             icon: Music },
-  { to: '/settings/photo-templates',          label: 'Photo templates',   icon: LayoutGrid },
-  { to: '/settings/video-templates',          label: 'Reel templates',    icon: Film },
-  { to: '/settings/members',                 label: 'Members & roles',   icon: Users },
-  { to: '/settings/access',                  label: 'Permissions',     icon: Shield },
-  { to: '/settings/workspace/billing',       label: 'Plan & billing',    icon: CreditCard },
-]
-
-const GROUPS = [
-  {
-    label: 'Brand',
-    items: [
-      { to: '/settings/brand-identity',      label: 'Identity',           icon: Compass },
-      { to: '/settings/workspace/voice',      label: 'Voice',              icon: Mic2 },
-      { to: '/settings/brand-kit',           label: 'Look',               icon: Palette },
-    ],
-  },
-  {
-    label: 'Workspace',
-    items: [
-      { to: '/settings/workspace',           label: 'General',            icon: Settings,   exact: true },
-      { to: '/settings/workspace/interview', label: 'Interview setup',    icon: Sliders },
-      { to: '/settings/workspace/locations', label: 'Locations',          icon: MapPin },
-      { to: '/settings/workspace/channels',  label: 'Channels',    icon: Radio },
-      { to: '/settings/campaigns',           label: 'Campaigns',          icon: Target },
-      { to: '/settings/practice-brain',      label: 'Clinic knowledge',     icon: Brain },
-      { to: '/settings/integrations',        label: 'Integrations',       icon: Puzzle },
-      { to: '/settings/music',               label: 'Music',              icon: Music },
-      { to: '/settings/photo-templates',      label: 'Photo templates',    icon: LayoutGrid },
-      { to: '/settings/video-templates',      label: 'Reel templates',     icon: Film },
-    ],
-  },
-  {
-    label: 'People',
-    items: [
-      { to: '/settings/members',            label: 'Members & roles',    icon: Users },
-      { to: '/settings/access',             label: 'Permissions',      icon: Shield },
-    ],
-  },
-  {
-    label: 'Account',
-    noHeader: true,
-    items: [
-      { to: '/settings/workspace/billing',  label: 'Plan & billing',     icon: CreditCard },
-    ],
-  },
-]
+import { visibleSettingsGroups } from '@/lib/settingsNav'
 
 function isItemActive(item, pathname) {
   return item.exact ? pathname === item.to : pathname.startsWith(item.to)
@@ -90,40 +24,6 @@ function SidebarItem({ item }) {
       <item.icon className="h-4 w-4 shrink-0" />
       {item.label}
     </NavLink>
-  )
-}
-
-// Sub-group: a label with nested children indented beneath it. Used for
-// "Bernard" inside the Workspace group so the three voice-related pages live
-// under one heading without flattening the nav.
-function SidebarSubGroup({ item }) {
-  const location = useLocation()
-  return (
-    <div className="space-y-0.5">
-      <div className="flex items-center gap-2 px-2.5 pt-1 pb-0.5 text-xs font-semibold text-muted-foreground/70">
-        {item.icon && <item.icon className="h-4 w-4 shrink-0 text-muted-foreground/60" />}
-        {item.label}
-      </div>
-      <div className="pl-3 space-y-0.5">
-        {item.children.map((child) => {
-          const isActive = location.pathname === child.to
-            || location.pathname.startsWith(child.to + '/')
-          return (
-            <NavLink
-              key={child.to}
-              to={child.to}
-              className={`block px-2.5 py-1.5 rounded-md text-sm transition-colors whitespace-nowrap ${
-                isActive
-                  ? 'bg-primary/10 text-primary font-semibold ring-1 ring-primary/20'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              {child.label}
-            </NavLink>
-          )
-        })}
-      </div>
-    </div>
   )
 }
 
@@ -188,16 +88,8 @@ export default function SettingsLayout() {
     )
   }
 
-  const isAdmin = role === 'admin'
-  // Mobile rail filters the same way the sidebar groups do — hide
-  // workspace/people entries from non-admins.
-  const autoPublishMobileEntry = [{ to: '/settings/workspace/auto-publish', label: 'Auto-publish', icon: Zap }]
-  const mobileVisible = [...MOBILE_NAV, ...autoPublishMobileEntry].filter((it) => {
-    if (!isAdmin) {
-      return ['/settings/integrations', '/settings/brand-kit', '/settings/workspace/billing'].includes(it.to)
-    }
-    return true
-  })
+  const groups = visibleSettingsGroups(role === 'admin')
+  const mobileVisible = groups.flatMap((g) => g.items)
 
   return (
     <div className="flex flex-col md:flex-row md:gap-8 min-h-[calc(100dvh-3.5rem)] md:min-h-screen -mt-8">
@@ -209,44 +101,16 @@ export default function SettingsLayout() {
               Settings
             </h2>
           </div>
-          {GROUPS.map((group) => {
-            // Hide workspace/people sections from non-admin users (the pages
-            // themselves also guard, but we hide the nav entries to avoid
-            // cluttering the sidebar for clinicians who click Settings by
-            // accident).
-            const adminOnlyGroup = group.label === 'Brand' || group.label === 'Workspace' || group.label === 'People'
-            if (adminOnlyGroup && !isAdmin) return null
-
-            // Inject the auto-publish nav item after Campaigns.
-            let items = group.items
-            if (group.label === 'Workspace') {
-              const campaignsIdx = items.findIndex((it) => it.to === '/settings/campaigns')
-              if (campaignsIdx !== -1) {
-                items = [
-                  ...items.slice(0, campaignsIdx + 1),
-                  { to: '/settings/workspace/auto-publish', label: 'Auto-publish', icon: Zap },
-                  ...items.slice(campaignsIdx + 1),
-                ]
-              }
-            }
-
-            return (
-              <div key={group.label}>
-                {!group.noHeader && (
-                  <p className="text-2xs font-semibold uppercase tracking-widest text-muted-foreground/60 px-2.5 mb-1">
-                    {group.label}
-                  </p>
-                )}
-                <nav className="space-y-0.5">
-                  {items.map((item) => (
-                    item.children
-                      ? <SidebarSubGroup key={item.label} item={item} />
-                      : <SidebarItem key={item.to} item={item} />
-                  ))}
-                </nav>
-              </div>
-            )
-          })}
+          {groups.map((group) => (
+            <div key={group.label}>
+              <p className="text-2xs font-semibold uppercase tracking-widest text-muted-foreground/60 px-2.5 mb-1">
+                {group.label}
+              </p>
+              <nav className="space-y-0.5">
+                {group.items.map((item) => <SidebarItem key={item.to} item={item} />)}
+              </nav>
+            </div>
+          ))}
         </div>
       </aside>
 
