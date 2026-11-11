@@ -9,8 +9,9 @@ import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
   Check, UserCircle, Mic2, BookOpen, PenLine, Pickaxe, Wrench,
   LayoutDashboard, Newspaper, FolderOpen, BarChart3, CalendarRange, Megaphone,
-  TrendingUp, Gauge, Globe, Bot, MoreHorizontal,
+  TrendingUp, Gauge, Globe, Bot, MoreHorizontal, Mic,
 } from 'lucide-react'
+import { talkToBernardHref } from '@/lib/talkToBernard'
 import { FeedbackWidget } from '@/components/FeedbackWidget'
 import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -201,15 +202,26 @@ export default function Layout({ children }) {
           </div>
         )}
 
-        {/* Create — primary action at top of sidebar */}
+        {/* One start button (simplicity audit C): talking to Bernard is how
+            almost everything starts, so it is the primary action. It opens the
+            call's topic screen, never a recording. The other ways to add sit
+            one quiet link below it, on /new. */}
         {hasCapability(CAP_INTERVIEW_START) && (
-          <div className={`px-2 pt-2 pb-1 ${collapsed ? 'flex justify-center' : ''}`}>
+          <div className={`px-2 pt-2 pb-1 ${collapsed ? 'flex flex-col items-center gap-1' : 'space-y-0.5'}`}>
             <Button asChild size="sm" className={collapsed ? 'h-9 w-9 p-0' : 'w-full justify-start gap-2'}>
-              <Link to="/new" aria-label="Create">
-                <Plus className="h-4 w-4 shrink-0" />
-                {!collapsed && 'Create'}
+              <Link to={talkToBernardHref(ws)} aria-label="Talk to Bernard">
+                <Mic className="h-4 w-4 shrink-0" />
+                {!collapsed && 'Talk to Bernard'}
               </Link>
             </Button>
+            <Link
+              to="/new"
+              aria-label="Other ways to add"
+              className={`flex items-center rounded-md text-xs font-medium text-sidebar-foreground hover:bg-sidebar-active hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-rail/40 ${collapsed ? 'h-8 w-8 justify-center' : 'h-8 gap-2 px-3'}`}
+            >
+              <Plus className="h-3.5 w-3.5 shrink-0" />
+              {!collapsed && 'Other ways to add'}
+            </Link>
           </div>
         )}
 
@@ -329,11 +341,10 @@ export default function Layout({ children }) {
           <div className="flex-1" />
 
           {hasCapability(CAP_INTERVIEW_START) && (
-            <Button asChild size="sm">
-              <Link to="/new">
-                <Plus className="h-4 w-4 sm:mr-1.5" />
-                <span className="hidden sm:inline">Create</span>
-                <span className="sr-only sm:hidden">Create</span>
+            <Button asChild size="sm" className="gap-1.5">
+              <Link to={talkToBernardHref(ws)} aria-label="Talk to Bernard">
+                <Mic className="h-4 w-4" />
+                <span>Talk</span>
               </Link>
             </Button>
           )}

@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Mic, MessageSquareText, Link as LinkIcon, FileText, Camera, Zap, Mail, PenSquare } from 'lucide-react'
+import { ArrowLeft, Mic, MessageSquareText, Link as LinkIcon, FileText, Camera, Mail, PenSquare, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -7,8 +7,9 @@ import { useSmartBack } from '@/lib/useSmartBack'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 
 /**
- * CapturePicker — entry point at /new. Asks the user which capture mode they
- * want before sending them down the dedicated flow.
+ * CapturePicker — entry point at /new. One start (a call with Bernard), then
+ * the other ways to add underneath (simplicity audit C, 2026-11-10). The
+ * sidebar's "Talk to Bernard" skips this page; "Other ways to add" lands here.
  *
  *   /new              → this picker
  *   /new/interview    → existing NewInterview form (AI-led chat)
@@ -19,7 +20,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
  * mode the user picks so deep links from suggestions / backlog still work.
  */
 export default function CapturePicker() {
-  useDocumentTitle('New')
+  useDocumentTitle('Start something')
   const navigate = useNavigate()
   const goBack = useSmartBack('/')
   const [searchParams] = useSearchParams()
@@ -64,206 +65,84 @@ export default function CapturePicker() {
     }
   }
 
+  // The other ways to add, below the call. Order follows use: posts and
+  // photos are the next most common after the call (90-day counts in
+  // .claude/simplicity-audit-2026-11-09.md, item C).
+  const otherWays = [
+    { key: 'post', path: '/new/brief', icon: PenSquare, tone: 'action', label: 'Write a post', hint: 'Announcements, promotions, quick shares' },
+    // "Record from your phone" used to be its own bar here; it opened this
+    // same page, so the two are one row now.
+    { key: 'media', path: '/capture', icon: Camera, label: 'Add photos or video', hint: 'Upload from any device, or record from your phone' },
+    { key: 'import', path: '/new/import', icon: LinkIcon, label: 'Import writing', hint: 'Paste a link to something you\u2019ve written' },
+    // The text interview was only reachable after the live call failed.
+    { key: 'text', path: '/new/interview', icon: MessageSquareText, label: 'Type instead of talking', hint: 'The same interview, as a text chat' },
+    { key: 'newsletter', path: '/new/newsletter', icon: Mail, label: 'Write a newsletter', hint: 'Pick a goal and talk it through' },
+    { key: 'memo', path: '/new/voice-memo', icon: Mic, label: 'Voice memo', hint: 'Hit record, say what happened, save' },
+    // Gated on workspace.patient_handouts_enabled (Phase 5 Feature 4).
+    ...(handoutsEnabled
+      ? [{ key: 'handout', path: '/new/handout', icon: FileText, label: 'Patient handout', hint: 'Say what just happened; Bernard writes a one-page handout', beta: true }]
+      : []),
+  ]
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={goBack} aria-label="Back">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Button>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">New</h1>
-          <p className="text-sm text-muted-foreground">
-            What would you like to capture today?
-          </p>
-        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">Start something</h1>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Interview — voice-first (live) with automatic text fallback when
-            WebRTC or mic permission is unavailable. supportsLiveInterview()
-            checks capability silently before navigating; no mic prompt fires
-            here. The text path (/new/interview) is also reachable directly
-            from the fallback link inside PhoneCall if the call fails to start. */}
-        <button
-          type="button"
-          onClick={handleInterviewClick}
-          className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
-        >
-          <Card className="h-full transition hover:border-primary hover:shadow-sm">
-            <CardContent className="p-5 space-y-3">
-              <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                <MessageSquareText className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="font-medium">Interview</div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Bernard-led conversation. Best when you want to think out loud
-                  about a topic and let prompts surface your thinking.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </button>
+      {/* The one start: a call with Bernard. supportsLiveInterview() checks
+          capability silently before navigating, so no mic prompt fires here,
+          and a browser that can't do the live call gets the text chat. */}
+      <Card className="border-primary/25">
+        <CardContent className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-7">
+          <div className="h-14 w-14 shrink-0 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+            <Mic className="h-7 w-7" aria-hidden="true" />
+          </div>
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <h2 className="text-2xl font-bold tracking-tight">Talk to Bernard</h2>
+            <p className="text-sm sm:text-base text-muted-foreground max-w-xl">
+              Pick a topic and Bernard asks the questions. What you say becomes this week&apos;s posts, blogs and clips.
+            </p>
+          </div>
+          <Button size="lg" onClick={handleInterviewClick} className="w-full sm:w-auto shrink-0 gap-2">
+            <Mic className="h-4 w-4" aria-hidden="true" />
+            Start a call
+          </Button>
+        </CardContent>
+      </Card>
 
-        {/* Post — one-off post, your words → one or more channels, no interview */}
-        <button
-          type="button"
-          onClick={() => go('/new/brief')}
-          className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
-        >
-          <Card className="h-full transition hover:border-primary hover:shadow-sm">
-            <CardContent className="p-5 space-y-3">
-              <div className="h-10 w-10 rounded-md bg-action/10 text-action flex items-center justify-center">
-                <PenSquare className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="font-medium">Post</div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Write a one-off post — announcements, promotions, quick shares. Post your exact words, or let Bernard adapt them for each channel.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </button>
-
-        {/* Write a newsletter — goal-steered conversation → email draft */}
-        <button
-          type="button"
-          onClick={() => go('/new/newsletter')}
-          className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
-        >
-          <Card className="h-full transition hover:border-primary hover:shadow-sm">
-            <CardContent className="p-5 space-y-3">
-              <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                <Mail className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="font-medium">Write a newsletter</div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Pick a goal, talk it through, and we&apos;ll write the newsletter
-                  in your voice — ready for your email template.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </button>
-
-        {/* Voice Memo — new in Phase 1 */}
-        <button
-          type="button"
-          onClick={() => go('/new/voice-memo')}
-          className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
-        >
-          <Card className="h-full transition hover:border-primary hover:shadow-sm">
-            <CardContent className="p-5 space-y-3">
-              <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                <Mic className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="font-medium">Voice memo</div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Quick capture. Hit record, say what happened, save. For real
-                  moments between patients or end-of-day reflections.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </button>
-
-        {/* Photos & Video — universal browser capture page (PWA). Routes to
-            /capture, which resolves the signed-in staff id internally via
-            useSelfStaffId (no params needed). This is the discoverable in-app
-            entry point for the capture page, which otherwise was only reachable
-            by direct URL or the StaffProfile help link. */}
-        <button
-          type="button"
-          onClick={() => go('/capture')}
-          className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
-        >
-          <Card className="h-full transition hover:border-primary hover:shadow-sm">
-            <CardContent className="p-5 space-y-3">
-              <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                <Camera className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="font-medium">Photos &amp; video</div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Snap or upload photos and clips from any device — phone,
-                  tablet, or computer. For in-clinic moments and b-roll.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </button>
-
-        {/* Patient handout — Phase 5 Feature 4. Gated on
-            workspace.patient_handouts_enabled. Hidden entirely for
-            workspaces that haven't been opted in. */}
-        {handoutsEnabled && (
-        <button
-          type="button"
-          onClick={() => go('/new/handout')}
-          className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
-        >
-          <Card className="h-full transition hover:border-primary hover:shadow-sm">
-            <CardContent className="p-5 space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                  <FileText className="h-5 w-5" />
-                </div>
-                <span className="text-3xs font-medium uppercase tracking-wide px-1.5 py-0.5 rounded border text-muted-foreground">
-                  Beta
+      <section className="space-y-2.5" aria-labelledby="other-ways-heading">
+        <h2 id="other-ways-heading" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Other ways
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {otherWays.map(({ key, path, icon: Icon, tone, label, hint, beta }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => go(path)}
+              className="flex items-center gap-3.5 min-h-16 rounded-lg border bg-card px-4 py-3 text-left transition hover:border-primary hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <span className={`h-8 w-8 shrink-0 rounded-md flex items-center justify-center ${tone === 'action' ? 'bg-action/10 text-action' : 'bg-primary/10 text-primary'}`}>
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="flex items-center gap-2 text-sm font-semibold">
+                  {label}
+                  {beta && (
+                    <span className="text-3xs font-medium uppercase tracking-wide px-1.5 py-0.5 rounded border text-muted-foreground">Beta</span>
+                  )}
                 </span>
-              </div>
-              <div>
-                <div className="font-medium">Patient handout</div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  After a visit, say what just happened. Bernard writes a one-page handout in your voice.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </button>
-        )}
-
-        {/* Import writing — URL import lane */}
-        <button
-          type="button"
-          onClick={() => go('/new/import')}
-          className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
-        >
-          <Card className="h-full transition hover:border-primary hover:shadow-sm">
-            <CardContent className="p-5 space-y-3">
-              <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                <LinkIcon className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="font-medium">Import writing</div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Paste a URL from your blog or any article you&apos;ve written.
-                  We pull the text and turn it into fresh content.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </button>
-      </div>
-
-      {/* iOS Shortcut — links to the full /capture page which hosts the
-          token-generation flow and install instructions. */}
-      <button
-        type="button"
-        onClick={() => go('/capture')}
-        className="w-full flex items-center gap-3 rounded-lg border border-dashed border-border bg-transparent px-4 py-3 text-left hover:border-primary/40 hover:bg-primary/5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      >
-        <Zap className="h-4 w-4 text-primary shrink-0" />
-        <div>
-          <p className="text-sm font-medium">Record from your phone</p>
-          <p className="text-xs text-muted-foreground">High-quality video in one tap, straight from your home screen</p>
+                <span className="block text-sm text-muted-foreground">{hint}</span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            </button>
+          ))}
         </div>
-      </button>
-      {/* A disabled "Seminar / Talk — coming soon" card lived here, still
-          promising a June 25 date. Removed 2026-11-09 (simplicity audit). */}
+      </section>
     </div>
   )
 }
