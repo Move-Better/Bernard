@@ -85,12 +85,19 @@ describe('sidebar layouts (signed off 2026-11-09)', () => {
     }
   })
 
-  it('owner: the full sidebar that existed before', () => {
+  it('owner: six rows, the rest under Results and More (signed off 2026-11-10)', () => {
+    const [top, ...rest] = NAV_LAYOUT[EXPERIENCE_OWNER]
+    expect(rest).toEqual([])
+    expect(top.label).toBeUndefined()
+    // Six visible rows: four links and two flyouts.
+    expect(top.items.map((it) => (typeof it === 'string' ? it : it.label)))
+      .toEqual(['home', 'week', 'stories', 'library', 'Results', 'More'])
     expect(navKeysFor(EXPERIENCE_OWNER)).toEqual([
-      'home', 'overview', 'insights', 'seo', 'week', 'producer', 'stories', 'moments', 'ads',
-      'library', 'book', 'write', 'previsit', 'usage', 'admin',
+      'home', 'week', 'stories', 'library',
+      'insights', 'overview', 'seo', 'usage',
+      'producer', 'moments', 'ads', 'synthesis', 'book', 'write', 'previsit', 'admin',
     ])
-    expect(BOTTOM_LINKS[EXPERIENCE_OWNER]).toEqual(['synthesis', 'settings', 'profile'])
+    expect(BOTTOM_LINKS[EXPERIENCE_OWNER]).toEqual(['settings', 'profile'])
   })
 
   it('every key a layout names has an item definition in Layout.jsx', () => {

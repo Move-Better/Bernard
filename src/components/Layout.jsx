@@ -74,11 +74,14 @@ const NAV_ITEMS = {
   previsit:  { to: '/pre-visit', label: 'Pre-Visit', match: (p) => p.startsWith('/pre-visit'), icon: Mic2, requiresCapability: CAP_INTERVIEW_START },
   // Usage — per-workspace adoption dashboard. Admin/owner-gated (per-staff data).
   usage:     { to: '/usage', label: 'Usage', hint: 'Adoption', match: (p) => p.startsWith('/usage'), icon: Gauge, requiresAdmin: true },
+  // Knowledge synthesis — admin only; lived at the sidebar bottom until
+  // simplicity audit D moved it into the owner's More.
+  synthesis: { to: '/synthesis', label: 'Knowledge synthesis', match: (p) => p.startsWith('/synthesis'), icon: Layers, requiresAdmin: true, requiresCapability: CAP_SETTINGS_VIEW },
   // Admin — cross-tenant global usage. Platform operators only.
   admin:     { to: '/admin', label: 'Admin', hint: 'All tenants', match: (p) => p.startsWith('/admin'), icon: Globe, requiresPlatformAdmin: true },
 }
 
-const FLYOUT_ICONS = { Analytics: BarChart3, Tools: Wrench, More: MoreHorizontal }
+const FLYOUT_ICONS = { Analytics: BarChart3, Results: BarChart3, Tools: Wrench, More: MoreHorizontal }
 
 /** Turn a NAV_LAYOUT entry into the item shape the sidebar renders. */
 function layoutSections(experience, selfStaffId) {
@@ -148,11 +151,16 @@ export default function Layout({ children }) {
   const navSections = sections
     .map((s) => ({ ...s, items: s.items.filter((it) => it.flyoutItems || itemVisible(it)).map(resolveItem).filter(Boolean) }))
     .filter((s) => s.items.length > 0)
-  // Mobile drawer flattens flyout groups back into individual links — the
-  // drawer already scrolls a full-height sheet, so there's no crowding
-  // pressure that the desktop flyouts exist to relieve.
+  // The phone drawer shows a desktop flyout as its own labelled group (Results,
+  // More), so the menu reads the same as the sidebar. The sheet scrolls, so
+  // the links themselves are shown rather than tucked behind a tap.
   const mobileNavSections = sections
-    .map((s) => ({ ...s, items: s.items.flatMap((it) => (it.flyoutItems ? it.flyoutItems : [it])).filter(itemVisible) }))
+    .flatMap((s) => {
+      const plain = s.items.filter((it) => !it.flyoutItems)
+      const groups = s.items.filter((it) => it.flyoutItems)
+      return [{ ...s, items: plain }, ...groups.map((g) => ({ label: g.label, items: g.flyoutItems }))]
+    })
+    .map((s) => ({ ...s, items: s.items.filter(itemVisible) }))
     .filter((s) => s.items.length > 0)
 
   const sidebarW = collapsed ? 'w-14' : 'w-56'
@@ -267,15 +275,6 @@ export default function Layout({ children }) {
 
         {/* Bottom section: secondary links + user button + collapse toggle */}
         <div className="border-t border-sidebar-border px-2 py-2 space-y-0.5">
-          {bottom.has('synthesis') && role === 'admin' && (
-            <SidebarNavLink
-              to="/synthesis"
-              label="Knowledge synthesis"
-              icon={Layers}
-              active={location.pathname.startsWith('/synthesis')}
-              collapsed={collapsed}
-            />
-          )}
           {bottom.has('settings') && hasCapability(CAP_SETTINGS_VIEW) && (
             <SidebarNavLink
               to="/settings/workspace"
@@ -402,13 +401,6 @@ export default function Layout({ children }) {
             ))}
           </div>
           <div className="pt-3 mt-2 border-t space-y-1 overflow-y-auto">
-            {bottom.has('synthesis') && role === 'admin' && hasCapability(CAP_SETTINGS_VIEW) && (
-              <DrawerClose asChild>
-                <Link to="/synthesis" className="flex items-center gap-2 px-3 py-3 rounded-md text-sm text-muted-foreground active:bg-accent/30">
-                  <Layers className="h-4 w-4" /> Knowledge synthesis
-                </Link>
-              </DrawerClose>
-            )}
             {bottom.has('settings') && hasCapability(CAP_SETTINGS_EDIT) && (
               <DrawerClose asChild>
                 <Link to="/settings/workspace" className="flex items-center gap-2 px-3 py-3 rounded-md text-sm text-muted-foreground active:bg-accent/30">
