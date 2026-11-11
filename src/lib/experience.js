@@ -65,11 +65,15 @@ export function effectiveExperience(actual, viewAs) {
 // The owner layout is exactly the sidebar that existed before 2026-11-09.
 
 export const NAV_LAYOUT = Object.freeze({
+  // Six rows (simplicity audit D, signed off 2026-11-10). Ordered by use: the
+  // four on top carried 435 of 590 owner-visible page views in 90 days. The
+  // rest stay one click away under Results and More, at the same addresses.
   [EXPERIENCE_OWNER]: [
-    { items: ['home', { flyout: true, label: 'Analytics', items: ['overview', 'insights', 'seo'] }] },
-    { label: 'Produce', items: ['week', 'producer', 'stories', 'moments', 'ads'] },
-    { label: 'Library', items: ['library'] },
-    { label: 'Tools', items: [{ flyout: true, label: 'Tools', items: ['book', 'write', 'previsit', 'usage', 'admin'] }] },
+    { items: [
+      'home', 'week', 'stories', 'library',
+      { flyout: true, label: 'Results', items: ['insights', 'overview', 'seo', 'usage'] },
+      { flyout: true, label: 'More', items: ['producer', 'moments', 'ads', 'synthesis', 'book', 'write', 'previsit', 'admin'] },
+    ] },
   ],
   [EXPERIENCE_PRODUCER]: [
     { items: ['home'] },
@@ -84,7 +88,7 @@ export const NAV_LAYOUT = Object.freeze({
 
 /** Links pinned to the bottom of the sidebar (and the mobile drawer's extras). */
 export const BOTTOM_LINKS = Object.freeze({
-  [EXPERIENCE_OWNER]: ['synthesis', 'settings', 'profile'],
+  [EXPERIENCE_OWNER]: ['settings', 'profile'],
   [EXPERIENCE_PRODUCER]: ['settings', 'profile'],
   [EXPERIENCE_TEAM]: ['profile'],
 })
