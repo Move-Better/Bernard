@@ -43,9 +43,8 @@ test('interview create flow + integrations page', async ({ page }) => {
   await page.goto('/new')
   await expect(page).toHaveURL(/\/new$/)
 
-  // Picker: click the Interview card. The card is a <button> wrapping a
-  // <Card>; its accessible name starts with "Interview" followed by the
-  // descriptive text, so a substring match is enough.
+  // Picker: click "Start a call" on the Talk to Bernard card (the page's one
+  // start since the simplicity audit, 2026-11-10).
   //
   // Destination is CONDITIONAL: with realtime_voice_enabled on the workspace
   // (live on movebetter since 2026-07-28) and a mic permission that isn't
@@ -54,7 +53,7 @@ test('interview create flow + integrations page', async ({ page }) => {
   // live path — accept either, then drive the rest of the create flow through
   // /new/interview directly (same direct-navigation spirit as the /new goto
   // above; the form assertions below only exist on the text path).
-  await page.getByRole('button', { name: /^interview/i }).first().click()
+  await page.getByRole('button', { name: /^start a call$/i }).click()
   await expect(page).toHaveURL(/\/new\/(live-)?interview/)
   await page.goto('/new/interview')
   await expect(page).toHaveURL(/\/new\/interview/)

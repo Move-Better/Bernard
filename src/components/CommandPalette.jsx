@@ -4,6 +4,8 @@ import {
   LayoutDashboard, Building2, BarChart3, CalendarRange, Newspaper, Pickaxe,
   Megaphone, FolderOpen, BookOpen, PenLine, Mic2, Settings, Palette, Plug, Plus, Mic, TrendingUp,
 } from 'lucide-react'
+import { useWorkspace } from '@/lib/WorkspaceContext'
+import { talkToBernardHref } from '@/lib/talkToBernard'
 import {
   CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandShortcut,
 } from '@/components/ui/command'
@@ -11,9 +13,12 @@ import {
 // Global ⌘K / Ctrl+K command palette — fuzzy-jump to any page or quick action.
 // Mounted once in the authed shell (Layout). Mirrors the sidebar nav so the two
 // stay in step; if a nav destination is added, add it here too.
-const ACTIONS = [
-  { icon: Plus, label: 'New post', to: '/new' },
-  { icon: Mic, label: 'New interview', to: '/new/interview' },
+// Talk to Bernard's target depends on the workspace (live call vs text chat),
+// so it is filled in at render time from talkToBernardHref.
+const actionsFor = (ws) => [
+  { icon: Mic, label: 'Talk to Bernard', to: talkToBernardHref(ws) },
+  { icon: Plus, label: 'New post', to: '/new/brief' },
+  { icon: Plus, label: 'Other ways to add', to: '/new' },
 ]
 const GO_TO = [
   { icon: LayoutDashboard, label: 'Home', to: '/' },
@@ -38,6 +43,7 @@ const SETTINGS = [
 export default function CommandPalette() {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
+  const ws = useWorkspace()
 
   useEffect(() => {
     const onKey = (e) => {
@@ -66,7 +72,7 @@ export default function CommandPalette() {
       <CommandInput placeholder="Jump to a page or action…" />
       <CommandList>
         <CommandEmpty>No results.</CommandEmpty>
-        <CommandGroup heading="Actions">{renderItems(ACTIONS)}</CommandGroup>
+        <CommandGroup heading="Actions">{renderItems(actionsFor(ws))}</CommandGroup>
         <CommandGroup heading="Go to">{renderItems(GO_TO)}</CommandGroup>
         <CommandGroup heading="Settings">{renderItems(SETTINGS)}</CommandGroup>
       </CommandList>
