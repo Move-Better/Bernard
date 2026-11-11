@@ -50,7 +50,7 @@ function actionsThisWeek(actions) {
 }
 
 export default function ProducerSettings() {
-  useDocumentTitle('Bernard · settings')
+  useDocumentTitle('Bernard\u2019s settings')
   const goBack = useSmartBack('/producer')
   const ws = useWorkspace()
   const { role, isLoading: roleLoading } = useUserRole()
@@ -96,7 +96,7 @@ export default function ProducerSettings() {
         </div>
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">
-            Bernard <span className="text-base font-normal text-muted-foreground">· your producer</span>
+            Bernard’s settings
           </h1>
           <p className="text-sm text-muted-foreground">
             {enabled ? (paused ? 'Paused — his queue is kept; resume any time.' : 'Always on for this workspace.') : 'Not on this workspace’s team yet.'}
@@ -117,7 +117,7 @@ export default function ProducerSettings() {
         // Hire flow
         <div className="rounded-xl border-2 border-primary/30 bg-primary/[0.04] p-6 text-center">
           <Bot className="mx-auto mb-2 h-8 w-8 text-primary" aria-hidden="true" />
-          <h2 className="text-base font-semibold">Hire Bernard as your producer</h2>
+          <h2 className="text-base font-semibold">Hire Bernard</h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
             He’ll revise drafts on your change requests, repair captions that drift from your voice, and surface only what needs you. Nothing publishes without your yes — and you control every lane below.
           </p>

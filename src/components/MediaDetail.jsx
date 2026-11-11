@@ -1071,7 +1071,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                   <p className="text-2xs text-muted-foreground">Editors cut this video into clips on Moments.</p>
                 )}
                 <p className="text-2xs text-muted-foreground leading-snug">
-                  Cut clips, review AI-proposed moments, repurpose, or use the whole video — all on the cutting desk now, one door instead of three buttons.
+                  Cut clips, review AI-proposed moments, repurpose, or use the whole video, all in the clip editor.
                 </p>
               </div>
             )}

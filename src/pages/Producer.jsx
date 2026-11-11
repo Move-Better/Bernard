@@ -13,7 +13,7 @@ import AskBernardBox from '@/components/producer/AskBernardBox'
 // controls (pause, caps) land in Phase 4. Any workspace member can view.
 
 export default function Producer() {
-  useDocumentTitle('Bernard')
+  useDocumentTitle('Bernard\u2019s workday')
   const { data, isLoading } = useProducerFeed(30)
   const { role } = useUserRole()
   const isAdmin = role === ROLE_ADMIN
@@ -69,7 +69,7 @@ export default function Producer() {
           <Bot className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
           <h2 className="text-base font-semibold">Bernard isn’t on this workspace’s team yet</h2>
           <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-            Once Bernard is hired as your producer, this is where you’ll see the work — every draft,
+            Once you hire Bernard, this is where you’ll see the work — every draft,
             plan, and publish — as a running log.
           </p>
         </div>
