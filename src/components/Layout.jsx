@@ -56,7 +56,7 @@ const NAV_ITEMS = {
   week:      { to: '/week', label: 'Your week', hint: 'Plan · approve', match: (p) => p.startsWith('/week'), icon: CalendarRange, requiresEditor: true },
   // Bernard — the Standing Producer's workday feed. Only once the workspace
   // has hired Bernard (producer_config.enabled).
-  producer:  { to: '/producer', label: 'Bernard', hint: 'Workday', match: (p) => p.startsWith('/producer'), icon: Bot, showWhen: (ws) => ws?.producer_config?.enabled },
+  producer:  { to: '/producer', label: 'Bernard\u2019s workday', match: (p) => p.startsWith('/producer'), icon: Bot, showWhen: (ws) => ws?.producer_config?.enabled },
   stories:   { to: '/stories', label: 'Stories', hint: 'Stories', match: (p) => p.startsWith('/stories'), icon: Newspaper, requiresCapability: CAP_INTERVIEW_START },
   // Team-member screen: the same Stories list, filtered to their own.
   'my-stories': {
@@ -74,9 +74,9 @@ const NAV_ITEMS = {
   previsit:  { to: '/pre-visit', label: 'Pre-Visit', match: (p) => p.startsWith('/pre-visit'), icon: Mic2, requiresCapability: CAP_INTERVIEW_START },
   // Usage — per-workspace adoption dashboard. Admin/owner-gated (per-staff data).
   usage:     { to: '/usage', label: 'Usage', hint: 'Adoption', match: (p) => p.startsWith('/usage'), icon: Gauge, requiresAdmin: true },
-  // Knowledge synthesis — admin only; lived at the sidebar bottom until
+  // Topics by clinician (was Knowledge synthesis) — admin only; lived at the sidebar bottom until
   // simplicity audit D moved it into the owner's More.
-  synthesis: { to: '/synthesis', label: 'Knowledge synthesis', match: (p) => p.startsWith('/synthesis'), icon: Layers, requiresAdmin: true, requiresCapability: CAP_SETTINGS_VIEW },
+  synthesis: { to: '/synthesis', label: 'Topics by clinician', match: (p) => p.startsWith('/synthesis'), icon: Layers, requiresAdmin: true, requiresCapability: CAP_SETTINGS_VIEW },
   // Admin — cross-tenant global usage. Platform operators only.
   admin:     { to: '/admin', label: 'Admin', hint: 'All tenants', match: (p) => p.startsWith('/admin'), icon: Globe, requiresPlatformAdmin: true },
 }

@@ -64,7 +64,7 @@ export const HELP_CONTENT = {
       {
         icon: Scissors,
         title: 'Review new video moments',
-        body: 'New from video is the cutting desk: AI-proposed moments from your source videos, ready to review and trim. Save the keepers as clips to your Library, or cut your own.',
+        body: 'New from video holds AI-proposed moments from your source videos, ready to review and trim. Save the keepers as clips to your Library, or cut your own.',
       },
       {
         icon: FileText,

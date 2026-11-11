@@ -152,7 +152,7 @@ function KindSection({ kind, concepts, totalStaff, onDraft }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Synthesis() {
-  useDocumentTitle('Knowledge Synthesis')
+  useDocumentTitle('Topics by clinician')
   const navigate = useNavigate()
   const goBack = useSmartBack('/')
   const workspace = useWorkspace()
@@ -267,10 +267,10 @@ export default function Synthesis() {
           </button>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
-            Knowledge synthesis
+            Topics by clinician
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Cross-staff concept coverage for {workspace?.display_name}
+            Which topics each clinician has covered at {workspace?.display_name}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={load} className="shrink-0">
