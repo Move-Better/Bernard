@@ -7,7 +7,8 @@ import { ArrowLeft } from 'lucide-react'
 //
 // Slots:
 //   onBack            back arrow handler
-//   title             piece title (truncated)
+//   title             the post's own title (postTitle), truncated
+//   subtitle          optional small line under it ("From story: …")
 //   destination       { icon, label, colorClass, bgClass, borderClass } | null —
 //                     WHERE this piece publishes (platform pill). Shown first so
 //                     an editor never hides its own destination; feed it from
@@ -19,7 +20,7 @@ import { ArrowLeft } from 'lucide-react'
 //   children          right-aligned action buttons (Preview / Save / Schedule)
 //
 // Extracted from SlideEditor's header verbatim so wiring it in is a visual no-op.
-export default function EditorChrome({ onBack, title, destination, badge, note, format, aspect, children }) {
+export default function EditorChrome({ onBack, title, subtitle, destination, badge, note, format, aspect, children }) {
   const BadgeIcon = badge?.icon
   const DestIcon = destination?.icon
   return (
@@ -42,7 +43,13 @@ export default function EditorChrome({ onBack, title, destination, badge, note, 
         </span>
       )}
 
-      <span className={`text-sm font-semibold truncate max-w-[200px] ${destination ? 'text-muted-foreground' : ''}`}>{title || 'Untitled'}</span>
+      {/* The post's own title gets the room it needs (it was cut at 200px and
+          greyed out beside a destination pill), with the story it came from on
+          a small line under it. Post editor audit option C. */}
+      <div className="flex min-w-0 max-w-[420px] flex-col leading-tight">
+        <span className="truncate text-sm font-semibold text-foreground" title={title || undefined}>{title || 'Untitled'}</span>
+        {subtitle && <span className="truncate text-2xs text-muted-foreground" title={subtitle}>{subtitle}</span>}
+      </div>
 
       {badge && (
         <span
