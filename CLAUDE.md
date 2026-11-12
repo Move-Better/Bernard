@@ -42,6 +42,9 @@ Bernard's SaaS-productization strategy (plan tiers, pricing, managed-vs-BYO anal
 - **Driving prod is read-only, and a page load or a `fetch()` can write.** Never click Approve, Publish,
   Schedule, Delete or Send. Before opening an editor or calling a "render"/"compose"/"generate" route
   against a real row, check whether it persists on mount or on call (`verify.md`).
+- **Staff-update screenshots come from `scripts/capture-screenshot.mjs` (Q, 2026-11-12).** For these,
+  Bernard's local Playwright script wins over the global "real Chrome only" screenshot rule
+  (`screenshots.md`).
 - **GBP Analytics "location detection failed" is a dead end (Q closed it 2026-07-22).** Never suggest
   retrying it; the shared Google project's quota is 0 and Basic API Access was denied
   (`integrations.md`).
