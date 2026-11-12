@@ -43,7 +43,7 @@ const MESSAGE =
   "'../_lib/workspaceScope.js' and filter every query by workspace_id. " +
   "If this handler legitimately bypasses workspace scoping (e.g. a webhook that " +
   "resolves workspace from a payload field), add an eslint-disable comment with " +
-  "a reason. See CLAUDE.md \"Multi-tenant SaaS\"."
+  "a reason. See .claude/lessons/data.md \"Multi-tenant SaaS\"."
 
 function bodyContainsSupabaseUrl(fnNode) {
   // Walk the function body source to check for SUPABASE_URL — we do this by

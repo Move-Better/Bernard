@@ -1536,7 +1536,7 @@ key in `atomPrompts.js`'s `instructions[platform]` object (e.g. instagram only h
 `hook`/`quick_win`/`clinical_insight`/`cta`), and any other value throws `"No prompt defined for
 <platform>/<angle>"`. This shipped and passed every static gate (lint/typecheck/build/bundle-smoke)
 because the value is just a string at that layer — it only surfaces at runtime, on the actual
-`generateText` call. Caught by the prod smoke test (per `CLAUDE.md`'s standard verification
+`generateText` call. Caught by the prod smoke test (per `.claude/lessons/verify.md`'s standard verification
 procedure), not by any automated check. Rule: before adding a **third** (or Nth) caller of a shared
 generation core, don't infer a parameter's semantics from its name — grep the function's body for
 where that parameter is actually consumed downstream (here: `getAtomSystemPrompt`'s
@@ -1978,7 +1978,7 @@ CapCut-style. Trim/overlay drag math is synchronous (mouse position → React st
 re-render); the playhead is not — its position derives from `playClipT`, which only advances once the
 `<video>` element fires `timeupdate`/`seeked` for a `seekClip()` call. That event can lag a frame, or
 never fire at all on a slow/unbuffered source (a Vercel Blob-served clip can sit at `readyState 0`
-indefinitely in some environments — see the matching CLAUDE.md verification note).
+indefinitely in some environments — see the matching `.claude/lessons/verify.md` note).
 
 **Pattern: optimistic scrub state, lifted to the page level, not owned by the timeline component.**
 `VideoEditor` holds `scrubT` (clip-relative seconds, `null` when not scrubbing) and derives

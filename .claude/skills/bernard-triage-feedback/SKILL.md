@@ -41,7 +41,7 @@ For each row, in order:
    - `/week`, `/`, `/slate`, `/library`, `/settings/*` → the matching page component
    - When unsure, `grep -rn` a distinctive phrase from the route or the user's message across `src/` and `api/`.
 2. **Look at the screenshot** if `screenshot_url` is present — fetch it (WebFetch or the browser tools) and read what's actually on screen. It usually shows the exact broken state.
-3. **Reproduce the logic path in the code.** Read the relevant component + handler. Confirm the bug is real and locate the likely root cause (`file:line`). Cross-check against CLAUDE.md's known-bug patterns (caption caps split across Buffer/bundle paths, media_urls object-shape, approve→/week polling, optimistic-scrub state, etc.) and the memory index — several of these map directly to documented gotchas.
+3. **Reproduce the logic path in the code.** Read the relevant component + handler. Confirm the bug is real and locate the likely root cause (`file:line`). Cross-check against the known-bug patterns in `.claude/lessons/` (`publish.md`, `media.md`, `frontend.md`, `verify.md`) (caption caps split across Buffer/bundle paths, media_urls object-shape, approve→/week polling, optimistic-scrub state, etc.) and the memory index — several of these map directly to documented gotchas.
 4. **Check it isn't already fixed.** `git log --oneline -8 origin/main -- <suspect file>` and the memory index — this repo ships fast and a report from days ago may already be resolved. If so, classify as `already-fixed` and note the PR.
 5. **Classify severity**: P0 (data loss / crash / publish-breaking / security), P1 (feature broken or clearly wrong behavior), P2 (polish / minor UX), or `already-fixed` / `not-reproducible` / `wont-fix` with a reason.
 
