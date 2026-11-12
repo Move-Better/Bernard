@@ -35,7 +35,7 @@ export default function VoiceChip({ piece }) {
             aria-expanded={open}
           >
             <Icon className="h-3.5 w-3.5 shrink-0" />
-            <span className="hidden text-2xs font-semibold sm:inline">Sounds like you</span>
+            <span className="hidden text-2xs font-semibold 2xl:inline">Sounds like you</span>
             <span className="text-2xs font-bold tabular-nums">{shown}</span>
             {flags.length > 0 && (
               <ChevronDown className={`h-3 w-3 opacity-70 transition-transform ${open ? 'rotate-180' : ''}`} />

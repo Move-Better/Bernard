@@ -24,7 +24,7 @@ export default function SaveStatus({ status }) {
     return (
       <span className="flex items-center gap-1.5 text-2xs text-muted-foreground">
         <Check className="h-3 w-3" />
-        All changes saved
+        Saved
       </span>
     )
   }

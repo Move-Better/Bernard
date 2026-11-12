@@ -1165,7 +1165,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
             <TooltipContent>{playing ? 'Pause' : 'Play'} · Space</TooltipContent>
           </Tooltip>
           <button onClick={() => stepFrame(1)} className="rounded p-0.5 hover:opacity-70 text-muted-foreground" aria-label="Next frame" title="Next frame (→)"><ChevronRight className="h-3.5 w-3.5" /></button>
-          <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(displayClipT)} / {fmt(durationSec)}</span>
+          <span className="whitespace-nowrap font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(displayClipT)} / {fmt(durationSec)}</span>
         </div>
         <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
         {/* Format — one clip, any shape. Drives the canvas aspect + render channel. */}
@@ -1178,8 +1178,10 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
                   className="flex flex-col items-center gap-0.5 rounded-md border px-2.5 py-1 text-3xs leading-tight"
                   style={segBtn(format === k)}
                 >
-                  <span className="font-medium">{FORMATS[k].label}</span>
-                  <span style={{ opacity: 0.7 }}>{FORMATS[k].dim}</span>
+                  {/* Name only on wide screens; below that the ratio alone keeps
+                      the approve bar on one line (the tooltip names it). */}
+                  <span className="hidden font-medium 2xl:inline">{FORMATS[k].label}</span>
+                  <span className="2xl:opacity-70">{FORMATS[k].dim}</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent>{`${FORMATS[k].label} · ${FORMATS[k].dim}`}</TooltipContent>
