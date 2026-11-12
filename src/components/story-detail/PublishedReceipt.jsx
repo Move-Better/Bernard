@@ -99,21 +99,22 @@ export default function PublishedReceipt({ piece, title, storyLine = null, forma
         title={title}
         subtitle={storyLine}
         destination={meta.icon ? { icon: meta.icon, label: meta.label, colorClass: meta.color, bgClass: meta.bg, borderClass: meta.border } : null}
-        badge={formatLabel && formatLabel !== meta.label ? { label: formatLabel } : null}
+        // No badge when it would repeat the platform pill ("Blog Post" · "Blog").
+        badge={formatLabel && !String(meta.label).includes(formatLabel) ? { label: formatLabel } : null}
         note={isPublished ? 'Locked — this is what went out' : 'Locked while queued'}
       >
         <div className="relative flex items-center gap-2">
           {isPublished ? (
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-xs font-semibold text-success">
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-xs font-semibold text-success">
               <CheckCircle2 className="h-3.5 w-3.5" />
               {piece.platform === 'blog' ? 'Published to website' : 'Published'}
-              {when && <span className="font-normal text-muted-foreground">· {when}</span>}
+              {when && <span className="hidden font-normal text-muted-foreground sm:inline">· {when}</span>}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/25 bg-primary/5 px-2.5 py-1.5 text-xs font-semibold text-primary">
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-primary/25 bg-primary/5 px-2.5 py-1.5 text-xs font-semibold text-primary">
               <CalendarClock className="h-3.5 w-3.5" />
               Scheduled
-              {when && <span className="font-normal text-muted-foreground">· {when}</span>}
+              {when && <span className="hidden font-normal text-muted-foreground sm:inline">· {when}</span>}
             </span>
           )}
           {piece.resolved_url && (
@@ -121,10 +122,11 @@ export default function PublishedReceipt({ piece, title, storyLine = null, forma
               href={piece.resolved_url}
               target="_blank"
               rel="noreferrer noopener"
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-semibold text-foreground hover:bg-muted"
+              aria-label="View live post"
+              className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border px-2.5 text-xs font-semibold text-foreground hover:bg-muted"
             >
               <ExternalLink className="h-3.5 w-3.5" />
-              View live post
+              <span className="hidden sm:inline">View live post</span>
             </a>
           )}
           {canUnschedule(piece) && <UnscheduleControl piece={piece} />}
