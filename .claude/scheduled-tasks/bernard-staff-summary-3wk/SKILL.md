@@ -1,3 +1,8 @@
+---
+name: bernard-staff-summary-3wk
+description: Bernard staff summary — cron fires weekly but a marker-file gate makes it fire for real every ~3 weeks; builds a plain-language PDF + Gmail draft from origin/main history, read-only, no screenshot capture
+---
+
 # Bernard Staff Summary Routine (every 3 weeks)
 
 **Objective:** Produce a combined plain-language PDF summary of the last ~3 weeks of
@@ -57,7 +62,7 @@ a specific calendar date).
    window in step 2, instead of a hardcoded 21 — this avoids a coverage gap if a prior run
    was skipped or failed.
 5. **Only write today's date to the marker file at the very end, after the PDF has been
-   built AND verified readable (step 5.4).** If anything fails before that, leave the
+   built AND verified readable (step 4, the `pdftoppm` check).** If anything fails before that, leave the
    marker alone so the next weekly check-in retries a real run instead of silently skipping
    another cycle.
 
@@ -91,7 +96,7 @@ Write one plain-language bullet per item. **Criteria for inclusion:**
 **Tone:** Warm, plain language. No jargon, no PR numbers, no file paths, no technical
 terms. Assume staff who use Bernard day-to-day, not engineers. With a 3-week window there
 will typically be more items than the old weekly version — that's fine, the PDF paginates
-(step 5.2). If the list is very long (30+ bullets), group related bullets from the same
+(step 4.2). If the list is very long (30+ bullets), group related bullets from the same
 area into one combined sentence rather than trimming real changes out.
 
 ### 3. Match screenshots to bullets — READ ONLY, never capture new ones

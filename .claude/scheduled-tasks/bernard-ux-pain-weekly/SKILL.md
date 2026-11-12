@@ -90,7 +90,10 @@ q "select $NRM as route, properties.\$el_text as el, count() c from events where
 echo '== D: funnel event counts 7d =='
 q "select event, count() from events where timestamp > now() - interval 7 day and event in ('piece_opened','draft_reviewed','publish_scheduled','published','capture_started','story_generated','clip_approved') group by event order by count() desc"
 echo '== E: LCP by route 14d (median/p95 ms, n) =='
-q "select $NRM as route, round(median(properties.\$web_vitals_LCP_value)) med, round(quantile(0.95)(properties.\$web_vitals_LCP_value)) p95, count() n from events where event='\$web_vitals' and properties.\$web_vitals_LCP_value>0 and timestamp > now() - interval 14 day group by route order by n desc limit 10"
+# Grouped by the page actually LOADED, not $pathname (see "Perf verdict" in Step 4).
+LOADED="coalesce(nullIf(replaceRegexpAll(JSONExtractString(properties.\$web_vitals_LCP_event,'navigationURL'),'^https?://[^/]+|[?#].*\$',''),''),properties.\$pathname)"
+LOADED_NRM="replaceRegexpAll(replaceRegexpAll($LOADED,'/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}','/:id'),'/[0-9]+','/:n')"
+q "select $LOADED_NRM as route, round(median(properties.\$web_vitals_LCP_value)) med, round(quantile(0.95)(properties.\$web_vitals_LCP_value)) p95, count() n from events where event='\$web_vitals' and properties.\$web_vitals_LCP_value>0 and timestamp > now() - interval 14 day group by route order by n desc limit 10"
 echo '== F: exceptions 7d (any real error cluster is a P0) =='
 q "select properties.\$exception_types as t, $NRM as route, count() c from events where event='\$exception' and timestamp > now() - interval 7 day group by t, route order by c desc limit 10"
 echo '== G: session/user volume 7d (frame everything through this) =='
@@ -207,6 +210,17 @@ the real timing (`responseStart - requestStart` server vs `requestStart - startT
 cold single sample is not the number. `/week` is documented as **already at floor** (memory:
 `week-summary.js` optimized) — do NOT re-investigate it; verify the OTHER slow routes.
 
+**`/` and `/library` are settled too** (memories `project-home-lcp-verified-fine`,
+`project-library-lcp-verified-fine`): warm visible-page LCP was under 1s and 1.0–1.8s, so small-n
+readings in the 3–9s range are first-load-after-idle. Re-open either only if a WARM visible-page
+measurement exceeds 2.5s. Read LCP from local Playwright, never the hidden Chrome tab (it reports
+no paint entries).
+
+**Query E groups by `navigationURL` on purpose; don't change it back to `$pathname`.** `$pathname`
+on `$web_vitals` is the route at flush time, about 5s after first input, not the page that loaded.
+On 2026-11-02, 4 of 6 "/library" samples were really Home, and 6 of 16 samples site-wide carried
+the wrong route. So readings from before 2026-11-02 reports are not comparable route by route.
+
 ## Step 5 — Write the report
 
 Write to `/Users/qbook/Claude Projects/Bernard/.claude/audit-history/<YYYY-MM-DD>-posthog-ux.md`
@@ -263,10 +277,10 @@ Then STOP. No PRs, no code edits, no git mutations — only the report + chips.
 
 ## Maintenance notes (for whoever edits this routine)
 
-- This file is the committed source of truth at
-  `.claude/scheduled-tasks/bernard-ux-pain-weekly/SKILL.md`. The LIVE scheduler copy is at
-  `/Users/qbook/.claude/scheduled-tasks/bernard-ux-pain-weekly/SKILL.md`. **Edit both** (this copy
-  via a normal edit, the live copy via `mcp__scheduled-tasks__update_scheduled_task`), or they drift.
+- This routine's committed source of truth is at
+  `.claude/scheduled-tasks/bernard-ux-pain-weekly/SKILL.md` in the Bernard repo; this live
+  scheduler copy must be kept identical to it (mirror edits both ways — the repo copy via a normal
+  edit, this copy via `mcp__scheduled-tasks__update_scheduled_task`).
 - **Browser dependency**: live verification (Step 4) needs Q's Chrome open, the claude-in-chrome
   extension connected, and a tab logged into the Bernard subdomains at fire time. When it's down the
   run degrades to headless (verify-first) rather than failing — that's intended.
