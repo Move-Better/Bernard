@@ -46,7 +46,10 @@ export default function EditorChrome({ onBack, title, subtitle, destination, bad
       {/* The post's own title gets the room it needs (it was cut at 200px and
           greyed out beside a destination pill), with the story it came from on
           a small line under it. Post editor audit option C. */}
-      <div className="flex min-w-0 max-w-[420px] flex-col leading-tight">
+      {/* basis-0 + grow: the title takes only the room the actions leave, so a
+          busy bar (the video editor) truncates the title instead of wrapping
+          the approve buttons onto a second line. */}
+      <div className="flex min-w-[120px] max-w-[420px] flex-1 basis-0 flex-col leading-tight">
         <span className="truncate text-sm font-semibold text-foreground" title={title || undefined}>{title || 'Untitled'}</span>
         {subtitle && <span className="truncate text-2xs text-muted-foreground" title={subtitle}>{subtitle}</span>}
       </div>

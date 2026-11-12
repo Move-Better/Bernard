@@ -104,7 +104,7 @@ function PublishControl({ wf, piece, enabled, publish, busy, disabledReason }) {
         >
           {!busy && <CalendarClock className="mr-1.5 h-3.5 w-3.5" />}
           Schedule
-          {slotLabel && <span className="ml-1 hidden font-normal opacity-90 md:inline">· {slotLabel}</span>}
+          {slotLabel && <span className="ml-1 hidden font-normal opacity-90 2xl:inline">· {slotLabel}</span>}
         </Button>
         <button
           type="button"
