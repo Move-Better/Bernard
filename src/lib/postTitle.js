@@ -42,7 +42,9 @@ export function normalCase(text) {
       const lower = tok.toLowerCase()
       out = first ? lower.replace(/[a-z]/, (c) => c.toUpperCase()) : lower
     }
-    if (core) first = false
+    // A new sentence starts after . ? or ! ("TIGHT UPPER TRAPS? CHECK…" →
+    // "Tight upper traps? Check…").
+    if (core) first = /[.?!]["”’)]*$/.test(tok)
     return out
   }).join('')
 }

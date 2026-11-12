@@ -61,6 +61,11 @@ describe('normalCase', () => {
     expect(normalCase('YOUR ACL IS FINE')).toBe('Your ACL is fine')
     expect(normalCase('I\'M NOT STRETCHING')).toBe('I\'m not stretching')
   })
+  it('starts a new sentence after a question mark, full stop or exclamation', () => {
+    // The real published post that showed this bug (2026-11-11).
+    expect(normalCase('TIGHT UPPER TRAPS? CHECK THE BREATHING')).toBe('Tight upper traps? Check the breathing')
+    expect(normalCase('STOP. BREATHE! THEN LIFT')).toBe('Stop. Breathe! Then lift')
+  })
   it('leaves text that already has lowercase alone', () => {
     expect(normalCase('Even your provider has been there.')).toBe('Even your provider has been there.')
   })
