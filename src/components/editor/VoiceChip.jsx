@@ -73,7 +73,10 @@ export default function VoiceChip({ piece }) {
             className="fixed inset-0 z-40 cursor-default"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-lg">
+          {/* Capped and scrollable: a blog with five detailed notes ran ~1,400px
+              tall inside the full-height editor, which doesn't scroll, so the
+              bottom of the box could never be reached. */}
+          <div className="absolute right-0 z-50 mt-2 max-h-[min(70vh,560px)] w-72 overflow-y-auto rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-lg">
             <div className="flex items-center gap-2">
               <Icon className={`h-4 w-4 ${tier.text}`} />
               <span className={`text-sm font-semibold ${tier.text}`}>{tier.label}</span>
@@ -82,6 +85,8 @@ export default function VoiceChip({ piece }) {
             {hasAudit && audit.summary && (
               <p className="mt-1.5 text-2xs leading-snug text-muted-foreground">{audit.summary}</p>
             )}
+            {/* Short and always relevant, so it sits above the (long) notes. */}
+            {sources && <WordSources sources={sources} whose={whose} />}
             {flags.length > 0 ? (
               <ul className="mt-2 space-y-2 border-t border-border/60 pt-2">
                 {flags.map((f, i) => (
@@ -109,7 +114,6 @@ export default function VoiceChip({ piece }) {
                 No drift flags — this reads like you.
               </p>
             ) : null}
-            {sources && <WordSources sources={sources} whose={whose} />}
             <p className="mt-2.5 border-t border-border/60 pt-2 text-3xs text-muted-foreground">
               Bernard’s read, to inform your call. You decide with “Approve”.
             </p>
