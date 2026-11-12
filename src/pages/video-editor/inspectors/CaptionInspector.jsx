@@ -13,7 +13,7 @@ export function CaptionInspector({ ctx }) {
   // touch the caption pixels), and the true fix is re-exporting from the source.
   if (captionsBaked) {
     return (
-      <InspectorShell icon={Captions} title="Karaoke captions" right="baked in">
+      <InspectorShell icon={Captions} title="Subtitles" right="baked in">
         <div className="rounded-md border border-dashed p-3 text-2xs leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
           This clip&rsquo;s captions are <span className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>baked into the video</span>, so they can&rsquo;t be restyled here. Trim, reframe, grade, and music still apply. To change the words, re-export the clip from its original source.
         </div>
@@ -38,7 +38,7 @@ export function CaptionInspector({ ctx }) {
     </div>
   )
   return (
-    <InspectorShell icon={Captions} title="Karaoke captions" right="on-screen · from transcript">
+    <InspectorShell icon={Captions} title="Subtitles" right="on-screen · from transcript">
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>On-screen words</p>
       <div className="mb-3 flex gap-1.5">
         {['karaoke', 'off'].map((p) => <button key={p} onClick={() => setCaption('preset', p)} className="flex-1 rounded-md border py-1.5 text-3xs" style={segBtn(caption.preset === p)}>{p === 'karaoke' ? 'On' : 'Off'}</button>)}

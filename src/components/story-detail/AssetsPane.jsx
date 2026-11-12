@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useSearchParams, Link } from 'react-router-dom'
 import {
   CheckCircle2, XCircle, Send, Loader2,
-  ChevronDown, MessageSquare, RotateCcw, ExternalLink, Quote,
+  ChevronDown, MessageSquare, RotateCcw, ExternalLink,
   Calendar, Clock, AlertTriangle, Copy, Download, Lock,
   Bot,
 } from 'lucide-react'
@@ -560,16 +560,6 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
 
   const isBusy = updateStatus.isPending || addComment.isPending
 
-  const provSummary = piece.provenance?.summary
-  const ownWordsPct  = provSummary ? provSummary.verbatim_pct + provSummary.paraphrase_pct : null
-  const echoCount    = provSummary?.voice_phrase_echo_count ?? 0
-  // verbatim_count isn't on summary today — derive from blocks. Same shape
-  // as if it were precomputed, so we can swap to summary.verbatim_count later
-  // without touching the render path.
-  const verbatimCount = provSummary
-    ? piece.provenance?.blocks?.filter((b) => b.source_type === 'verbatim').length ?? 0
-    : 0
-
   // Approver display: the API only ever writes piece.approved_by as the
   // approver's raw Clerk user id (db/content.js sets it server-side from
   // auth.userId, ignoring any client-supplied value) — it is never an email
@@ -587,36 +577,9 @@ export function ApprovalPanel({ piece, mode = 'workflow' }) {
           detail read in db/content.js only sets it when the plan atom carries
           a moment_id), so this renders nothing on non-bank content. */}
       {piece.moment && <MomentProvenance moment={piece.moment} />}
-      {/* Voice-drift scorecard — sourced from provenance.summary (PR1 substrate) */}
-      {provSummary && (
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {verbatimCount > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-success/10 text-success border border-success/30 font-medium">
-              <Quote className="h-3 w-3" aria-hidden="true" />
-              {verbatimCount} verbatim phrase{verbatimCount === 1 ? '' : 's'} preserved
-            </span>
-          )}
-          <span className="inline-flex items-center rounded-full bg-success/10 border border-success/30 px-2 py-0.5 text-xs text-success">
-            {ownWordsPct}% in clinician&rsquo;s voice
-          </span>
-          {(provSummary.prior_corpus_pct ?? 0) > 0 && (
-            <span className="inline-flex items-center rounded-full bg-info/10 border border-info/20 px-2 py-0.5 text-xs text-info">
-              {provSummary.prior_corpus_pct}% drew on your prior work
-            </span>
-          )}
-          {echoCount > 0 && (
-            <span className="inline-flex items-center rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-xs text-primary">
-              {echoCount} phrase{echoCount === 1 ? '' : 's'} echo prior work
-            </span>
-          )}
-          {provSummary.synthesis_pct > 40 && (
-            <span className="inline-flex items-center rounded-full bg-warning/10 border border-warning/30 px-2 py-0.5 text-xs text-warning">
-              {provSummary.synthesis_pct}% model-invented — read closely
-            </span>
-          )}
-        </div>
-      )}
-
+      {/* Where the words came from (provenance) now sits inside the editor's
+          voice chip, next to the score, instead of as a second voice number
+          here (post editor audit B, 2026-11-11). See VoiceChip.jsx. */}
       {/* Status + audit trail */}
       <div className="flex items-center gap-2 flex-wrap">
         <StatusBadge status={piece.status} />
