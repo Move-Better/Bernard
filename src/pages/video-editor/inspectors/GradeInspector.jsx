@@ -23,7 +23,7 @@ export function GradeInspector({ ctx }) {
     finally { setProposing(false) }
   }
   return (
-    <InspectorShell icon={Sparkles} title="AI Colorist — Frame grade" right="whole clip">
+    <InspectorShell icon={Sparkles} title="Grade" right="whole clip">
       <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Describe a look</p>
       <div className="mb-3 flex gap-1.5">
         <input

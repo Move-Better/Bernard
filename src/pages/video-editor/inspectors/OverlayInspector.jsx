@@ -14,7 +14,7 @@ export function OverlayInspector({ ctx }) {
   }
   const alignBtnCls = 'flex h-[26px] items-center justify-center rounded border transition-colors'
   return (
-    <InspectorShell icon={Type} title="Text overlay" right={
+    <InspectorShell icon={Type} title="Text" right={
       <div className="flex items-center gap-1">
         <button type="button" onClick={() => alignOverlay(true, false)} title="Center horizontally" aria-label="Center horizontally"
           className={`${alignBtnCls} w-[26px]`} style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}>

@@ -46,7 +46,7 @@ export function MediaInspector({ ctx }) {
   }
 
   return (
-    <InspectorShell icon={Repeat} title="This reel's video">
+    <InspectorShell icon={Repeat} title="Media">
       {cur && (
         <div className="mb-3 flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-2.5">
           <div className="relative aspect-[9/16] w-11 shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-slate-700 to-slate-900">

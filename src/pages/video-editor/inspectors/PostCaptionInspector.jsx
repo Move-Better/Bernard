@@ -14,9 +14,9 @@ export function PostCaptionInspector({ ctx }) {
   const { captionPiece, updateItem } = ctx
   if (!captionPiece) return null
   return (
-    <InspectorShell icon={MessageSquareText} title="Post caption" right="below the video">
+    <InspectorShell icon={MessageSquareText} title="Words" right="below the video">
       <p className="mb-2 rounded-md px-2 py-1 text-3xs bg-muted text-muted-foreground">
-        The text that publishes below your video — <span className="font-semibold text-foreground">not</span> the on-screen words. Those live under <span className="font-semibold text-foreground">Karaoke</span>.
+        The text that publishes below your video — <span className="font-semibold text-foreground">not</span> the on-screen words. Those live under <span className="font-semibold text-foreground">Subtitles</span>.
       </p>
       <div className="flex min-h-0 flex-col gap-2">
         <PostCaptionField

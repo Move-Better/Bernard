@@ -9,7 +9,7 @@ export function ClipInspector({ ctx }) {
   const { startSec, endSec, durationSec, reframe, setReframe, autoReframe, autoReframing, kenBurns, setKenBurns, speed, setSpeed, selectKey, caption, formatDim } = ctx
   const kbMotion = kenBurns?.motion || 'none'
   return (
-    <InspectorShell icon={Film} title="Clip & reframe" right={formatDim}>
+    <InspectorShell icon={Film} title="Reframe" right={formatDim}>
       <div className="mb-3 flex items-center gap-2 text-2xs">
         <span className="flex-1 rounded-md border border-border px-2 py-1.5 text-center font-mono">{fmt(startSec)}</span>
         <span className="text-muted-foreground">→</span>
@@ -47,7 +47,7 @@ export function ClipInspector({ ctx }) {
       </div>
       <p className="mb-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">Captions</p>
       <button onClick={() => selectKey('caption')} className="flex w-full items-center justify-between rounded-md border border-border px-2 py-2 text-2xs">
-        <span><Captions className="mr-1 inline h-3.5 w-3.5" />{caption.preset === 'off' ? 'Captions off' : `Karaoke · ${caption.position} · ${caption.size}`}</span>
+        <span><Captions className="mr-1 inline h-3.5 w-3.5" />{caption.preset === 'off' ? 'Subtitles off' : `Subtitles · ${caption.position} · ${caption.size}`}</span>
         <span className="text-muted-foreground">›</span>
       </button>
     </InspectorShell>

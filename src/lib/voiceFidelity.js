@@ -35,3 +35,33 @@ export function scoreTier(score) {
   if (s >= 50) return { label: 'Worth a look',             tone: 'warning',     iconName: 'alert',  text: 'text-warning',     bg: 'bg-warning/10',     border: 'border-warning/30' }
   return       { label: "Doesn't sound like you",          tone: 'destructive', iconName: 'alert',  text: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/30' }
 }
+
+// ── Where the words came from (post editor audit B, 2026-11-11) ─────────────
+// provenance.summary counts how much of a draft came from the interview. It is
+// a DIFFERENT measure from the voice score above (Bernard's read of whether it
+// sounds like the person), so it lives inside the voice chip's details, named
+// for what it counts, instead of as a second "% in clinician's voice" number.
+// Only blogs carry provenance today; everything else returns null.
+export const CLOSE_READ_PCT = 40
+
+export function wordSources(piece) {
+  const s = piece?.provenance?.summary
+  if (!s) return null
+  const n = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : 0)
+  const blocks = piece?.provenance?.blocks
+  return {
+    asSaid: n(s.verbatim_pct),
+    reworded: n(s.paraphrase_pct),
+    bernard: n(s.synthesis_pct),
+    prior: n(s.prior_corpus_pct),
+    echoes: n(s.voice_phrase_echo_count),
+    phrases: Array.isArray(blocks) ? blocks.filter((b) => b?.source_type === 'verbatim').length : 0,
+  }
+}
+
+// Bernard wrote more than CLOSE_READ_PCT of the words: the chip says so in the
+// top bar, score or not (that warning used to live only in the publish panel).
+export function needsCloseRead(piece) {
+  const w = wordSources(piece)
+  return !!w && w.bernard > CLOSE_READ_PCT
+}
