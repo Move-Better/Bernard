@@ -147,15 +147,20 @@ export default function StoryboardPublish() {
   // server enforces the same rule (api/_routes/db/content.js) against the
   // stored status — this branch is the affordance, not the guarantee.
   if (isPieceLocked(piece)) {
+    // Same full-bleed frame as the editors below (post editor audit E).
     return (
-      <PublishedReceipt
-        piece={piece}
-        title={title}
-        storyLine={storyLine}
-        nextPiece={nextPiece}
-        nextTitle={nextTitle}
-        nextMeta={nextMeta}
-      />
+      <div className="-mx-4 -my-8 sm:-mx-6 lg:-mx-8 h-[100dvh] overflow-hidden">
+        <PublishedReceipt
+          piece={piece}
+          title={title}
+          storyLine={storyLine}
+          formatLabel={fmt.label}
+          onBack={goBack}
+          nextPiece={nextPiece}
+          nextTitle={nextTitle}
+          nextMeta={nextMeta}
+        />
+      </div>
     )
   }
 
