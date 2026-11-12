@@ -5,7 +5,7 @@ import BackLink from '@/components/ui/BackLink'
 import { useSmartBack } from '@/lib/useSmartBack'
 import { postFormat } from '@/lib/mediaEntry'
 import { resolveArchetype } from '@/lib/editorArchetype'
-import { stripStoryDatePrefix } from '@/lib/storyTitle'
+import { postTitle, postStoryLine } from '@/lib/postTitle'
 import LoadingState from '@/components/LoadingState'
 import ErrorState from '@/components/ErrorState'
 import SlideEditor from '@/components/story-detail/SlideEditor'
@@ -27,12 +27,6 @@ const VideoPieceEditor = lazy(() => import('@/pages/VideoEditor'))
 // Same predicate the Storyboard queue uses — a draft "needs media" when nothing
 // is attached. Shared shape keeps the "Next up" count honest against the queue.
 const NEEDS_MEDIA = (p) => !Array.isArray(p?.media_urls) || p.media_urls.length === 0
-
-function firstHeading(content) {
-  if (typeof content !== 'string') return ''
-  const m = content.match(/^#{1,6}\s+(.+)$/m)
-  return m ? m[1].trim() : ''
-}
 
 /**
  * StoryboardPublish — the final output surface for one content piece. The third
@@ -101,11 +95,11 @@ export default function StoryboardPublish() {
 
   const meta = PLATFORM_META[piece.platform] || { label: piece.platform || '—' }
   const Icon = meta.icon
-  // The stored topic is the SOURCE STORY's title, and the weekly outbound-call
-  // path bakes a `MM/DD/YY — ` date into it (api/_lib/outboundCall.js). Editor
-  // chrome wants the bare subject — the date is noise here and eats the
-  // truncation budget — so strip it the same way the Stories views do.
-  const title = stripStoryDatePrefix(piece.topic) || firstHeading(piece.content) || 'Untitled draft'
+  // The post's OWN title (blog heading, cover slide, caption opening), with
+  // the source story's name as a small second line — the same rule the editor
+  // top bars use (src/lib/postTitle.js, post editor audit option C).
+  const title = postTitle(piece)
+  const storyLine = postStoryLine(piece)
   // Route by editing archetype (the unified-shell resolver) instead of ad-hoc
   // platform/media flags. An Instagram piece with a video is a Reel ('vvideo');
   // a photo Instagram Story ('story') is ALSO just a carousel of one slide —
@@ -138,9 +132,7 @@ export default function StoryboardPublish() {
   // media instead of bouncing back through the /publish queue (which redirects
   // to /week). PostHog showed up to 39 /week↔/publish round-trips in one session.
   const nextPiece = remainingNeedsMedia[0]
-  const nextTitle = nextPiece
-    ? (stripStoryDatePrefix(nextPiece.topic) || firstHeading(nextPiece.content) || 'Untitled draft')
-    : ''
+  const nextTitle = nextPiece ? postTitle(nextPiece) : ''
   const nextMeta = nextPiece
     ? (PLATFORM_META[nextPiece.platform] || { label: nextPiece.platform || '—' })
     : null
@@ -159,6 +151,7 @@ export default function StoryboardPublish() {
       <PublishedReceipt
         piece={piece}
         title={title}
+        storyLine={storyLine}
         nextPiece={nextPiece}
         nextTitle={nextTitle}
         nextMeta={nextMeta}
@@ -233,6 +226,7 @@ export default function StoryboardPublish() {
           </h1>
           <p className="text-xs text-muted-foreground">
             {fmt.label} · {photoCount === 0 ? 'no media yet' : `${photoCount} ${photoCount === 1 ? 'item' : 'items'}`}
+            {storyLine ? ` · ${storyLine}` : ''}
           </p>
         </div>
         <StoryComposer piece={piece} remainingNeedsMedia={remainingNeedsMedia} />
@@ -276,7 +270,8 @@ export default function StoryboardPublish() {
         piece={piece}
         onBack={goBack}
         formatLabel={fmt.label}
-        formatSub={`${fmt.count} ${fmt.unit}`}
+        // "Blog · 0 media" told you nothing; show the count only when there is one.
+        formatSub={fmt.count ? `${fmt.count} ${fmt.unit}` : null}
         photoCount={photoCount}
         remainingNeedsMedia={remainingNeedsMedia}
       />

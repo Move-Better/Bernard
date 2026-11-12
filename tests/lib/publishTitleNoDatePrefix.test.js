@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { stripStoryDatePrefix } from '../../src/lib/storyTitle.js'
+import { postTitle, postStoryLine } from '../../src/lib/postTitle.js'
 
 // A staff member reported the publish editor's top-left title reading
 // "July 10, 2026 — Hip extension and opposite-shoulder stability" on an
@@ -63,25 +64,25 @@ const TITLE_SITES = [
     file: '../../src/pages/StoryboardPublish.jsx',
     what: 'publish page title (published receipt + Story branch)',
     raw: 'piece.topic || firstHeading',
-    stripped: 'stripStoryDatePrefix(piece.topic) || firstHeading',
+    stripped: 'const title = postTitle(piece)',
   },
   {
     file: '../../src/pages/StoryboardPublish.jsx',
     what: '"Next up" queue card',
     raw: '(nextPiece.topic || firstHeading',
-    stripped: '(stripStoryDatePrefix(nextPiece.topic) || firstHeading',
+    stripped: 'nextPiece ? postTitle(nextPiece)',
   },
   {
     file: '../../src/components/story-detail/SlideEditor.jsx',
     what: 'carousel/photo editor chrome — the reported top-left title',
     raw: 'title={piece?.topic}',
-    stripped: 'title={stripStoryDatePrefix(piece?.topic)}',
+    stripped: 'title={postTitle(piece)}',
   },
   {
     file: '../../src/components/editor/UnifiedEditor.jsx',
     what: 'unified editor chrome (blog / email / text / video-no-asset)',
     raw: "title={piece?.topic || 'Untitled draft'}",
-    stripped: "title={stripStoryDatePrefix(piece?.topic) || 'Untitled draft'}",
+    stripped: 'title={postTitle(piece)}',
   },
   {
     file: '../../src/components/storyboard/DraftContextPanel.jsx',
@@ -96,6 +97,19 @@ const TITLE_SITES = [
     stripped: "headline || (stripStoryDatePrefix(piece.topic) || 'Blog Post')",
   },
 ]
+
+// The editor top bars, the published view and "Next up" now show the POST's
+// own title (post editor audit C, 2026-11-11) via postTitle, which falls back
+// to — and labels — the story name. The date must still never show there.
+describe('postTitle keeps the date out', () => {
+  it('strips the date when it falls back to the story name', () => {
+    expect(postTitle({ platform: 'instagram', topic: REPORTED, content: '', slides: [] })).toBe(SUBJECT)
+  })
+  it('strips the date from the "From story" line', () => {
+    expect(postStoryLine({ platform: 'instagram', topic: REPORTED, slides: [{ blocks: [{ role: 'hook', text: 'ONE INCH OFF THE GROUND' }] }] }))
+      .toBe(`From story: ${SUBJECT}`)
+  })
+})
 
 describe('no title-bearing surface renders a raw topic', () => {
   // Non-vacuity: if a refactor renames these files or empties them, every
@@ -115,6 +129,6 @@ describe('no title-bearing surface renders a raw topic', () => {
   })
 
   it.each([...new Set(TITLE_SITES.map((s) => s.file))])('%s imports the helper', (file) => {
-    expect(read(file)).toMatch(/import \{[^}]*stripStoryDatePrefix[^}]*\} from/)
+    expect(read(file)).toMatch(/import \{[^}]*(stripStoryDatePrefix|postTitle)[^}]*\} from/)
   })
 })

@@ -10,6 +10,7 @@ import { useInterview } from '@/lib/queries'
 import { captionOverage, CAPTION_LIMITS, PLATFORM_META } from '@/lib/contentMeta'
 import VoiceChip from './VoiceChip'
 import SafetyChip from './SafetyChip'
+import SaveStatus from './SaveStatus'
 
 // EditorWorkflowBar — approve, voice-check, and publish, inline in the editor's
 // top bar so nothing needs a modal or a rail tab or backing out to another
@@ -269,7 +270,11 @@ function MenuItem({ icon: Icon, title, sub, onClick }) {
 // Schedule / Save just show a bare spinner for that whole minute, which reads as
 // a hung button ("videos are not approving", feedback 2cc4a9e3). We surface a
 // visible "rendering… ~1 min" status so the wait is legible instead of alarming.
-export default function EditorWorkflowBar({ piece, onBeforeCommit, renderingReel = false }) {
+// saveStatus (optional): the editor's autosave state ('saving'|'saved'|'error').
+// Rendered first in the bar so every editor's approve cluster reads the same
+// left to right: Saved · voice · Reject · Approve · Schedule (post editor audit
+// option A, 2026-11-11). The editor's own "More" menu follows the bar.
+export default function EditorWorkflowBar({ piece, onBeforeCommit, renderingReel = false, saveStatus = null }) {
   const wf = useContentWorkflow(piece)
   const status = piece?.status || 'draft'
   // True while the pre-commit bake + the workflow action run, so buttons spin
@@ -331,6 +336,7 @@ export default function EditorWorkflowBar({ piece, onBeforeCommit, renderingReel
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <SaveStatus status={saveStatus} />
       <VoiceChip piece={piece} />
       <SafetyChip piece={piece} />
 
@@ -502,21 +508,23 @@ export default function EditorWorkflowBar({ piece, onBeforeCommit, renderingReel
               {captionOver} character{captionOver === 1 ? '' : 's'} over the {captionLabel} limit
             </span>
           )}
+          <RejectControl wf={wf} />
           <Button
             variant="success"
             size="sm"
             disabled={wf.statusPending || committing || captionOver > 0}
             loading={wf.statusPending || committing}
             onClick={() => runCommit(() => wf.approve())}
-            title={captionOver > 0 ? `Shorten the caption by ${captionOver} characters to approve` : undefined}
+            title={captionOver > 0
+              ? `Shorten the caption by ${captionOver} characters to approve`
+              // Blog is one approval covering both the article and the story's
+              // words; the label stays "Approve" like every other editor and
+              // the tooltip says what else it confirms.
+              : (isBlogPiece && piece?.interview_id ? 'Approve — this also approves the story’s words' : undefined)}
           >
             {!wf.statusPending && !committing && <Check className="mr-1.5 h-3.5 w-3.5" />}
-            {/* Blog is one approval covering both the article and the story's
-                words, so name what's actually being confirmed. Social keeps the
-                plain "Approve" — its words check lives on the story screen. */}
-            {isBlogPiece && piece?.interview_id ? 'Approve — sounds like me' : 'Approve'}
+            Approve
           </Button>
-          <RejectControl wf={wf} />
           <PublishControl wf={wf} piece={piece} enabled={false} publish={publish} busy={committing || wf.publishing} />
         </>
       )}

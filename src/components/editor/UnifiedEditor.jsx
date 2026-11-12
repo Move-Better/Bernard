@@ -5,6 +5,8 @@ import { ArrowRight, Check, FolderOpen, ImageIcon, Loader2, Lock, Palette, Plus,
 import { toast } from 'sonner'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
+import EditorMoreMenu from '@/components/editor/EditorMoreMenu'
+import { postTitle, postStoryLine } from '@/lib/postTitle'
 import EditorIconRail from '@/components/editor/IconRail'
 import { RAIL_META } from '@/components/editor/railSections'
 import PostPreview from '@/components/PostPreview'
@@ -18,7 +20,6 @@ import { useUpdateContentItem, useMediaSuggestions, useInterview, queryKeys } fr
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import { useConfirm } from '@/lib/useConfirm'
 import { resolveGbpLocationIds } from '@/lib/gbpLocations'
-import { stripStoryDatePrefix } from '@/lib/storyTitle'
 import { BlogStyleSwitcher, BlogGenerationActions } from '@/components/editor/BlogWordsExtras'
 import PostCaptionField from '@/components/editor/PostCaptionField'
 import RegenerateCaptionButton, { canRegenerateCaption } from '@/components/editor/RegenerateCaptionButton'
@@ -1052,13 +1053,21 @@ export default function UnifiedEditor({ piece, onBack, formatLabel, formatSub, p
       {/* ── TOP BAR — shared EditorChrome (unified shell) ─────────────────── */}
       <EditorChrome
         onBack={onBack}
-        title={stripStoryDatePrefix(piece?.topic) || 'Untitled draft'}
-        badge={{ icon: meta.icon, label: formatLabel || meta.label, sub: formatSub || cfg.label }}
-        note={count != null ? (count === 0 ? 'no media' : `${count} ${count === 1 ? 'item' : 'items'}`) : null}
+        title={postTitle(piece)}
+        subtitle={postStoryLine(piece)}
+        badge={{ icon: meta.icon, label: formatLabel || meta.label, sub: formatSub === null ? null : (formatSub || cfg.label) }}
+        // The badge's sub already counts media ("0 media"), so a "no media" note
+        // beside it said the same thing twice (post editor audit, 2026-11-10).
+        note={count ? `${count} ${count === 1 ? 'item' : 'items'}` : null}
       >
         {/* Approve · voice check · publish, inline in the bar. The rail's
             Publish tab remains the full panel (export, metrics, next-up). */}
         <EditorWorkflowBar piece={piece} />
+        <EditorMoreMenu
+          items={[
+            { key: 'publish', icon: Send, label: 'Publish details', sub: 'Export, metrics, next up', onClick: () => setTool('publish') },
+          ]}
+        />
       </EditorChrome>
 
       {/* ── WORK AREA: rail | inspector | canvas ─────────────────────────── */}

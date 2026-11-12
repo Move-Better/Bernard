@@ -46,7 +46,7 @@ describe('reel editor bakes before every commit (EditorWorkflowBar)', () => {
     // The bake is a ~1-minute inline render; a bare spinner on Approve/Schedule
     // reads as a hung button (feedback 2cc4a9e3). The bar takes a renderingReel
     // signal and shows a visible "rendering…" status while it is true.
-    expect(barSrc).toMatch(/renderingReel\s*=\s*false\s*\}/)
+    expect(barSrc).toMatch(/renderingReel\s*=\s*false\b/)
     expect(barSrc).toMatch(/\{renderingReel && \(/)
     expect(barSrc).toMatch(/Rendering your video/)
   })

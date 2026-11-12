@@ -14,14 +14,14 @@ import { photoSourceUrl, clipToMediaEntry, mediaEntryKey, slidePhotos, slideMedi
 import { formatChoicesFor } from '@/lib/platformFormats'
 import { brandStyleForRender } from '@/lib/brandSwatches'
 import { deriveStory } from '@/lib/storyFields'
-import { stripStoryDatePrefix } from '@/lib/storyTitle'
+import { postTitle, postStoryLine } from '@/lib/postTitle'
 import { isPieceLocked } from '@/lib/publishLock'
 import AdCarouselExportModal from '@/components/AdCarouselExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
 import EditorIconRail from '@/components/editor/IconRail'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
-import SaveStatus from '@/components/editor/SaveStatus'
+import EditorMoreMenu from '@/components/editor/EditorMoreMenu'
 import { listRevisions, saveRevision } from '@/lib/editorRevisions'
 import UndoRedoButtons from '@/components/editor/UndoRedoButtons'
 import { useAutosave } from '@/lib/useAutosave'
@@ -683,7 +683,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
       {/* ── TOP BAR — shared EditorChrome (unified shell) ─────────────────── */}
       <EditorChrome
         onBack={goBack}
-        title={stripStoryDatePrefix(piece?.topic)}
+        title={postTitle(piece)}
+        subtitle={postStoryLine(piece)}
         badge={{ icon: badgeIcon || Instagram, label: formatLabel || 'Instagram Carousel', sub: formatSub || `${slides.length} slides` }}
         note={photoCount != null && photoCount !== slides.length
           ? `${slides.length} slides from ${photoCount} photo${photoCount === 1 ? '' : 's'}`
@@ -707,26 +708,20 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
           </TooltipTrigger>
           <TooltipContent>Preview as Instagram</TooltipContent>
         </Tooltip>
-        {hasMedia && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => setAdExportOpen(true)}
-                className="rounded-lg border border-action/40 px-2.5 py-1.5 text-xs text-action hover:bg-action/10 transition-colors"
-              >
-                <Megaphone className="mr-1 inline h-3.5 w-3.5" />
-                Ads
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>Render into ad sizes</TooltipContent>
-          </Tooltip>
-        )}
         <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
-        <SaveStatus status={rendering ? 'saving' : saveStatus} />
-        {/* Version history — auto-snapshots + restore */}
+        {/* Approve · voice check · publish — the same cluster, in the same order,
+            in every editor, then "More" (post editor audit A, 2026-11-11). More
+            replaces the unlabelled sliders icon and holds version history, the
+            full publish panel and ads. */}
+        <EditorWorkflowBar piece={piece} saveStatus={rendering ? 'saving' : saveStatus} />
         <div className="relative">
-          <button onClick={openHistory} className="flex h-8 items-center gap-1 rounded-lg border px-2 text-sm text-muted-foreground hover:border-primary/60 hover:text-primary" style={{ borderColor: 'hsl(var(--border))' }} title="Version history" aria-label="Version history"><History className="h-4 w-4" /></button>
+          <EditorMoreMenu
+            items={[
+              { key: 'publish', icon: SlidersHorizontal, label: 'Publish details', sub: 'Export, metrics, schedule details', onClick: () => setScheduleOpen(true), hidden: !scheduleNode },
+              { key: 'history', icon: History, label: 'Version history', sub: 'Go back to an earlier version', onClick: openHistory },
+              { key: 'ads', icon: Megaphone, label: 'Ads', sub: 'Render into ad sizes', onClick: () => setAdExportOpen(true), hidden: !hasMedia },
+            ]}
+          />
           {historyOpen && (
             <>
               <div className="fixed inset-0 z-30" aria-hidden="true" onClick={() => setHistoryOpen(false)} />
@@ -744,26 +739,6 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
             </>
           )}
         </div>
-        {/* Approve · voice check · publish — inline, no modal or backing out.
-            The full Publish panel (export, metrics, schedule details) stays one
-            click away behind the sliders button for the cases the bar can't
-            cover (export-only channels, published metrics). */}
-        <EditorWorkflowBar piece={piece} />
-        {scheduleNode && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => setScheduleOpen(true)}
-                className="rounded-lg border border-border px-2 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label="Full publish panel"
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>Full publish panel — export, metrics, schedule details</TooltipContent>
-          </Tooltip>
-        )}
       </EditorChrome>
 
       {/* ── WORK AREA: rail | inspector | canvas ─────────────────────────── */}

@@ -20,6 +20,8 @@ import { updateBrandStyle } from '@/lib/brandKitLib'
 import AdVideoExportModal from '@/components/AdVideoExportModal'
 import EditorChrome from '@/components/editor/EditorChrome'
 import EditorWorkflowBar from '@/components/editor/EditorWorkflowBar'
+import EditorMoreMenu from '@/components/editor/EditorMoreMenu'
+import { postTitle, postStoryLine } from '@/lib/postTitle'
 import { useContentItem, useUpdateContentItem, useUpdateContentItemStatus } from '@/lib/queries'
 import { NEUTRAL_GRADE} from '@/lib/gradeParams'
 import { toast } from '@/lib/toast'
@@ -1144,7 +1146,10 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
           fold into the action slot; the side panel below is inspector-only. */}
       <EditorChrome
         onBack={goBack}
-        title={asset.display_title || asset.filename || 'Clip'}
+        // A clip that belongs to a post shows the POST's title; it used to show
+        // the video file's name. Standalone clips keep the file name.
+        title={post || piece ? postTitle(post || piece) : (asset.display_title || asset.filename || 'Clip')}
+        subtitle={post || piece ? postStoryLine(post || piece) : null}
         destination={destMeta ? { icon: destMeta.icon, label: destMeta.label, colorClass: destMeta.color, bgClass: destMeta.bg, borderClass: destMeta.border } : null}
         badge={destMeta ? null : { icon: Film, label: (FORMATS[format] || FORMATS.reel).label, sub: (FORMATS[format] || FORMATS.reel).dim }}
       >
@@ -1163,27 +1168,6 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
           <span className="font-mono tabular-nums" style={{ color: 'hsl(var(--muted-foreground))' }}>{fmt(displayClipT)} / {fmt(durationSec)}</span>
         </div>
         <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
-        <SaveStatus status={saveStatus} />
-        {/* Version history — auto-snapshots + restore */}
-        <div className="relative">
-          <button onClick={openHistory} className="flex items-center gap-1 rounded-lg border px-2 py-1 text-2xs" style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }} title="Version history" aria-label="Version history"><History className="h-3.5 w-3.5" /></button>
-          {historyOpen && (
-            <>
-              <div className="fixed inset-0 z-30" aria-hidden="true" onClick={() => setHistoryOpen(false)} />
-              <div role="menu" aria-label="Version history" className="absolute right-0 top-full z-40 mt-1 max-h-72 w-64 overflow-auto rounded-lg border bg-card p-1.5 shadow-lg" style={{ borderColor: 'hsl(var(--border))' }}>
-                <p className="px-1 pb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Version history</p>
-                {revisions.length === 0 ? (
-                  <p className="px-1 py-2 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>No saved versions yet — they appear as you edit.</p>
-                ) : revisions.map((rv) => (
-                  <button key={rv.id} onClick={() => { applyDoc(rv.doc); setHistoryOpen(false); toast('Restored a previous version') }} className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-2xs hover:bg-muted">
-                    <span>{new Date(rv.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
-                    <span className="font-medium text-primary">Restore</span>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
         {/* Format — one clip, any shape. Drives the canvas aspect + render channel. */}
         <div className="flex gap-1" role="group" aria-label="Output format">
           {FORMAT_KEYS.map((k) => (
@@ -1209,26 +1193,16 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
         {/* Embedded (Reel/long-video content piece): bake edits back to THIS
             post, then the shared workflow bar (bound to the existing piece)
             approves / schedules / publishes the edited video. */}
+        {/* "Save video" is gone (post editor audit A): edits autosave, and
+            Approve / Schedule bake the edit first via onBeforeCommit. Rendering
+            without approving lives in More. */}
+        {!post && <SaveStatus status={saveStatus} />}
         {embedded ? (
           <>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="sm"
-                  disabled={busy}
-                  loading={saveVideoToPiece.isPending}
-                  onClick={() => saveVideoToPiece.mutate()}
-                >
-                  {!saveVideoToPiece.isPending && <Check className="mr-1.5 h-3.5 w-3.5" />}
-                  {saveVideoToPiece.isPending ? 'Rendering… ~1 min' : 'Save video'}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Renders your edits and saves the finished clip to this post (about a minute)</TooltipContent>
-            </Tooltip>
-            {post && <EditorWorkflowBar piece={post} onBeforeCommit={bakeVideoIfDirty} renderingReel={saveVideoToPiece.isPending} />}
+            {post && <EditorWorkflowBar piece={post} onBeforeCommit={bakeVideoIfDirty} renderingReel={saveVideoToPiece.isPending} saveStatus={saveStatus} />}
           </>
         ) : post ? (
-          <EditorWorkflowBar piece={post} />
+          <EditorWorkflowBar piece={post} saveStatus={saveStatus} />
         ) : (
           <>
             {/* Deny — the other half of the verdict. Only meaningful on a clip
@@ -1320,6 +1294,30 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
           )}
         </div>
         )}
+        <div className="relative">
+          <EditorMoreMenu
+            items={[
+              { key: 'history', icon: History, label: 'Version history', sub: 'Go back to an earlier version', onClick: openHistory },
+              { key: 'render', icon: Film, label: saveVideoToPiece.isPending ? 'Rendering… about a minute' : 'Render without approving', sub: 'Saves the finished video to this post', onClick: () => { if (!busy) saveVideoToPiece.mutate() }, hidden: !embedded },
+            ]}
+          />
+          {historyOpen && (
+            <>
+              <div className="fixed inset-0 z-30" aria-hidden="true" onClick={() => setHistoryOpen(false)} />
+              <div role="menu" aria-label="Version history" className="absolute right-0 top-full z-40 mt-1 max-h-72 w-64 overflow-auto rounded-lg border bg-card p-1.5 shadow-lg" style={{ borderColor: 'hsl(var(--border))' }}>
+                <p className="px-1 pb-1 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Version history</p>
+                {revisions.length === 0 ? (
+                  <p className="px-1 py-2 text-3xs" style={{ color: 'hsl(var(--muted-foreground))' }}>No saved versions yet — they appear as you edit.</p>
+                ) : revisions.map((rv) => (
+                  <button key={rv.id} onClick={() => { applyDoc(rv.doc); setHistoryOpen(false); toast('Restored a previous version') }} className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-2xs hover:bg-muted">
+                    <span>{new Date(rv.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                    <span className="font-medium text-primary">Restore</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </EditorChrome>
       {/* Brief-origin hint — this clip was opened from a Media Hub edit brief.
           "Save to Library" is the action that closes the brief (marks it

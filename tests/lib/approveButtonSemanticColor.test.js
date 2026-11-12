@@ -43,12 +43,10 @@ function windowAround(src, needle, radius = 300) {
 describe('Approve buttons use semantic success color, never the brand-teal default', () => {
   it('EditorWorkflowBar — the two-step-gate Approve button', () => {
     const src = readFileSync(FILES.editorWorkflowBar, 'utf8')
-    // Anchored on the conditional label expression rather than a bare
-    // "Approve\n</Button>": blog now reads "Approve — sounds like me" (one
-    // approval covering the article AND the story's words, Q 2026-08-29), so
-    // the old literal-text anchor no longer matches. The button itself is
-    // unchanged and must still be semantic green.
-    const win = windowAround(src, "? 'Approve — sounds like me' : 'Approve'", 800)
+    // Anchored on the blog tooltip, which sits inside the Approve button: the
+    // label is plain "Approve" in every editor again (post editor audit A,
+    // 2026-11-11) and the blog's extra meaning moved to that tooltip.
+    const win = windowAround(src, 'this also approves the story’s words', 900)
     expect(win).toMatch(/variant="success"/)
   })
 

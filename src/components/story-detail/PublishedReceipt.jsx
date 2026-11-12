@@ -87,7 +87,7 @@ function UnscheduleControl({ piece }) {
   )
 }
 
-export default function PublishedReceipt({ piece, title, nextPiece, nextTitle, nextMeta }) {
+export default function PublishedReceipt({ piece, title, storyLine = null, nextPiece, nextTitle, nextMeta }) {
   const meta = PLATFORM_META[piece.platform] || { label: piece.platform || '—' }
   const Icon = meta.icon
   const isPublished = piece.status === 'published'
@@ -115,6 +115,12 @@ export default function PublishedReceipt({ piece, title, nextPiece, nextTitle, n
               <CalendarClock className="h-3.5 w-3.5" />
               Scheduled{when ? ` for ${when}` : ''}
             </span>
+          )}
+          {storyLine && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>{storyLine}</span>
+            </>
           )}
           {piece.resolved_url && (
             <>
