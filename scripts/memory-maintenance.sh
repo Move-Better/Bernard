@@ -15,7 +15,7 @@
 # Why not auto-rewrite here? An unattended `claude --permission-mode
 # bypassPermissions` loop editing memory with no human verification is exactly
 # what the permission guardrail (rightly) blocks. The root-cause fix is the
-# one-line-entry + archive-shipped discipline now in CLAUDE.md, which keeps
+# one-line-entry + archive-shipped discipline now in .claude/lessons/housekeeping.md, which keeps
 # growth slow enough that this watchdog rarely needs to fire.
 #
 # Opt-in to true unattended consolidation (only if you accept the trade-off):

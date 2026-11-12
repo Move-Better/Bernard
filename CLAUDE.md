@@ -1,1066 +1,140 @@
 # Bernard — Project Notes
 
-Generic build/verification methodology (challenge gate, design interview, mockup-first, verify-feature-wiring, validate-the-validator, OLD-vs-NEW harnesses, the agent-browser-tab-is-never-visible rule, etc.) lives in `~/.claude/CLAUDE.md` under "Build & verification methodology" — it applies here automatically. What follows is Bernard-specific tooling, paths, and worked examples only.
+Bernard is Move Better's multi-tenant content SaaS. It interviews clinicians (voice or chat) and turns
+what they said into posts, reels, carousels, blogs and answers for each workspace's channels, published
+through bundle.social. One shared Vercel deployment serves every workspace by subdomain
+(`<slug>.withbernard.ai`).
+
+This file loads into every session in this repo, so it holds only the standing rules, the stack and an
+index. The detail lives in topic files under `.claude/lessons/`; read the matching one before work in
+that area (table at the end). Subsystem design is in [ARCHITECTURE.md](ARCHITECTURE.md). Q's
+cross-project rules (challenge gate, design interview, mockup-first and the quiet lane, verify feature
+wiring, re-verify before fixing) are in `~/.claude/CLAUDE.md`, and the generic lessons are in
+`~/.claude/lessons/` (judges in `ai.md`, guards in `testing.md`, the hidden agent tab in `browser.md`).
+This file does not restate them.
+
+Code comments and older docs cite sections as `CLAUDE.md "<heading>"`. Those sections moved, headings
+unchanged, into the topic files on 2026-11-11: `grep -rn "<heading>" .claude/lessons/` finds one.
 
 ## Product strategy lives in Vigil — read it before big packaging/tiering changes
 
 Bernard's SaaS-productization strategy (plan tiers, pricing, managed-vs-BYO analytics, onboarding/activation, what's tenant-product vs Move-Better-private) is tracked in the **Vigil** repo, not here: `specs/bernard-saas-productization.md` (plus follow-on specs `specs/bernard-tier-assignment.md` and `specs/bernard-onboarding-path.md` as they land). Vigil is the read-only oversight layer that authors these specs and hands them to Bernard. Key decisions as of 2026-07-11: per-location flat pricing + free trial; jobs-based tiers (Get Found → Grow → Scale/Pro); base-tier analytics is *managed* (OAuth channel data + bought SEO data), never make a clinic wire up GA4/GSC/PostHog. Before building anything tiering-, pricing-, onboarding-, or feature-gating-shaped, read that spec so you don't build against the plan.
 
-## A column you can WRITE must also be a column you can READ
+## Standing rules
 
-`api/_routes/db/content.js` keeps two independent lists: the PATCH allowlist (camelCase →
-snake_case) and the `SELECT` string. Adding to one and not the other produces a **write-only
-column** — the PATCH succeeds, the row updates, and every reader gets `undefined`. Nothing errors.
-The feature is inert, not broken, which is much harder to notice.
+- **Every screen is full-bleed (Q, 2026-07-07, repeated).** A page root never narrows itself with
+  `mx-auto max-w-*`; use the width with side rails and multi-column grids. The exceptions (legal pages,
+  text measure on a `<p>`, centered empty states) are in `frontend.md`.
+- **Bernard's product colours never enter tenant content, and a tenant's colours never enter app
+  chrome (Q, repeatedly).** Blue Spruce `#0C7580` (`BERNARD_PRIMARY`) and amber `#d97706`
+  (`BERNARD_ACTION`) are app chrome only. A tenant's own colour, from its `workspaces` row (Move Better is
+  orange `#E36525`, live), is for its published content only, so an orange Move Better caption is
+  on-brand. Lint enforces both walls (`bernard/no-hardcoded-brand-color`,
+  `bernard/no-product-brand-in-content`); detail in `media.md`.
+- **Templates are authored in the real editors (Q, 2026-07-25).** A look is saved with "Save as …
+  template" from VideoEditor's Captions panel or SlideEditor's Theme panel. The settings pages
+  (`/settings/photo-templates`, `/settings/video-templates`) are libraries, not editors: never add style
+  controls there (`media.md`).
+- **Verify an authed UI change on prod, in Q's logged-in Chrome (Q, 2026-06-04).** Merge → the GitHub
+  integration auto-deploys → confirm the live SHA → drive Q's Chrome and look. Never call a UI change
+  verified off localhost, a preview URL or a green build, and never report an authed surface as
+  "blocked by Clerk". Keep the Playwright e2e suite thin (`verify.md`).
+- **Driving prod is read-only, and a page load or a `fetch()` can write.** Never click Approve, Publish,
+  Schedule, Delete or Send. Before opening an editor or calling a "render"/"compose"/"generate" route
+  against a real row, check whether it persists on mount or on call (`verify.md`).
+- **GBP Analytics "location detection failed" is a dead end (Q closed it 2026-07-22).** Never suggest
+  retrying it; the shared Google project's quota is 0 and Basic API Access was denied
+  (`integrations.md`).
+- **An approved mockup is force-added (Q, 2026-06-20, "Option A").** `.claude/mockups/` stays gitignored
+  for drafts; `git add -f` a mockup the moment Q signs off on it (`housekeeping.md`).
+- **In-app feedback is the `feedback` table, never the inbox**, and `resolved_at`, not the
+  open-time `triage_note`, says whether it is fixed. Resolving emails the reporter, so confirm before
+  resolving (`housekeeping.md`).
+- **This repo's instruments are `bernard-`-prefixed:** `/bernard-audit` (`full` for the whole
+  codebase), `/bernard-checkup`, `/bernard-outcome-review`, `/bernard-triage-feedback`. A same-named
+  command can load a sibling project's body (`housekeeping.md`).
 
-That is exactly how `format` shipped in #2467: the picker wrote `content_items.format` correctly,
-but SELECT omitted it, so the control never showed its own selection, the badge never changed, and
-`publishPiece`'s `piece.format` was undefined — meaning the explicit format never reached the
-publish payload either. lint, typecheck, build, 902 unit tests and route-smoke were all green;
-only driving the real authed page in prod found it (#2468).
+## Process discipline (Bernard's additions to the global rules)
 
-`tests/lib/contentSelectCoversPatch.test.js` now parses both lists out of the route and asserts they
-cover each other, with a non-vacuity check so a rotted regex can't pass by matching nothing. It has
-already paid for itself: adding `media_source` in #2479 tripped it in CI within seconds, catching in
-one test run what had previously cost a full prod debugging session. **When adding a column here,
-add both halves in the same edit — and if that guard goes red, it is telling you the truth.**
+- **Challenge gate: decisions log.** Bernard's decisions log (kill criteria, revisit dates, for the
+  global adversarial brief) is `.claude/decisions.md` (tracked). `/bernard-outcome-review` reads it and
+  stamps revisit-by dates on every run; its scheduled run (`bernard-monthly-outcome-review`) fires weekly,
+  on Fridays. Worked example of a signal with no consumer: `verify.md`.
+- **Re-verify a reported bug** with the cheap staleness checks: `git fetch && git log --oneline -8 origin/main -- <suspect file>` (did someone just touch it?) and `curl -s https://withbernard.ai/version.json` vs `git rev-parse origin/main` (is the fix already deployed?). 2026-06-02: an overnight "fix Slate (empty video grid)" task was nearly a from-scratch rebuild of a fix (`mediaData.assets` shape mismatch + missing `staff_id` SELECT field) that had already shipped as #1146 and was live on prod — caught only by these two checks plus the worktree re-read rule (an 87-line diff between the stale branch and `origin/main`).
+- **Verify feature wiring along this repo's chain:** the `src/` page → `apiFetch` → the handler under
+  `api/` (most live in `api/_routes/`, registered in the generated `api/_routes/_manifest.generated.js`)
+  → Supabase REST → the screen, job or publisher that reads it back. Dead-scaffold precedents:
+  `verify.md`.
+- **Code minimalism — YAGNI gate before building.** Before writing code, run the ladder: (1) **does this need to exist at all?** — don't add unrequested abstractions, parameters no caller passes, or dead scaffolds (the global "Verify feature wiring before scoping changes"); (2) does stdlib / a native platform feature / an already-installed dep already cover it? use it, add no new dependency; (3) can it be one small function? Prefer deletion over addition, fewest files. Mark any intentional shortcut with a `ponytail:` comment stating its limit and upgrade path.
+  **Hard carve-out — never trim a check to be lean.** This bias is wrong for trust-boundary code, where Bernard's bugs come from the *missing* check, not excess abstraction. On any tenant-scoped API handler, `workspaceContext(req)` + the `workspace_id` filter + `requireRole` + `enforceLimit` are non-optional even for a read-only count endpoint — `workspaceContext` resolves the tenant from the Host header, which is **not** authentication. When in doubt, keep the check and apply the ladder only to the logic around it.
 
-## A committed post is read-only — and a new content column must be added to the freeze list
+## Stack
 
-`scheduled` and `published` pieces never open an editor. `src/lib/publishLock.js` is the single
-source of truth, imported by BOTH the client router (`src/pages/StoryboardPublish.jsx`) and the API
-handler (`api/_routes/db/content.js`) — one copy on purpose, so the screen and the server cannot
-disagree. Every route into an editor funnels through `/publish/:pieceId`, so the router branch is a
-real choke point rather than one door of several.
+- **Client:** React 18 SPA built with Vite 5; React Router 6; TanStack Query 5; Tailwind 3 with Radix
+  primitives; a PWA (a service worker serves a cached shell, which matters when verifying, `verify.md`).
+- **Server:** Vercel Node functions under `api/`, Express-style `(req, res)` handlers, one shared
+  deployment for every tenant. Edge only where a handler says so (`api.md`).
+- **Auth:** Clerk; each workspace is a Clerk Organization.
+- **DB:** Supabase Postgres, read and written through PostgREST with the service role. No RLS, by
+  design: isolation is the `workspace_id` filter in every handler (ARCHITECTURE.md, `data.md`).
+- **Storage:** Vercel Blob (store `bernard-prod`); Mux for video transcoding.
+- **AI:** the AI SDK (`ai` 7) through the Vercel AI Gateway (Claude models); OpenAI Realtime for voice
+  interviews; ElevenLabs for voice cloning and transcription.
+- **Publishing:** bundle.social (`bundlesocial`); Resend for email; Twilio for outbound calls.
+- **Observability:** Sentry, PostHog, Vercel Analytics. Rate limits: Upstash.
+- **Tests:** Vitest (`tests/`); a thin Playwright smoke (`tests/e2e/`) that runs after each deploy.
 
-Content freezes (caption, media, slides, aspect, format, SEO, locations, schedule); judgment stays
-live (the keeper rating, winner toggle, notes, comments). `scheduled` gets one escape —
-"Unschedule to edit" returns it to `approved` — because without it a typo caught after scheduling
-would be unfixable until the post went live. `published` is terminal. `failed` is NOT locked: you
-need the editor to fix and retry.
-
-**The maintenance hazard: adding a new content-shaped column means adding its camelCase patch key to
-`FROZEN_PATCH_FIELDS`.** Miss it and that one field stays editable on a published post — no error,
-no failing test, exactly the silent-drift this exists to stop. Same shape as the write-only-column
-trap above: two lists that must be extended together.
-
-Why it matters at all: editing a committed post changes nothing on the network (the payload already
-left), so the only thing an edit alters is our record of what shipped — which metrics attribution,
-the exemplar pool (`is_model_post` → `fetchTopExemplars`) and the learning loop all read.
-
-The server checks the STORED status, never `patch.status`, so a body claiming `draft` cannot unlock
-itself in the same request; blocked writes return 409. The publish pipeline is unaffected —
-`social.js` and `dispatchContentItem.js` write via `sb()` directly and never pass through this route.
-
-**That same sb()-direct bypass is also a client-cache hole, not just a server one.** The router's
-`isPieceLocked(piece)` gate (`StoryboardPublish.jsx`) reads the React Query cache, which inherits the
-global `staleTime: 30_000`. A status flip written by `sb()` directly (cron auto-publish, a sibling
-device) never invalidates that cache — so a stale non-locked copy could keep the editor mounted over a
-row that's actually locked, with every save silently 409ing until the reactive self-heal in
-`useUpdateContentItem`'s `onError` (an `isLockRejection` catch that force-refetches) finally kicked in
-on the first failed write. Fixed in #2662 by forcing `refetchOnMount: 'always'` on `useContentItem` for
-the publish route, so the gate re-reads status on every open instead of trusting a cache the write
-pipeline never told to update. Any other surface that gates on `isPieceLocked`/similar off a cached
-query needs the same override — a reactive self-heal on write-failure is not the same as preventing the
-stale-render window in the first place.
-
-## API handler checklist — 7 rules every new route must follow
-
-These patterns caused 26+ consecutive audit rounds because each appeared in one reference handler and got copy-pasted to ~15 others without being caught. The ESLint rule `bernard/no-detail-in-error-response` catches #1 at lint time; the PR review job's Claude prompt checks these. But check them manually before opening a PR:
-
-1. **No `detail:` in error responses.** `res.status(NNN).json({ error: 'key', detail: text })` leaks server internals to callers. Always: `console.error('[handler] msg:', e?.message)` + `res.status(500).json({ error: 'opaque_key' })`. The `bernard/no-detail-in-error-response` lint rule enforces this automatically.
-
-2. **UUID_RE on every param that lands in a PostgREST filter.** Before any `?id=eq.${id}` or `?staff_id=eq.${sid}`, validate:
-   ```js
-   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-   if (!UUID_RE.test(id)) return res.status(400).json({ error: 'invalid_id' })
-   ```
-   Applies to path params, query params, and body fields alike.
-
-3. **`enforceLimit` comes AFTER `workspaceContext` + `requireRole`.** Always in this order:
-   ```js
-   const ws = await workspaceContext(req)
-   if (!ws) return res.status(400).json({ error: 'Workspace not resolved' })
-   const auth = await requireRole(req, ROLES, { orgId: ws.clerk_org_id })
-   if (!auth.ok) return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
-   if (!(await enforceLimit(req, res, 'bucket'))) return
-   ```
-
-4. **`timingSafeEqual` for HMAC comparisons.** OAuth/webhook signature checks must use:
-   ```js
-   import { timingSafeEqual } from 'node:crypto'
-   if (expected.length !== sig.length || !timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) return null
-   ```
-   Never `===` or `!==` on secret strings.
-
-5. **`waitUntil()` for any post-response async work.** Any Promise kicked off after `res.json()` (cache writes, indexing, enrichment) is killed when the response sends unless wrapped:
-   ```js
-   import { waitUntil } from '@vercel/functions'
-   waitUntil(someCacheWrite().catch((e) => console.error('[handler] cache write failed:', e?.message)))
-   ```
-
-6. **Parse `:id` from `req.url`'s pathname, not `searchParams`.** `api/index.js`'s `wrap()` restores `req.url = req.originalUrl` (the full path) specifically so `[id].js` handlers can do `const id = new URL(req.url, 'http://localhost').pathname.split('/').pop()`. A handler that instead reads `searchParams.get('id')` silently gets `null` on every request — DELETE/PATCH to `/api/foo/:id` never carries an `?id=` query string. This shipped broken for an unknown period in `photo-templates/[id].js` (#2366) with zero errors anywhere except a client toast. Grep sibling `[id].js` files for the pattern before writing a new one; don't reinvent the parsing.
-
-7. **DELETE handlers must return a JSON body, never a bare `204`.** The shared client `apiFetch` (`src/lib/api.js`) unconditionally calls `res.json()` on any non-error response — there's no 204/empty-body branch. `res.status(204).end()` makes `res.json()` throw, surfacing as `"Invalid JSON from <path>"` even though the delete succeeded server-side. Return `res.status(200).json({ deleted: true })` instead, matching `collections/[id].js`. (#2368 — found live on `movebetter`, one delete attempt appeared to fail in the UI but had actually already removed the row.)
-
-## Any endpoint accepting a base64 image/file in the JSON body needs a client-side size cap
-
-Vercel Node functions reject request bodies over ~4.5MB with a bare-text `413 FUNCTION_PAYLOAD_TOO_LARGE` — before the handler ever runs, so there's no `console.error` to grep and no JSON error body (`throwApiError`'s `response.json()` parse silently fails and falls back to a generic `Request failed: 413`). A client that base64-encodes a full-resolution image into a JSON field (screenshot capture, raw file upload) will blow past this the moment the source image is more than a few MB — which a real screen capture or phone photo routinely is. The symptom on the user's end is a generic "Something went wrong" with no clue why, and it looks identical every retry since the input doesn't change.
-
-Confirmed 2026-07-28: the Feedback widget's `getDisplayMedia` screen-capture path sent full-resolution PNGs straight to `/api/feedback` with no downscaling — reproduced live via a direct authenticated POST (plain text → `200`, a 6MB base64 payload → `413`). Fixed by downscaling to a max 1600px dimension and re-encoding as JPEG (q≈0.82) client-side *before* the data URL ever reaches component state, in `FeedbackWidget.jsx`'s `encodeScreenshot()` (#2433).
-
-**Rule: any new feature that lets a user attach an image/screenshot/file as a base64 JSON field must downscale + compress client-side first** (canvas draw at a capped max dimension, JPEG re-encode) — don't rely on the browser's native capture/file resolution. If a future upload surface needs to preserve full resolution, route it through `@vercel/blob` direct upload instead of the JSON body, the same way `media/*` already does.
-
-## Verifying authed pages — use Q's logged-in Chrome (on PROD), don't stop at the Clerk lock
-
-Q keeps a logged-in Chrome session. Drive it with the **Claude-in-Chrome MCP** (`mcp__Claude_in_Chrome__*`): `list_connected_browsers` → `select_browser` (device "DrQ") → `tabs_context_mcp` → `navigate` to the real page on `https://*.withbernard.ai` → `computer` screenshot / `read_page`. That session is already past the Clerk gate, so any authed surface (Slate, Library, Storyboard, Settings, …) can be visually verified directly against prod data. Default to this for "does this UI change look right?" instead of declaring it blocked by auth.
-
-**The one catch — it only works against PROD (`withbernard.ai`), so the code must be deployed first.** Authed verification cannot be done on localhost or a vercel.app preview:
-- localhost dev server fails with `Missing VITE_CLERK_PUBLISHABLE_KEY` (it's a Sensitive var stripped from the worktree `.env.local` by `vercel env pull`), and even with the key, prod `pk_live` Clerk is domain-locked and rejects the `localhost`/`*.vercel.app` origin.
-- So the workflow for a UI fix is: merge → GitHub-integration auto-deploys to prod (~2 min) → confirm the live SHA (`curl -s https://withbernard.ai/version.json | grep sha`) → THEN open the page in Q's Chrome and screenshot. It's post-deploy verification, but it's real and doesn't require Q to look manually.
-- **Confirming the live SHA is NOT enough — Bernard is a PWA, so the service worker serves a CACHED app shell and Q's Chrome can show the OLD UI even after `version.json` already flipped to the new SHA.** A plain reload re-registers the SW and re-serves the stale bundle. (2026-06-21: the moment-miner feed verified as "still the old per-video rows" through multiple plain reloads while `version.json` already read the new SHA AND the new `/api/editorial/moments` route was live — the SW was serving the old client.) **Tell:** if the UI looks unchanged but a `curl` of a NEW `/api/*` route returns **401, not 404**, the code IS deployed and you're looking at a cached client (404 = route not deployed / still propagating; 401 = route live, needs auth). **Caveat — on the apex `withbernard.ai` (no tenant subdomain), a deployed route returns 400, not 401:** most handlers call `workspaceContext(req)` BEFORE `requireRole`, and the apex can't resolve a tenant → `400 "Workspace not resolved"` short-circuits before auth. So when probing a new route against the bare apex, **400 also means "deployed & executing"** (only 404 means not-deployed); probe a `<slug>.withbernard.ai` host if you specifically want the 401 auth signal. (2026-06-24: `/api/content-plan/plan-week` + `week-summary?week=` both confirmed deployed via 400-on-apex.) **Force the new bundle in the Chrome MCP** via `javascript_tool`: `navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister())))` + clear `caches.keys()`/`caches.delete`, THEN `location.replace('https://<slug>.withbernard.ai/<page>?fresh='+Date.now())` — the cache-busted URL forces a fresh index.html → new hashed bundles. (Real users get the in-app `UpdateAvailableModal` from `useVersionCheck`; the MCP browser does not, so clear it manually.)
-- **After clearing the SW/caches and reloading, the FIRST client-side (SPA) navigation into a lazy-loaded route can still hit "Failed to fetch dynamically imported module" — a one-time stale chunk reference, not a real bug.** Even with a fresh index.html/bundle loaded, React Router's lazy `import()` for a not-yet-visited route can resolve against an in-memory manifest reference from the moment the page mounted; the app's own error boundary ("Something went wrong… Reload") catches it cleanly. (2026-07-17, verifying #2185's expandable Stories rows: clicking a sub-row's "Edit →" link — a real `<Link>` to `/publish/:id`, confirmed via `read_page` — hit this screen on the first click after a fresh `?fresh=` reload; clicking the app's own Reload button loaded the correct editor immediately, with the right piece/platform/caption.) **Tell:** the URL bar already shows the correct destination path when the error renders (navigation succeeded, only the chunk fetch failed) — that's the signal to just click the app's "Reload" button rather than suspecting the route/link itself. Don't treat it as a defect in the code you're verifying.
-- **A blank `<main>` while the app SHELL still renders during a Chrome verify = you deep-linked to a route that doesn't exist, NOT a chunk-load failure — check the URL before chasing a chunk bug.** Bernard's settings routes are nested: Channels = `/settings/workspace/channels`, Locations = `/settings/workspace/locations`, General = `/settings/workspace`, and Brand = `/settings/brand-identity` / `/settings/brand-kit` — NOT `/settings/<name>`. Deep-linking a wrong path renders the settings shell (sidebar + an empty `<main>`) because the router matches the layout but no child route — which looks exactly like the lazy-chunk failure above. (2026-07-17, verifying #2204's Channels rooms: spent ~15 tool calls diagnosing `/settings/channels` as a chunk error — clearing the SW, opening fresh tabs — before realizing the real route is `/settings/workspace/channels`.) **Two fast discriminators + the fix: (1) an UNCHANGED sibling page at a similarly-wrong URL (`/settings/brand`) blanks IDENTICALLY → rules out your code; (2) `document.querySelector('main').innerHTML.length === 0` with the sidebar present = shell-without-content, i.e. an unmatched child route. Fix: get the real route from the in-app nav link's `href` (`[...document.querySelectorAll('a[href^="/settings"]')].map(a=>a.getAttribute('href'))`) or just click the nav item in-app, rather than guessing the deep-link path.**
-- **The Chrome MCP `javascript_tool` serializes an async/Promise result back as `{}` — the actual return value is lost.** An async IIFE (`(async () => { … return {...} })()`) or any top-level `await` whose final value is an object returns an empty `{}` to the tool, even for a plain string, so a probe that fetches data and returns it reads as "nothing came back." (2026-07-09, verifying the publish-editor dead-click fixes #2044: three consecutive probes returned `{}` before the pattern was clear.) **Reliable pattern: inside the async block assign the result to a `window.__x` global and return a sentinel string (e.g. `'kicked'`); then read it in a SECOND, synchronous call — `JSON.stringify(window.__x)` — which serializes correctly.** Synchronous expressions (no await) return fine directly; it's specifically the async/Promise path that drops the value. Prefer targeted DOM assertions (`document.activeElement`, `getBoundingClientRect()`, a `[class*=\"ring-primary\"]` presence check) over screenshots for behavioral verification — they proved all three #2044 clusters (ring appears on select, ring clears on backdrop-deselect, textarea focused on padding-click) more precisely than pixels could. **Related gotcha: a synchronous DOM read of a React-controlled value in the SAME `javascript_exec` call as the triggering `.click()` can see the pre-render DOM — React state updates are async/batched, so `btn.click(); const text = el.textContent` reads the OLD text.** (2026-07-16, verifying the MediaPicker "select a file first" hint #2171: an immediate post-click read returned the stale placeholder; a second call ~100ms later showed the correct hint text.) Add a short `await new Promise(r => setTimeout(r, 100))` between the click and the read, or split into two separate `javascript_exec` calls.
-- **To verify a DRAG interaction via the Chrome MCP, the coordinate `left_click_drag` does NOT trigger a React `onPointerDown`-based drag handler — dispatch synthetic PointerEvents instead, and read the result in a SEPARATE call.** A handler wired as `onPointerDown` on a header + `window` `pointermove`/`pointerup` listeners (the standard draggable-panel shape) never fires from `computer left_click_drag` (coordinate drags are unreliable here, same family as the coordinate-click misfire note above). What works: one `javascript_exec` that dispatches `new PointerEvent('pointerdown', {bubbles:true, clientX, clientY, pointerId:1})` **on the drag handle**, then `pointermove`×2 + `pointerup` **on `window`** (React catches the bubbling pointerdown at its root; the window listeners catch the native move/up). But the `setPos` this triggers is batched, so a `getBoundingClientRect()` read in the SAME call still shows the pre-drag position (the React-batching gotcha above) — read the new position + any persisted `localStorage` in a FOLLOWING call. (2026-08-06, verifying the draggable feedback widget #2557 on `movebetter`: coordinate drag was a no-op; synthetic-event drag moved the panel `{1060,401}→{540,61}` and persisted `feedbackWidget:v2.pos`, but only the separate-call read showed it — and this exact verification surfaced a real double-click-to-reopen bug that all gates were green on, fixed in #2560.) For a normal button inside the panel (minimize/close/reopen-pill), a plain `el.click()` via `javascript_exec` is reliable; reserve the synthetic-PointerEvent dance for genuine drag gestures.
-- **rAF-driven count-up animations (NumberTicker) FREEZE mid-flight in a backgrounded Chrome-MCP tab — every stat on screen shows the same wrong fraction of its target, and it looks exactly like a data bug.** `requestAnimationFrame` pauses when the tab isn't visible, so all tickers halt at the same wall-clock instant (~50ms in → all values ≈ the same small fraction, e.g. 7→"1", 8→"1", $0.32→"$0.04") and screenshots/DOM reads keep returning those frozen values indefinitely; they complete the moment the tab is fronted. (2026-07-16, verifying Overview v2: burned three diagnostic round-trips — including a direct authed API fetch that proved the payload was perfect — before recognizing the pattern.) **Tells: multiple independent stats all wrong by the SAME ratio; a delta chip / static text next to the ticker showing the CORRECT value; the API payload verifying clean. Fix for verification: front the tab (take a screenshot, which raises it) and re-read, or assert on the payload/static text instead of ticker values. Not a product bug — real users' tabs are visible while they look at them.**
-- **A blank/empty image tile in a screenshot is often a large image still DECODING, not a missing or broken one — probe `naturalWidth` before calling it a bug.** A screenshot is a single instant; a multi-megapixel JPEG can be fully downloaded (`complete: true`) and still not have painted. It looks identical to a null src, a dead blob, or a failed load, and it is tempting to report as a regression — especially when it sits next to the element you just fixed. (2026-07-23, verifying the reel poster fix #2311 on `/week`: the card *below* my working reel rendered as an empty tile. A DOM probe showed `complete: true, naturalWidth: 8192, naturalHeight: 5464` — a 45-megapixel original being drawn into a 64×64 tile. A second screenshot moments later showed it fine.) **Tells: the tile fills in on a later screenshot with no reload; `complete` is true; `naturalWidth` is huge. Probe with `[...document.querySelectorAll('img')].map(i => ({src, naturalWidth, complete, rect}))` rather than re-screenshotting and guessing.** Two payoffs beyond avoiding the false alarm: it tells you whether the element is even one of the ones you changed (here it was an unrelated piece), and an absurd `naturalWidth` for a thumbnail-sized box IS a real finding — that probe is what surfaced `week-summary.js`'s `thumbOf` preferring `m.url` (full-res original) over `m.thumbnailUrl` for photos.
-- **A `<video>` element driven through the Chrome MCP may sit at `readyState 0` indefinitely — the app is not broken, the automation session's network path just never loads media metadata.** Verifying a video-timeline/scrub feature (2026-07-08, VideoEditor's horizontal-timeline + playhead fixes, #1956/#1959/#1961) hit this on both a `.mov` and a `.mp4` served from Vercel Blob: `readyState` stayed `0`, `duration` stayed `null`, and zero `loadstart`/`progress`/`timeupdate` events ever fired across several seconds of waiting, even though a HEAD request confirmed the asset served fine (200, correct content-type). Setting `video.currentTime` still worked at the DOM level (reading it back afterward showed the assigned value) — it just never produced the events a React `timeupdate` listener needs to update visible UI. **Don't conclude a scrub/seek/playback feature is broken from this alone** — check `document.querySelector('video')` state directly via `javascript_tool` (`readyState`, `currentTime`, `duration`) before assuming an app bug; if `currentTime` reflects your seek but the UI doesn't, the gap is event-driven state never updating, not the seek itself failing. The real fix for the *visible* symptom (UI not updating on scrub) is to drive that UI off a locally-tracked optimistic value instead of waiting on the media element's own events — see `ARCHITECTURE.md`'s "Video timeline — optimistic scrub state" for the pattern.
-  **Positive proof it is the harness and not the app — do this instead of waiting longer** (2026-07-23, verifying #2308's video previews): from the SAME page, `fetch(videoUrl, { headers: { Range: 'bytes=0-1023' } })`. A **`206` with `content-type: video/mp4` while the element sits at `readyState 0`, `networkState 2`, `v.error === null`, having fired only `loadstart` → `stalled`** proves the file is reachable from that exact origin/session and that the media element's own loader — not the network, not the URL, not the app — is what stalled. That turns "I waited and nothing happened" into a definite verdict in one call. Two supporting notes: `v.load()` does not rescue it, and a CORS-tainted canvas means you cannot programmatically luminance-check the painted frame (no `crossorigin` attr on our blob URLs), so pair the fetch probe with a screenshot rather than `getImageData`. When you need to actually *see* a real first frame, render the same blob in a standalone page via the local Browser pane (`preview_start`), where it loads normally — that harness reported `readyState 4`, `duration 28`, `1080x1920` on the identical URL that stalled in the MCP tab. **To see the frame in its real UI context rather than the blob alone, drive the authed page with `scripts/capture-screenshot.mjs` (local headless Playwright) — `--selector 'video'` crops to the element.** Rendering the raw blob proves the FILE decodes; rendering the page proves the COMPONENT does, which is what a preview fix actually claims. (Same session, same clip: that capture showed the true first frame plus native controls reading `0:00 / 0:28`, i.e. the reported "playback not working" symptom was the harness throughout.) **One PRODUCT precondition worth confirming while you already have the asset open: our poster frame is a media-fragment seek — `PostPreview.jsx:81` renders `src={`${src}#t=0.1`}` with `preload="metadata"` to paint a real first frame instead of shipping a separate thumbnail — and a fragment seek requires the origin to serve range requests. So a `curl -sI` returning `accept-ranges: bytes` (alongside 200 + `video/mp4`) is verifying something the feature actually depends on, not just asset health: an origin that ignored Range would paint a black frame for every real user, not only in the harness.**
-- **The same stall hits `<img>`, and it is nastier than the video case because the image LOOKS loaded: `naturalWidth` is populated while `complete` stays false forever, so `onLoad` never fires.** Verifying the `/week` card previews (2026-07-27, #2411–#2414), all 8 thumbnails reported real dimensions (300×400, 400×300…) and `complete: false` indefinitely — 10s, 20s, across fresh tabs and cleared caches. Any component that sizes itself in an `onLoad` handler therefore renders its fallback forever *in this tab only*, and the identical page in local Playwright had `complete: true` on all 8 within seconds. **This looks exactly like a product bug and I shipped a fix for it before catching the difference — that PR had to be reverted (#2414).** **Positive proof in one call: `img.dispatchEvent(new Event('load'))` and re-measure. React attaches `onLoad` directly to the element (load doesn't bubble), so a synthetic event exercises the real handler — if the element corrects itself, the component is fine and the harness never fired the event.** Firing it on all of them at once is also the fastest way to verify a whole board's worth of load-driven layout. For anything that depends on images actually completing, verify with `scripts/capture-screenshot.mjs` (local Playwright) instead, which loads them normally — and which can also do a warm-cache pass by reloading in the same context.
-- **A Chrome-MCP click can silently fail to DELIVER — neither a coordinate click nor a `ref` click is proof the app is broken. Instrument the event before concluding anything.** Verifying the whole-card click target on `/week` (2026-07-22, #2245), a raw-coordinate click left the URL unchanged; so did a `ref` click from `read_page`. Both looked like the feature didn't work. It did: `document.elementFromPoint(x,y)` returned the overlay `<a>` with the correct `href`, and a programmatic `el.click()` navigated correctly (`defaultPrevented: true` at document level = React Router handled it). The coordinate click was in the wrong space and the `ref` had gone stale after a re-render. **Two-strikes rule applies — after the second dead click, stop clicking and measure: (1) `elementFromPoint` at the target's center to prove what's actually on top and whether it carries the right `href`/handler, (2) attach a capture-phase `click` listener, fire `el.click()`, and read back `defaultPrevented` + the URL. That pair distinguishes "app is broken" from "the harness didn't land the click," which look identical from a screenshot.**
-- **A slow endpoint in a page-load trace is often COLD, not slow — measure it warm and directly before reporting a number, and split queueing from server time.** Resource Timing's `duration` bundles stall/queue + server time, and a Vercel function called once per page load frequently has no warm instance. `/api/workspace/list` measured 4009ms and 3652ms across two page loads, which read as "consistently ~3.6s" — it is **397–789ms** when called directly, and on a clean load its own breakdown was `queued 1ms / server 397ms`. That wrong number was reported to Q and cost a build cycle aimed at a non-problem. **Before calling an endpoint slow: (1) `fetch()` it directly 3–4× from the authed browser to get the warm figure, (2) read `requestStart - startTime` (queue) vs `responseStart - requestStart` (server) rather than `duration`, (3) compare against a baseline endpoint on the SAME load — Bernard's floor for auth + one query is ~150ms, so anything near that is fine and the delta above it is the real cost. Two samples inside one window are one sample.**
-- Pure render/transform code (Sharp/SVG compositors) is the exception — verify those locally with a node harness, no browser needed (see the WHOOP note below).
-- **When the actual UI action needed to test a fix is blocked by an unrelated empty-state (no data to click), verify via the persisted draft object instead of the click path.** For a client-state persistence fix (autosave/undo/version-history wiring), the thing under test is "does field X survive the round trip," not "does the picker UI render a selected state" — so trigger any state change, read the persisted JSON (`localStorage.getItem('<key>')` via `javascript_tool`, or the server draft), and confirm the field is present/restored after a reload. (2026-07-09: verifying the music-bed draft-wiring fix (#2038) on prod hit the workspace's music library being empty — "No music tracks yet" — so there was no track to click; instead, triggered an unrelated field change, read `videoEdit:<assetId>` from `localStorage`, confirmed `music` was included in the payload, then reloaded and confirmed it survived the mount-hydration restore. Proved the fix works even though the full user journey — pick a track — isn't exercisable yet.)
-- **When NO live row currently matches a bug's exact trigger shape (a low-blast-radius edge case, per its own feedback triage), mint a disposable test fixture via direct SQL insert rather than declaring the fix unverifiable.** This is not the "no fake data" anti-pattern — that rule is about fabricating app state to make a feature *look* ready; this is a real row, inserted through the real schema (respecting its NOT NULL columns), driving the actual deployed React code and a real DB round-trip, then deleted immediately after. Verify at two layers: the live UI (screenshot/DOM matches expectation) AND a direct DB read-back (the mutation that should NOT have happened — e.g. after clicking Cancel — genuinely didn't). (2026-08-07, #2578: the one real piece that had triggered "attaching a video orphans carousel slide text" already had its video attached by the time the fix shipped, so no live candidate existed. `INSERT INTO content_items (workspace_id, platform, format, status, content, slides) VALUES (...)` with `format:'reel'` + real slide text + no media reproduced the exact routing branch; the confirm dialog fired verbatim in Q's Chrome, Cancel left `media_urls`/`slides` untouched (confirmed via `execute_sql`), then `DELETE ... WHERE id = ...` cleaned it up.)
-
-**There is now a SECOND way past the Clerk gate: `scripts/capture-screenshot.mjs` drives a local headless Playwright Chromium signed in as the `e2e@movebetter.co` fixture user** (Clerk sign-in ticket, same trick as `tests/e2e/auth.setup.ts`). It was built for the staff-update screenshot routine, but the auth+navigate half is general — it reaches any authed prod page without Q's Chrome and without an agent driving a tab. Use it when you need an **element-level crop at arbitrary scale**, a capture written **to disk** (Q's Chrome cannot produce files here — see the screenshot-routine section), a check that must run **unattended/scriptable from Bash**, or a page where the backgrounded-tab quirks bite (rAF/NumberTicker freeze, clipboard, downloads). Q's Chrome is still the right tool for **interactive** verification — clicking through a flow, reading console/network, inspecting live state, or looking at *Q's own* workspace data as he sees it. Neither replaces the post-deploy discipline below.
-
-**This is THE standard verification procedure — not a fallback.** For any change to an authed surface, the default is: deploy → confirm live SHA → drive Q's Chrome and screenshot. Do NOT declare a UI change "verified" off a localhost render, a preview URL, or a green build alone, and do NOT report an authed surface as "blocked by Clerk" — the logged-in Chrome session is past the gate and is the way to look. Only skip the browser when the change is pure render/transform code (verify with a node harness) or has no observable surface.
-
-**Relationship to the Playwright e2e suite (they are complementary, not redundant):** Chrome-tab is *interactive* verification — it proves the specific change you're working on, but only when someone actively drives it. The post-deploy e2e smoke is an *unattended regression net* that fires on every merge to `main` and catches breakage on the 5 covered routes when no one is looking. Chrome-tab structurally cannot replace it (it needs an agent in the loop). Policy: keep the e2e suite thin (the existing 5 routes) as a post-deploy tripwire, do NOT expand it to cover deep authed flows (that is Chrome-tab's job and where Clerk fights automation), and carry all "does this work / look right" verification through Q's Chrome.
-
-(Q confirmed 2026-06-04 — "this keeps happening." Chrome-tab-as-standard + keep-e2e-thin confirmed 2026-06-04.)
-
-## Challenge gate — decisions log + worked example
-
-Bernard's decisions log (kill criteria, revisit dates, for the adversarial-brief methodology in global) is `.claude/decisions.md` (tracked). `/bernard-outcome-review` checks its revisit-by dates monthly.
-
-**Worked example — a signal with no consumer:** 2026-07-22, the media usage counter shipped with a complete-looking composition line (three display surfaces, all correct) — but nobody checked whether the automatic photo/video picker could read the new count. It couldn't: `searchClips` ranked purely on similarity, so Bernard kept auto-selecting a photo it had already used 7 times, which was the actual point of asking for a counter. Q had to request the wiring as a follow-up.
-
-## Verify feature wiring — Bernard's dead-scaffold precedents
-
-Examples found during the seminar-CTA work (May 2026) of functions with sensible signatures that nobody called: `getCampaignPromptContext()` in `src/lib/campaigns.js` (defined for weeks, imported by zero files); `getSocialBatchSystemPrompt` / `getVideoScriptBatchSystemPrompt` / `getMarketingBatchSystemPrompt` in `src/lib/prompts.js` (accepted a `campaignContext` param no caller ever passed — atoms actually came through `getAtomSystemPrompt`).
-
-**A fourth instance is the sneakiest yet: the dead function's OWN docblock showed example calling code, and still had zero real callers.** `fetchTopExemplars`/`getExemplarsBlock` in `src/lib/exemplars.js` — the "Tier 1 exemplar feedback loop," documented in project memory as if it fed generation — had a comment in `atomPrompts.js` reading `// const exemplars = await fetchTopExemplars({ platform }); const prompt = base + getExemplarsBlock(exemplars)`, framed as "here's how a caller should use this." Nobody ever did; a full-repo grep for `fetchTopExemplars(` and `getExemplarsBlock(` found only the comment and the definitions. **A docblock modeling correct usage is not evidence the pattern is followed — it can just as easily be documentation for a call that was planned and never written.** Fixed in #2450 (composition-rating feature) by building a fresh `buildModelExemplarsBlock`/`resolveModelExemplarsBlock` pair and threading it through `getAtomSystemPrompt`'s actual 4 live callers (verified via grep, not assumed).
-
-## Re-verify a reported bug — Bernard's check commands
-
-`git fetch && git log --oneline -8 origin/main -- <suspect file>` (did someone just touch it?) and `curl -s https://withbernard.ai/version.json` vs `git rev-parse origin/main` (is the fix already deployed?) are the cheap staleness checks. 2026-06-02: an overnight "fix Slate (empty video grid)" task was nearly a from-scratch rebuild of a fix (`mediaData.assets` shape mismatch + missing `staff_id` SELECT field) that had already shipped as #1146 and was live on prod — caught only by these two checks plus the worktree re-read rule (an 87-line diff between the stale branch and `origin/main`).
-
-## You CAN audit/verify the live authenticated app — Q logs in, you drive the tab
-
-The "Clerk prod keys are domain-locked, so you can't smoke the authed app" belief (`memory/feedback_local_dev_smoke_unavailable.md`) is only half true: you can't *authenticate as Claude*, but you don't need to. The Clerk **session cookie is shared across the whole Chrome profile**, so once Q logs into `<slug>.withbernard.ai` in Chrome, Claude drives the already-authenticated session via the **Claude-in-Chrome MCP** (`list_connected_browsers` → `select_browser` → `tabs_context_mcp` → `navigate`/`computer`) — even in a fresh tab. This is how the 2026-06-02 live UX audit and the Slate-fix verification ran against real prod data.
-
-Rule: to verify a UI change or audit live prod, ask Q to log in once, then drive the authed tab **read-only** (navigate by URL, screenshot, score — never click publish/delete/send). Don't try to auth as Claude, and don't conclude "can't test on prod." Note: workspace subdomains use the full slug (`movebetter`), not the brand short-name.
-
-**The "read-only" rule also covers calling an API directly via `fetch()` with `window.Clerk.session.getToken()` — that's not read-only just because you didn't click a button.** Some routes that read like "generate a preview" are actually bake-and-persist: `POST /api/editorial/compose-photo` renders a composite AND writes it straight into that `content_items` row's `media_urls`/`photo_treatment` — no dry-run flag, no distinction between "preview" and "publish." Calling it against a REAL pieceId to verify a compositor change (2026-07-09, logo-on-editorial-cards #2023) silently overwrote the photo on an already-**published** GBP post with test content. The harness's own safety classifier caught the DB-side fix attempt and forced an explicit confirm — but the mutation itself wasn't blocked, only the repair was. **Rule: before calling any "render"/"compose"/"generate" endpoint directly via authenticated `fetch()` against a real content id, check whether the route persists its output (grep the handler for a `PATCH`/`UPDATE` back to the row) — if it does, either use a disposable/draft test piece you can freely mutate, or verify via a local node harness on the pure render function instead (per the Sharp/SVG exception above) rather than the live route.**
-
-**A "click through it and see" verification pass can itself create a real row you didn't intend to leave behind — "New brief" and similar create-affordances aren't purpose-gated the way the AI pipeline that normally produces them is.** Verifying the media-hub in-app-editor button (2026-07-09, PR #2054/#2056) meant opening a real B-roll asset in Q's Chrome and clicking "New brief" just to get a brief row to click "Edit clip in Bernard" from — but `segmentInterview.js`'s server-side gate (`asset_purpose === 'interview'` only) only restricts the AI segmenter; the manual "New brief" button in `MediaDetail.jsx` has no such restriction, so it happily created a live `content_pieces` row on a B-roll asset in the real `movebetter` workspace. Harmless here (empty caption, `accepted` status, easy to `Delete`), but it's the same class of "read-only isn't really read-only" trap as the `fetch()` case above, just via a UI click instead of a raw API call. **Rule: before using a create/generate button purely to exercise a downstream feature, check the target table for a `workspace_id` filter you could scope to a disposable test record instead — and if you do create one on a real workspace, delete it via the UI's own delete affordance before ending the verification pass, not just note it in your report.**
-
-**A fifth variant needs no click at all — merely LOADING a page can mutate the row, because some editors auto-attach on first open.** The four traps above all involve an action (a raw `fetch()`, a create button, a coordinate misclick); this one fires from navigation alone, so "I'll just open it and look" is already a write. `SlideEditor`'s carousel auto-attach persists `media_urls` **and** the per-slide `photo_idx` on first open of a media-empty piece (documented above under `content_items.media_urls`) — by design, so a reload-before-Save can't strand it. But during verification it means the very state you navigated to inspect is gone by the time you look. (2026-07-22, verifying the video-suggestions fix #2272: picked a LinkedIn draft precisely *because* it had `media_urls = []`, and the page-open auto-attached a photo — `media_n` 0→1, `updated_at` stamped at the moment of navigation. Worse for the verification itself: attaching media flipped the piece's archetype from the `isTextPost` branch to `visual`, which routes to a **different editor** — so the panel under test was never reachable on that piece again.) **Tells: the screenshot shows media on a row your DB query said was empty; `updated_at` sits within a minute of your navigation. Rules: (1) before opening a page to verify, check whether the target surface auto-populates on mount — grep the component for an auto-attach/seed effect keyed on an empty field, don't assume a page load is inert; (2) re-read the row's `updated_at` after a verification pass on any editor, the same way you'd check after a suspected misclick; (3) when the empty state IS the thing under test, verify through the API rather than the page — an authenticated `fetch()` to the read-only endpoint (here `suggest-media`, which persists nothing) proves the contract without tripping the mount effect, and it is the *only* way to see a state the editor destroys on arrival.**
-
-**On `StoryboardPublish`/`SlideEditor`/`UnifiedEditor`, `ApprovalPanel` (Approve/Schedule/Publish, `WinnerToggle`, and anything else passed as `scheduleNode`) is NOT visible on the main editor canvas — it only renders inside a "Schedule & publish" dialog, opened from the slide editor's "More" menu → "Publish details" (`button[aria-label="More options"]`, right end of the top bar; it replaced the unlabelled sliders icon on 2026-11-11).** A capture of the publish page alone shows the slide/theme editor only; anything gated on `isPublish` in `ApprovalPanel` (a new button, a new signal) is invisible until that dialog opens. For `scripts/capture-screenshot.mjs`, chain `--click 'button[aria-label="More options"],button:has-text("Publish details"),<your new element selector>'` in one call — the menu and dialog animate in fast enough that later clicks in the same `--click` list land on content that's already mounted. (2026-07-29, verifying #2450/#2451's `ModelPostRating` + `CopyToPlatformsModal`: a first capture without the click showed only the Theme tab; the real controls were one click away.)
-
-## Staff-update routine — capturing screenshots for the PDF
-
-The Bernard staff summary (`.claude/scheduled-tasks/bernard-staff-summary-3wk/SKILL.md`, rebuilt 2026-08-27 to run every ~3 weeks — see that file's "Rebuild note" for why the old weekly version went silent) produces a combined PDF with plain-language bullets + embedded screenshots, plus a Gmail draft pointing to it. **Screenshot capture is a ship-time responsibility — not a separate task**, and the routine itself deliberately never triggers a capture (it only reads existing `captions.jsonl` entries) — the capture pipeline depends on a 1Password mount read that's documented elsewhere in this file as occasionally hanging indefinitely, which is exactly the kind of dependency a headless scheduled task should not carry.
-
-**When to capture:** Any time you merge a UI change to `main`. Backend-only changes, refactors, CI/test updates, and docs changes need no screenshot.
-
-**What to capture — ZOOMED CROPS, never full pages.** Grab a tight crop of just the ONE component the change is about (a card, a control, a few table rows), not the whole screen. A full-page screenshot downscaled to fit the PDF becomes an unreadable blur — this is the #1 failure mode (hit 2026-07-16: the first Bernard PDF captured whole-`main` pages and had to be fully redone as element-level crops at `scale: 2`). The quality bar is the Deep Thought reference PDF (`/Users/qbook/Claude Projects/Deep Thought/.staff-update-screenshots/`): a colored title + tight per-feature crops (its "My voice" card, its Cmd-K box, its two thumb buttons). `--selector` (plus `--hide` for stray distractions) at `--scale 2`+ produces exactly this — do NOT point `--selector` at `main` and capture the page wholesale. One representative element per bullet; for a long table hide all but the first ~5 rows, for a card grid capture 2–3 cards, for a form keep the input + the new control and hide the rest.
-
-**How to capture — use `scripts/capture-screenshot.mjs` (local Playwright). Do NOT use the Chrome MCP for this.**
-
-The whole Chrome-MCP capture pipeline (html2canvas → blob URL → `~/Downloads` → `cp`) is **dead in the agent environment** and cannot be fixed from the page side — see "Why the Chrome-MCP pipeline can't work here" below. The working path drives a **local headless Chromium via Playwright**, which writes files directly with `fs`, needs no downloads/clipboard/network bridge, and authenticates with the same Clerk sign-in-ticket trick as `tests/e2e/auth.setup.ts`. Verified end-to-end 2026-07-22 (authed `/week` + a Library media tile → PNG on disk → embedded in a PIL PDF).
+## Run / build / test
 
 ```bash
-cd "/Users/qbook/Claude Projects/Bernard" && T=$(mktemp) && cat .env.bernard.1pw > "$T" && export CLERK_SECRET_KEY="$(awk -F= '/^CLERK_SECRET_KEY=/{print substr($0,index($0,"=")+1)}' "$T" | tr -d '\r')" && rm -f "$T" && node scripts/capture-screenshot.mjs \
-  --url https://movebetter.withbernard.ai/library \
-  --selector 'button.rounded-lg.overflow-hidden:has-text("used ×")' \
-  --scale 4 --delay 4000 \
-  --out ".staff-update-screenshots/$(date +%F)_PR0000_slug.png"
+npm run dev                  # Vite dev server; authed pages can't load locally (Clerk pk_live is domain-locked, verify.md)
+npm run build                # prebuild writes version.json, the blog and the API route manifest, then vite build
+npm test                     # Vitest
+npm run lint                 # ESLint at --max-warnings 0 (the ratchet only goes down, git-deploy.md)
+npm run typecheck            # tsc --noEmit
+npm run verify-bundles       # imports every api/ handler to catch load-time crashes (api.md)
+npm run verify-api-manifest  # the generated route manifest is in sync
+npm run schema:verify        # committed schema snapshot vs live prod columns (data.md)
+npm run e2e                  # Playwright smoke
 ```
 
-Flags: `--url` `--out` (required); `--selector` (CSS or Playwright `:has-text()`; omit for a viewport shot); `--last` (pick the innermost `:has-text` match — ancestors match too); `--click 'sel,sel'` (click a tab/filter first); `--hide 'sel,sel'` (`display:none` distractions — this replaces the old manual DOM-isolation walk); `--wait-for`; `--delay`; `--scale` (default 2); `--width`/`--height`; `--full-page`; `--email` (defaults to the `e2e@movebetter.co` fixture user).
-
-Notes that matter in practice:
-- **Pick `--scale` so the raw crop is ≥ 950px wide**, the PDF's `MAX_IMAGE_WIDTH`. A 256px-CSS tile at `--scale 2` is only 512px and gets *upscaled* (soft) in the PDF; `--scale 4` gives 1024px. Widen `--width` to change how many grid columns render.
-- **Only `CLERK_SECRET_KEY` is needed.** The fixture account resolves as `--email` → `E2E_TEST_USER_EMAIL` → the hardcoded `e2e@movebetter.co`, so a capture works whether or not the env var is exported. (The 1Password `E2E_TEST_USER_EMAIL` entry held a 15-char random string rather than an address until Q fixed it on 2026-07-22; the script now validates the address shape up front so a bad value fails loudly instead of surfacing as a confusing "No Clerk user found".)
-- The script suppresses the first-visit help overlays (`pagehelp:*` **and** the Library's separate `mediahub:welcomed:v1`) and presses Escape. If a new overlay ever paints over a crop, add its key there — the symptom is a capture showing a numbered "How it works" list instead of your component.
-- rAF animations (NumberTicker) run correctly here, because the page is genuinely visible to its own browser — this sidesteps the documented backgrounded-tab ticker freeze entirely.
-- It signs in as a **fixture user, not Q**, so it is safe to run repeatedly; but it is a real authenticated session, so the read-only discipline still applies — don't point `--click` at Approve/Publish/Delete.
-- **The `e2e@movebetter.co` fixture is a Clerk `org:admin`, so it CANNOT prove any authz branch gated on `isOrgAdmin` (or `permission_tier`) — its minted token carries `org_role: "org:admin"`, so `requireRole` resolves `auth.isOrgAdmin === true` and it sails through the org-admin allow before ever reaching a role/tier check.** Verified 2026-08-14 while confirming PR #2629 (producers can approve a story's words): the fixture returned a clean `200`, but through the pre-existing `isOrgAdmin` branch — NOT the new `role === 'admin'` clause the fix added, so it proved deploy+wiring, not the fix. The faithful subject for an internal-plan-`role:'admin'`-but-not-org-admin branch (the producer/clinician case) is an actual non-admin member like Philip — and minting a *real named person's* session to test as them is impersonation the auto-mode classifier blocks (correctly). So: to prove an `isOrgAdmin`-gated branch on prod you need a subject that is `isOrgAdmin:false`, which the shared fixture is not and a real human shouldn't be impersonated to supply — fall back to the local proof stack (OLD-vs-NEW persona harness + a mutation-tested unit guard on the extracted decision) plus a live `200` that at least confirms the deployed handler + auth stack execute end-to-end. Don't read the fixture's `200` as proof of the specific branch you changed; decode the token's `org_role` (`atob` the JWT payload) to see which allow path it actually took.
-
-**Why the Chrome MCP can't produce this file:** see global's "The agent browser tab is never visible" rule — the MCP tab's `visibilityState` is permanently `hidden`, so every file-out route (blob-download, `save_to_disk`, clipboard, a local receiver) fails silently. Two Bernard-specific gotchas found on top of that root cause: a receiver on `socketserver.TCPServer` is single-threaded and **wedges permanently** once a browser opens a keep-alive connection (even `curl` then times out, which looks like "server never started" — use `ThreadingHTTPServer` with `daemon_threads`); and `computer` `zoom`'s `region` doesn't map reliably to screenshot pixels (~60px off), so prefer a generous region.
-
-**Don't re-litigate this.** The blocker is the tab's visibility, which the page cannot change. Playwright is better regardless (element crops at arbitrary scale, no CDN dependency, no CSP surface, scriptable from Bash). When the user only wants to *see* a screenshot, the `computer` tool is still fine — it renders in the transcript and needs no filesystem.
-
-<details><summary>Historical: the Chrome-MCP pipeline (kept for context — does not produce files here)</summary>
-
-1. **Navigate in Q's real Chrome** via claude-in-chrome MCP (`tabs_context_mcp` → `navigate` to `https://<slug>.withbernard.ai/<page>`). This uses his logged-in session; no auth needed.
-
-2. **Isolate the target element** via `javascript_tool`:
-   - Walk UP the DOM from the element.
-   - At each level, set `display:none` on every SIBLING that doesn't contain the target.
-   - Continue up to the shell/nav root.
-   - Result: just the target element rendered alone on a blank page.
-   - Clear any stale `data-target-card` attribute from a prior run first.
-
-3. **Inject html2canvas from CDN** via `javascript_tool`:
-   ```js
-   const script = document.createElement('script');
-   script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-   document.head.appendChild(script);
-   await new Promise(r => setTimeout(r, 500));
-   ```
-
-4. **Render the isolated element:**
-   ```js
-   const target = document.querySelector('[data-target-card]');
-   const canvas = await window.html2canvas(target, { backgroundColor: '#ffffff', scale: 2 });
-   ```
-
-5. **Trigger a browser download** (do NOT return dataURL from javascript_tool). Use a **blob URL on an anchor that is actually in the document** — the `toDataURL` + detached-anchor form below it silently no-ops:
-   ```js
-   const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
-   const url = URL.createObjectURL(blob);
-   const link = document.createElement('a');
-   link.href = url;
-   link.download = 'screenshot.png';
-   document.body.appendChild(link);   // must be IN the document
-   link.click();
-   link.remove();
-   setTimeout(() => URL.revokeObjectURL(url), 5000);
-   ```
-   Chrome writes a real file to `~/Downloads/`.
-
-   **The older `link.href = canvas.toDataURL('image/png')` + never-appended anchor fails silently and looks like success.** The canvas renders fine (you can log correct `canvas.width/height`), `a.click()` throws nothing, and the javascript_tool result is the usual `{}` from an async block — but no file ever lands in `~/Downloads/`. Chrome declines the navigation-to-download for a large `data:` URL from a detached anchor; a `blob:` URL on an appended anchor is honoured immediately. (2026-07-22, capturing the /week schedule strip: first attempt produced `ok 2962x86` from the canvas and zero files on disk; the blob form worked on the first try with no other change.) **Tell it apart from a slow write:** `ls -t ~/Downloads/*.png | head` a few seconds later — if the canvas dimensions logged fine but nothing is on disk, it's this, not a timing issue. Don't re-run the identical call hoping for a different result.
-
-   **This step does not work in the agent environment** — the tab is never visible, so the download is silently dropped. Root cause and the full failure table are above; use the Playwright script instead.
-
-6. **Move the file into the repo** via Bash:
-   ```bash
-   cp ~/Downloads/screenshot.png "/Users/qbook/Claude Projects/Bernard/.staff-update-screenshots/YYYY-MM-DD_PR###_slug.png"
-   ```
-
-</details>
-
-**Storage convention:**
-
-- **Directory:** `.staff-update-screenshots/` (gitignored, not in repo)
-- **Filename pattern:** `YYYY-MM-DD_PR###_short-slug.png` (e.g. `2026-07-17_PR2185_stories-table-sort.png`)
-- **Index:** `captions.jsonl` in the same directory (one JSON line per screenshot):
-  ```json
-  {"file":"2026-07-17_PR2185_stories-table-sort.png","date":"2026-07-17","pr":2185,"caption":"the Stories list now shows a dense sortable table with search"}
-  ```
-
-**Caption:** One plain-language sentence describing what the user sees / what changed / why it matters. No jargon, no "PR #2185 fixed…" — just the user-visible fact. This caption is what matches bullets in the weekly summary PDF.
-
-**First-time setup:**
-- Create `.staff-update-screenshots/` folder manually (or let the routine create it).
-- Add to `.gitignore`: `.staff-update-screenshots/`
-- Document in a README in that folder (for future sessions) if you'd like.
-
-**Gotchas & testing:**
-- The Playwright script needs the repo's `node_modules` (`@playwright/test`, `@clerk/backend`). A session worktree has no `node_modules` of its own, but Node resolves upward and finds the project root's — so running it from a worktree works. Playwright's Chromium is already installed in `~/Library/Caches/ms-playwright`.
-- A capture that comes back showing a numbered "How it works" list instead of your component means a first-visit help overlay auto-opened for the fixture user; add its localStorage key to the suppression block in the script.
-- On some Pillow/PIL installs, `image.save(..., "PDF")` throws `KeyError: 'JPEG'` even though JPEG save works. The routine includes a workaround; only matters when building the PDF.
-- Screenshots are not required for the routine to work — if a bullet has no matching screenshot, the PDF just renders the text. Capture what's relevant; don't force every change.
-
-**A fourth variant: a raw screenshot-coordinate click meant for a benign link can land on an adjacent mutating button instead — prefer `find`/`read_page` refs over pixel coordinates near any Approve/Publish/Delete/Send control.** Navigating `/week` to open a piece for read-only verification (2026-07-16, `/publish/:pieceId` dead-click audit #2171), a coordinate click aimed at "Open to change" landed on the "Approve" button one row above it instead — silently triggering a real approve+publish attempt on a live `movebetter` piece. The actual bundle.social publish call failed (`bundle_post_failed`), so nothing posted publicly, but the row's `status` flipped to `approved` without authorization. Caught immediately by cross-checking `content_items.updated_at > now() - interval '15 minutes'` via the Supabase MCP, confirmed with Q, and reverted (`status='draft', approved_at=null`) before continuing. **Rule: when clicking near any button whose label suggests a state-changing action (Approve, Publish, Schedule, Delete, Send), use `find`/`read_page` element refs instead of raw pixel coordinates — refs target the actual DOM node regardless of visual drift between the screenshot and the live layout. If a misclick on a mutating control ever happens anyway, immediately verify via a direct DB read (`updated_at`/`approved_at`/`published_at` on the affected row) rather than trusting the on-screen toast alone, and confirm with Q before reverting.**
-
-## A preview is not the published artifact
-
-When a feature renders something to a `<canvas>` (or any in-memory/preview-only surface) and the user can *see* it, that is NOT evidence the same artifact ships at publish/export. The render and the publish are different code paths. This codebase has several preview-vs-output surfaces — carousel on-screen text (`renderFreeformSlide`), the email-template iframe, image/video overlays — and they're easy to get wrong in the same way: the preview looks perfect, the live output is raw.
-
-The 2026-05-29 carousel bug (PR #980) was exactly this: per-slide overlay text (`content_items.slides`) was drawn to a preview canvas via `renderFreeformSlide` but never turned into an image file or uploaded; publish sent the raw `media_urls` photos, so the on-screen text vanished from the live post.
-
-Rule: for any feature that renders a derived artifact (overlay image, composited graphic, baked text, watermark), grep the renderer's callers. If it's called only in `*Preview` / `*Editor` components and never in a publish/upload/export path, the published output is stale or raw — the renderer needs a real produce-and-upload step on the publish path (reuse the SAME renderer so it stays WYSIWYG), not just a canvas. Confirm the live output, not the editor preview, before calling it done.
-
-## Server-side image compositors (Sharp + SVG) — verify locally, mind tspan whitespace
-
-The photo compositor (`api/_lib/brandRender.js` `renderEditorialPhoto`, `api/_lib/whoopTemplates.js` `renderWhoopPhoto`, baked by `api/editorial/compose-photo.js` into `content_items.photo_treatment` / `media_urls`) is pure server-side render code. Two lessons from building it:
-
-- **Pure render/transform code CAN be verified locally even though app smoke is prod-only** (Clerk domain-locked — see "Smoke happens POST-DEPLOY"). The render functions take a workspace object + a source URL and return a JPEG buffer — no Clerk, no request context. Before shipping a template/render change, write a throwaway `node` harness that imports the renderer directly, renders every variant to `/tmp/*.jpg`, and **read the JPEGs** to eyeball them against the mockup. This caught every visual bug in the 6-template WHOOP build *before* merge — far cheaper than a prod round-trip. Don't ship SVG/Sharp render changes blind on "gates are green"; gates don't look at pixels.
-- **SVG collapses whitespace at `<tspan>` boundaries.** Rendering multi-color text as inline `<tspan fill=…>` runs inside one `<text>` (the clean way to color one accent word — the renderer measures glyph widths for you) drops the space between runs: `isn't the` rendered as `isn'tthe`, `sciatica worse` as `sciaticaworse`. Fix: put `xml:space="preserve"` on the `<text>` element. Applies to any colored-run or multi-tspan text in these compositors.
-
-## Mockup-first — Bernard's serving recipe + worked examples
-
-Serve mockups with `python3 -m http.server <port>` from inside `.claude/` — NOT `npx serve` (it 301-redirects `foo.html`→`/foo` then 404s, and hides dot-directories so a worktree-root `serve .` can't reach `.claude/mockups`). Files need a full `<!doctype html><head><meta charset="UTF-8">` skeleton — a bare fragment defaults to no charset header and the preview browser mangles emoji/em-dashes into mojibake. Drive the Claude_Preview tools at an **explicit wide width (1360)** — the "desktop" preset reverts to a narrow size that hides the md-breakpoint sidebar. Full preference + how-to: `memory/feedback_mockup_first_for_ui.md`.
-
-**Prefer the `Artifact` tool over the local-server flow for single-component before/after mockups** — redeploying to the same call updates the URL in place for fast iteration, and it sidesteps the charset footgun above. Reserve `.claude/mockups/` + local-server for multi-screen flow prototypes needing live interaction wiring (toggles, view switches, `sendPrompt`-style state).
-
-Worked examples of the global mockup-first rules, for institutional memory:
-- **Read real components first:** 2026-06-02, two mock rounds reinvented channels-as-a-checkbox and the words editor, overwriting shipped atoms-per-channel and per-piece "Edit words" — built without reading `ContentPlanPanel.jsx` / `atomPlan.js` / `StoryboardPiece.jsx` first.
-- **Screenshot before code:** 2026-06-21, "sidebar too wide" cost 4 PRs of guessing pixel values before a screenshot showed the real cause was ~45px of dead padding in `Layout.jsx`.
-- **Subjective polish still needs a mockup:** 2026-06-16, a photo-template render-tweak session shipped six PRs straight to prod before Q stopped it — the trap was treating the client canvas renderer (`renderFreeformSlide` in `overlayTemplates.js`, uses `document`/`window`, can't be node-harnessed) as covered by the node-harness exception, which is for render *correctness*, not *design sign-off*.
-- **Hand-drawn conditional state:** 2026-07-22, the `/week` schedule strip mock (#2257) drew one amber chip by eyeball where the stated rule (`!isPast && got < target`) actually lights three on the same real week — required a follow-up PR (#2260).
-- **Borrow the platform's vocabulary:** the T3 mockup labeled Instagram's format mix "Post/Carousel · Reel · Story," a taxonomy Meta and `bundlePublisher.js` (`type: 'POST'|'REEL'|'STORY'`, no carousel type) don't have — grep `api/_lib/social/bundlePublisher.js` for the real outbound enum before naming a platform concept.
-
-## Validate the validator — Bernard's file paths + worked examples
-
-Caption fidelity gate: `api/_lib/captionFidelity.js` + offline `scripts/voice-fidelity-captions.mjs`, sharing rubric module `api/_lib/captionFidelityRubric.js`; CI gate `scripts/verify-caption-fidelity.mjs`. Full write-up: `memory/feedback_validate_the_validator.md`.
-
-Worked examples of the global "validate the validator" rules:
-- **Grader missing the reference:** 2026-05-31, the U1 keystone measured a −0.68 regression that was wrong — the grader never received the transcript it claimed to judge faithfulness against, and rewarded clinical register over faithful warm/personal captions. Rewritten to grade `said_fidelity` against the transcript (PR #1081), the same change measured +1.74.
-- **Null score silently disabling the gate:** PR #1881 — `buildFidelityPrompt` returned `{instructions, user}` (AI SDK v7 renamed `system`→`instructions`) but the caller read the nonexistent `.system`, so the judge ran with no system prompt and produced zero parseable scores on 10/10 real long captions — the fidelity gate had been a total no-op since it shipped.
-- **Two-stage slice overriding the caller's cap:** `draftAtom` slices the interview to 24k chars for the judge, but `buildFidelityPrompt` re-sliced it to 2500 internally — the judge saw ~13% of the reference (fixed PR #2165).
-- **Bigger model, worse judge:** validating the fabrication flag, Sonnet false-positived a real "week four" verbatim in the transcript that Haiku correctly passed — the gate stayed on Haiku (PR #2165).
-- **"Fabricated" claim that wasn't:** a GBP patient story flagged as invented was actually verbatim in `interviews.messages` — corrected in PR #2166.
-- **Sibling rubric parsers drifted, and the fail-closed gate turned it into a work stoppage:** `answerFidelityRubric.js` ran `JSON.parse` over the judge's WHOLE reply while its older sibling `captionFidelityRubric.js` already extracted the first `{…}` object. Haiku intermittently appends a `**Rationale:**` essay after the JSON, so ~1 in 3 approvals returned `no_dims_parsed` → `gate: 'unscored'` → publish blocked, on a doctor's own answer. Both now share `extractJsonObject()` from `api/_lib/jsonFromModel.js`, and the output contract forbids trailing prose (#2344). **Two rubric modules is two parsers; a fix to one is not a fix to the other.**
-- **The safety dimension penalized ordinary public teaching:** it said only "NEVER prescribe treatment or dosing" with no general-vs-individual line, so *"short, quick steps keep you over your feet"* scored safety 5 and held a sound answer at 6.0. Q called it guidance, not prescription. Fixed the grader, not the drafts (#2347) — the line is now GENERAL TEACHING (expected, never penalized) vs INDIVIDUAL INSTRUCTION (unsafe). Old-vs-new on the real queue: every answer's safety rose (running form 6.67→9.0), while three adversarial probes — diagnose-the-reader, dosing, fabricated study — all stayed at safety 1 and blocked. **When loosening a safety rubric, the adversarial probes ARE the evidence; `tests/lib/answerSafetyCalibration.test.js` pins the contract and reverting it reddens 5 of 7.**
-- **`said_fidelity` can't gate human-edited text** (the global corpus-vs-human rule, discovered here): it scores against topic-scoped practice memory, so Q's own new teaching on hip flexion→hip extension came back as *"invented mechanical specifics not in the source material."* The answer voice check is therefore **advisory, never blocking** (#2351) — see `.claude/decisions.md` 2026-07-25 for the reversal of F16 Phase 1 and its accepted risk. Publishing over a faithfulness flag queues a `topic_backlog` row (`source: 'answer_gap'`) so the corpus catches up instead of re-flagging forever.
-- **A scored answer whose score was thrown away:** `draftAnswer()` scores at draft time (and burns a coached regenerate when the first attempt is held), but `authorAnswers.js` — the producer path — never persisted `voiceFidelityScore`/`voiceAudit` onto the row, so producer-authored answers reached the queue unscored. Three of four callers were correct, so a spot-check missed it (#2357). `tests/lib/answerDraftScorePersisted.test.js` pins every caller. **Same shape as the Buffer/bundle divergence: the primitive was fine, one call site wasn't.**
-
-## Templates are authored in the REAL editors, not a separate template screen (Q, 2026-07-25)
-
-A look is created by dialling it in on an actual clip or carousel and hitting **Save as … template**
-(VideoEditor's Captions panel; SlideEditor's Theme panel), not in a settings-page style editor. Q's call,
-and it is the better architecture for a reason worth keeping: **the editor already renders the real
-thing, so there is no second styling surface to drift out of sync with the bake.** Video renders
-server-side in ffmpeg, so a canvas "template preview" would be a mirror — and mirrors here have already
-lied (the caption Size control previewed one size and exported another; the glow preview kept an accent
-halo after the bake moved to a dark one).
-
-The settings pages (`/settings/photo-templates`, `/settings/video-templates`) are **libraries, not
-editors**: browse, rename, delete, choose which one new content uses. Adding style controls there
-recreates exactly the surface this design removed.
-
-Capture is a STYLE/CONTENT split, and the split is the design work — `src/lib/videoTemplateCapture.js`
-and `src/lib/photoTemplateCapture.js`, both pure and tested. Two rules that generalise:
-
-- **A value that is a property of THIS clip must not be pinned into the template.** A headline hold that
-  runs to the end of a 9s clip is saved as the reading-time rule, not as "9 seconds".
-- **Take the most common value per role across slides, not the first.** A template is "how you style
-  hooks", not "how slide one looked".
-- **Name what was skipped in the save dialog.** The photo capture can only promote the five block fields
-  the template schema holds (`fontWeight`, `color`, `shadow`, `uppercase`, and `fontScale` folded into a
-  named size); the editor sets six more it cannot. Silently dropping half a user's styling is worse than
-  saying so.
-
-## Client/server mirror pairs — a fix to one is not a fix to the other
-
-Several render decisions exist twice by design (the import boundary forbids sharing a file), and every
-one has bitten. When changing any of these, change both in the same commit:
-
-| Server (bake) | Client (preview) |
-|---|---|
-| `api/_lib/gradeParams.js` | `src/lib/gradeParams.js` |
-| `brandRenderVideo.js` `CAPTION_BASE_FS` × `OVERLAY_SIZE_SCALE` | `video-editor/captions.js` `CAPTION_BASE_FS_PCT` / `CAPTION_SIZE_SCALE` |
-| `karaokeCaptions.js` `CAPTION_STYLES` | `video-editor/captions.js` `captionCss()` — **colours test-enforced**, see below |
-| `brandRender.js` `resolveBrandColors()` | `src/lib/brandSwatches.js` |
-| `api/_lib/videoTemplates.js` | `src/lib/videoTemplateCapture.js` |
-| `api/_lib/captionOverlayDedup.js` `normCaptionText` | `video-editor/captions.js` `normCaptionText` |
-| `karaokeCaptions.js` `buildKaraokeAss` `\k` word TIMING | `video-editor/Canvas.jsx` `spoken = playClipT >= w.start` |
-| `karaokeCaptions.js` `sliceWordsToWindow` / `groupWordsIntoLines` | `video-editor/captions.js` `sliceWords` / `groupLines` |
-| `api/_lib/transcriptCuts` | `video-editor/cuts.js` |
-
-**The caption COLOUR half of this table is now enforced rather than remembered.**
-`tests/lib/videoEditorCaptions.test.js` builds the ASS for every preset with the real
-`buildKaraokeAss` and asserts the preview's spoken/upcoming colours equal the bake's
-`PrimaryColour`/`SecondaryColour`. Don't hand-verify that pair — and if you add a preset
-to `CAPTION_STYLES`, the test covers it automatically the moment it appears in
-`CAPTION_STYLE_OPTS`. It was written after `word_box` AND `underline` were found painting
-the spoken word white while the bake painted it the tenant accent (#2731) — two presets
-whose whole job is per-word emphasis, showing no highlight at all in the editor. Still NOT
-covered: the underline rule's PLACEMENT (ASS `Underline` is style-level so the bake
-underlines both states; the preview underlines only the spoken word — deliberate).
-
-Real failures from this list: the Size control previewing identically for Medium and Large while baking
-1.0× vs 1.35× (`vh` with a 40px clamp vs a frame-relative bake); `glow` previewing an accent halo for a
-commit after the bake moved to a dark one; the karaoke fill IGNORING inter-word silences — ASS `\k`
-packs syllables back-to-back from the line's Dialogue Start, so a word after a pause lit up early (up to
-~4s on a real reel) while the preview lights each word at its real start. Caption STYLE and caption
-TIMING are two separate mirror axes: when a "pacing" report survives a style fix (the outline/`CAPTION_STYLES`
-one), suspect the `\k` timing model, not the styles (#2707).
-
-**A `<video>`'s `src` and its `poster` are a mirror pair too — a fix that swaps the src to a clean
-source must swap the poster in the same breath, or the poster becomes a second surface carrying the
-exact artifact you just removed from the src.** `VideoEditor.jsx` edits a caption-baked auto-reel from
-its RAW un-captioned source (`resolveVideoEditSource`, see the reel-editor section below / memory
-`project-reel-editor-raw-source`). #2609 correctly pointed `<video src>` at that clean source but left
-`poster={asset.thumbnail_url}` on the BAKED clip's thumbnail (captions burned in). On the paused/
-undecoded frame — the resting state before play, and always in a stalled harness — the baked-caption
-poster rendered UNDER the live karaoke overlay: the same double #2609 removed from the src, now via the
-poster. Fix (#2641): `editPoster = editSource.window ? undefined : asset?.thumbnail_url` — drop the
-poster whenever editing from a resolved raw-source window; normal clips/uploads and the `captionsBaked`
-fallback (video IS the baked blob → thumbnail matches, no live overlay) keep it. It was a universal
-wiring bug (all source-linked auto-reels), fixed in one line, no data. The tell that this class exists:
-a `<video>` whose `src` and `poster` resolve from DIFFERENT assets. (Client-preview only — the publish
-bake reads neither.)
-
-**A per-platform DISPATCH is a mirror pair too, and it's the harder one to audit — a value mismatch is
-visible in a diff, a missing platform is invisible until someone opens that specific post.**
-`publishPiece.js` bakes slides (photo + text blocks) for EVERY platform except an Instagram Reel with
-video — but `PostPreview.jsx`'s `switch (platform)` dispatch only passed `slides` to two of thirteen
-cases. `InstagramPreview` was wired correctly and even carries its own comment warning about "the
-preview lying about the published artifact" — and nobody generalised that warning to the other cases
-when they were added. Found 2026-08-03 across three PRs: Facebook rendered the raw photo with no
-on-photo text (a post whose Facebook copy carried a real headline and footer showed neither); LinkedIn
-and GBP rendered NO image at all despite 14 and 7 already-baked posts live in prod. Each gap was
-individually invisible — the preview just showed *something* plausible, never an error.
-
-**Rule: when one dispatch/switch statement fans out to N per-platform (or per-type) handlers and only
-SOME of them wire a given prop, treat that as exactly as suspect as a hardcoded value that only some
-copies of a mirror pair updated.** Audit by counting real data, not by reading the dispatch and trusting
-it looks complete: `select platform, count(*) filter (where <the feature's precondition>) from <table>
-group by platform` finds which cases are silently missing the wiring and how many live rows it actually
-affects — a code read alone can't tell you severity. `tests/lib/previewSlidesCoverage.test.js` now
-enumerates every case and asserts each slide-bearing platform gets `slides`, with the platforms
-deliberately left out pinned as a recorded decision (`instagram_story` uses `overlayText`/`textCard`
-instead; `blog`/`landing_page`/`email` publish off the social path; `tiktok`/`youtube` are video-first)
-so the next platform added has to actively decide which side of the line it's on.
-
-## Bernard PRODUCT brand ≠ tenant brand — two color namespaces that must never cross
-
-This keeps coming up (Q, repeatedly). There are two brands, and they share a history that makes them
-easy to conflate:
-
-| Namespace | What it is | Color | Where it belongs |
-|---|---|---|---|
-| **Bernard product** | the SaaS app's own chrome | Blue Spruce `#0C7580` (`BERNARD_PRIMARY`, `--primary`), amber `#d97706` (`BERNARD_ACTION`, `--action`) | nav, buttons, app UI **only** |
-| **Tenant brand** | the clinic's own brand, stored on its `workspaces` row | e.g. Move Better = orange **`#E36525`** (`colors.primary` / `brand_style.accent_color`) | that tenant's **published content only** |
-
-The app was built FOR Move Better in orange, then repainted to Bernard emerald/Blue Spruce (#1294) —
-so `#E36525` looks "retired" but is **Move Better's LIVE tenant color** (verified in prod:
-`colors.primary` = `#E36525` for all three Move Better workspaces). `#0C7580` Blue Spruce is Bernard's,
-NOT Move Better's — do **not** propose it as a tenant default.
-
-**The wall (both directions):**
-- Product chrome must not use a tenant/retired brand hex → `bernard/no-hardcoded-brand-color` (the
-  `#e36525`/`#6e7072`/… ban is about keeping those literals out of *app chrome code*, NOT a claim that
-  the tenant retired the color).
-- **Tenant content** (captions, overlays, slide text, baked reels/photos — anything rendered into a
-  tenant artifact) must resolve color ONLY from the tenant palette (`workspaceCaptionAccent(workspace)`
-  client / `resolveBrandColors(workspace)` server), falling back to a **neutral** (white / black /
-  `#83957C` / `#1a3a5c`) — **never** a `BERNARD_*` constant → `bernard/no-product-brand-in-content`,
-  scoped to the render-pipeline + editor files in `eslint.config.js` (add new render files to that glob).
-
-Triage note: a Move Better reel with an **orange** karaoke caption is **on-brand**, not a bug. The
-recurring failure is the reverse — Bernard's Blue Spruce / amber leaking INTO tenant content (seeded
-caption defaults, editor swatches, render-fn defaults). (feedback dd192d5f, 2026-08: VideoEditor seeded
-the caption default accent to `BERNARD_PRIMARY` and offered `BERNARD_ACTION` as a caption swatch;
-`videoOverlays.js` defaulted `accentColor` to `#0C7580`.)
-
-## Caption style invariants (`karaokeCaptions.js` `CAPTION_STYLES`)
-
-Two rules, both pinned by `tests/lib/captionStyleContrast.test.js`, both violated in shipped styles:
-
-- **A halo must not be the same colour as the fill it surrounds.** `glow` drew an accent outline while
-  karaoke fills the *spoken* word with the accent — an accent fill inside an accent stroke 15% of the
-  font size thick, which dissolved into a blob. Making the halo translucent does NOT fix it; same hue at
-  any alpha is still no contrast. It also was never a size bug: the stroke is `fontSize × 0.08 ×
-  outlineMul`, a constant *fraction*, so it was equally wrong at every size.
-- **Every style must have `PrimaryColour !== SecondaryColour`.** `\k` karaoke works by swapping secondary
-  (upcoming) to primary (spoken); `accent_fill` set both to white via `whiteText`, so the per-word timing
-  was computed and thrown away. On a `BorderStyle=3` style the box cannot carry the highlight — libass
-  draws ONE box behind the whole line, not per word — so it has to be a text colour.
-
-## `gradeToCanvasFilter` is the carousel BAKE, not just a preview
-
-`src/lib/gradeParams.js` `gradeToCanvasFilter()` feeds three places: the Brand vibe preview
-(`BrandKit.jsx`), the video editor preview (`video-editor/Canvas.jsx`), **and `overlayTemplates.js:1525`, which is
-the carousel slide bake**. A change here alters published images, not only what someone sees while
-editing. (2026-07-25: a flat `hue-rotate(185deg)` on any cool grade — the sepia scaled with warmth, the
-rotation did not — was spinning skin tones to cyan in *published* carousels for the two stock vibes with
-negative warmth.) There is no CSS/canvas primitive for the server's cool, which is a per-channel gain, so
-cool is deliberately a client-side no-op and the Sharp/ffmpeg bake is authoritative for it.
-
-## `generateAndPersistThumbnail(asset, scope)` wants the workspace OBJECT, and swallows the error
-
-`requireScope()` checks `scope?.workspace`, so the shape is
-`{ column: 'workspace_id', id: ws.id, workspace: ws }` — passing `{ workspaceId: ws.id }` throws. Because
-posters are deliberately best-effort (a poster is a nicety; losing it must never cost the clip), callers
-wrap the call in `.catch()`, so the throw is swallowed and every asset silently ends up with a blank
-tile. (2026-07-25: a re-render migration produced four clips with no poster this way; found by querying
-`thumbnail_url` afterwards, not from the script's exit code.) **After any batch that generates posters,
-verify with a `thumbnail_url IS NULL` count rather than trusting a zero exit.** And note `media_urls` is
-a SNAPSHOT, not a join: repointing an asset's `blob_url` without also rewriting the entry leaves `/week`
-and the editors rendering the old file.
-
-## Multi-tenant SaaS
-Bernard runs as a single shared deployment that serves multiple workspaces by subdomain (`<slug>.withbernard.ai`). Move Better People, Equine, and Animals are the three seed workspaces; external tenants self-onboard at `withbernard.ai/onboard`. All tenant-editable config — display name, voice/tone modifiers, interview/patient context, topic suggestions, output channels, publish credentials — lives in the `workspaces` row in the shared bernard Supabase, edited via `/settings/workspace`.
-
-The legacy `brands/<id>/` filesystem-overlay pattern and the `VITE_BRAND` / `BRAND` env vars were retired in Phase 1F (2026-05-10). Paradigm content is no longer build-time-pinned. To onboard a new tenant, use the wizard — there is no per-deployment scaffolding.
-
-`src/lib/workspace.js` retains a static config for legacy per-brand deployments only; runtime code reads `useWorkspace()` (browser) or `workspaceContext(req)` (serverless), which resolve from the DB by subdomain.
-
-**Tenant onboarding** (`/onboard`, `api/onboarding/*`): a Clerk-authenticated user fills the wizard, which (a) creates a Clerk Organization, (b) inserts a `workspaces` row with the chosen slug + paradigm defaults pre-populated into the JSONB columns, (c) binds the Clerk org id back to the workspace, (d) seeds `enabled_outputs` and a default `clinic_settings` row. Subdomain DNS is wildcard (`*.withbernard.ai` → bernard Vercel project), so the new subdomain works immediately with no DNS step.
-
-**Per-tenant publish credentials** (Buffer / Facebook / GBP / WordPress / etc.) live in the `workspace_credentials` table, encrypted at the column level with `WORKSPACE_CREDENTIALS_KEY` (Sensitive env var on the `bernard` Vercel project). Each row is `{ workspace_id, service, config (jsonb), secret_ciphertext (text) }`. Read/write goes through `api/_lib/workspaceCredentials.js`; never store these as Vercel env vars again — that pattern died with the per-brand deployments.
-
-**Probing live third-party integration state via decrypted `workspace_credentials` — budget it, expect a classifier block after ~3 chained services.** Verifying "is X actually tracked / connected / working" against real prod data (GA4, GSC, GBP, etc.) with a scratch script that pulls `SUPABASE_SERVICE_KEY` + `WORKSPACE_CREDENTIALS_KEY` from the 1Password mount, decrypts a credential row, and calls the live third-party API directly is legitimate and encouraged (same spirit as "Verify feature wiring before scoping changes" above) — but chaining it across **multiple separate services in one session** reads to the platform's auto-mode safety classifier as systematic credential-store exfiltration rather than incremental verification, and a later call gets denied outright ("Credential Exploration"). (2026-07-08: probing whether Book Now clicks were trackable via GA4, whether GBP quota had cleared, and whether GSC could bucket weekly data all in one scratch-script chain worked for the first two services, then got blocked mid-GSC-probe.) **Rule:** treat this as a scarce resource — after ~2 services' worth of decrypt-and-call probing, switch to the app's own scoped read endpoints (or the Supabase MCP for plain data reads that need no secret) for anything further; delete the temp env dump + scratch scripts immediately after each probe rather than leaving them for "just one more check." If denied, stop immediately and report findings from what was already probed — don't retry via a different tool to route around it.
-
-**Cross-workspace data isolation** is enforced at the API layer, not at the database layer: there is no RLS on the public schema (service_role bypasses anyway). Every API route that touches tenant-scoped tables must call `workspaceContext(req)` (or `workspaceById(id)` for background paths) and filter by `workspace_id`. Forgetting that = cross-tenant data leak. Treat the workspace_id filter the same way you'd treat an authorization check.
-
-## Google Search Console — OAuth, not service accounts (sc-domain: 403s)
-
-GSC analytics (`/analytics` page, `api/_routes/insights/search-queries.js`, `api/_lib/searchConsole.js`) authenticates via **per-workspace OAuth**, not a service-account JSON. The connect flow is `api/_routes/integrations/gsc/{connect,callback,disconnect}.js` + `api/_lib/gscAuth.js`, mirroring the Drive OAuth pattern (HMAC-signed state, refresh token encrypted in `workspace_credentials`, `config.token_type === 'oauth'`). It reuses the Drive OAuth client (`GOOGLE_DRIVE_CLIENT_ID/SECRET` fallback) — one extra redirect URI (`https://withbernard.ai/api/integrations/gsc/callback`) covers both.
-
-Why OAuth and not the service-account path used by GA4: **domain properties (`sc-domain:…`) 403 for service accounts forever** — the API caller must be a verified owner, and a service account can never satisfy DNS verification even when shown as a "Full" user in the SC UI. OAuth as a human account that owns the property is the only path. (GA4 still uses service-account JSON — that limitation is GSC-domain-property-specific.)
-
-Three real bugs hit while shipping this (2026-06-15), all worth knowing:
-
-- **A 403 when the connected account IS a property owner = the Search Console API is disabled in the OAuth client's GCP project**, NOT a missing user grant. These are indistinguishable unless you surface Google's error body — `searchConsole.js` now appends `text.slice(0,300)` to the 403 message for exactly this reason. Fix is in Google Cloud Console → enable "Google Search Console API" on the project that owns the OAuth client. (Hours lost assuming it was an account-permissions issue.)
-- **`detectSiteUrl` / any GSC call must use `searchconsole.googleapis.com`**, never the legacy `www.googleapis.com/webmasters/v3/sites` host — the legacy host silently returns null for the sites list, which left `config.site_url` unset at connect time. The site URL is always mirrored to `workspaces.gsc_site_url`, and both the insights read and the test endpoint fall back to it, so a null `config.site_url` is non-fatal — but fix the host so fresh connects populate config cleanly.
-- **`apiFetch` does NOT auto-set `Content-Type: application/json`** — a POST whose body must be parsed by a Node handler (`req.body`) needs the header set explicitly, or Vercel leaves `req.body` empty and the handler sees `undefined` fields (symptom here: the test button returned `unsupported-service` because `service` arrived empty). `CredentialForm` sets the header; new callers must too. **A sibling route working WITHOUT the header is not proof you can skip it** — it only survives because every field it reads has a `|| default` fallback, so an empty body is indistinguishable from a default one. The from-brand `generate` route (all fields defaulted) dodged this for weeks; the chat designer route next to it (`messages` required, no default) returned `bad_request` on every turn until the header was added (#1469, caught only by the post-deploy Chrome check — invisible to lint/build/bundle-smoke). Rule: any client POST to a Node handler that reads a **required** body field MUST set `Content-Type: application/json`; never infer it's optional from a defaults-tolerant neighbor.
-
-## GBP Analytics "location detection failed" is a DEAD END, not a transient rate limit — never suggest retrying
-
-`GoogleBusinessAnalyticsCard.jsx`'s `locationDetectFailed` state (`config.location_detection === 'failed'`, surfaced as an amber "Location data not loaded yet" banner with a "Retry location detection" button, both in Settings → Integrations and inline on the Insights → Google Business tab) looks exactly like the transient-429 story that GSC/GA4 tell elsewhere in this file — it is not. It was investigated in depth (memory `project-gbp-analytics.md`) and Q closed it 2026-07-22 as parked/dead, not actively-blocked-and-waiting.
-
-**The real cause:** `mybusinessaccountmanagement.googleapis.com` Accounts.list has **quota=0** on GCP project `576921852806` — the OAuth CLIENT project Bernard uses for every tenant's GBP connect, not a per-workspace setting. Google requires a Basic API Access grant to raise it above 0. Bernard applied 2026-06-20 (case ID 8-5373000040765); Q confirmed 2026-07-22 the request had already come back denied. Google's Business Profile API family doesn't send an explicit rejection — a denied/never-approved project just sits on permanent near-zero quota, which surfaces as the same 429 forever. **"Still 429" and "already denied" are the same fact, not two different problems.**
-
-**What this means practically:**
-- The "Retry location detection" button (`POST /api/integrations/gbp/refresh-locations`) will 429 every single time. It is not broken — it correctly reports what Google returns — but nothing about clicking it again will ever succeed.
-- This blocks EVERY workspace's GBP Analytics connect, not just `movebetter` — the quota-zero project is shared platform infra.
-- There is no code fix. The only path forward is Q deciding to pursue a new/renewed Basic API Access request with Google — that's a business decision, not an engineering one. Don't propose retrying, don't propose a code workaround, don't treat a fresh 429 as new information.
-- If asked to investigate a "GBP not connecting" report, check this first (`workspace_credentials.config.location_detection`) before assuming it's a fresh bug — it almost certainly isn't.
-
-(Surfaced again 2026-08-06: reused this card inline on Insights and reported the retry button as a live fix without checking memory first — Q corrected it. The memory entry existed but was mis-filed under "ARCHIVE — shipped & stable" in MEMORY.md, which hid it from context; moved to "Active" with a DEAD END flag.)
-
-## GA4 Enhanced Measurement already tracks outbound clicks — check before building custom click instrumentation
-
-Before building custom event tracking for any off-domain CTA (booking widget, external scheduler, a social profile link, etc.), check whether GA4's Enhanced Measurement already captures it for free. GA4 auto-fires a `click` event with a `linkUrl` parameter (queryable via the Data API) for any click on a link pointing to a **different domain** than the page — zero code changes needed on the marketing site. Query it with a `dimensionFilter` `andGroup` of `eventName = 'click'` AND `linkUrl CONTAINS <domain>` (see `fetchGA4OutboundClickCount` in `api/_lib/ga4.js`, added for Book Now click tracking on the Insights page). Confirmed 2026-07-08: Move Better's booking widget (`movebetter.janeapp.com`, a different domain from `movebetter.co`) already had 117 outbound clicks captured over the trailing 90 days with zero custom instrumentation — this is how Book Now click tracking shipped without touching the Movebetterco marketing-site repo at all. Only works for genuinely cross-domain links; a same-domain CTA (e.g. an in-app `/book` route) needs a real GA4 custom event or a different signal.
-
-## Manually triggering the citation-probe cron — blank terminal ≠ failure
-
-To validate a citation-engine change on real data (e.g. lighting up a new engine like Google AI Overviews via SerpApi, F16 Phase 4), trigger the cron directly: `curl -s -o /tmp/out.json -w "HTTP %{http_code}\n" https://withbernard.ai/api/cron/probe-citations -H "Authorization: Bearer <CRON_SECRET>"` (CRON_SECRET is Sensitive — the user pastes it in their terminal; don't handle it in chat). Two things bite:
-- **The `recently-probed` skip is per-WORKSPACE, not per-engine** (`probeWorkspace` reads the newest `seo_citation_probes.probed_at` across ALL engines; `RECENT_PROBE_MS`=72h). So a freshly-added engine will NOT back-fill on its own until the whole workspace is >72h stale — you must trigger manually (or wait past the window). Adding an engine mid-week and expecting the next weekly cron to probe it is wrong if the workspace was probed <72h ago.
-- **The curl blocks up to ~4 min and prints NOTHING until it returns** (ChatGPT web-search probes are ~120s each; `DEADLINE_MS`=240s), and each workspace's rows are inserted in ONE batch at the very END of `probeWorkspace` — so the DB stays empty mid-run and a blank terminal means "still running," not "failed." A real auth failure (`HTTP 401`) prints instantly. Don't stare at the terminal — poll `seo_citation_probes` via Supabase MCP; rows appear when the batch lands. (2026-07-11: burned several round-trips reading a blank terminal + empty DB as failure when the sweep was just still running.)
-
-## API handler runtime conventions
-Vercel `/api/*` handlers must match the configured runtime — the runtime flag alone isn't enough. Mismatched handler shapes either crash with a `TypeError` or, worse, **silently hang until the 300s function timeout** (the client just spins forever).
-
-**Node runtime** (`runtime: 'nodejs'`, or default for any file importing Node-only modules like `@sentry/node`, `@clerk/backend`, `@vercel/blob`, `node:*`):
-- Signature: `async function handler(req, res)` (Express-style).
-- `req.url` is path-only — parse with `new URL(req.url, 'http://localhost')`.
-- `req.headers` is a plain lowercased object — use `req.headers['x-foo']`, **not** `.get()`.
-- `req.body` is pre-parsed JSON — do **not** call `await req.json()`.
-- Respond via `res.status(N).json(...)` or `.send(...)`. **Never return `new Response(...)`** — Vercel ignores it and the function hangs until the 300s execution timeout. No error, no log, just a spinning wheel client-side.
-- Rate-limit via `enforceLimit(req, res, bucket)` from `api/_lib/ratelimit.js`.
-- Reference handlers: `api/content-pieces/*`, `api/media/*`, `api/db/*`.
-
-**Edge runtime** (`runtime: 'edge'`):
-- Signature: `async function handler(req)` where `req` is a Web `Request`.
-- Web-style API: `req.url` is a full URL, `req.headers.get()` works, `await req.json()` works.
-- Respond via `return new Response(JSON.stringify(...), { status, headers })`.
-- Cannot import Node-only modules. The Edge bundler does whole-graph bundling and will choke on even transitive Node imports (e.g. `ratelimit.js → @clerk/backend → node:crypto`).
-- Rate-limit via `enforceLimitEdge(req, bucket)` from `api/_lib/ratelimit.js`.
-
-**When converting between runtimes, refactor the handler shape — runtime flag alone is not sufficient.** PR #307 flipped `api/db/*.js` from Edge to Node by only swapping the runtime flag and leaving the Web-style handler in place. Result: four hours of cascading prod failures (PRs #312 / #316 / #317) before the shape was fully fixed.
-
-For Supabase REST failures, the `dbErr(res, r, msg)` helper in each `api/db/*.js` file logs the full PostgREST response body to `vercel logs` (tagged `[db/<file>]`). Use the same pattern when adding new handlers that talk to Supabase REST — public response stays opaque, but root-causing is one log fetch away (`vercel logs --status-code 500 --expand`).
-
-**PostgREST `in.()` filter syntax — double-quoting is FINE, despite a since-corrected lesson here.** PostgREST officially supports double-quoted string values inside `in.()`, and an empirical prod probe (2026-06-18, against `wrqfrjhevkbbheymzezy`) confirms it: for both a text column (`workspaces.clerk_org_id`) and a UUID column (`video_segments.id`), `in.("val")` and `in.("a","b","c")` return exactly the same rows as the bare form `in.(val)` / `in.(a,b,c)` — HTTP 200, all rows, no silent zero-match. (Single-quoting a UUID is what actually breaks: `in.('uuid')` returns HTTP 400 `invalid input syntax for type uuid`.) The production workspace switcher (`api/_routes/workspace/list.js:64`) has used the double-quoted form continuously and works — that alone disproves "double quotes silently match zero rows." **So do NOT mass-rewrite double-quoted `in.()` filters to bare on the theory that they're broken** — an `/auditfull` bug-hunter flagged 9 such sites as a P0 in the 2026-06-18 audit; all 9 are correct and were left untouched. Either form is acceptable; bare is marginally simpler, but double-quoted is not a bug.
-
-The earlier version of this lesson (citing "PR #1391") was a **misdiagnosis on two counts**: (1) the real PR #1391 was a `staffId` UUID-validation fix in `db/content.js`, unrelated to `in.()` quoting; the double-quote→bare change to `auto-detect-clips.js` was actually **PR #1392**. (2) #1392's stated cause — "the quoted form matched zero rows on every run" — is empirically false (see probe above). The auto-clip cron's "processed nothing" was the empty-`wsIds` / candidates path, not the quoting — note #1392 *also* added an empty-`wsIds` log in the same commit. The one genuinely-correct takeaway survives: **validate every query param that lands in a PostgREST filter with `UUID_RE` before interpolating** — a missing check on `staffId` (PR #1391) left a real filter-injection gap while `interviewId` right next to it was correctly validated. That is a security rule; the quoting claim was not.
-
-**Reading `responseStatusCode` in Vercel logs**: a value of `0` means the function crashed or timed out before returning any response — it's NOT an HTTP status code. A value of `200` means the handler returned successfully, even if the response body has `{error: ...}` and the client toasts it as a failure. When triaging prod errors, filter on `responseStatusCode=0` to find crashes, then read the `logs` array on that entry for the actual stack. Always log `e.stack` (not just `e.message`) in catch blocks that capture failures into a response `errors[]` array — Sharp / ffmpeg / native module crashes often have empty `.message` and only a useful `.stack`. Related: a warm function instance can return `200` on code that crashes on cold start (fontconfig init, lazy module load, etc.); "works in prod right now" ≠ "ships safely." Exercise the cold-start path before declaring an SVG-rendering / native-dep feature done.
-
-### Bundle smoke test
-CI runs `npm run verify-bundles` (= `node scripts/verify-function-bundles.mjs`) after `npm run build`. The script dynamically imports every `api/**/*.js` handler from the project root and fails if any throws at module-load time — the same failure mode as `ERR_INTERNAL_ASSERTION` from a native dep like `sharp` with the wrong conditional-export resolution, or a static import of a name the target module doesn't export. This is the bundle-time complement to the `bernard/api-handler-shape` ESLint rule.
-
-**Why it doesn't run `vercel build`:** Vercel's Node runtime copies source files into each `.func` unchanged and traces `node_modules` into the bundle — there's no esbuild transform on Node handlers. The crash class we care about fires during Node's module loader, which behaves identically whether deps resolve from a bundled per-function `node_modules` or from the project's installed `node_modules`. So a project-root import reproduces the same module graph that breaks in production, without needing `VERCEL_TOKEN` in CI.
-
-**To run locally:**
-```
-cd "/Users/qbook/Claude Projects/Bernard" && npm run verify-bundles
-```
-
-**When the check fires in CI:**
-1. The error message names the exact handler file that failed to load and prints the Node error (e.g. `ERR_INTERNAL_ASSERTION: Module "foo" was loaded as CJS`, or `The requested module 'node:fs/promises' does not provide an export named 'createWriteStream'`).
-2. Identify the import that caused the failure — usually a package with ESM-only sub-packages imported in a CJS context, or a wrong-named import from a built-in module.
-3. Fix: static-import the CJS build directly (`import Foo from 'pkg/dist/cjs/index.js'`), or swap the import to the correct module/name.
-
-**Allowlisting:** handlers that legitimately cannot be smoke-tested in isolation are listed in the `ALLOWLIST` set at the top of `scripts/verify-function-bundles.mjs`. Each entry must include an inline comment explaining why. The allowlist should stay empty — never add a handler just because it checks env vars at *call* time; the smoke test only loads the module graph, it doesn't invoke any handler.
-
-## Every screen is full-bleed — page roots must not self-narrow
-
-Q's standing rule (repeated, frustrated — 2026-07-07): **all screens must be full-bleed; screen space is used fully and wisely.** A page centered in a narrow column with big empty side gutters reads as broken to Q — it's his single most recurring visual complaint, so treat full-bleed as the default, not a per-request ask.
-
-The Layout shell is ALREADY full-bleed: `src/components/Layout.jsx` has `const fullBleed = true` → `<main className="px-4 sm:px-6 lg:px-8 py-8">` with no max-width. Narrowness only ever comes from a **page** wrapping its own root in `mx-auto max-w-*`. So:
-
-- A new/edited page's root fills the width — just padding (e.g. `py-6`), never `mx-auto max-w-3xl`.
-- "Fully AND wisely" ≠ stretch one column to 1900px. Use the width: side rails (`AnswerReview` = answer + sticky "Up next" queue rail, #1938), multi-column card grids (interview primers = `grid sm:grid-cols-2`, #1941), CTAs `w-full sm:w-auto` (no full-width button bar).
-- On a review/queue screen that advances to the next item on action, `window.scrollTo({ top: 0 })` when the active item id changes — else a new item loads under the old scroll position and it's invisible that anything happened (#1938).
-- **Legitimate exceptions (leave centered):** legal reading pages (Privacy/Terms — readable measure), `max-w-*` on a `<p>` for text measure, and centered `text-center py-16` empty/loading states. Those are correct, not offenders — don't strip them.
-- Daily drivers (Home, Stories, StoryDetail, Library, Slate, YourWeek, Analytics, MediaHub, Settings, Overview) are already full-bleed — verify a new page matches them, don't reintroduce a centered column.
-
-## Making a static element clickable — it inherits anchor color, and a DOM assertion won't catch it
-
-Wrapping a previously-static `<div>` in a `<Link>`/`<a>` to add a click affordance silently repaints its text: the anchor inherits the global link color (Blue Spruce `--primary`, `rgb(12,115,126)`) instead of `text-foreground` (`rgb(11,17,30)`). Nothing errors, lint and build pass, and the element genuinely works — it's just a different color than the design called for. (2026-07-22, #2236 → #2239: linking the `/week` cadence tiles repainted all four channel labels teal, which then competed with the teal progress bars the strip uses to carry its actual signal.) **Fix: put `text-foreground` on the `Link` when the element wasn't link-colored before.**
-
-Two things make this worth its own rule right now:
-
-- **A passing DOM assertion is blind to it.** The prod probe confirmed 4 links, correct `href`s, correct `aria-label`s, hover class, focus ring — all green — while the visual regression was live. Only the screenshot showed it. When a change converts an element's *tag*, assert on `getComputedStyle(el).color` against `document.body`'s, not just on structure and classes.
-- **This conversion is happening a lot.** T3's slot work, #2244, #2245 and #2236 all made previously-static cards/tiles clickable in the same week. Expect it on any "make X clickable" fix.
-
-The inverse is the same bug from the other side, and both shipped in the same week: **don't add a hover-lift (`hover:shadow-md`) without a click handler, and don't add navigation without a visible hover/focus affordance.** A card that lifts but doesn't navigate produced ~9 of `/week`'s 22 dead clicks in the 2026-07-22 UX sweep (#2245). Ship the affordance and the behavior together, or neither.
-
-## Router conventions (App.jsx)
-
-The outer `<Routes>` in `src/App.jsx` has a deliberately minimal shape:
-
-```jsx
-<Route path="/privacy" element={<PrivacyPolicy />} />
-<Route path="/terms" element={<TermsOfService />} />
-<Route path="/onboard" element={<OnboardingShell />} />
-<Route path="*" element={<ProtectedAppWithProvider />} />
-```
-
-Every authenticated app route — including deep paths like `/onboard/interview` and `/onboard/brand-kit` — flows through the `*` catch-all into `ProtectedAppWithProvider`, which renders a descendant `<Routes>` block matching the actual page. **Do not add explicit outer exemptions** like `<Route path="/onboard/interview" element={<ProtectedAppWithProvider />} />`.
-
-React Router v6 footgun: a parent `<Route>` matched with a fixed path (no `/*` splat) consumes the entire URL. The descendant `<Routes>` rendered inside the parent's element then matches against the EMPTY remainder, and an inner `<Route path="/">` (Home) matches the empty index — so the page silently renders Home at the wrong URL. The `*` catch-all sidesteps this because `*` is splat: the matched parent path is empty, so descendant routes see the full URL. Three PRs in the 2026-05-21 onboarding sprint were burned chasing this; see PR #729.
-
-If you genuinely need an outer exemption (e.g. for a route that must bypass `WorkspaceProvider` or `OrgGate`), use `<Route path="/your-path/*">` with the splat to preserve descendant matching.
-
-### Back navigation — use `useSmartBack`, never a hardcoded `<Link to="/…">`
-
-Any "Back" / breadcrumb-return / close-that-navigates affordance must use the shared `useSmartBack(fallback)` hook (`src/lib/useSmartBack.js`), NOT a hardcoded `<Link to="/stories">` or `onClick={() => navigate('/foo')}`. The hook does `navigate(-1)` when real in-app history exists (`window.history.state?.idx > 0`) and only falls back to the passed route for direct links / a fresh tab. A hardcoded destination is wrong whenever the page is reachable from more than one entry point — the canonical failure was StoryDetail's "Back to Stories" always dumping the user on `/stories` even when they arrived from a Campaign, Staff profile, or Review inbox. `fallback` may be a function for a route-derived default (e.g. VideoEditor: `() => location.pathname.startsWith('/slate') ? '/slate' : '/moments'`). `BackLink` already routes through `useSmartBack`, so its `to` prop is a *fallback*, not the always-destination — prefer `BackLink` for the Stories→Storyboard→Publish spine. (Swept app-wide 2026-07-07, #1939; ~25 pages.) True hierarchy breadcrumbs (`Breadcrumb`) stay hardcoded — they express structure, not history.
-
-## Large-file handling
-Functions that download media (videos, audio, large images) from blob storage **must stream** the response body to disk rather than buffering. `await res.arrayBuffer()` materializes the entire file in RAM and OOMs the function on anything over ~500MB (default Node function memory is 1024MB):
-
-```js
-import { createWriteStream } from 'node:fs'
-import { Readable } from 'node:stream'
-import { pipeline } from 'node:stream/promises'
-
-const r = await fetch(blobUrl)
-if (!r.ok) throw new Error(`download failed: ${r.status}`)
-await pipeline(Readable.fromWeb(r.body), createWriteStream(localPath))
-```
-
-Peak memory is then bounded by the stream's internal buffer (a few MB), independent of source size. Reference: `api/_lib/thumbnail.js`, `api/_lib/tagAsset.js` (PR #318 fixed the OOM that was killing video-thumbnail backfill).
-
-## Async pipelines and the detail-drawer refresh contract
-
-When a feature writes meaningful row fields from background work (`waitUntil`, queued jobs, webhook callbacks — anything that PATCHes the row 5+ seconds after the user-facing request returns), the list view's existing refetch-on-upload covers grid/thumbnail freshness but the detail drawer does NOT see the update without help. Without this, users opening the drawer immediately after a triggering action see stale state (e.g. `status='raw'` while the pipeline still runs) and assume the feature is broken.
-
-Rule: any PR that adds a new pipeline-PATCHed column on `media_assets` / `content_items` / `interviews` must also ensure the relevant detail view re-reads the row while the pipeline is still pending. The canonical pattern (see `src/components/MediaDetail.jsx`):
-
-```js
-const { data: liveAsset } = useQuery({
-  queryKey: ['media-asset', asset.id],
-  queryFn: () => getMediaAsset(asset.id),
-  initialData: asset,
-  refetchInterval: (q) => {
-    if (!pipelinePending(q.state.data)) return false
-    if (Date.now() - pollStartRef.current.at > 60_000) return false  // hard cap
-    return 2000
-  },
-  refetchOnWindowFocus: false,
-})
-```
-
-`pipelinePending` is a row-shape predicate (`!web_blob_url` for photos, `transcode_status in ('pending', 'processing')` for videos, etc.). The 60s hard cap matters — silent pipeline failures must not produce an infinite polling loop. Editable form state stays seeded from the original `asset` prop on `asset.id` change so in-progress user edits aren't clobbered by a poll round-trip.
-
-**Hard cap is universal — not just for MediaDetail.** Every `useQuery` with a `refetchInterval` that polls while a status is pending MUST have a time-based hard cap, regardless of where it lives. A Vercel function killed at the 300s wall does not run its `finally` block, so `catch`-based terminal status writes never fire — any "in-progress" status can strand permanently. The `MediaDetail` 60s cap is the reference implementation; page-level polling (Slate packages, ClipFinder segments, Book generation) must apply the same pattern with an appropriate ceiling (60s–5min depending on expected job duration). No cap = silent infinite-poll loop until the tab closes. Found in 2026-05-29 audit: Slate.jsx and ClipFinder.jsx both omitted the cap.
-
-### Fire-and-forget enrichment off a handler must use `waitUntil()` — and a backfill can hide a dead live hook
-
-Background work dispatched from a Node `/api` handler as a **bare floating promise** (no `await`, no `waitUntil`) is not guaranteed to run. On Vercel's Node runtime the instance is frozen the moment the HTTP response is sent, so any async work still pending at that point — embeddings, a late PATCH, an index insert — is silently dropped. This is distinct from the 300s-wall case: it fires immediately at response time, not at a timeout.
-
-Rule: any enrichment a handler kicks off but does NOT `await` before responding (concept extraction, RAG indexing, summarization, book-stale flags) must be wrapped in `waitUntil(...)` from `@vercel/functions`. And `waitUntil` only keeps the instance alive for work that is part of the promise you hand it — so if that promise itself fire-and-forgets a nested step (e.g. `summarizeInterview` → `indexInterviewSummary`), the nested step must be `await`ed, or `waitUntil` won't cover it. Reference: `api/db/interviews.js` + `api/_lib/interviewSummarizer.js` (PR #1066).
-
-The trap that hid this for days: a one-time **backfill makes the data look complete**, masking that the LIVE hook never worked. `practice_memory_chunks` had a summary chunk for every historical interview — but all 7 shared a 2.2-second `created_at` cluster (the 2026-05-24 backfill), and every interview completed *after* it had `summary_text` but zero chunks. Diagnostic tells: (1) if all rows of a derived type share a tight `created_at` cluster, they came from a backfill, not live writes; (2) when verifying any "indexes on completion / approval" feature, confirm a record created *after* the last backfill also has its derived rows — never assume historical coverage means the live path runs. (Same "preview/backfill looks right, live path is dead" shape as the carousel bug, `feedback_canvas_preview_not_published.md`.)
-
-**A degraded-fallback code path that reuses a "real" shape's tag corrupts every downstream consumer that trusts the tag.** `transcribeCallRecording` (`api/_lib/callTranscript.js`, F1 outbound call) has a preferred path (dual-channel ffmpeg split → real per-speaker turns) and a fallback (mixed single-turn transcript, used when the split fails or a channel transcribes empty) that tagged its one blob `role: 'user'` for convenience — same shape as a genuine clinician turn. Two enrichment consumers trusted that tag at face value: `extractVoicePhrases` ingested Bernard's own spoken interview questions as clinician voice (the blob contains BOTH speakers, not just the user), and `classifyAndStoreInterviewStyle`'s assistant-turn filter found zero matches and silently no-opped, on every call that hit the fallback. Neither failure threw or logged — both looked like normal execution. Found 2026-07-10 while spot-checking a completed realtime-voice interview whose `messages` array had exactly one entry. Rule: when a fallback/degraded path can't produce the real shape a "good" path produces (can't attribute speakers, can't fully classify, etc.), don't dress it up in the same tags — return an explicit capability flag (here, `dualChannel: boolean`) and make every downstream consumer that depends on the missing property branch on that flag rather than re-deriving "is this real" from the data's shape. Grep for every consumer of the preferred path's output when adding a fallback, not just the immediate caller. Fixed in `api/_lib/callTranscript.js` + `api/_routes/webhooks/twilio-recording.js` (#2082).
-
-## Streaming chat (/api/stream) conventions
-
-The shared `/api/stream` endpoint and its client wrapper `streamMessage()` in `src/lib/claude.js` are used by every conversational page (InterviewSession, OnboardingInterview, future variants). Two rules to follow when building a NEW page that calls them, or `AI_InvalidPromptError` and retry storms will eat your day:
-
-1. **Inject a silent first-turn user message.** Claude API and the Vercel AI Gateway both require `messages` to contain at least one user message — a system-only request returns `AI_InvalidPromptError` immediately. The canonical pattern (see `InterviewSession.jsx:643`):
-
-   ```js
-   const streamInput = currentMessages.length === 0
-     ? [{ role: 'user', content: 'Please begin the interview.' }]
-     : currentMessages
-   for await (const delta of streamMessage(streamInput, systemPrompt, opts)) { ... }
-   ```
-
-   The seed message is sent to the stream only; it must NOT be added to the visible transcript or persisted to the row.
-
-2. **Guard the kickoff effect against retry storms.** Any `useEffect` that auto-fires `streamMessage` on mount must have a one-shot ref. Without it, a stream failure clears `streaming` back to false while leaving `messages.length === 0`, and the effect re-fires on every render — producing a ~10 rps hammer on `/api/stream` until the tab closes:
-
-   ```js
-   const kickedOffRef = useRef(false)
-   useEffect(() => {
-     if (loading || streaming || messages.length > 0 || kickedOffRef.current) return
-     kickedOffRef.current = true
-     runAssistantTurn([], { isFirstMessage: true })
-   }, [loading, streaming, messages.length, runAssistantTurn])
-   ```
-
-   On error, the user gets the error card with a "Try again" action that page-reloads (resetting the ref). No silent auto-retry. PR #731 fixed both bugs after they hit prod.
-
-## Realtime voice session — system prompt caching pattern
-
-`api/realtime-session.js` mints an OpenAI Realtime client secret. The full system prompt is set in `sessionConfig.instructions` at mint time (not via a post-connect `session.update`) so OpenAI can cache it from token zero.
-
-**Do NOT attempt to port `getInterviewSystemPrompt` server-side.** That function pulls past interviews, practice-memory RAG (concept/agreement/gap vector blocks), staff record, tone, and staffType — replicating those fetches server-side would duplicate the entire interview-context pipeline. The established pattern instead:
-
-1. Browser builds the full prompt via `getInterviewSystemPrompt` (same as today).
-2. Browser sends `{ interviewId, systemPrompt: fullPrompt }` in the mint POST body.
-3. Server validates and injects it into `sessionConfig.instructions` at mint time; falls back to a 2-sentence bootstrap if the field is absent or too short.
-4. Browser still sends `session.update { instructions }` after the data channel opens as a belt-and-suspenders — same content, so OpenAI's cache still hits, and it covers the reconnect path.
-
-The server validates `systemPrompt` as a string with a minimum length (100 chars) and a maximum (32 KB) to prevent abuse; it never logs or stores it.
-
-## Custom ESLint rules to know before writing JSX
-
-Three project-specific rules bite hard if you don't know them:
-
-- **`react-hooks/static-components`** — component functions defined **inside** another component's render function (`const Foo = () => ...` inside `function Parent()`) reset their state on every render and trigger this error. Fix: declare all sub-components at **module scope**, outside any other component. Caught on `ProgressDots` in the demo session (2026-06-07).
-- **`react-hooks/immutability`** — "Cannot reassign variable after render completes." Fires when you mutate an outer variable *during* a render `.map()` — the classic case is a running accumulator like `let lastMonth = null` reassigned inside the map to draw group/section headers (month dividers, running totals, "first of its kind" flags). Fix: **precompute** the per-row derived data before the JSX (a plain `const rows = items.map((s, i) => ({ ...s, showHeader: i === 0 || key(s) !== key(items[i-1]) }))`), then render from that array — compare against the previous item by index instead of threading a mutable outer var through render. (Caught building the Stories dense table's month-group headers, 2026-07-10 #2080.)
-- **`bernard/no-arbitrary-text-size`** — prohibits `text-[10px]`, `text-[11px]`, etc. Use the semantic tokens instead: `text-3xs` (10px) or `text-2xs` (11px). Lint will error at 0-warnings-allowed; the fix is a global replace before committing.
-- **`bernard/no-raw-use-mutation`** — use `useAppMutation` not raw TanStack `useMutation`.
-- **`bernard/no-raw-api-fetch`** — use `apiFetch`/`apiFetchResponse`, never bare `fetch('/api/...')`.
-- **`bernard/no-hardcoded-brand-color`** — bans retired brand-color *literals* (Move-Better orange `#e36525` / hue-20 `hsl(20 …)` / `rgb(227,101,37)`, grey `#6e7072`, evergreen `#1c4d37`, coral `#ff8552`) anywhere in a `src` JS/JSX string. Use the design tokens instead: `bg-primary`/`text-primary`/`hsl(var(--primary))` (emerald brand), `bg-action`/`hsl(var(--action))` (amber act-now signal) — defined in `src/index.css` + `src/lib/brand.js` (the single JS-side brand source). Added #1297 after the #1294 repaint was a multi-file hunt; it immediately caught a `#E36525` a case-sensitive grep had missed. For a genuinely-intentional exception, `eslint-disable-next-line bernard/no-hardcoded-brand-color` with a reason.
-- **`bernard/no-temperature-on-opus`** — `temperature`/`top_p`/`top_k` return a 400 on Claude Opus 4.7+ (incl. 4.8). Flags an object literal that sets a sampling param next to a `model` resolving to an Opus 4.7+ id (inline string or same-module const). Registered for `api/**`, `api/_lib/**`, and `src/**`. Added #1699.
-
-**Adding a new `bernard/*` rule? Don't create a fresh config block that overlaps an existing one — flat config errors `Config (unnamed): Key "plugins": Cannot redefine plugin "bernard"`.** `eslint.config.js` already defines the `bernard` plugin in the `api/**` block (which `ignores: ['api/_lib/**']`) and the `src/**` block. A new top-level block whose `files` glob overlaps either of those (e.g. `['api/**/*.js']`) tries to define `bernard` a second time for the same file → the whole lint run dies before checking anything. Fix: register the rule inside the **existing** `api/**` and `src/**` blocks (add to both `plugins.bernard.rules` and `rules`), and only add a *separate* block for files those blocks miss — scoped so it never overlaps (e.g. `files: ['api/_lib/**/*.js']` to cover the helpers the `api/**` block ignores). (#1699 hit this adding `no-temperature-on-opus`.)
-
-## `bg-popover` / `text-popover-foreground` were undefined in `tailwind.config.js` — verify a token compiles before trusting it
-
-`--popover` / `--popover-foreground` are defined in `src/index.css` (opaque white), and `bg-popover`/`text-popover-foreground` are used in several components (`WorkspaceSwitcher`'s dropdown, `SidebarNavLink`'s collapsed tooltip) — but `popover` was never added to `theme.extend.colors` in `tailwind.config.js` (unlike `card`, `accent`, etc., which all have a matching entry). Tailwind silently drops unknown utility classes rather than erroring, so `bg-popover` compiled to **nothing** — those menus/tooltips rendered with zero background and page content showed straight through. This had apparently been live and unnoticed in `WorkspaceSwitcher` before a new sidebar nav flyout (#1895) hit the same bug and made it visible (#1896 fix).
-
-Rule: when using any `bg-<token>`/`text-<token>-foreground` class backed by a CSS custom property in `src/index.css`, confirm the token has a matching entry in `tailwind.config.js`'s `theme.extend.colors` — grep the config, don't assume a var's existence means the utility class works. If you're unsure, check the built CSS (`grep -o "\.bg-<token>{[^}]*}" dist/assets/*.css` after `npm run build`) — a real rule should show `background-color:hsl(var(--<token>))`; an empty/missing match means the utility is a no-op.
-
-## Template literal backticks in `src/lib/prompts.js`
-
-All system-prompt functions in `prompts.js` return template literal strings (backtick-delimited). **Any backtick character inside the return value terminates the string and causes an ESLint parse error** (error message: `Parsing error: Unexpected token :`). This includes markdown code formatting: writing `` `[STAGE:n]` `` inside a prompt causes the failure even though it looks like documentation.
-
-Rule: when editing prompt functions in `prompts.js`, use single quotes `'value'`, `[brackets]`, or plain text for any value you'd normally set in backtick-fenced formatting. Never use raw `` ` `` inside a template literal prompt unless you escape it as `` \` ``.
-
-## OLD-vs-NEW harness for a prompt-QUALITY change — Bernard's recipe
-
-Bernard's recipe for the global OLD-vs-NEW harness methodology, applied to a prompt-quality fix that's normally shipped-and-eyeballed ("the output reads better" — CTA flows naturally, voice is warmer). Used 2026-07-08 for the campaign-CTA-flow fix, PR #1994:
-
-1. **Import the real post-fix functions** (`getAtomSystemPrompt` from `api/_lib/atomPrompts.js`, `getTentpolePromptContext` from `api/_lib/tentpoleCampaignContext.js` — both are pure/format-only given a campaign+workspace object; the DB work lives in the separate `loadCurrentTentpole`). Build the NEW system prompt.
-2. **Derive OLD by reverting exactly your edits via `String.replace` on the built NEW prompt string** — don't copy+revert whole source files (relative imports break in scratch, and reverting escaped `\n`/em-dash/apostrophe literals with `perl -pi` is error-prone). Assert each revert target `.includes()` before replacing so a stale revert map throws loudly instead of silently testing NEW-vs-NEW. Watch straight `'` vs curly `'` — grep the source (`grep -o "phrase" file | cat -v`) to get the exact byte.
-3. **Feed real prod data** pulled via Supabase MCP: the actual active campaign (`campaigns` row: `content_style`/`cta_pitch`/`cta_url`/`cta_label`) and a real interview transcript (`interviews.messages`) thematically matched to it. Never invent inputs — the whole point is to exercise the real read path (see "Probe AI-generation features with the REAL workspace data").
-4. **Call the same model the handler uses** — `generateText({ model: 'anthropic/claude-sonnet-4-6', instructions, messages })` via the AI SDK gateway. Set `process.env.AI_GATEWAY_API_KEY` from the 1Password scratch dump inside the harness (never print it).
-5. Run OLD + NEW across 2–3 platform/angle combos, print both, and look for the specific defect. The smoking-gun signal for the CTA fix: the campaign's raw `cta_pitch` sentence appeared **verbatim** in every BEFORE output and was **rephrased/bridged** in every AFTER — a concrete pass/fail, not a vibe.
-
-Gotchas: bare `import('ai')` needs repo `node_modules` — ESM does NOT honor `NODE_PATH`, so run the harness file from *inside the repo tree* (`cp` it to the repo root and `node ./_x.mjs`), not from the scratch dir. Clean up the harness AND the env dump (it holds a live key) when done.
-
-## Lint ratchet
-The `npm run lint` script enforces a `--max-warnings <N>` ceiling (currently **0** — the ratchet has been driven all the way down from 152 at the pre-launch audit). The ratchet should drift **down** over time, not up. Rule:
-
-- A PR may not raise the ratchet ceiling without fixing an equal-or-greater number of warnings elsewhere in the same PR.
-- If you introduce 1 new warning, fix at least 1 old one and keep the ceiling unchanged.
-- The only exception is intentional `console.error`/`console.warn` in shared instrumentation (e.g. `api/_lib/sentry.js`) — bump the ceiling and note the reason in the commit body, the way `chore(lint): bump ratchet to 152` did.
-
-The ceiling represents merged-baseline tech debt. Driving it down is the goal; raising it is a regression.
-
-## Supabase migrations
-Migrations live in `supabase/multitenant/migrations/` and are applied via `node scripts/apply-multitenant-migrations.mjs <file.sql>` against `MULTITENANT_DATABASE_URL`. There is no migration tracker — the script just applies whatever you pass it, so filename ordering is informational only.
-
-**Required:** any migration that creates a new table, view, sequence, or function MUST include explicit `GRANT … TO service_role` in the same file. The REST API used by serverless functions runs as `service_role` and returns 403 / SQLSTATE 42501 on unprivileged objects (lesson from the early multi-tenant rollout — see `003_grant_service_role.sql` for the backfill pattern). Do NOT rely on re-running `003` after each new migration; bundle grants inline so each migration is self-sufficient. Example:
-
-```sql
-CREATE TABLE public.foo (...);
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.foo TO service_role;
-GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO service_role;
-```
-
-**Prototype aggregate / function SQL against prod (read-only) BEFORE writing the migration + endpoint.** For dashboard/recap features whose value is a SQL function or non-trivial GROUP BY (e.g. `workspace_recap()`, migrations 121/122 powering the Overview recap), paste the `SELECT`/`WITH` into the Supabase MCP `execute_sql` and run it against a real workspace id first. It validates the JSON shape AND the actual numbers in seconds, and catches window/aggregation bugs that a green build never would (the recap's `prev_week` window was initially mis-bounded to overlap `this_week` — caught only because the prod run showed identical totals). Then a `CREATE OR REPLACE FUNCTION … GRANT EXECUTE … TO service_role` is idempotent: running it via `execute_sql` IS the apply step, so the committed `NNN_*.sql` file is just the record — no separate apply-script run needed for functions. (Pure rendering of the result, like the recap's cost rate-card, still verifies locally; only the app shell is Clerk-prod-locked.)
-
-If two migrations land on the same day, give them sequential numeric prefixes (008, 009, 010 …) rather than sharing a prefix. Shared prefixes are confusing for humans even though the apply script doesn't care.
-
-**Take the number from `ls supabase/multitenant/migrations | tail -1`, never by incrementing the migration you happen to have open.** The natural move when adding a migration to a feature is to read that feature's existing migration and add one — and in a repo with parallel sessions that number was claimed days ago. (2026-07-30: a moments review migration was written as `193_` because the moment-bank work sat at `192_`; **three** files already shared the `193_` prefix and `194_`–`197_` were all taken, so it shipped implying it predated four migrations that actually came before it. Renamed to `198_` in a follow-up; prefixes are informational so nothing broke, but the ordering was a lie.) Re-check the tail immediately before committing, not just when you start writing — a sibling session can claim the number while you work.
-
-**Apply before shipping code that depends on them.** Because there's no migration tracker, it's easy to merge a PR that references a new column while the schema lags behind on prod — the handler will 500 with a generic "Database error" on first hit. Rule: before merging a PR that adds a `select=` field, ALTER TABLE, or new column reference, confirm the relevant migration is applied to prod. Quick check via Supabase Studio SQL Editor (https://supabase.com/dashboard/project/wrqfrjhevkbbheymzezy/sql/new):
-
-```sql
-SELECT column_name FROM information_schema.columns
-WHERE table_schema = 'public' AND table_name = '<table>';
-```
-
-If the column is missing, paste the relevant `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` from the migration file straight into the SQL Editor — faster than running the apply script, and idempotent so safe to re-paste.
-
-**Schema-drift CI guard — refresh the snapshot after every prod migration.** Since there's no migration tracker, the committed snapshot `supabase/expected-schema.json` acts as the applied-migrations ledger. The `pr.yml` `build` job runs `npm run schema:verify` (= `node scripts/verify-schema-drift.mjs`), which diffs the snapshot against live prod and **fails the PR if any snapshotted column is MISSING from prod** — i.e. a column was dropped under code that still reads it. So the workflow when you add a column is: write the migration → apply it to prod → run `npm run schema:snapshot` (needs an unredacted `MULTITENANT_DATABASE_URL`; it re-queries live and rewrites the snapshot) → commit the updated `supabase/expected-schema.json` in the same PR as the code that reads the new column. If you forget the snapshot refresh, the check only **warns** about prod-only columns (it never fails on extras), so a new column won't redden CI — but the snapshot silently stops protecting that column until refreshed. The check skips cleanly (exit 0) if the `MULTITENANT_DATABASE_URL` Actions secret is ever absent.
-
-**`schema:verify` structurally CANNOT catch a migration that was written but never applied — do not rely on it for that** (this line used to claim the opposite). The snapshot is regenerated *from* prod, so a never-applied migration's columns were never in prod → never in the dump → never in `expected` → nothing ever asks for them. The check stays green forever while the feature is dead. (2026-07-28: `094_engagement_digest.sql` shipped 2026-05-28 alongside the handler that reads its three columns and was never applied; `schema:verify` passed green for two months while three crons — `engagement-digest`, `recheck-live-answers`, `approval-escalation` — 400'd on PostgREST `42703` from the day they shipped. Two of those were dead on a *different* fiction, `workspaces.name`, a column that has never existed; `approval-escalation` had shipped the day before and had never completed a single run. Fixed in #2434 + #2436.) **So: after writing a migration, confirming it applied is a manual step with no CI backstop — verify the columns exist in prod (Supabase MCP `information_schema.columns`) before merging code that reads them. And when a feature has never once worked since it shipped, check whether its migration was ever applied before you debug its code.** See `~/.claude/CLAUDE.md` for the general rule about guards whose baseline is derived from the system they audit.
-
-Local migration runs require an unredacted `MULTITENANT_DATABASE_URL` in `.env.local`. `vercel env pull` replaces Sensitive vars with `*****REDACTED*****`, which silently breaks the apply script (`TypeError: Invalid URL`). After any `vercel env pull`, restore `MULTITENANT_DATABASE_URL` from 1Password (Bernard vault) before running migrations locally. The apply script reads `.env.local` from the cwd and takes no env-var fallback, so a fresh session worktree (which has no `.env.local`) fails with `ENOENT` — write a temp `.env.local` containing just that one var (awk-extracted from the `.env.bernard.1pw` mount), run the apply, and `rm` it in the same command (2026-09-04, migration 215).
-
-**Applying a migration and refreshing the snapshot WITHOUT a local `MULTITENANT_DATABASE_URL`:** the Supabase MCP (`mcp__*__apply_migration` / `execute_sql`) can do both steps directly against prod — no raw Postgres connection string needed. Apply the DDL via `apply_migration`, then refresh the snapshot via `scripts/verify-schema-drift.mjs --from-json <flat-dump.json>` (documented in the script's own `--from-json` mode) fed from a fresh `execute_sql` run of the script's own `COLUMNS_QUERY`. The MCP's `execute_sql`/`list_tables` results can exceed the tool's output-token cap on a schema this size (50+ tables) — when that happens, the full JSON is still saved to the tool-result file on disk; extract the embedded array with a `python3`/`jq` one-liner (never `Read` the whole file into context) and write it straight to the flat-dump path `--from-json` expects. This sidesteps both the 1Password-restore step and the "redacted var breaks the apply script" trap entirely for one-off migrations. (Used 2026-07-08 for the `feedback` table migration.)
-**The saved file is double-JSON-encoded, not a bare array — a naive `text[text.index('['):text.rindex(']')+1]` slice throws `JSONDecodeError`.** The file is `{"result": "<preamble>\n<untrusted-data-UUID>\n[...]\n</untrusted-data-UUID>\n<postamble>"}` — parse the OUTER JSON first (`json.load`), then find `[`/`]` inside the `result` STRING value (not the raw file text) to extract the inner array, then `json.loads` that. (2026-07-21, refreshing the schema snapshot for the T4 migrations — cost one failed attempt before the two-level unwrap was obvious.)
-
-**Status columns have CHECK constraints.** Any new status value needs a migration — symptom is a generic `db_error`/500. Before adding a new status value, grep `<table>_status_check` in `supabase/multitenant/migrations/` to find the constraint, then add an `ALTER TABLE … DROP CONSTRAINT / ADD CONSTRAINT` in the same migration as the code that uses it. Never assume a text column accepts any value.
-
-**`content_items.media_urls` canonical shape is `[{url, type, kind, …}]` objects** — never bare strings. A bare string URL → the video publisher can't determine type → ships as a broken image. Every writer must use the object shape. Use `clipToMediaEntry()` / `pickerItemToMediaEntry()` from `src/lib/mediaEntry.js` to construct entries.
-
-**A suggest-media *clip* is NOT a media_urls entry — and `useMediaSuggestions` returns `{ clips: [...] }`, not a bare array.** A suggestion clip is `{ blobUrl, assetId, kind, thumbnailUrl, … }`; a media_urls entry is `{ url, type, mediaAssetId, … }`. Storing a clip raw gives `url: null` (it has `blobUrl`, not `url`) AND breaks `mediaEntryKey` (which reads `mediaAssetId`, not `assetId`) — so dedup and `photo_idx` binding silently fail. ALWAYS pass a clip through `clipToMediaEntry()` before storing/keying it — the Swap-photo panel does this (`attach(clipToMediaEntry(clip))`); the carousel auto-attach did NOT and shipped two follow-up PRs (#1660 read the wrong return shape → bailed entirely; #1662 then stored raw clips → `url:null` blanks). When wiring a new consumer of `useMediaSuggestions`, read `.clips` and map through `clipToMediaEntry`. (Symptom that catches it: editor header shows "N photos" but slides render blank / `photo_idx` stays null in the DB — verify the *persisted* row, not just that the effect fired.)
-
-**Carousel auto-attach persists BOTH `media_urls` and the per-slide `photo_idx` binding** (#1663). It only fires on first open of a media-empty carousel, so if it wrote `media_urls` but left the binding in local state until an explicit Save, a reload-before-Save left "N photos" attached-but-unbound and it could never re-fire (media no longer empty). It now PATCHes `{ mediaUrls, slides }` together and sets the saved baseline. No bake on auto-attach — slide images bake on explicit Save (publish has its own render fallback).
-
-**A `composed: true` entry's `.url` is a BAKED composite, not the photo — draw `sourceUrl || url` (via `photoSourceUrl()` in `mediaEntry.js`) anywhere you re-render the photo under live text.** The editorial "Bake to image" flow (`api/_routes/editorial/compose-photo.js`) flattens a headline onto a navy `dark-claim` card and writes that composite to `entry.url`, stashing the original photo in `entry.sourceUrl` (`composed: true`). Any surface that draws the photo to apply its OWN live text (carousel themes via `renderFreeformSlide`) must use the raw `sourceUrl`, or it draws the baked text-card and hides the photo. This bit 5 drifting call sites at once (#1447, 2026-06-20): `SlideEditor` canvas/rail/full-preview, `renderSlides.js` publish-bake + ad-export, and `PostPreview` `SlideCanvas` all read `.url` while ad export alone (correctly) used `sourceUrl || url`. Symptom: a mixed carousel shows photos on un-baked slides and navy text-cards on baked ones. Un-baked entries have no `sourceUrl`, so `photoSourceUrl()` is a no-op for them — always route slide-photo reads through it. (Same family as "A preview is not the published artifact".)
-
-## Deleting or merging a `staff` row — repoint FKs first (5 of 13 cascade)
-
-`staff.id` is a foreign key in **13 tables** (`moments` joined the list in migration 191, `ON DELETE SET NULL` — a banked moment is content inventory, not per-staff learning, so staff deletion must not destroy the bank; the moment still dies with its interview via the `interview_id` cascade), and **5 are `ON DELETE CASCADE`** — `content_items`, `interviews`, `practice_memory_chunks`, `staff_recipes`, `staff_voice_phrases`. There is also a denormalized, non-FK reference: `campaigns.target_staff_ids` (`uuid[]`). Deleting a staff row that still has cascade children **silently destroys that learning** (interviews, voice phrases, memory chunks) — no error, it just vanishes.
-
-Rule: before ANY staff delete or merge, count children per `staff_id` across all 13 tables, repoint every one to the surviving row FIRST, then delete. Make the DELETE **self-guarding** — `AND NOT EXISTS (SELECT 1 FROM <child> WHERE staff_id = s.id)` for all 13 tables **plus** `AND NOT EXISTS (SELECT 1 FROM campaigns c WHERE s.id = ANY(c.target_staff_ids))` — so a stray child can never be cascaded away even if state shifted between the count and the delete. **Never trust a plan/spec that calls a row "empty" or "safe to delete" — verify against live counts.** (2026-05-30: the staff-integration plan labeled the Animals Q proxy "0 of everything"; it actually held 1 interview a literal-reading delete would have CASCADE-destroyed.)
-
-Prefer the atomic, collision-safe `merge_staff(source, target, workspace)` SQL function (migration 112, extended in 191 to include `moments`) over hand-rolled deletes — it repoints all 13 FKs + the campaigns array, blocks cross-workspace merges, and de-dups the 3 child tables that carry a `staff_id`-bearing unique index (`staff_voice_phrases`, `staff_corpus_documents`, `staff_recipes` one-default). Do NOT combine the repoint `UPDATE`s and the staff `DELETE` in a single multi-CTE statement: data-modifying CTEs share one snapshot, so the cascade-vs-repoint interaction is unpredictable. Sequence them (repoint, verify zero children, then delete) or call the function. This same repoint-then-delete discipline applies to any future table whose FKs cascade — re-discover the FK graph from `information_schema` before assuming the list of children.
-
-**Delete and merge are for DUPLICATE rows, never for someone who left.** A departure is **deactivated** (`staff.deactivated_at`, migration 216 — Staff profile → Settings → Access): their Clerk login, tier and history stay, open work moves to a successor, and Reactivate restores everything. `merge_staff` on a departure rewrites their uploads and approvals under the successor's name. Full model in ARCHITECTURE.md "Someone who leaves is DEACTIVATED".
-
-## Blob store
-All production media lives in a single Vercel Blob store (`bernard-prod`, prefix `t4otw6ecf8ztxfeq`), attached to the `bernard` Vercel project on team `movebetter`. `BLOB_READ_WRITE_TOKEN` in `.env.local` / Vercel env points to this store.
-
-**Legacy stores are gone.** Three per-brand blob stores (`gmrxcvv1cauu7ksf`, `jl52kpqqmvyxuhpr`, `ep9i5v4jhxekujri`) were detached from Vercel when the per-brand projects were deleted on 2026-05-10. All 908 `media_assets.blob_url` values were migrated to the current store by `scripts/migrate-legacy-blobs.mjs` (2026-05-12, PR #325). Legacy public URLs may continue to resolve for a time but are not relied upon.
-
-**Thumbnail uploads** go to `media/thumbs/<uuid>.jpg`; originals go to `media/raw/<workspace-id>/...`. Both live in the same store.
-
-**Blob path namespacing: use `ws.id`, not `ws.slug`.** Blob keys must use the immutable workspace UUID as the primary namespace component, not the mutable slug. Using `ws.slug` creates two failure modes: (1) a workspace rename silently orphans existing blobs and breaks any handler that validates a blob URL against an expected prefix (see `api/voice-clone/resume.js`), (2) a slug reuse window (however brief) creates a path collision. The slug may appear as a secondary human-readable component, but `ws.id` must be the primary key. Five handlers were found using slug-based paths in the 2026-05-29 audit — fix tracked in `fix-tenant-defense-in-depth` worktree.
-
-**Re-running the migration** is safe (idempotent): `node scripts/migrate-legacy-blobs.mjs --dry-run` shows what would migrate; without `--dry-run` it skips rows already on the current store. Requires `MULTITENANT_DATABASE_URL` + `BLOB_READ_WRITE_TOKEN` in `.env.local`.
-
-## GitHub
-Use the GitHub CLI (`gh`) for GitHub-specific interactions — PRs, issues, releases, repo management. `gh` is configured as the git credential helper, so plain `git push` / `git fetch` are fine for ref operations (they authenticate through `gh` under the hood). Do not set up separate HTTPS basic auth or raw SSH credentials.
-
-## Parallel sessions — one worktree per session
-The project root (`/Users/qbook/Claude Projects/Bernard`) is reserved for two things only: `git pull` on `main` and `npm run deploy:prod`. **No session — Claude or human — does feature work there.** Every active Claude session runs in its own git worktree, so two sessions can never collide on a branch, a working tree, or a half-committed file.
-
-The 2026-05-21 deploy stall was the canonical failure: Session A (post-interview UX, on `fix/post-interview-flow`) finished and merged its PR. Session B (onboarding P2) was still working in the same project root on `feat/onboarding-interview-p2` with uncommitted edits to `src/App.jsx`. When Session A tried `git checkout main` to deploy, the checkout aborted on B's WIP. A had to wait for B to commit before prod could ship. With per-session worktrees, A's deploy step is `cd "/Users/qbook/Claude Projects/Bernard" && git pull && npm run deploy:prod` — independent of whatever B is doing.
-
-**Helper:** `scripts/new-session-worktree.sh <session-name>` creates a fresh worktree at `../Bernard-worktrees/<session-name>` branched off `origin/main`, copies `.env.local` + `.vercel/` in, and symlinks `node_modules` so `npm run dev` works immediately. When the session's PR is merged, clean up with `git worktree remove ../Bernard-worktrees/<session-name>`.
-
-**Rules:**
-- A new Claude session that intends to edit code starts by creating a worktree, not by editing in the project root.
-- The project root stays on `main`. If you find yourself on another branch in the project root, you (or another session) skipped the worktree step — recover by stashing, switching back to `main`, and re-doing the work in a fresh worktree.
-- Long-running sessions can stay parked in their worktree across days. Stale branches still cost nothing in disk space.
-
-**Worktrees symlink `node_modules` to the project root — so when a PR adds a new npm package, all worktrees break until the project root's `node_modules` is updated.** Fix: `git -C "/Users/qbook/Claude Projects/Bernard" stash && git -C "/Users/qbook/Claude Projects/Bernard" checkout main && git -C "/Users/qbook/Claude Projects/Bernard" pull && npm --prefix "/Users/qbook/Claude Projects/Bernard" install`. Never run `npm install` while the project root is on a feature branch — it will add the dep to that branch's `package.json`/`package-lock.json` as an uncommitted side-effect. Always check out `main` first. (2026-06-02: checkup after sprint found `@vercel/toolbar` missing from `node_modules`; fixing it while root was on `feat/url-import-preserve-publish-date` polluted Q's working branch.)
-
-## Branch workflow (avoiding pile-ups)
-PRs need to merge close to when they're opened, not batch-stacked indefinitely. The 26-PR pileup of 2026-05-12 happened because work batched while `main` moved in parallel from other contexts — every PR ended up conflicting with a different file `main` had since rewritten. To avoid the repeat:
-
-1. **Rebase before every new branch.** Mechanical rule: at the start of every new feature branch, run `git fetch origin main && git checkout -b <name> origin/main` (or `git fetch && git rebase origin/main` if continuing a branch). The PR's base must be current.
-
-2. **Cap unmerged PRs in flight.** Never open more than 3 unmerged PRs from the same context without stopping to merge. Once 3 are open and unmerged, finish merging before opening a 4th — otherwise the diff against `main` drifts faster than review can keep up.
-
-3. **Enable auto-merge on open.** After `gh pr create`, run `gh pr merge <num> --auto --squash` so the PR ships the moment CI is green. Requires branch protection on `main` to define "ready" (status check on the PR build workflow); without protection, `--auto` merges immediately on open and the gate is moot.
-
-4. **Same-file overlap = base on the older PR, not main.** Before opening a follow-up PR, check whether your next branch touches a file an open PR also touches (`gh pr diff <num> --name-only` per open PR). If yes, base it on that PR's branch (`git fetch && git checkout -b <next> origin/<open-pr-branch>`) instead of `origin/main`. Otherwise the older PR is guaranteed to conflict when the newer ones land first, and auto-merge silently stalls — you only notice when someone asks "did it ship?". Cheaper to base correctly than to rebase three files of conflicts later. (Lesson from the 2026-05-19 approve-flow stack: PRs B/C/E/F all touched `AssetsPane.jsx`; PR D opened mid-stack stalled on a three-way conflict because E/F merged first.)
-
-5. **Check for merged-while-you-worked PRs.** Before the next feature branch, run `gh pr list --state merged --search 'merged:>=<session-start-iso>'`. Catches the case where a parallel agent shipped overlapping work — surfaces conflicts in seconds instead of at end-of-session.
-
-5b. **Don't spawn a follow-up chip for work you then do yourself the same session.** A `spawn_task` chip the user clicks becomes its own parallel session — if you *also* implement that same work, you've guaranteed a same-file conflict between two PRs. 2026-06-09: a chip spawned for the "act-now hue" decision got spun off and shipped #1295 (amber as raw literals) while this session shipped #1297 (amber as the `--action` token) touching the same 3 files — forcing a rebase + `--force-with-lease`. Mine superseded theirs cleanly, but the collision was self-inflicted. Rule: if you decide to do the deferred work yourself, `dismiss_task` the chip FIRST (it only works while still pending — once the user clicks it, you can't withdraw it and must rebase onto whatever it ships). Spawn a chip only for work you are NOT going to touch.
-
-5c. **`gh pr status`'s "Created by you" is scoped to the git author identity, not to this session.** Every parallel Claude session in this repo commits as the same `drquasney` identity, so at wrap/audit time `gh pr status` lists sibling sessions' unrelated open PRs right alongside this session's own. (Deep Thought/Bernard 2026-07-22: a `/wrap` run saw 5 unfamiliar PR numbers — #2241/#2238/#2237/#2234/#2233 — mixed in with the 2 this session actually opened; almost reported on, and could as easily have force-merged or triaged, work with zero context behind it.) **Rule: before reporting on, merging, or triaging anything `gh pr status` surfaces as "yours," cross-check `headRefName` against branches THIS session actually created/pushed** (`git branch --list`, or just recall what you named them) — don't trust the "created by you" grouping alone.
-
-5. **If two agents share a worktree, neither owns it.** When you discover you're not alone in the working tree (a `git branch --show-current` shows an unfamiliar branch, untracked files you didn't create appear, your edits get reverted between an Edit and the next Read, or `git status` shows a divergent branch), do NOT keep editing in place. Stash your work, create a fresh branch off `origin/main`, and pop the stash there. If files were reverted before you could stash, cherry-pick your commit onto a clean branch from `origin/main` instead. Do not push commits to a branch the other agent appears to own — that's how PRs end up containing a mix of work that shouldn't ship together.
-
-When work *has* batched (long autonomous run, lots of stacked PRs), triage rather than mass-merge: identify which PRs are now duplicative of merged work, which can rebase cleanly, and which need to be re-done against the current shape of the codebase.
-
-**Stacked PRs + squash-merge = guaranteed rebase conflict; use cherry-pick instead.** When PR A (the base) merges as a squash, git produces a brand-new commit that subsumes A's individual commits. Branch B, which was stacked on top of A, now has A's original commits in its history — and `git rebase origin/main` finds conflicts because the squash-commit and A's original commits touch the same files differently. `git rebase --abort` is the right response. The clean recovery:
-```bash
-# from inside the stacked branch
-git log --oneline -3          # find B's single meaningful commit SHA
-git fetch origin main
-git checkout -b <new-branch-name> origin/main
-git cherry-pick <B-commit-sha>
-git push -u origin <new-branch-name>
-# close the old PR, open a new one targeting main
-```
-Cherry-pick replays only B's actual change onto clean main — no conflict. This pattern recurred twice in the 2026-06-07 function-consolidation session (Phase 2 and Phase 3 stacked PRs after Phase 1 squash-merged).
-
-**Adding a new `api/_routes/*` handler? The generated route manifest conflicts on rebase — regenerate, don't hand-merge.** `api/_routes/_manifest.generated.js` is generated by `scripts/build-api-manifest.mjs` (runs in `prebuild`; the build auto-updates it when you add a route). It imports every handler as `h<N>` and registers `{path, handler}`. When ANY other PR that also adds a route merges to `main` first, your rebase hits a conflict in this file (both sides added an `h<N>` at the same numeric slot). **Never resolve the `<<<`/`>>>` by hand** — take main's version and regenerate:
-```bash
-git checkout --theirs api/_routes/_manifest.generated.js
-node scripts/build-api-manifest.mjs        # re-derives all routes from the api/_routes/ tree
-git add api/_routes/_manifest.generated.js
-git rebase --continue
-npm run verify-api-manifest                 # confirms in-sync (also a CI gate)
-```
-(2026-06-24: the `plan-week` route PR #1680 conflicted on this file against a sibling route PR; regenerate-then-continue resolved it cleanly in one step.)
-
-**`.claude/launch.json` is a single shared file across every worktree — two parallel sessions adding a mockup-server entry at the same time WILL collide, both on port number and on rebase.** Each worktree session that wants `preview_start` for its own `.claude/mockups/` needs its own entry, but the file lives at one path in the repo (not per-worktree), so a port you pick as "clearly unused" can be claimed by a different session's concurrent commit before you push. Symptom: `preview_start` errors "Port already in use by another chat's dev server," and a rebase later conflicts on the same block with `<<<`/`>>>` around two different `runtimeArgs` port numbers. Fix: on the port-in-use error, just pick the next unused port and retry — don't fight for a specific number. On a rebase conflict, keep BOTH sessions' entries (don't drop either), giving each entry a distinct port; never resolve by discarding one worktree's config. (2026-07-08, PR #1963: hit both the live port collision and the rebase conflict in the same session, once each.)
-
-**A `launch.json` entry's `"port"` field is metadata for the preview tool only — it does NOT get passed to `npm run dev` / `vite`.** Vite ignores it and binds its own default (5173, or auto-increments if taken), so `preview_start` sits at "Awaiting server..." forever because nothing is listening on the port it's tracking. Fix: add the port explicitly to `runtimeArgs`, e.g. `["--prefix", "<worktree>", "run", "dev", "--", "--port", "5183", "--strictPort"]` (the `--` separates npm's args from vite's; `--strictPort` makes vite fail loud instead of silently picking a different port). This only matters for a worktree-specific dev-server entry added for local verification — and per the note above, it's still moot for verifying anything behind Clerk auth, since `pk_live` is domain-locked to `*.withbernard.ai` regardless of port. (2026-07-09, `fix-music-bed-draft` session.)
-
-**A worktree can carry a stale, never-pushed local commit from EARLIER unrelated work — pushing new work on top bundles both into one PR and can make it unmergeable.** Distinct from the stacked-PR case above: this isn't a branch built on top of a squash-merged sibling, it's leftover WIP that was committed (but never pushed) in a session worktree before the current task even started, then silently carried forward. Symptom: `gh pr view <n> --json mergeable,mergeable_state` reports `false`/`dirty` even though your own diff looks clean, and `gh api .../check-runs` shows no `build` run at all (GitHub never computed CI for the broken merge state). **Diagnostic: `git cherry-pick <stale-sha>` onto a fresh branch off current `origin/main`.** If it reports "previous cherry-pick is now empty," the commit's content is ALREADY on `main` — shipped by another session, possibly under different wording (2026-07-01: "Center on frame" vs "Center on canvas" — same feature, same author, different session). Confirm with `git show origin/main:<file> | grep <feature-marker>` before trusting the empty-cherry-pick signal. Recovery: `git stash` your real work, drop the stale commit with `git rebase --onto origin/main <stale-commit-sha> <branch>`, `git stash pop`, then `git push --force-with-lease` (confirm with the user first — force-pushing an already-pushed branch is a "still confirm before" action per `~/.claude/CLAUDE.md`). Never assume a stale commit needs its own PR — cherry-pick-onto-main is the cheap way to find out it's already redundant before doing that work.
-
-## Production deploys
-Deploy to prod **only** from the project root (`/Users/qbook/Claude Projects/Bernard`) and **only** when the project root is on `main`, fully synced with `origin/main`. `vercel deploy --prod` ships the local working tree (not the git ref), so deploying from a worktree, a feature branch, or a project root with uncommitted changes will publish whatever happens to be on disk — including reverting recently-merged PRs.
-
-Canonical command:
-
-```
-cd "/Users/qbook/Claude Projects/Bernard" && npm run deploy:prod
-```
-
-`npm run deploy:prod` wraps `vercel deploy --prod` and injects `VERCEL_GIT_COMMIT_SHA=$(git rev-parse HEAD)` as a build-env. CLI uploads have no `.git` in the build container, so without this the prebuild's `write-version.mjs` falls back to `sha: "dev"` and the auto-update notifier silently no-ops for that deploy.
-
-**Preflight check** (`scripts/deploy-prod-preflight.sh`, runs automatically before every `deploy:prod`): refuses to deploy unless (a) cwd is the project root, (b) current branch is `main`, (c) HEAD equals `origin/main`, (d) no uncommitted modifications to tracked files. If a parallel session leaves the project root on a feature branch or with WIP, the deploy aborts before Vercel sees a single byte of code. The 2026-05-22 close-call (deployed `feat/onboarding-interview-p4` instead of `main`, only saved by coincident merge of #720) is the direct prompt for this guard. To bypass in a true emergency: `DEPLOY_PROD_BYPASS_PREFLIGHT=1 npm run deploy:prod`.
-
-**A preflight block from uncommitted WIP in the project root is often a SIBLING SESSION's scheduled task actively appending to its own file, not stale garbage — don't stash or discard it.** `.claude/outcome-reviews/*.md`-style files are written to by scheduled Claude tasks running in the shared project root; a small, recent, purely-additive diff to one of these (a few lines, timestamp within the last few minutes, matches the file's own established "addendum" format) is the tell. (Bernard 2026-07-30: `deploy-prod-preflight.sh` blocked on `.claude/outcome-reviews/2026-07.md` having 17 uncommitted lines — a live monthly outcome-review job's own addendum, not orphaned WIP.) **If asked to commit it: `git add`+`commit` it, but do NOT `git push origin main` directly to satisfy the preflight's `HEAD == origin/main` check** — branch protection rejects direct pushes to `main` outright (`GH006: Protected branch update failed`, "2 of 2 required status checks are expected"). Recovery: `git branch <name> <sha>` to save the commit, `git reset --hard origin/main` to restore the project root, then `git push -u origin <name>` + `gh pr create --head <name>` + `gh pr merge --auto --squash` like any other change — the resulting merge-triggered auto-deploy is itself the "redeploy to pick up new env" you needed, no separate `deploy:prod` required.
-
-If the project root is on another branch (with WIP), do not switch under the user. Either run the deploy from a separate `main`-tracking worktree that's `vercel link`ed to the `bernard` project (copy `.vercel/project.json` in if needed) or ask the user to free up the project root. Always confirm the resulting deploy is aliased to `withbernard.ai` + `*.withbernard.ai` with `vercel inspect <dpl-id>` before declaring it done — deploys from an unlinked worktree silently create a separate Vercel project and never touch the real prod aliases.
-
-**Vercel's GitHub integration auto-deploys every push to `main`.** Each merge to `main` triggers a Vercel build that finishes in ~2 minutes and is aliased to `withbernard.ai` automatically. The auto-deploy runs in a real git clone, so `VERCEL_GIT_COMMIT_SHA` is set naturally and the auto-update notifier works correctly. **Do NOT run `npm run deploy:prod` after your own merge — it ships the exact same commit a second time, doubles the build cost, and just clobbers the GitHub-integration alias with an identical artifact.** Discovered 2026-05-25 (commits #839/#840/#841 each got two production deployments — one auto, one manual — for no benefit).
-
-After a merge, verify the auto-deploy via `vercel ls bernard --prod | head -3` (look for a ● Ready row whose age matches the merge time) or by polling `curl -s https://withbernard.ai/version.json` until `sha` flips to `git rev-parse origin/main`. That's the whole post-merge protocol.
-
-**A plain `curl` of `version.json` can be served STALE from Vercel's edge CDN — including a SHA *older* than a deploy you already confirmed — so a merged+deployed PR reads as "not deployed."** This is the inverse of the PWA-service-worker note above (that's the browser client; this is the server-side `curl` itself): the CDN caches the `version.json` response, and a poll loop can sit on the stale value for minutes. The tell is unmistakable — the returned SHA is an *ancestor* of one you saw live earlier this session, and prod cannot roll backwards. **Fix: append a cache-bust query param** (`curl -s "https://withbernard.ai/version.json?cb=$(date +%s)"`, or any changing value) to force a fresh edge fetch; cross-check `git merge-base --is-ancestor <merge-sha> <prod-sha>` on that fresh read. (2026-08-07 wrap: the #2585 deploy poll read `1ed9131b` — older than #2584's already-confirmed `13020203` — for ~2.5 min; a single cache-busted fetch immediately returned the correct `ca60b965`.) Bake the `?cb=` param into any deploy-confirmation poll rather than a bare `version.json` fetch.
-
-**When confirming deploy for a PAST merge (e.g. at session wrap), don't wait for an exact SHA match against `origin/main` — check ancestry instead.** In a fast-moving repo, `origin/main` keeps advancing from other sessions' merges, so by the time you check, it's normal for `version.json`'s `sha` to differ from both your merge commit AND the current `origin/main` tip. An exact-match check would misread "someone else's later merge already deployed" as "mine never went out." The correct check: `git merge-base --is-ancestor <your-merge-sha> <prod-sha> && echo "live"` — if your commit is an ancestor of whatever SHA prod is currently serving, it shipped, even though a newer commit has since deployed on top of it. (2026-07-08 wrap: prod's SHA matched neither the PR's merge commit nor `origin/main` — turned out prod was one merge *ahead*, and the ancestry check confirmed the fix was already live.)
-
-**`vercel inspect <dpl>` Aliases / domains list is FROZEN deployment metadata — NOT live routing.** It shows the domains a deployment was assigned at deploy time and does not update when you add/remove aliases afterward. After `vercel alias rm <name>`, `inspect` will keep listing the removed alias (it refreshes only on the next prod deploy), which reads as "the removal failed" when it actually succeeded. **For live alias/routing state, trust HTTP probes, not `inspect`:** `curl -s -o /dev/null -w "%{http_code}" https://<host>/` (a removed alias → 404/connection refused; a live one → 200). Bit us during the 2026-06-08 legacy-domain → withbernard.ai cutover — `inspect` listed five of the old domain's aliases as still attached after they'd been removed; curl confirmed every one was actually dead.
-
-## Renaming ≠ rebranding — check build-generated output and binary/vector asset *contents*, not just string refs
-
-A global rebrand find/replace (old product name → `bernard`, old domain → `withbernard.ai`) swaps strings and renames files but leaves two whole classes of stale branding that a `grep` of source won't catch. Both shipped to live prod during the 2026-06-08 rebrand and were only caught later:
-
-- **Build-time generators regenerate stale output on every deploy.** `scripts/build-blog.mjs` has inline HTML templates (header logo, `<title>`, canonical/OG URLs, footer email) that were never rebranded. It runs as part of `npm run build`, so Vercel regenerated `public/blog.html` + `public/blog/*.html` with full Bernard branding (favicon `/bernard-icon.svg`, `https://withbernard.ai/blog` canonical) on **every** deploy — the committed files looked correct but were overwritten at build time, and the live blog served the old brand regardless. **Rule: after a rename, grep `scripts/` and any `prebuild`/`build` step for the old name, not just `src/`/`api/`. A file that's regenerated by the build is owned by its generator, not by its committed copy.**
-- **Renamed asset files still contain the old artwork.** `git mv <old>-logo.svg bernard-logo.svg` changes the filename, not the pixels/paths inside. Every `public/*.svg` and `public/brand/*.png` was the old evergreen-`#1c4d37`/coral-`#ff8552` mark under a Bernard filename — including `bernard-icon.svg`, the sitewide favicon + PWA + Clerk-org-logo (~43 refs). **Rule: for SVGs, grep the file *bodies* for old brand color hexes / old wordmark text (`grep -l '#ff8552\|#1c4d37' public/**/*.svg`); for PNGs, actually open/rasterize a couple and look. A clean `grep` of code references proves nothing about asset contents.** (Local rasterization fallback when rsvg/ImageMagick are absent: `qlmanage -t -s <px> -o /tmp x.svg` then `sips -z`/`--padToHeightWidth` for exact dimensions.)
-
-`npm run deploy:prod` is still the right tool for:
-- The GitHub integration is failing or paused
-- A hotfix needs to ship from a worktree without a PR
-- You need to deploy code that isn't yet (or won't ever be) on `main`
-
-## Retiring a domain must include auditing third-party webhook configs
-
-A domain retirement (redirect rules, DNS, code references) is not complete until every **third-party service that pushes webhooks INTO Bernard** is checked for a stale endpoint URL pointing at the old domain. This is a different blast radius than the string/asset rebrand above — a stale webhook doesn't error visibly, it just silently stops delivering, and the failure mode looks identical to "the feature is slow" or "stuck processing" rather than "broken."
-
-Found 2026-07-03: the Mux webhook (Settings → Webhooks in the Mux dashboard) was still registered against the retired `narraterx.ai` domain from the 2026-06-09 cutover. Every `video.asset.ready` event since 2026-05-20 (over a month) went nowhere — 123 videos sat at `transcode_status: 'processing'` indefinitely even though Mux had finished encoding them within minutes each time. No error anywhere in our logs, because our server never received a request to error on. Diagnostic tell: calling the *provider's own API* directly for one affected asset showed it was actually done — the provider's ground truth disagreed with our DB, and only a webhook-delivery failure explains that gap.
-
-Rule: whenever a domain is retired or changed, check every service with a webhook callback into Bernard — at minimum Mux, Stripe, Clerk, bundle.social, and Google (OAuth redirect URIs) — and confirm the registered URL was updated. Prefer checking the provider dashboard directly over assuming a documented cutover PR caught it; webhook config usually lives outside the codebase entirely, so no grep will find it. See `api/_routes/cron/sweep-stuck-transcodes.js` for the self-healing safety net now in place for the Mux case specifically — but this class of bug can recur for any other webhook-driven pipeline and won't have an equivalent sweep unless one is built.
-
-**A third blind spot in the same class: Vercel env vars whose VALUE is an email address at the old domain** (`ADMIN_NOTIFY_EMAIL`, any `*_NOTIFY_*`/`*_ALERT_*` recipient var). Found 2026-07-08: `ADMIN_NOTIFY_EMAIL` on Bernard prod still held `drq@narraterx.ai` — a full month after the narraterx.ai retirement — because it's neither a webhook config on a third-party dashboard (the class above) nor a source-code/asset string a rebrand grep would catch. Resend accepted and "delivered" every notification email against that stale address with **zero error**, so `POST /api/feedback` looked completely healthy (200s, no logged failures) while 4 user-submitted screenshots vanished into a dead mailbox. Compounding factor: a 1Password value can silently drift from what's actually deployed — 1Password held the *correct* `drq@withbernard.ai` as the presumably-already-fixed value, but Vercel prod had never actually been updated to match, so trusting 1Password's value over a direct `vercel env ls`/API check would have given false confidence. Rule: after any domain rename, `vercel env ls` and grep every recipient-style env var for the old domain — don't assume "the webhook audit covered it," and don't trust a secrets-manager value as proof of what's actually deployed without cross-checking Vercel directly.
-
-## Buffer vs bundle.social publish paths: platform-specific limits don't auto-share
-
-*(Historical — the file is now `api/_routes/publish/social.js` and the Buffer fork was deleted in #2488, so the divergence described here no longer exists. The LESSON is what survives: two hand-synced paths for one job silently diverge, and that is why they were collapsed.)*
-
-`api/_routes/publish/buffer.js` routed every publish through one of two provider paths — the original Buffer path, or `handleBundlePublish` for workspaces on `publish_provider='bundle'`. The bundle path's own comment calls it "byte-for-byte identical" to the Buffer path for non-GBP platforms, which reads as if platform-specific rules (character caps, media limits) are shared — they are NOT. Each path independently re-implements any provider constraint, so a rule enforced in one silently doesn't exist in the other unless someone copies it over by hand.
-
-Found 2026-07-07: the Buffer GBP branch already truncated captions to Google's 1500-char cap (`rawText.slice(0, 1500)`, line ~297) — but `handleBundlePublish`'s GBP branch never did. Any workspace on the bundle.social provider publishing a caption over 1500 chars got a 502 `bundle_gbp_post_failed` with no indication why (bundle.social's real error — a 400 "String must contain at most 1500 character(s)" — was swallowed into the opaque error key per the no-`detail`-in-error-response rule; only visible via `vercel logs --status-code 502 --expand`).
-
-Rule: when adding or auditing a platform-specific constraint (length cap, media-count cap, format requirement) in one publish provider path, grep the sibling path for the same platform and confirm the constraint is mirrored there too — don't assume "byte-for-byte identical" claims in code comments have stayed true as the paths evolved independently. `src/lib/contentMeta.js`'s `CAPTION_LIMITS` map is the client-side mirror of these same caps (surfaced as an editor warning, added in #1960 as a follow-up) — keep it in sync with whatever the server paths actually enforce.
-
-**Same root cause recurs at the UI-copy layer, not just server dispatch.** When the original single-provider integration (Buffer) grew a second provider (bundle.social), the *server* dispatch logic was audited for provider-specific branching, but ~12 UI strings across `AssetsPane.jsx`, `WorkspaceSettings.jsx`, `YourWeek.jsx`, `ReviewInbox.jsx`, `AutoPublishSettings.jsx`, `ChannelsSettings.jsx`, `Onboarding.jsx`, `ProducerOnboarding.jsx`, `ContentBriefDetail.jsx`, and `BufferMetricsRow.jsx` kept hardcoding "Buffer" — including "Published to Buffer" and "Scheduled on Buffer" — regardless of `publish_provider`. Went unnoticed for weeks because **movebetter, the flagship live workspace, is the only workspace on `'bundle'`** (confirmed via `SELECT slug, publish_provider FROM workspaces`) — every other seed/test workspace is still `'buffer'`, so the mislabel was invisible in casual testing. Fixed 2026-07-08 (#1988) by making the copy provider-neutral ("Add to queue", "Scheduled", "Published") rather than dynamically branching every string on the workspace's provider — matches bundle.social's own onboarding pitch of "no third-party tool to manage." Also caught bundle.social missing from the Privacy Policy sub-processor table — a live, undisclosed sub-processor. Rule: when a feature is generalized from single- to multi-provider, grep user-facing copy for the old provider's literal name (`grep -rn "Buffer" src/pages src/components`) as a separate pass from auditing server logic — and check `SELECT DISTINCT publish_provider FROM workspaces` to know which provider is actually live on which tenant before judging blast radius.
-
-**A quality FIX to a shared prompt-building call needs the same "grep every caller" sweep as a security gate — a UI action that looks like it reuses the primary path can be a separate hand-rolled reimplementation.** Shipping sibling-caption dedup into `draftAtom.js` (the core used by first-draft generation, #2270), the natural next question was "does regenerating an existing draft from the UI get this fix too?" It did not: `api/_routes/content-items/regenerate.js` — what the UI's "Regenerate" button actually calls — never imports `draftAtom.js` at all. It's a separate, hand-written `getAtomSystemPrompt(...)` call that had silently drifted from the canonical path (missing the sibling-dedup param that didn't exist yet when it was written, same as the Buffer/bundle divergence above). Caught only because the fix's own follow-up asked "does the recovery path for the bug this fixes actually get the fix" — not by a general audit. Confirmed via `grep -rn "getAtomSystemPrompt(" api/` that there were exactly 3 call sites total, not by trusting that draftAtom.js was the only caller. Rule: after fixing a bug in a shared generation/prompt-building function, grep every call site of that function's *public entry point* (not just the file you edited) before calling the fix complete — a second reimplementation of "the same" prompt call is exactly where a fix silently doesn't apply. (#2278, 2026-07-22.)
-
-**A "hard gate, enforced at every publish path" claim is only as complete as the list of paths you audited — and a route-by-route sweep misses any path that dispatches server-to-server without going through an HTTP route at all.** Shipping the Phase 3 words-approval gate (`api/_lib/wordsApprovalGate.js`), the plan was to enforce it in every publish handler — audited by tracing the client's network calls: `publishItem()` → `/api/publish/buffer`, `publishBlogToWebsite()` → `/api/publish/website`, `sendBlogToBeehiiv()` → `/api/publish/beehiiv`, plus the manual `/api/producer/retry-publish` route. All four got the gate, all four verified green, and the PR description said "enforced in every publish path." That was false: `api/_lib/dispatchContentItem.js` is a **fifth dispatch entry point** — server-side auto-publish for the Standing Producer's "approve from /week" flow (`api/_routes/content-plan/approve.js`) — that calls `BundlePublisher.publish()` directly with no HTTP round-trip and no gate check at all. It was invisible to a client-network-call audit because there IS no client call to trace; the server calls the publisher itself. Found by accident one phase later, while adding unrelated bulk-lane warning copy, not by a deliberate audit — and it was live and reachable on `movebetter` (the one tenant on `publish_provider='bundle'`) the whole time the gate was "done." Rule: when a security-relevant gate needs to cover "every publish path," don't enumerate HTTP routes from the client side — grep for every caller of the underlying dispatch primitives instead (`BundlePublisher.publish`, `runBufferPublish`, `runBundlePublish`, and equivalents for any other external-send call), since a server-internal dispatch helper with no route of its own won't show up any other way. Treat "enforced everywhere" as an unverified claim until you've done that grep, not just until the known routes pass.
-
-**Writing a new invariant into ARCHITECTURE.md does NOT make existing code comply — sweep for violations in the same PR, or you have documented a bug rather than fixed one.** The two sweeps above both fire when you *change code*. This one fires when you only *write a rule*, which feels like documentation and therefore safe. It is the more dangerous case: the rule now reads as settled, so the next person greps ARCHITECTURE.md, finds the contract stated plainly, and assumes the codebase honors it. (2026-07-22, #2272: the media-suggestion picker started returning videos, and ARCHITECTURE.md gained "a video's `blobUrl` is the raw `.mov`/`.mp4` and is **never** a valid `<img src>` … guard it with `isVideoEntry()`." Correct, and written as a *consequence for any surface that may now receive both* — i.e. framed forward, at new code. Four live sites in `PostPreview.jsx` were already violating it right then: every video post in the product previewed as a black rectangle, because an `<img>` pointed at an `.mp4` fails to load and the `onError` handler hides it. A user reported it **the next day** (#2308); the fix was a shared `VideoFrame` component, and the same PR found a fifth latent hole where a render branch tested `m.type === 'video'` instead of the canonical `isVideoEntry()`.) **Rule: when you add an invariant to a doc, immediately grep for the anti-pattern it forbids and either fix or explicitly inventory the existing violators in that PR.** The grep is usually trivial and mechanical — here, `grep -rn "thumbnailUrl" src/` surfaced all four in one call. **Corollary for reading a bug report: its list of affected sites is a lower bound, not the scope.** This report named three; there were four, and the missing one (`MediaCarousel`, the Facebook/LinkedIn path) was the most-used. Grep the *pattern*, never trust the enumeration.
-
-## bundle.social's `upload/from-url` endpoint — no declared size cap, but a ~100s gateway timeout
-
-Building the Library's YouTube publish lane (#2545), a bundle.social blog post claimed "resumable
-uploads for videos up to 1GB." Their actual API reference page states no number at all — only that
-"platform-specific size limits, codecs, and duration caps still apply at post creation time." The blog
-figure was simply wrong, and would have blocked half the real interview library from a feature that
-had no real size problem.
-
-**Measured directly against the live endpoint 2026-08-03:** a 2.26 GB 4K mp4 POSTed to
-`/api/v1/upload/from-url` returned 200 in 90s, correct metadata, uploaded object confirmed via a
-follow-up `GET /api/v1/upload/`. A 5.9 GB file on the same route returned a Cloudflare 524 at 125s —
-and a follow-up list call confirmed nothing landed; it is a genuine failure, not a slow success. The
-constraint is a **~100s gateway timeout on the endpoint itself**, not a declared byte ceiling — at the
-observed ~25 MB/s ingest that puts the practical wall near **2.5 GB**. If bundle ever moves `from-url`
-ingestion onto the SDK's separate chunked `init`/`finalize` upload path, re-measure — that path is
-architecturally different and may not share this timeout.
-
-`api/_lib/youtubeCopy.js`'s `YOUTUBE_MAX_UPLOAD_BYTES` constant is the canonical value; re-derive it
-from a fresh measurement rather than copying this paragraph's number forward indefinitely.
-
-## Audit and checkup
-
-**These commands are `bernard-`-prefixed on purpose** (renamed 2026-07-23, Vigil SOP sync). Bernard, Deep Thought and Vigil all define audit/health instruments, and same-named commands across sibling projects can load the **wrong project's body** — a confirmed failure, not a theoretical one: this repo's `checkup.md` was byte-identical to Deep Thought's, so DT's `/checkup` was auditing Bernard's multi-tenancy and Vercel aliases against a single-org Railway app. A unique prefix makes that impossible. Plain `/audit` and `/checkup` still exist as *generic* global skeletons that auto-discover this repo's agents — they work, just less tuned.
-
-- **`/bernard-checkup`** (and `quick`, `ui`, `full`) — procedural health pass: lint + build + tests + recent-change code review + optional UI smoke + prod logs. Fast, deterministic, ~3–25 min. Use before opening a PR or after a hot deploy.
-- **`/bernard-audit`** — multi-agent deep review composing `bug-hunter` + `tenant-isolation-auditor` + `ui-reviewer` in parallel, scoped to commits since the last audit (tracked in `.claude/audit-history/.last-audit`). `ui-reviewer` always sweeps the full app since visual drift is cumulative. Writes a prioritized P0/P1/P2 punch list to `.claude/audit-history/<date>.md`, then **fixes every bug-hunter / tenant-isolation finding inline and ships a PR** (UI findings stay report-only pending a mockup). ~10 min, ~$3–6. Routine cadence.
-- **`/bernard-audit full`** — same three agents with no diff scoping; `bug-hunter` and `tenant-isolation-auditor` sweep the entire codebase. Higher coverage at higher cost. ~20 min, ~$8–15. Before-release baseline, not weekly cadence. (This replaced the separate `/auditfull` command, which was a near-verbatim copy of `/audit` and therefore its own drift source.)
-
-Pair `/bernard-audit` with `/schedule` for an automated weekly run; reserve `full` for monthly or pre-release passes.
-
-**Structure is deliberately aligned with Deep Thought's `/dt-audit` and `/dt-checkup`** — same phases, calibration loop, synthesis format, mode table and stop rules; only the agent lineup, stack doctrine, gates and URLs differ. If you change the *recipe*, mirror it there. If you change only Bernard's parameters, don't. (The point of aligning is that the remaining deltas are small and obvious, so future drift is visible.)
-
-## Acting on in-app feedback — read the `feedback` table, not the inbox
-
-Every submission from Bernard's in-app Feedback button is stored durably in the **`feedback` Supabase table** (`message`, `page_url`, `screenshot_url`, `user_name`, `created_at` — see `api/_routes/feedback.js`). The email to `ADMIN_NOTIFY_EMAIL` is only a notification copy — **never parse the inbox; query the table.** When a staffer reports bugs via Feedback ("act on these feedback emails"), the table IS the queue.
-
-- **`/bernard-triage-feedback`** command — queries untriaged rows (`triaged_at IS NULL`), maps each `page_url` → code, reads the screenshot, diagnoses the root cause, writes a P0/P1 punch list to `.claude/feedback-history/`, spawns a task chip per actionable item, and stamps rows `triaged_at`. **Report-only** by default (no auto-PRs — review before ship). Migration 177 added `feedback.triaged_at` + `triage_note` as DB-native state so a headless routine and an interactive session never double-process a row.
-- A weekly scheduled task (`triage-bernard-feedback`, Mondays 9am) runs it automatically.
-- To re-open a triaged item: `UPDATE feedback SET triaged_at = NULL WHERE id = '…'`.
-- Fixes still go through the normal branch → PR → prod → Chrome-verify loop (authed UI surfaces need the post-deploy Chrome check). Shipped as the feedback-triage loop, #2179 (2026-07-16).
-
-**A `triage_note` is a snapshot at OPEN time and goes stale the moment the fix ships — never quote it as current status without checking `resolved_at`.** `/bernard-triage-feedback` writes `triage_note` once, when a row is first diagnosed ("mockup published, awaiting Q sign-off before build"); nothing re-visits that text when the actual fix later merges under an unrelated PR, so a week-old note can flatly contradict `origin/main`. (2026-07-23: told Q a Script-tab fix was "awaiting your sign-off" straight from a stale `triage_note` — it had actually shipped as #2184 six days earlier. Caught only by grepping `origin/main` for the feature before restating the note as fact, the same "verify against source" discipline this file already demands everywhere else — this is just the feedback table's version of a stale claim in a durable doc.) Migration 186 (#2324, 2026-07-23) added `resolved_at`/`resolved_note`/`resolved_notified_at`/`acknowledged_at` — **`resolved_at IS NOT NULL` is now the authoritative "is this actually fixed" signal**, not the prose in `triage_note`. Resolve through `PATCH /api/feedback/resolve`, not a hand-rolled `UPDATE`: it emails the reporter (when `user_email` + `notify_ok` are set) that it's safe to go back to the feature — a real outbound message to a third party, so treat firing it on a row as needing the same confirmation as any other send, even after the user has already agreed to "mark it resolved" in the abstract (that approval doesn't obviously cover "and email them"). **From a headless/background session the Clerk endpoint is unreachable (no browser to mint a token) — use `POST /api/cron/resolve-feedback` instead** (#2483, 2026-07-30): `Bearer CRON_SECRET` auth, body `{ id, note }`, resolves by the feedback id across any workspace, idempotent. It runs in Vercel where `RESEND_API_KEY` already lives, and shares the exact email + patch logic with the Clerk endpoint via `api/_lib/resolveFeedback.js` (one copy so the reporter email can't drift). Invoke it by pulling `CRON_SECRET` from the `.env.bernard.1pw` mount and `curl`-ing the deployed route — no browser, no local Resend handling. Same confirm-before-send rule applies; it's still a real outbound email. (Built because driving Q's Chrome to hit the authed endpoint kept failing and the auto-mode classifier blocks a mount-read + direct-Resend-send in one local script — the in-Vercel trigger sidesteps both.)
-
-**Audit reports + `.last-audit` live in the PRIMARY checkout's `.claude/audit-history/` — a session worktree writing them relative strands them.** `.claude/audit-history/` is gitignored, and harness session worktrees get their own disconnected copy of `.claude/`, so an audit that writes `<date>-full.md` + `.last-audit` via relative paths leaves them in a disposable worktree: the report vanishes on worktree cleanup and the primary's `.last-audit` silently goes stale, mis-scoping every future `/bernard-audit` since-last run. (2026-07-15: the 7-12 full baseline was found stranded this way — the primary's pointer still read Jul 3.) Rule: audit runs write the report and `git rev-parse HEAD > .last-audit` to the absolute primary path (`/Users/qbook/Claude Projects/Bernard/.claude/audit-history/`), and at audit start check the worktree copy for stranded reports from prior sessions and rescue any missing from the primary.
-
-**Pre-merge Claude review** (`pr.yml` `review` job) — runs an inline `prompt` on every PR via `anthropics/claude-code-action@beta`, posting inline findings before merge. Non-blocking (`continue-on-error: true`); `build` is still the only required gate. To promote it to a required check, add `review` to branch protection status checks. Two pitfalls found in initial wiring:
-- `github_token` must be passed explicitly — without it, the action silently gets a Bad credentials 401 when posting comments (#1393, 2026-06-18).
-- The input is `prompt:`, NOT `direct_prompt:` — the wrong key causes `IS_PR: false` / `CLAUDE_SUCCESS: false` and a 26s no-op exit with no error surfaced (#1399, 2026-06-19). Skills (e.g. `/code-review`) are not available in the headless CI context; use an inline prompt string instead.
-
-**Weekly PostHog UX pain check — verify dead/rage-click hotspots against the actual handler code before fixing; don't fix-the-metric.** `$dead_click`/`$rageclick` fire on a heuristic (no DOM mutation within ~2.5s of a click) that produces real false positives on specific element types: clicking into a `<textarea>` (focus-only), a `<canvas>` (internal redraw, e.g. slide/photo select or video togglePlay), or re-clicking an already-active tab. Before writing a fix for a reported hotspot, read the actual click handler for that element/route. 2026-07-16 run: 3 flagged clusters, read as 2 real bugs + 1 false positive —
-- `/week`'s "Draft" button dead clicks (11) were a REAL bug: `handleDraft` uses a page-wide single-flight lock (`if (draftingAtom) return`) but only the in-flight card showed disabled/spinner, so clicking Draft on any *other* "needs draft" card silently no-op'd. Fixed by adding a `draftBusy` prop so every other Draft button visibly disables while one is running (#2170).
-- `/moments/clip/:id` canvas dead clicks (15) were a FALSE POSITIVE on inspection: `VideoEditor.jsx`'s `togglePlay`/`selectKey` handlers are correctly wired; the only no-op path is `if (!v) return` when the video hasn't mounted yet — standard player behavior, not a bug. Left as-is.
-
-Rule: for each flagged element, grep the route's component for the click handler before assuming it's broken. `<textarea>`/`<canvas>`/video-container clicks are the recurring false-positive shape; a `disabled` button or a shared-lock-vs-per-item-UI mismatch (like the Draft bug) is the recurring real-bug shape. This will recur every week the `bernard-ux-pain-weekly` routine runs — don't skip the code-read step just because PostHog names an element.
-
-**A P1/P2 slow-route finding is often one shared backend handler with an avoidable sequential waterfall — check for independent `await`s before assuming it needs a bigger rearchitecture.** `/week` and `/` (Home) both share `api/_routes/content-plan/week-summary.js`, flagged for P95 LCP 6.4s/7.7s. The handler ran 4 Supabase REST round-trips strictly sequentially, but only 2 were actually dependent (atoms → drafted-content-items); the backlog query and the reviewer's staff→review-queue chain have zero data dependency on the atoms chain and were just running after it for no reason. Wrapped the 3 independent chains in `Promise.all` — same output shape/values, just concurrent (#2170, same PR as the Draft-button fix above). Rule: before treating a slow-route finding as a "needs real profiling / bigger perf project" item, read the backend handler(s) it hits for a plain sequential-`await` waterfall over calls that don't actually depend on each other — it's a 10-minute read that sometimes is the whole fix.
-
-## `.claude/` directory — scratch vs. keep
-
-The untracked `.claude/` directory mixes two kinds of files; do NOT bulk-delete it as "scratch." Before deleting anything here, classify:
-
-- **Regenerable scratch (safe to delete)** — outputs that have a committed generator: eval results (`eval-v6.mjs`), smoke reports (`g6-video-onboarding-smoke.mjs`), prompt-eval logs (`prompt-eval-harness.mjs`), voice-fidelity dumps. Rule of thumb: there's a `scripts/*.mjs` that re-creates it.
-- **Human-authored, irreplaceable (keep)** — design/planning docs with no generator: `*-spec.md`, `*-plan.md`, `*-sketch.md`, mockup `*.html`. These are real work (one was literally "awaiting owner sign-off") and are never re-derivable. Treat them like source.
-
-These are untracked, so `rm` is unrecoverable (see ~/.claude/CLAUDE.md "Deleting files — untracked means unrecoverable"). When in doubt, leave it or ask — the cost of keeping a stale scratch file is zero; the cost of deleting a spec is the whole document.
-
-**A fresh worktree / spawned follow-up task does NOT inherit untracked or gitignored `.claude` files — commit the handoff docs FIRST.** `spawn_task` (and any new `git worktree`) checks out a branch off `main`; it gets ZERO of the current worktree's untracked planning docs and ZERO gitignored mockups. So if you `spawn_task` a follow-up that says "read `.claude/foo-plan.md`" or "build from `.claude/mockups/bar.html`", the spawned session **cannot see them** unless they're on `main`. Before spawning a doc-dependent follow-up: commit the `.md` keeps (not ignored — plain `git add`) and `git add -f` any referenced mockups. Bit us 2026-06-20: a U3–U5 follow-up referenced `unified-editor-plan.md` + `unified-editor.html`, both worktree-local — had to commit them (#1451) so the handoff worked.
-
-**Mockup-tracking convention (Q, 2026-06-20 — "Option A"):** `.claude/mockups/` is gitignored (`.gitignore:28`) and STAYS that way for iteration scratch — but **`git add -f` a mockup the moment Q signs off on it.** An approved mockup is the build spec (mockup-first rule), so it must be versioned next to the code it specs and reachable from any worktree. Tracked so far: `unified-editor.html`, `carousel-editor-v2.html`, `colorist-brand-look.html` (approved) + `video-editor-v1.html` (pending sign-off) + `week-slots.html` (T3, approved 2026-07-22). Don't bulk-commit the ~50 exploration mockups — only the sign-off'd ones.
-
-**The tell that the force-add was missed: a TRACKED doc citing a gitignored path.** The spawn-time rule above catches the handoff case, but a signed-off mockup also gets cited by permanent artifacts — `.claude/decisions.md`, a PR body, `ARCHITECTURE.md` — and those references outlive the session worktree. 2026-07-22: the T3 decision-log entry referenced `.claude/mockups/week-slots.html` twice as the signed-off spec, and all 5 T3 PRs shipped against it, but the file was never `git add -f`'d — so the decision log pointed at a file that existed nowhere in the repo, only in a disposable worktree (untracked ⇒ unrecoverable once pruned). The spawned build survived by working from the tracked `decisions.md` + strategy brief, which is exactly why nobody noticed. **Rule: when you write a mockup path into any tracked file, `git ls-files <path>` it in the same breath — an empty result means force-add it now, not later.** Cheap sweep for the general case — scope BOTH sides to what's tracked, or you get noise from untracked scratch citing untracked scratch:
-```bash
-git grep -ho '\.claude/mockups/[a-z0-9._-]*' origin/main -- '*.md' | sort -u | \
-  while read -r p; do [ -z "$(git ls-tree origin/main -- "$p")" ] && echo "DANGLING: $p"; done
-```
-Known false positive: `bar.html`, the illustrative placeholder in the spawn-time rule directly above. Running this on 2026-07-22 also surfaced a second real one — `text-template-b.html`, cited by the tracked `.claude/text-post-studio-plan.md` as the mockup to build from — left untracked pending Q's sign-off, since the convention is deliberate about not bulk-committing unapproved mockups.
-
-**Resolving a rebase conflict with the Edit tool can leave orphan conflict markers that `git rebase --continue` does NOT catch.** When you resolve a two-block conflict (`<<<`/`===`/`>>>`) with an Edit that only matches one block (e.g. you match the `<<<HEAD`…`>>>` half but the `<<<HEAD` marker lands outside the old_string), git stages the partially-resolved file and `--continue` proceeds — but the stale `<<<<<<< HEAD` line remains in the committed file. Lint is the first thing that catches it ("Parsing error: Unexpected token <<"). **Rule: after resolving any rebase conflict with the Edit tool, grep for stale markers before staging:**
-```bash
-grep -rn "<<<<<<\|>>>>>>>\|=======" <conflicted-file>
-```
-If any remain, fix them with a targeted Edit, then re-run lint before `git add`. (Hit 2026-06-21 in the F2 phase-2 rebase: the Layout.jsx `<<<<<<< HEAD` orphan marker slipped through `git rebase --continue`, compiled as a parse error, and required an amend + force-push.)
-
-**A `git add -A` during a cherry-pick/merge conflict resolution silently sweeps untracked `.claude` scratch INTO the commit — and a follow-up `git rm --cached .claude/*.md` then stages deletion of the ~40 *tracked* docs the glob also matched.** Hit both during the 2026-06-20 colorist rebase. Clean recovery: `git reset --soft origin/main && git restore --staged .claude/ && git add src api` (stage only the real source paths), then commit. Rule: during conflict resolution, stage specific source paths, never `git add -A`, when untracked scratch is present. (Related: `git checkout <branch> -- CLAUDE.md` to "move" an edit between branches CLOBBERS an uncommitted working-tree edit to that same file — carry the edit by switching branches with it uncommitted, don't `checkout -- <file>` over it.)
-
-## Auto-memory index hygiene (MEMORY.md)
-
-The per-project auto-memory **index** (`~/.claude/projects/-Users-qbook-Claude-Projects-Bernard/memory/MEMORY.md`) is auto-loaded into context at the start of every session and has a hard **~24KB cap** — once over, the tail entries silently truncate and that recall is lost. It ballooned to 27KB+ (2026-06-05, had to be run through `/consolidate-memory` almost daily) because entries were written as multi-line paragraphs and shipped work was never archived. Keep it lean so this stops recurring:
-
-- **One line per entry, <150 chars**: `- [Title](topic-file.md) — one-line hook`. ALL detail goes in the linked topic file, never in the index line. If you're writing a second sentence in the index, move it into the file.
-- **Archive shipped work**: once a `project_*` item is SHIPPED / COMPLETE / LIVE, collapse its index line into the "ARCHIVE — shipped & stable" rollup at the bottom (list its file stem for `grep`, drop the per-line hook). Don't carry done projects as live entries.
-- **Never delete topic files** to reclaim space — they're untracked and unrecoverable; archive the *index line*, keep the file on disk.
-- **Verify after any index rewrite**: extract the `](*.md)` link set before and after and diff — the only links that should disappear are ones you intentionally archived; zero accidental drops.
-
-A weekly launchd job (`com.bernard.memory-maintenance` → `scripts/memory-maintenance.sh`) backs up the index and runs `/consolidate-memory` headlessly when it crosses ~22KB (backup-first, auto-restores on a suspicious mass link-drop). If you notice the index near cap mid-session, trim the fattest entries rather than appending to it.
+**Deploys:** every merge to `main` auto-deploys to `withbernard.ai` in about 2 minutes. Do not run
+`npm run deploy:prod` after your own merge; it is for emergencies, from the project root on a synced
+`main` only. Confirm a deploy with a cache-busted `curl -s "https://withbernard.ai/version.json?cb=$(date +%s)"`
+and an ancestry check (`git-deploy.md`).
+
+## Architecture in brief
+
+- **Tenancy:** `workspaceContext(req)` resolves the workspace from the Host subdomain (not
+  authentication); every tenant-scoped query filters by `workspace_id`. Tenant config lives on the
+  `workspaces` row; publish credentials in `workspace_credentials`, encrypted with
+  `WORKSPACE_CREDENTIALS_KEY` (**Sensitive**) (`data.md`).
+- **Content:** a post is a `content_items` row. `media_urls` holds `[{url, type, kind, …}]` objects,
+  never bare strings (`media.md`). `scheduled` and `published` posts are frozen by
+  `src/lib/publishLock.js` (`publish.md`).
+- **Mirror pairs:** several render decisions exist twice, a server bake and a client preview; a fix to
+  one is not a fix to the other (`media.md`, "Client/server mirror pairs").
+- **Migrations:** `supabase/multitenant/migrations/`, applied by hand with no tracker;
+  `supabase/expected-schema.json` is the committed snapshot (`data.md`).
+
+## Conventions every change follows
+
+- **A new `/api` route** follows the seven-rule checklist in `api.md`: no `detail:` in error responses,
+  `UUID_RE` on every filter param, `workspaceContext` → `requireRole` → `enforceLimit` in that order,
+  `timingSafeEqual` for signatures, `waitUntil()` for post-response work, `:id` from the pathname, and a
+  JSON body from DELETE. The Node handler shape is `(req, res)` with `res.status().json()`.
+- **The client** calls `/api` through `apiFetch`/`apiFetchResponse` and mutates through
+  `useAppMutation` (both lint-enforced, `frontend.md`).
+- **A new `content_items` column** goes into both the PATCH allowlist and the `SELECT` in
+  `api/_routes/db/content.js`, and its camelCase key into `FROZEN_PATCH_FIELDS` if it is content
+  (`publish.md`).
+- **A new table, view or function** carries `GRANT … TO service_role` in the same migration; take the
+  migration number from `ls supabase/multitenant/migrations | tail -1` (`data.md`).
+- **Blob keys** are namespaced by `ws.id`, never `ws.slug` (`media.md`).
+- **One worktree per session.** The project root (`/Users/qbook/Claude Projects/Bernard`) is only for
+  `git pull` on `main` and `npm run deploy:prod` (`git-deploy.md`).
+- **The 1Password mount** is `/Users/qbook/Claude Projects/Bernard/.env.bernard.1pw` (**Sensitive**),
+  in the primary checkout only; never read `.env.local.1pw`, which hangs (`housekeeping.md`).
 
 ## Definition of Done
 Every PR must satisfy this checklist before merging. The triage on 2026-05-14 traced 12+ bugs to exactly these gaps being skipped.
@@ -1072,7 +146,7 @@ Every PR must satisfy this checklist before merging. The triage on 2026-05-14 tr
 
 ### Logic
 - [ ] Every new `useMutation` call uses `useAppMutation` (not raw TanStack `useMutation`) — enforced by the `bernard/no-raw-use-mutation` ESLint rule
-- [ ] Every new `fetch()` to an `/api` route uses `apiFetch` or `apiFetchResponse` — never a raw `fetch()` that could miss the Bearer token — enforced by the `bernard/no-raw-api-fetch` ESLint rule. The rule flags a raw `fetch('/api/...')` only when it can prove no `Authorization` header is attached (variable/spread headers get the benefit of the doubt, so authenticated saves don't trip it). A genuinely public endpoint uses `apiFetch(path, { auth: false })` or an inline `eslint-disable-next-line bernard/no-raw-api-fetch` with a reason. This was the PR #1064 class: tokenless loads of `/api/workspace/me` silently got the slim public-branding shape, so saved settings (`enabled_outputs`, `plan`, `locations`, …) reverted on reload.
+- [ ] Every new `fetch()` to an `/api` route uses `apiFetch` or `apiFetchResponse` — enforced by `bernard/no-raw-api-fetch` (detail: `frontend.md`)
 - [ ] Every new API handler that touches a tenant-scoped table calls `workspaceContext(req)` and filters by `workspace_id`
 - [ ] 401 / 403 branches are handled on `err?.status`, not `err?.message` string matching
 
@@ -1084,80 +158,36 @@ Every PR must satisfy this checklist before merging. The triage on 2026-05-14 tr
 ### Testing
 - [ ] **Job-level done, not component-done**: if the PR produces an artifact or output a user acts on, the artifact demonstrably reaches the surface where the user consumes it (the draft appears in /week, the rendered file lands on the content item, the published post is live). "The function returns correct bytes" is component-done. The recurring failure class this gates: render-segments baking reels into a b-roll graveyard, carousel overlay text previewed but never published, drafts born without media — working parts, broken job.
 - [ ] Feature used in-browser at least once before the PR is opened (the step most often skipped)
-- [ ] **Any page with a horizontal tab/filter row** → confirm it doesn't overflow at ~390px. A `flex items-center gap-2` row with 3+ buttons + a `w-48 ml-auto` search input totals 600–700px minimum — guaranteed horizontal scroll on mobile, making the site look "not loading." Fix: tabs in `overflow-x-auto` inner div with `shrink-0` buttons; search in `sm:ml-auto` outer row with `w-full sm:w-48`. (Hit on Slate #1316 → fixed #1322, 2026-06-10.)
+- [ ] Any page with a horizontal tab/filter row doesn't overflow at ~390px (`frontend.md`)
 - [ ] For large-surface features: run `npm run e2e` or manually smoke the relevant page on the Vercel preview URL
-- [ ] If the PR changes a label, heading, button name, or default route behavior on a page covered by an E2E spec, update the spec in the same PR. Today the specs cover `/`, `/new`, `/settings/integrations`, `/settings/workspace`, and `/stories` (see `tests/e2e/*.spec.ts`). The post-deploy `E2E smoke` workflow only runs after merge to `main`, so a missed selector update keeps the smoke red until the next person notices — usually several merges later, by which point multiple suites are broken and the failure is harder to triage. Grep the specs for the heading/label you're changing before opening the PR: `grep -rn "<old label>" tests/e2e/`.
-
-**E2E smoke "All jobs have failed" from a stale fixture selector has the same blast radius as a stale secret.** `auth.setup.ts` is the *shared setup step* — if it fails, every downstream spec is skipped and the email reads "All jobs have failed." This looks identical to the `ClerkAPIResponseError` case below, but the cause is a UI label that drifted (a page redesign renamed a heading/CTA the fixture waited for). Diagnostic: look at the fixture's assertion at line ~94 and check whether the locator still matches anything on the live home page. Fix: update the fixture to the current stable anchor (e.g. the greeting `<h1>` instead of a CTA button). Hit 2026-06-15 — the media-flow redesign removed "New interview" / "dashboard" from home; smoke was red for 2 weeks before it was diagnosed. The fixture should anchor on the most structurally-stable element on the landing page (today: `getByRole('heading', { name: /good (morning|afternoon|evening)/ })`), with CTA/Slate fallbacks. Never anchor on a specific CTA label.
-
-**E2E smoke `ClerkAPIResponseError: Unauthorized` = stale `E2E_CLERK_SECRET_KEY` GitHub Actions secret.** The `auth.setup.ts` fixture mints Clerk sign-in tokens using `CLERK_SECRET_KEY` (mapped from the `E2E_CLERK_SECRET_KEY` Actions secret). If the secret is stale, EVERY e2e run fails at setup before any Playwright test runs. The failure is NOT caused by app code. Fix — run in any directory:
-```bash
-awk -F= '/^CLERK_SECRET_KEY=/{print substr($0,index($0,"=")+1)}' "/Users/qbook/Claude Projects/Bernard/.env.local.1pw" | tr -d '\r' | gh secret set E2E_CLERK_SECRET_KEY --repo Move-Better/Bernard
-```
-Confirm with `gh secret list --repo Move-Better/Bernard` — the updated timestamp should be today. (Hit 2026-06-06 after the secret was set 2026-05-12 and aged out.)
-
-**Read WHICH STEP failed before reading anything else — a red E2E smoke often never reached a test.** The two causes above are both real-but-app-adjacent, which primes you to look at app code or fixtures. Two of the three E2E failures on the night of 2026-07-27/28 were neither: the job died in **`Install dependencies`** or **`Seed fixture data`**, before Playwright started. Both are transient third-party infra, and both are cleared by a plain re-run:
-- `npm error ... ffmpeg-static ... Failed to download ffmpeg b6.1.1 ... statusCode: 500` — `ffmpeg-static`'s postinstall pulls a binary from a GitHub release; a 500 there kills `npm ci`. The smoke doesn't use ffmpeg at all, it's just a transitive install cost. There is NO skip flag (`install.js` reads only `CI`/`HTTP_PROXY`/`HTTPS_PROXY`), so don't hunt for one — re-run. Verified transient 2026-07-28: `gh run rerun <id> --failed` went green with zero code changes.
-- `Error: connect ETIMEDOUT <ip>:5432` in `Seed fixture data` — a direct Postgres connection from the runner timing out. Same treatment.
-
-**Diagnostic first move:** `gh run view <id> --log-failed | head -30` and look at the STEP NAME in the left column. `Install dependencies` / `Seed fixture data` ⇒ infra, re-run once. `Run Playwright smoke` ⇒ a real assertion; only then read the spec and the app. This distinction also tells you whether a red run implicates the PR it's attached to: a docs-only PR showing red is a tell that either the failure is infra, or it belongs to the commit merged just before it (a superseded/cancelled run for the prior PR is the giveaway — that exact sequence happened with #2429 → #2428).
+- [ ] A changed label, heading, button name or default route on a page an E2E spec covers updates that spec in the same PR (`git-deploy.md`)
 
 ### Merge hygiene
 - [ ] Branch rebased on current `origin/main` (`git fetch && git rebase origin/main`) immediately before opening the PR
 - [ ] `gh pr merge <num> --auto --squash` set on open so CI gates the merge
 
-## Brand-color refresh checklist
-Whenever the project's primary brand color or one of the semantic tokens (`--success`, `--warning`, `--info`, `--destructive`, `--verbatim-accent`, `--agreement-signal`, `--contrast-signal`) shifts, audit every place those tokens are used as a **navigation or state color** — not just decorative tinting. These are easy to miss because each page reads as internally consistent until you flip between pages.
+## Topic files
 
-Common drift sites to grep for after a refresh:
+Read the matching file in `.claude/lessons/` before work in that area; several can apply to one task.
 
-- **Sidebar / tab active states** — historically `bg-success/10 text-success` (green). Should follow the primary brand color when the active state means "selected" rather than "succeeded." (Caught in SettingsLayout, May 2026 blend rollout.)
-- **"Do this now" / publisher-inbox surfaces** — historically `bg-blue-50` / `text-blue-700` (cool blue). All of these — Home Drafts card, PipelineKanban Ready-to-Distribute lane, DraftsReadyRow, LibraryReadyStrip — should share one warm-tint treatment so the user's eye lands on the same color for "act now." (LibraryReadyStrip was the straggler.)
-- **Mobile section nav chips** — same active-state lineage as the desktop sidebar; usually live in a separate `MobileNavRail` block.
-- **Hover states on cards** — `hover:border-primary/30` or `hover:bg-accent/20` get stale when the accent shifts.
-- **Status pills inside content surfaces** — green `success` pills used to label things like "Published" stay correct on a refresh; the bug is when the same green is doing duty as a nav active state.
+| File | Read before |
+|---|---|
+| `api.md` | adding or changing a route under `api/`, a handler's runtime or shape, post-response async work, a media download, the function-bundle check |
+| `data.md` | a migration; a new table, column or status value; a query on tenant data; a staff delete or merge; a lookup keyed on a workspace |
+| `publish.md` | a `content_items` column or `api/_routes/db/content.js`, the publish lock, a publish path or provider, a per-platform limit, a post preview |
+| `media.md` | a renderer or compositor, the video or slide editors and templates, captions, grades, thumbnails, `media_urls`, the blob store, the email template, any colour in tenant content |
+| `frontend.md` | a page layout, making something clickable, a route or back link, client polling, an ESLint rule, a Tailwind token, a brand-colour sweep, a mockup |
+| `ai.md` | a prompt or `src/lib/prompts.js`, streaming chat, the realtime voice session, an LLM judge or rubric, a tactic classifier, image generation |
+| `integrations.md` | Search Console, GBP Analytics, GA4, the citation probe, decrypted `workspace_credentials`, a rebrand, retiring a domain |
+| `verify.md` | scoping a change to an "existing" feature, verifying an authed UI change on prod, driving Q's Chrome, calling a live API from the browser |
+| `screenshots.md` | merging a user-visible UI change (the staff-summary screenshot), running `scripts/capture-screenshot.mjs` |
+| `git-deploy.md` | a worktree or branch, a rebase, opening or merging a PR, a red check or E2E smoke, the lint ceiling, a deploy |
+| `housekeeping.md` | an audit or checkup, triaging or resolving feedback, deleting or committing under `.claude/`, the memory index, the 1Password mount |
 
-Quick grep:
-```
-grep -rn "bg-success/\|text-success\|bg-blue-50\|text-blue-700\|bg-info" src
-```
+## Where a lesson lives (this repo)
 
-**Hex sweeps MUST be case-insensitive (`grep -ri`).** Hex appears in both cases (`#e36525` vs `#E36525`), and a case-sensitive `grep -o "...e36525..."` silently misses the uppercase ones. The #1294 emerald repaint's final-inventory greps were case-sensitive and left a live `#E36525` brand-accent fallback in `StoryboardPiece.jsx` — caught only later by the `bernard/no-hardcoded-brand-color` lint rule (which is case-insensitive). After any color sweep, re-grep with `-i`, and lean on the lint rule as the real backstop rather than a hand-rolled grep.
-
-**Class-string sweeps are ORDER-sensitive — verify with a per-token AND grep and a live-DOM probe, not the pattern you swept with.** A repeated Tailwind class combo (`bg-success text-white shadow-sm …`) drifts into copies with the same classes in a different order, which a byte-exact `Edit replace_all` (and a grep for the canonical string) silently miss — the sweep "completes" with stragglers still live. (2026-07-15, #2150→#2151: the ConnectedBadge dedup left 2 of 10 copies — one order-variant in the same file, one in a sibling component file — caught only by a prod DOM probe `querySelectorAll` filtering on both class tokens independently.) Rules: (1) after any repeated-class sweep, re-grep order-agnostically — `grep -rn "<tokenA>" src | grep "<tokenB>"` — across ALL of `src/`, not just the file you swept; (2) for an authed surface, close the loop with a DOM probe in Q's Chrome counting old-vs-new class tokens (`[class*=…]`), which proves both bundle freshness and sweep completeness in one call; (3) the durable fix for a badge/chip repeated across files is a shared component (`src/components/ui/`), not a swept string.
-
-After fixing, sanity check by clicking through every major surface (Home, Stories, Library, Settings + subpages, Account) in one sitting and watching for any color that doesn't belong to the new identity. Cross-page review catches what per-page review misses.
-
-## Email Template
-The email newsletter preview renders the actual TrustDrivenCare (TDC) HTML template via `<iframe srcDoc>`. The template lives at `src/email-template.html` and is imported with Vite's `?raw` loader in `src/components/PostPreview.jsx`.
-
-**To update the template** (e.g. after redesigning in TDC): export the master HTML from TrustDrivenCare, replace `src/email-template.html` with the new HTML, and commit. No React changes needed — all `{{merge_tags}}` are substituted at render time by `fillTemplate()` in PostPreview.jsx.
-
-Merge tags currently in use: `{{preview_text}}`, `{{headline}}`, `{{pull_quote}}`, `{{body_paragraph_1}}`, `{{body_paragraph_2}}`, `{{body_paragraph_3}}`, `{{cta_text}}`, `{{cta_url}}`, `{{ps_text}}`, `{{hero_image_url}}`, `{{year}}`, `{{unsubscribe_url}}`, `{{webview_url}}`.
-
-## 1Password env mount — use `.env.bernard.1pw`, never `.env.local.1pw`
-
-The live 1Password Environments mount for this repo is **`/Users/qbook/Claude Projects/Bernard/.env.bernard.1pw`** (Bernard environment, has MULTITENANT_DATABASE_URL, BLOB_READ_WRITE_TOKEN, AI_GATEWAY_API_KEY, MUX_*, CRON_SECRET, etc.). **The mount lives only at that PRIMARY-checkout path — it is NOT copied into session worktrees** (`new-session-worktree.sh` copies `.env.local`/`.vercel/`, but the `.1pw` FIFO stays where 1Password created it). So from a worktree, a relative `cat .env.bernard.1pw` fails with `No such file or directory`; always read it by the absolute primary path above. A stale `.env.local.1pw` FIFO may also exist in the project root — it is NOT an active mount, and reading it (awk/cat/grep) **blocks forever** with no error. If a read of a `.1pw` file hangs, don't retry harder: confirm the active mount path via the 1Password MCP (`list_local_env_files`) and use that. Extract single vars with `awk` per the global CLAUDE.md rules.
-
-**Don't `source` the mount — it fails.** The mount holds at least one multi-line value, so `set -a && source .env.bernard.1pw` dies with `parse error near '\n'`. Instead `cat` it ONCE into a scratch temp file, `awk`-extract the specific vars you need into the env, then `rm` the temp (the FIFO re-serves on each open, so re-catting per shell invocation is fine — shell state doesn't persist across Bash calls). Never `Read` the temp (dumps every secret). Also: the harness shell is **zsh** — bash-isms like `${!var}` indirect expansion and unquoted `--include=*.js` globs fail; quote globs and avoid indirect expansion. `timeout` isn't installed on macOS (use the Bash tool's own timeout or `gtimeout`).
-
-## Prompt refactors — update test markers in the same PR
-
-When `getInterviewSystemPrompt` or any other large prompt function changes its structure (sections renamed, reordered, added/removed), the corresponding test assertions in `tests/lib/prompts.test.js` that check for section markers must be updated in the same PR. A test checking `expect(prompt).toContain('PATIENT SCENARIO')` will fail if that section is renamed to `WHAT TO COVER` in the prompt. Lint + build pass (they don't check prompt markers), so the failure is invisible until CI runs tests. **Always update prompt-marker assertions when the prompt structure changes.** (Lesson from evolving-interviewer P1 #1857: first push passed lint/build but failed tests on the new marker names; caught and fixed in a follow-up.)
-
-## Tactic classifiers — lead vs core moves
-
-When building a post-interview classifier that labels which question techniques were used, don't treat all techniques as "repeats" equally. Some moves (like mechanism-push and concrete-metric) are structural deep-dive behaviors that appear in *any* good clinical interview and should never be penalized for recurrence. Others (like case-first, contrarian, steelman) are distinctive opening/framing tactics that should *rotate* across sessions with the same person to maintain novelty. Split the tactic vocabulary into LEAD (rotate + tracked for anti-repeat) and CORE (always available, never flagged as a repeat). Use the shared LEAD_TACTICS array to filter when building an anti-repeat ledger. (Lesson from evolving-interviewer P2 #1859: the first classifier treated all 11 tactics as tracked repeats, flagging mechanism-push as sameness when it's just good structure; the lead/core split fixed it.)
-
-## Code minimalism — YAGNI gate before building
-
-Before writing code, run the ladder: (1) **does this need to exist at all?** — don't add unrequested abstractions, parameters no caller passes, or dead scaffolds (see "Verify feature wiring before scoping changes"); (2) does stdlib / a native platform feature / an already-installed dep already cover it? use it, add no new dependency; (3) can it be one small function? Prefer deletion over addition, fewest files. Mark any intentional shortcut with a `ponytail:` comment stating its limit and upgrade path.
-**Hard carve-out — never trim a check to be lean.** This bias is wrong for trust-boundary code, where Bernard's bugs come from the *missing* check, not excess abstraction. On any tenant-scoped API handler, `workspaceContext(req)` + the `workspace_id` filter + `requireRole` + `enforceLimit` are non-optional even for a read-only count endpoint — `workspaceContext` resolves the tenant from the Host header, which is **not** authentication. When in doubt, keep the check and apply the ladder only to the logic around it.
-
-## Image generation spikes — OpenAI model names on this account
-
-The Bernard `OPENAI_API_KEY` (in `.env.bernard.1pw`) is on an account where `dall-e-3` does not exist. Available image gen models are `gpt-image-1`, `gpt-image-1-mini`, `gpt-image-1.5`, `gpt-image-2`, `gpt-image-2-2026-04-21`, `chatgpt-image-latest`. Use `gpt-image-2` for quality. The API uses the standard `/v1/images/generations` endpoint but responses return `b64_json` (not a URL) — decode and write to `/tmp/*.png` before viewing. Supported sizes include `1024x1536` for portrait (close to 9:16).
-
-## A lookup keyed on a workspace SLUG fails open the day the slug is renamed
-
-`api/publish/website.js` normalized blog topics through a table keyed on `'movebetter-people'`. The workspace was later renamed `movebetter`, so the lookup found no rules and returned "nothing to normalize": every freeform topic reached movebetter.co raw, and its `.catch('general')` hid it for six monthly audits (#2737). Nothing errored, because "no rules for this workspace" is also the correct answer for tenants with no enforced list. Slugs are mutable; `workspaces.id` and per-workspace columns (`publish_topics`) are not. **Key per-tenant behavior off the workspace row's own data, not its slug**, and when a table must be slug-keyed, make an unknown slug loud. `'movebetter-people'` still appears in `sync-author-corpus.js`, `tagAsset.js` and several scripts (`grep -rn movebetter-people api scripts`); the cron is probably dead. Unverified.
+- **A Bernard lesson** goes into the matching topic file above as one bullet or short section: a bold
+  one-sentence rule, the detail, a source note (date, PR). Rewrite a corrected lesson in place; never
+  append a correction under it. Search the file for the same trap before adding.
+- **A standing rule Q states for this repo** goes in this file, short.
+- **A lesson true in every project** goes into the matching `~/.claude/lessons/` file instead.

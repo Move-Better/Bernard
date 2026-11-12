@@ -5,7 +5,7 @@ description: Structured health check of the Bernard app — static checks, tests
 
 Run a structured app checkup and produce a **Green / Yellow / Red** report. Auto-fix trivial issues; report the rest.
 
-**Uniquely named on purpose.** Bernard, Deep Thought and Vigil all define health-check instruments, and same-named commands across sibling projects can load the *wrong* project's body. This exact file was previously byte-identical to Deep Thought's copy — which meant Deep Thought's `/checkup` was auditing Bernard's multi-tenancy and Vercel aliases against a single-org Railway app. The `bernard-` prefix makes that class of bug impossible. See global CLAUDE.md, "Same-named commands/skills collide across sibling projects."
+**Uniquely named on purpose.** Bernard, Deep Thought and Vigil all define health-check instruments, and same-named commands across sibling projects can load the *wrong* project's body. This exact file was previously byte-identical to Deep Thought's copy — which meant Deep Thought's `/checkup` was auditing Bernard's multi-tenancy and Vercel aliases against a single-org Railway app. The `bernard-` prefix makes that class of bug impossible. See `~/.claude/lessons/harness.md` ("If a loaded skill or command body names a stack detail … that doesn't match the repo you're in").
 
 ## Mode selection (from arguments)
 
@@ -62,7 +62,7 @@ npm run lint
 npm run build
 ```
 
-- **Lint**: must pass under the `--max-warnings` ceiling defined in `package.json` (see CLAUDE.md "Lint ratchet" — the ceiling drifts DOWN, never up). If lint fails because of *new* trivial warnings (unused imports, unused vars, missing deps), auto-fix them and re-run. Do not bump the ceiling.
+- **Lint**: must pass under the `--max-warnings` ceiling defined in `package.json` (see `.claude/lessons/git-deploy.md` "Lint ratchet" — the ceiling drifts DOWN, never up). If lint fails because of *new* trivial warnings (unused imports, unused vars, missing deps), auto-fix them and re-run. Do not bump the ceiling.
 - **Build**: must complete without errors. Bundle-size warnings >500kB → 🟡 with the file noted.
 
 Auto-fix scope (this layer): unused imports, unused locals, simple reorderings ESLint suggests, formatting. Do NOT auto-fix logic changes, API contract changes, or anything in `api/_lib/`.
@@ -86,7 +86,7 @@ npm run e2e
 
 - **Vitest** unit suite must be green.
 - **Playwright** suite (`tests/e2e/`): currently `interview-flow.spec.ts` and `workspace-settings.spec.ts`. The Playwright config spins up its own dev server.
-- Flaky test → re-run once. If still failing → 🔴 with the test name + screenshot path. Before writing a failure off as a known flake, spend one cheap check testing that claim — a documented "known flake" is a hypothesis, not a verdict (global CLAUDE.md, Debugging methodology).
+- Flaky test → re-run once. If still failing → 🔴 with the test name + screenshot path. Before writing a failure off as a known flake, spend one cheap check testing that claim — a documented "known flake" is a hypothesis, not a verdict (`~/.claude/lessons/claims.md`).
 
 If `npm run e2e` requires fixtures, run `npm run e2e:seed` first.
 
@@ -103,10 +103,10 @@ git diff --stat origin/main..HEAD 2>/dev/null || git diff --stat HEAD~10
 
 For each non-trivial commit, run `git show <sha>` and read the diff. Focus on:
 
-1. **Tenant isolation** (CLAUDE.md "Multi-tenant SaaS"): every `/api/*` route that touches a tenant-scoped table MUST call `workspaceContext(req)` (or `workspaceById(id)` for background paths) and filter by `workspace_id`. A missing filter = cross-tenant data leak. Treat this as 🔴.
-2. **API runtime conventions** (CLAUDE.md "API handler runtime conventions"): Node-runtime handlers must use `(req, res)` shape and `res.status().json()`. Web-style `return new Response(...)` on Node runtime causes silent 300s hangs → 🔴.
-3. **Streaming large files** (CLAUDE.md "Large-file handling"): any new handler that fetches blob URLs must stream via `pipeline(Readable.fromWeb(...), createWriteStream(...))`. `await res.arrayBuffer()` on media → 🟡 unless files are certainly small.
-4. **Supabase migrations** (CLAUDE.md "Supabase migrations"): new `CREATE TABLE` / view / function must include `GRANT ... TO service_role` in the same file. If not → 🔴.
+1. **Tenant isolation** (`.claude/lessons/data.md` "Multi-tenant SaaS"): every `/api/*` route that touches a tenant-scoped table MUST call `workspaceContext(req)` (or `workspaceById(id)` for background paths) and filter by `workspace_id`. A missing filter = cross-tenant data leak. Treat this as 🔴.
+2. **API runtime conventions** (`.claude/lessons/api.md` "API handler runtime conventions"): Node-runtime handlers must use `(req, res)` shape and `res.status().json()`. Web-style `return new Response(...)` on Node runtime causes silent 300s hangs → 🔴.
+3. **Streaming large files** (`.claude/lessons/api.md` "Large-file handling"): any new handler that fetches blob URLs must stream via `pipeline(Readable.fromWeb(...), createWriteStream(...))`. `await res.arrayBuffer()` on media → 🟡 unless files are certainly small.
+4. **Supabase migrations** (`.claude/lessons/data.md` "Supabase migrations"): new `CREATE TABLE` / view / function must include `GRANT ... TO service_role` in the same file. If not → 🔴.
 5. **Secrets**: scan diff for hardcoded API keys, tokens, URLs with embedded credentials → 🔴.
 6. **Error handling at boundaries**: external API calls without try/catch + meaningful error response → 🟡.
 7. **Dead code**: removed callers but kept the helper, removed feature flag but kept the branch → 🟡.
@@ -123,7 +123,7 @@ Requires dev server. Start it in the background if not already running:
 npm run dev
 ```
 
-For each of the three workspaces in the `workspaces` table (movebetter-people, movebetter-equine, movebetter-animals), walk the golden path. Use Chrome MCP tools to script and screenshot; otherwise produce a checklist for the user to run manually. **If you need to produce image files rather than just look at the screen, use `scripts/capture-screenshot.mjs` (local Playwright)** — the agent browser tab is never visible and its file-out routes fail silently (global CLAUDE.md).
+For each of the three workspaces in the `workspaces` table (movebetter-people, movebetter-equine, movebetter-animals), walk the golden path. Use Chrome MCP tools to script and screenshot; otherwise produce a checklist for the user to run manually. **If you need to produce image files rather than just look at the screen, use `scripts/capture-screenshot.mjs` (local Playwright)** — the agent browser tab is never visible and its file-out routes fail silently (`~/.claude/lessons/browser.md`).
 
 **Per-workspace checklist:**
 

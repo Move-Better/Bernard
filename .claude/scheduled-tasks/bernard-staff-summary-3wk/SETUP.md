@@ -28,7 +28,7 @@ step depending on a 1Password mount known to hang) and how this version avoids b
    mount read (documented elsewhere in this repo as occasionally hanging indefinitely with
    no timeout) plus a local headless Playwright run. The rebuilt routine only reads
    existing entries from `.staff-update-screenshots/captions.jsonl` — screenshot capture
-   stays a ship-time responsibility for whoever merges a UI PR, per this repo's `CLAUDE.md`.
+   stays a ship-time responsibility for whoever merges a UI PR, per this repo's `.claude/lessons/screenshots.md`.
 4. **PDF filename changed** from `bernard-weekly-update-<date>.pdf` to
    `bernard-staff-update-<date>.pdf`, and the header now states the actual date range
    covered (e.g. "August 6 – August 27, 2026") rather than implying a single week.
@@ -53,7 +53,7 @@ step depending on a 1Password mount known to hang) and how this version avoids b
    - Write today's date to the marker file — **only after the PDF is built and verified**
 
 ### Ship-time responsibility (unchanged, manual, as UI changes ship)
-Screenshot capture is still documented in this repo's `CLAUDE.md` →
+Screenshot capture is still documented in this repo's `.claude/lessons/screenshots.md` →
 "Weekly staff-update routine — capturing screenshots for the PDF" (title kept for grep
 continuity even though the summary itself is no longer weekly). Use
 `scripts/capture-screenshot.mjs` at merge time, add the entry to `captions.jsonl`. This
@@ -96,7 +96,7 @@ Bernard/
 │       └── bernard-staff-summary-3wk/
 │           ├── SKILL.md              ← Routine definition (executable)
 │           └── SETUP.md              ← This file
-├── CLAUDE.md                         ← References the routine's screenshot-capture guide
+├── .claude/lessons/screenshots.md    ← The routine's screenshot-capture guide
 ├── .gitignore                        ← Unchanged, still excludes .staff-update-screenshots/
 └── .staff-update-screenshots/        ← Local-only folder (gitignored)
     ├── README.md

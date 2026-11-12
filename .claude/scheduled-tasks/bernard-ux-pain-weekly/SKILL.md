@@ -41,7 +41,7 @@ Key facts:
 
 The key lives in the 1Password mount `/Users/qbook/Claude Projects/Bernard/.env.bernard.1pw`.
 That mount is **known to occasionally serve empty or hang** (documented in this repo's
-CLAUDE.md). Handle that without looping:
+`.claude/lessons/housekeeping.md`). Handle that without looping:
 
 ```bash
 cd "/Users/qbook/Claude Projects/Bernard"
@@ -114,7 +114,7 @@ with other sessions; read-only git only.
 
 - **`$dead_click` with `el_text = None` on a `<textarea>`** (caption/text fields, class
   `bg-muted/40`) → **focus-only false positive**. Clicking into a textarea produces no DOM
-  mutation, so PostHog logs a dead click. Not a defect. (CLAUDE.md: PostHog dead-click
+  mutation, so PostHog logs a dead click. Not a defect. (`.claude/lessons/housekeeping.md`: PostHog dead-click
   false-positive shapes.)
 - **`$dead_click` with `el_text` = a slide number ("1".."N") on `/publish/:id`** → the
   `SlidePickerStrip` thumbnails / preview `<canvas>`. Re-selecting the already-active slide
@@ -178,7 +178,7 @@ mutating click.
 
 Navigate to `https://movebetter.withbernard.ai/<route>`. For a `/:id` route, get a real id from
 the page (or a read-only PostHog/DB read) rather than guessing. **Apply the documented gotchas
-(all in the Bernard project CLAUDE.md — don't rediscover them):**
+(all in the Bernard project's `.claude/lessons/verify.md` — don't rediscover them):**
 - **PWA service-worker cache**: if the UI looks stale after deploy, the SW is serving an old
   bundle — clear `caches` + unregister SW, then cache-busted reload; a `/api/*` probe returning
   **401** (or **400** on the bare apex) means "deployed", **404** means "not yet".

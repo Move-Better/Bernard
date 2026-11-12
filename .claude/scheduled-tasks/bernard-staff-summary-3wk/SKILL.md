@@ -19,7 +19,7 @@ rebuild:
    history directly via `git fetch` + `git log origin/main`, which cannot collide with
    anyone else's working tree.
 2. The old routine tried to CAPTURE new screenshots itself (1Password mount read +
-   Playwright), inside the scheduled run. Per this repo's own `CLAUDE.md`, screenshot
+   Playwright), inside the scheduled run. Per this repo's own `.claude/lessons/screenshots.md`, screenshot
    capture is a **ship-time** responsibility of whoever merges a UI PR, not something this
    routine should attempt — and the capture path depends on a 1Password `.1pw` mount that
    is documented to occasionally hang indefinitely with no timeout. This rebuild only reads
@@ -102,7 +102,7 @@ Check `.staff-update-screenshots/captions.jsonl` (one line per screenshot, JSON)
 ```
 
 **This routine does NOT run `scripts/capture-screenshot.mjs` or touch 1Password.**
-Screenshot capture is a ship-time responsibility documented in this repo's `CLAUDE.md` —
+Screenshot capture is a ship-time responsibility documented in this repo's `.claude/lessons/screenshots.md` —
 whoever merges a user-visible UI PR is expected to have already added an entry to
 `captions.jsonl`. If a bullet has no matching screenshot, render it as text only. Do not
 attempt to generate one; that dependency (a 1Password `.1pw` mount + local Playwright) is
@@ -439,7 +439,7 @@ note that in the completion report and the draft creation will be a manual step.
 - This routine is read-only against the repo (git fetch only — no checkout, no pull, no
   commits, no pushes, no working-tree mutation of any kind in the shared project root).
 - Screenshot capture and captioning is a ship-time responsibility handled by whoever merges
-  a user-visible UI PR (documented in this repo's `CLAUDE.md`). This routine only reads
+  a user-visible UI PR (documented in this repo's `.claude/lessons/screenshots.md`). This routine only reads
   `captions.jsonl` — it never runs `scripts/capture-screenshot.mjs` and never touches the
   1Password mount.
 - The "no send" rule (draft-only) is deliberate — it gives Q a chance to review, add

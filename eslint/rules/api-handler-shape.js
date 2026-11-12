@@ -30,20 +30,20 @@
 // api/_lib/**. Helpers and non-handler files are left alone.
 
 const MISSING_RUNTIME_MESSAGE =
-  "Vercel handler is missing an explicit runtime declaration. Add `export const config = { runtime: 'nodejs' }` (or 'edge') as the second line of this file. Implicit defaults are banned — see CLAUDE.md \"API handler runtime conventions.\""
+  "Vercel handler is missing an explicit runtime declaration. Add `export const config = { runtime: 'nodejs' }` (or 'edge') as the second line of this file. Implicit defaults are banned — see .claude/lessons/api.md \"API handler runtime conventions.\""
 
 const NODE_MESSAGES = {
   newResponse:
-    'Node-runtime handler must not return `new Response(...)` — Vercel silently discards the return value and the function hangs to maxDuration. Use res.status().json() / res.write() / res.end() instead. See CLAUDE.md "API handler runtime conventions."',
+    'Node-runtime handler must not return `new Response(...)` — Vercel silently discards the return value and the function hangs to maxDuration. Use res.status().json() / res.write() / res.end() instead. See .claude/lessons/api.md "API handler runtime conventions."',
   reqJson:
-    'Node-runtime handler must not call `await req.json()` — req.body is already parsed JSON. See CLAUDE.md "API handler runtime conventions."',
+    'Node-runtime handler must not call `await req.json()` — req.body is already parsed JSON. See .claude/lessons/api.md "API handler runtime conventions."',
   headersGet:
-    "Node-runtime handler must not call `req.headers.get(...)` — req.headers is a plain lowercased object; use req.headers['x-foo']. See CLAUDE.md \"API handler runtime conventions.\"",
+    "Node-runtime handler must not call `req.headers.get(...)` — req.headers is a plain lowercased object; use req.headers['x-foo']. See .claude/lessons/api.md \"API handler runtime conventions.\"",
 }
 
 const EDGE_MESSAGES = {
   resReference:
-    'Edge-runtime handler must not reference `res` — Edge handlers receive only `req` and must `return new Response(...)`. See CLAUDE.md "API handler runtime conventions."',
+    'Edge-runtime handler must not reference `res` — Edge handlers receive only `req` and must `return new Response(...)`. See .claude/lessons/api.md "API handler runtime conventions."',
 }
 
 function readRuntime(programBody) {

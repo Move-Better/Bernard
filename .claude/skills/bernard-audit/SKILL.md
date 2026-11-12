@@ -5,7 +5,7 @@ description: Multi-agent deep audit of the Bernard codebase — static gates + p
 
 Run a structured multi-agent audit, **fix everything it safely can in the same session**, and produce a prioritized punch list. Composes three specialized agents in parallel with the static-check stack. Sister command to `/bernard-checkup` (procedural health pass).
 
-**Uniquely named on purpose.** Bernard, Deep Thought and Vigil all define audit instruments, and same-named commands across sibling projects can load the *wrong* project's body — a confirmed failure mode, not a theoretical one. The `bernard-` prefix makes that impossible. Plain `/audit` still resolves to the generic global skeleton, which auto-discovers this repo's agents and works fine, just less tuned. See global CLAUDE.md, "Same-named commands/skills collide across sibling projects."
+**Uniquely named on purpose.** Bernard, Deep Thought and Vigil all define audit instruments, and same-named commands across sibling projects can load the *wrong* project's body — a confirmed failure mode, not a theoretical one. The `bernard-` prefix makes that impossible. Plain `/audit` still resolves to the generic global skeleton, which auto-discovers this repo's agents and works fine, just less tuned. See `~/.claude/lessons/harness.md` ("If a loaded skill or command body names a stack detail … that doesn't match the repo you're in").
 
 ## Mode selection (from arguments)
 
@@ -30,7 +30,7 @@ Use the default for routine cadence (weekly). Use `full` for a baseline: before 
 
 **Diff range** (default mode): read `.claude/audit-history/.last-audit` (a single-line file containing the SHA of the last audit's HEAD). The audit reviews commits in `<.last-audit>..HEAD`. If the file is missing or unreadable, fall back to `origin/main~20..HEAD`.
 
-⚠️ **Audit reports + `.last-audit` live in the PRIMARY checkout**, not a session worktree — see the CLAUDE.md note. Write them to the absolute path `/Users/qbook/Claude Projects/Bernard/.claude/audit-history/`, and at audit start check the worktree copy for stranded reports from prior sessions.
+⚠️ **Audit reports + `.last-audit` live in the PRIMARY checkout**, not a session worktree — see `.claude/lessons/housekeeping.md` ("Audit reports + `.last-audit` live in the PRIMARY checkout"). Write them to the absolute path `/Users/qbook/Claude Projects/Bernard/.claude/audit-history/`, and at audit start check the worktree copy for stranded reports from prior sessions.
 
 ---
 
@@ -87,7 +87,7 @@ In `full` mode, skip the range and sweep everything — the log above is informa
   >
   > Scope: `<CHANGED_FILES or "full sweep">`
   >
-  > Context: this is a multi-tenant SaaS (see CLAUDE.md "Multi-tenant SaaS"). Common bug shapes in this codebase:
+  > Context: this is a multi-tenant SaaS (see `.claude/lessons/data.md` "Multi-tenant SaaS"). Common bug shapes in this codebase:
   > - useEffect deps that cause double-billing of expensive ops
   > - 401/403 branches checked on err.message string match instead of err.status
   > - Background fetch streams that buffer entire files into memory
@@ -110,7 +110,7 @@ In `full` mode, skip the range and sweep everything — the log above is informa
 ### Agent 3 — ui-reviewer
 - **Scope**: always a full sweep, in both modes.
 - **Prompt template**:
-  > Review the Bernard UI screen-by-screen against `.claude/development-roadmap.md` and the competitor-UI memory notes (reference_ui_research_2026_05.md). Focus on usability, visual hierarchy, hover/empty states, brand-color consistency, and the cross-page coherence issues called out in CLAUDE.md "Brand-color refresh checklist".
+  > Review the Bernard UI screen-by-screen against `.claude/development-roadmap.md` and the competitor-UI memory notes (reference_ui_research_2026_05.md). Focus on usability, visual hierarchy, hover/empty states, brand-color consistency, and the cross-page coherence issues called out in `.claude/lessons/frontend.md` "Brand-color refresh checklist".
   >
   > Major screens: Home (`/`), Stories (`/stories`), StoryDetail (`/stories/:id`), Library / MediaHub, Settings (workspace, brand kit, channels, locations), Account, New Interview, Interview Session.
   >
@@ -209,7 +209,7 @@ Same fail-fast rules as `/bernard-checkup`, plus:
 - **Do not run on every commit.** This is a deep audit, billable in agent tokens. Default mode weekly; `full` monthly or pre-release.
 - **Pair with `/schedule`** for an automated weekly run: `/schedule create "Weekly audit" cron="0 9 * * 1" "/bernard-audit"`.
 - **The since-last pointer is a single SHA** in `.claude/audit-history/.last-audit`. Reset manually with `git rev-parse HEAD > .claude/audit-history/.last-audit` from the project root.
-- **Agent prompts must be self-contained.** Each agent starts fresh with no conversation context — paste the relevant CLAUDE.md / memory references inline.
+- **Agent prompts must be self-contained.** Each agent starts fresh with no conversation context — paste the relevant CLAUDE.md, `.claude/lessons/` and memory references inline.
 - **Calibration loop** (`.claude/audit-history/calibration.md`, force-tracked despite the gitignored directory): each run feeds it into every agent prompt and updates it in Phase 3. Settled false positives stop being re-reported; findings unresolved across 2+ runs get auto-escalated to at least P1. The false-positive list only grows by explicit judgment — never auto-populated because a finding didn't reappear.
 - **Phase 4 fixes everything it safely can, inline** — cost and time scale with how many fixable findings turn up, on top of the audit itself.
 - **Structure is deliberately aligned with Deep Thought's `/dt-audit`** (Vigil SOP sync, 2026-07-23): same phases, calibration loop, synthesis format, and fix policy. Only the agent lineup, stack doctrine, gates and URLs differ. If you change the *recipe* here, mirror it there — and if you change only Bernard's parameters, don't.
