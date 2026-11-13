@@ -10,7 +10,7 @@
 //
 // --dry-run   Parse + print what would be ingested; no DB writes
 // --status    Show current chunk counts for all indexed docs; no writes
-// --workspace Override the default (movebetter-people)
+// --workspace Override the default (movebetter)
 //
 // Required env (read from .env.local):
 //   SUPABASE_URL, SUPABASE_SERVICE_KEY, OPENAI_API_KEY
@@ -32,7 +32,7 @@ for (const line of envText.split(/\r?\n/)) {
 const args = process.argv.slice(2)
 const DRY_RUN  = args.includes('--dry-run')
 const STATUS   = args.includes('--status')
-const wsSlug   = args.find((a) => a.startsWith('--workspace='))?.split('=')[1] ?? 'movebetter-people'
+const wsSlug   = args.find((a) => a.startsWith('--workspace='))?.split('=')[1] ?? 'movebetter'
 
 const need = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'OPENAI_API_KEY']
 for (const k of need) {

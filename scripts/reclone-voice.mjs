@@ -11,7 +11,7 @@
 //   node scripts/reclone-voice.mjs [--workspace=<slug>] [--dry-run] [--max=<n>]
 //
 // Options:
-//   --workspace=<slug>  Target workspace (default: movebetter-people)
+//   --workspace=<slug>  Target workspace (default: movebetter)
 //   --dry-run           Show what would happen; no ElevenLabs API calls
 //   --max=<n>           Cap number of audio files submitted (default: 20, max: 25)
 //
@@ -32,7 +32,7 @@ for (const line of envText.split(/\r?\n/)) {
 
 const args      = process.argv.slice(2)
 const DRY_RUN   = args.includes('--dry-run')
-const wsSlug    = args.find((a) => a.startsWith('--workspace='))?.split('=')[1] ?? 'movebetter-people'
+const wsSlug    = args.find((a) => a.startsWith('--workspace='))?.split('=')[1] ?? 'movebetter'
 const maxFiles  = parseInt(args.find((a) => a.startsWith('--max='))?.split('=')[1] ?? '20', 10)
 
 const need = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'ELEVENLABS_API_KEY']

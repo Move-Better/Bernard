@@ -30,10 +30,14 @@ export function validateSlug(raw) {
 }
 
 // Founding-owner program cap. The first 10 *external* workspaces — i.e.
-// excluding Move Better's three pre-seeded slugs.
+// excluding Move Better's own workspaces (the three seeds plus qbook and studio).
 export const FOUNDING_CAP = 10
 export const SEED_SLUGS = new Set([
-  'movebetter-people',
+  'movebetter', // was 'movebetter-people' until the rename; a stale slug here counts Move Better as an external clinic
   'movebetter-equine',
   'movebetter-animals',
+  // Move Better's own workspaces outside the three seeds: Q's personal workspace
+  // and the studio. They never held a founding spot (Q, 2026-11-12).
+  'qbook',
+  'studio',
 ])

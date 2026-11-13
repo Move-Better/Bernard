@@ -11,7 +11,7 @@
  *   node scripts/prompt-eval-harness.mjs [--workspace=<slug>] [--dry-run] [--quick]
  *
  * Options:
- *   --workspace=<slug>  Override target workspace (default: movebetter-people)
+ *   --workspace=<slug>  Override target workspace (default: movebetter)
  *   --dry-run           Print variant configs only; skip API calls
  *   --quick             Run only the tone sweep (fastest sanity check)
  *
@@ -33,7 +33,7 @@ for (const line of envText.split(/\r?\n/)) {
   if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1')
 }
 const args = process.argv.slice(2)
-const WORKSPACE_SLUG = args.find(a => a.startsWith('--workspace='))?.split('=')[1] ?? 'movebetter-people'
+const WORKSPACE_SLUG = args.find(a => a.startsWith('--workspace='))?.split('=')[1] ?? 'movebetter'
 const DRY_RUN = args.includes('--dry-run')
 const QUICK = args.includes('--quick')
 
