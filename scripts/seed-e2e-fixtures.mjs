@@ -9,7 +9,7 @@
 //   MULTITENANT_DATABASE_URL — Postgres URL with write access to the shared DB
 //
 // Optional env:
-//   E2E_WORKSPACE_SLUG       — defaults to 'movebetter-people'
+//   E2E_WORKSPACE_SLUG       — defaults to 'movebetter'
 //   E2E_FIXTURE_STAFF_NAME — defaults to 'E2E Smoke Staff'
 //
 // Reads .env.local first when MULTITENANT_DATABASE_URL is not already set so
@@ -42,7 +42,7 @@ async function resolveConnectionString() {
   process.exit(1)
 }
 
-const WORKSPACE_SLUG = process.env.E2E_WORKSPACE_SLUG || 'movebetter-people'
+const WORKSPACE_SLUG = process.env.E2E_WORKSPACE_SLUG || 'movebetter'
 const STAFF_NAME = process.env.E2E_FIXTURE_STAFF_NAME || 'E2E Smoke Staff'
 const CLEANUP_ONLY = process.argv.includes('--cleanup-only')
 

@@ -75,7 +75,7 @@ function buildSystemPrompt(asset, scope) {
   const vocabKey =
     slug === 'movebetter-equine'  ? 'equine'  :
     slug === 'movebetter-animals' ? 'animals' :
-    slug === 'movebetter-people'  ? 'people'  :
+    slug === 'movebetter'         ? 'people'  :
     VOCAB[slug] ? slug : 'people'
   const vocab = VOCAB[vocabKey]
   const lines = [
