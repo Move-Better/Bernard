@@ -39,6 +39,7 @@ async function handler(req, res) {
   const body = req.body
 
   let scope = null
+  let authUserId = null
   if (body?.type === 'blob.generate-client-token') {
     scope = await workspaceScope(req)
     if (!scope) return res.status(400).json({ error: 'workspace_not_resolved' })
@@ -46,6 +47,7 @@ async function handler(req, res) {
     if (!auth.ok) {
       return res.status(auth.reason === 'forbidden' ? 403 : 401).json({ error: auth.reason })
     }
+    authUserId = auth.userId || null
     if (!(await enforceLimit(req, res, 'media', scope.workspace.id))) return
   }
 
@@ -77,7 +79,8 @@ async function handler(req, res) {
             scopeColumn: scope.column,
             scopeId: scope.id,
             filename: meta.filename || pathname.split('/').pop(),
-            createdBy: meta.createdBy || null,
+            // Uploader comes from the verified session, never the client payload.
+            createdBy: authUserId,
             patientPseudonym: meta.patientPseudonym || null,
             condition: meta.condition || null,
             capturedAt: meta.capturedAt || null,
@@ -92,6 +95,9 @@ async function handler(req, res) {
             staffId: typeof meta.staffId === 'string' && meta.staffId
               ? meta.staffId
               : null,
+            picturedStaffIds: Array.isArray(meta.picturedStaffIds)
+              ? meta.picturedStaffIds.filter((x) => typeof x === 'string').slice(0, 24)
+              : [],
           }),
         }
       },

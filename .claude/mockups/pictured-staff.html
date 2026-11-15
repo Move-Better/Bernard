@@ -1,0 +1,142 @@
+<title>Pictured Staff Mockup</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: three Bernard Library screens stacked, each labelled with what changes. App chrome uses Blue Spruce; tenant colour appears nowhere. */
+:root{
+  --bg:#f4f6f6; --card:#ffffff; --fg:#17262a; --muted:#5d7176; --line:#d6dfe1;
+  --primary:#0C7580; --primary-fg:#ffffff; --warn:#b45309; --warn-bg:#fdf1dc; --tile:#e3eaec; --chip:#e8eff0;
+  --font-body:'Inter',system-ui,sans-serif; --font-head:'Space Grotesk','Inter',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1a1d; --card:#17262a; --fg:#e6eef0; --muted:#93a8ad; --line:#2a3d42;
+  --primary:#3aa8b4; --primary-fg:#08181b; --warn:#f0b35a; --warn-bg:#3a2c12; --tile:#22353a; --chip:#203136; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1a1d; --card:#17262a; --fg:#e6eef0; --muted:#93a8ad; --line:#2a3d42;
+  --primary:#3aa8b4; --primary-fg:#08181b; --warn:#f0b35a; --warn-bg:#3a2c12; --tile:#22353a; --chip:#203136; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px}
+*{box-sizing:border-box}
+h1{font:600 24px var(--font-head);margin:0 0 4px}
+h2{font:600 17px var(--font-head);margin:0 0 2px}
+.lede{color:var(--muted);margin:0 0 24px;max-width:70ch}
+section{margin-bottom:36px}
+.note{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:80ch}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media(max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.tag{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:var(--chip);color:var(--muted);cursor:pointer;font-family:inherit}
+.chip.on{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.chip.off{opacity:.55;cursor:default}
+label.f{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:14px 0 6px}
+.ro{font-size:13px;padding:7px 10px;border:1px dashed var(--line);border-radius:8px;color:var(--muted)}
+.warn{display:inline-flex;gap:4px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--warn-bg);color:var(--warn);margin-left:8px}
+.help{font-size:12px;color:var(--muted);margin:4px 0 0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.btn{font:500 13px var(--font-body);padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+.btn.p{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.t{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.t .img{aspect-ratio:4/3;background:var(--tile);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
+.t .meta{padding:8px 10px;font-size:12px}
+.t .meta b{display:block;font-weight:600;margin-bottom:6px;font-size:12px}
+.t.sel{outline:2px solid var(--primary)}
+.badge{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--warn-bg);color:var(--warn);font-weight:600}
+.badge.ok{background:var(--chip);color:var(--muted);font-weight:500}
+.count{font-variant-numeric:tabular-nums}
+</style>
+
+<h1>Who is in this photo</h1>
+<p class="lede">Three places change. The Library gets a "Needs people" view, MediaDetail separates "Pictured" from "Uploaded by", and the uploader asks who is in the photo as a multi-select. The attributed-clinician field that videos use for voice and captions is untouched.</p>
+
+<section>
+  <h2>1. Library: Needs people</h2>
+  <p class="note">A new filter beside the existing ones. It lists photos with nobody tagged, so the 73 blank Move Better photos are a worklist. Selecting several tiles and tapping a name tags all of them at once. Names offered are current staff only.</p>
+  <div class="panel">
+    <div class="toolbar">
+      <button class="chip" type="button">All</button>
+      <button class="chip" type="button">Videos</button>
+      <button class="chip" type="button">Photos</button>
+      <button class="chip on" type="button">Needs people <span class="count">· 73</span></button>
+      <span style="flex:1"></span>
+      <span class="help count" style="margin:0">3 selected</span>
+    </div>
+    <div class="toolbar" style="padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--chip)">
+      <span style="font-size:13px;font-weight:600">Tag 3 photos as:</span>
+      <button class="chip on" type="button">Dr. Q</button>
+      <button class="chip" type="button">Sophie Kaplan</button>
+      <button class="chip" type="button">Whitney Phillips</button>
+      <button class="chip" type="button">Tyler Hoang</button>
+      <button class="chip" type="button">Aj Adams</button>
+      <button class="chip" type="button">Zach Cullen</button>
+      <button class="btn p" type="button">Add to 3 photos</button>
+    </div>
+    <div class="tiles">
+      <div class="t sel"><div class="img">photo</div><div class="meta"><b>Practitioner coaching patient on neck movement</b><span class="badge">No one tagged</span></div></div>
+      <div class="t sel"><div class="img">photo</div><div class="meta"><b>Clinician coaching a patient on kettlebell hinges</b><span class="badge">No one tagged</span></div></div>
+      <div class="t sel"><div class="img">photo</div><div class="meta"><b>Clinician coaching patient doing kettlebell exercise</b><span class="badge">No one tagged</span></div></div>
+      <div class="t"><div class="img">photo</div><div class="meta"><b>Breathing and core bracing assessment with a patient</b><span class="badge">No one tagged</span></div></div>
+      <div class="t"><div class="img">photo</div><div class="meta"><b>Chiropractor adjusting patient's neck</b><span class="badge">No one tagged</span></div></div>
+      <div class="t"><div class="img">photo</div><div class="meta"><b>Clinician coaching patient on seated band rows</b><span class="badge">No one tagged</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>2. MediaDetail: Pictured and Uploaded by</h2>
+  <p class="note">Today one "Attributed to" dropdown does both jobs. On a photo it becomes "Who is in this photo" with several names allowed. "Uploaded by" is shown read-only from who actually uploaded it. Videos keep "Attributed to" and "Who's speaking" exactly as now.</p>
+  <div class="grid">
+    <div class="panel">
+      <span class="tag">Today</span>
+      <label class="f" style="margin-top:0">Attributed to <span class="warn">Unattributed</span></label>
+      <div class="ro" style="border-style:solid">(unattributed) &#9662;</div>
+      <p class="help">One person only. Also used for the uploader by mistake.</p>
+    </div>
+    <div class="panel">
+      <span class="tag">Proposed, photo</span>
+      <label class="f" style="margin-top:0">Who is in this photo <span class="warn">No one tagged</span></label>
+      <div class="row">
+        <button class="chip on" type="button">Aj Adams</button>
+        <button class="chip on" type="button">Tyler Hoang</button>
+        <button class="chip" type="button">Dr. Q</button>
+        <button class="chip" type="button">Sophie Kaplan</button>
+        <button class="chip" type="button">Whitney Phillips</button>
+        <button class="chip" type="button">Zach Cullen</button>
+      </div>
+      <p class="help">Tap to add or remove. Shown on the website as the people in the picture.</p>
+      <label class="f">Uploaded by</label>
+      <div class="ro">Not recorded (uploaded before this was tracked)</div>
+      <p class="help">Filled in automatically for new uploads from the signed-in user. Read-only.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>3. Uploader: Who is in this?</h2>
+  <p class="note">The existing optional step becomes multi-select. Nobody is pre-selected, so an upload no longer defaults to anyone, and "Not sure" is the starting state.</p>
+  <div class="grid">
+    <div class="panel">
+      <span class="tag">Today, single choice</span>
+      <div class="row">
+        <button class="chip on" type="button">&mdash; Not sure / multiple</button>
+        <button class="chip" type="button">Aj Adams</button>
+        <button class="chip" type="button">Dr. Q</button>
+        <button class="chip" type="button">Sophie Kaplan</button>
+      </div>
+    </div>
+    <div class="panel">
+      <span class="tag">Proposed, multi-select</span>
+      <div class="row">
+        <button class="chip on" type="button">Dr. Q</button>
+        <button class="chip on" type="button">Sophie Kaplan</button>
+        <button class="chip" type="button">Aj Adams</button>
+        <button class="chip" type="button">Tyler Hoang</button>
+        <button class="chip" type="button">Whitney Phillips</button>
+        <button class="chip" type="button">Zach Cullen</button>
+      </div>
+      <p class="help">Leave all off if you are not sure. You can tag the photo later from the Needs people view.</p>
+    </div>
+  </div>
+</section>

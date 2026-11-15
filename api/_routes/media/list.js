@@ -24,7 +24,7 @@ function sb(path, init = {}) {
   })
 }
 
-const SELECT_COMMON  = 'id,kind,status,source,blob_url,blob_pathname,original_blob_url,web_blob_url,web_width,web_height,mux_asset_id,mux_playback_id,transcode_status,render_status,render_error,rendered_url,drive_id,filename,display_title,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,visual_narrative,asset_purpose,speaker_role,parent_id,parent_asset_id,notes,alt_text,content_item_ids,archived_at,created_at,updated_at,created_by,staff_id,consent_status,segment_status'
+const SELECT_COMMON  = 'id,kind,status,source,blob_url,blob_pathname,original_blob_url,web_blob_url,web_width,web_height,mux_asset_id,mux_playback_id,transcode_status,render_status,render_error,rendered_url,drive_id,filename,display_title,mime_type,size_bytes,duration_s,aspect_ratio,width,height,thumbnail_url,patient_pseudonym,condition,captured_at,tags,ai_tags,transcription,visual_narrative,asset_purpose,speaker_role,parent_id,parent_asset_id,notes,alt_text,content_item_ids,archived_at,created_at,updated_at,created_by,staff_id,pictured_staff_ids,consent_status,segment_status'
 const SELECT_COMPACT = 'id,kind,status,filename,display_title,mime_type,size_bytes,duration_s,blob_url,original_blob_url,web_blob_url,mux_playback_id,transcode_status,render_status,rendered_url,thumbnail_url'
 
 async function handler(req, res) {
@@ -49,6 +49,7 @@ async function handler(req, res) {
   const clipParent  = searchParams.get('clipParent')
   const collectionId = searchParams.get('collectionId')// limit to assets in a given collection
   const compact     = searchParams.get('compact') === 'true'
+  const needsPeople = searchParams.get('needsPeople') === 'true' // photos with nobody tagged as pictured
   // `|| 60` / `|| 0` after parseInt coerces a non-numeric param (which parses to
   // NaN and would land as the literal "NaN" in the PostgREST query → 400) back to
   // the default instead of breaking the list.
@@ -114,6 +115,7 @@ async function handler(req, res) {
   }
   if (speakerRole && ['clinician', 'admin', 'patient_guest'].includes(speakerRole)) qs += `&speaker_role=eq.${speakerRole}`
   if (sources === 'true') qs += `&parent_id=is.null`
+  if (needsPeople) qs += `&kind=eq.photo&pictured_staff_ids=eq.%7B%7D`
   if (parent && !UUID_RE.test(parent)) return res.status(400).json({ error: 'invalid_parent' })
   if (parent)      qs += `&parent_id=eq.${parent}`
   if (clipParent && !UUID_RE.test(clipParent)) return res.status(400).json({ error: 'invalid_parent' })

@@ -28,7 +28,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const TAG_RE = /^[a-z0-9][a-z0-9-]{0,39}$/
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
-const SELECT = 'id,kind,blob_url,web_blob_url,web_width,web_height,width,height,mime_type,size_bytes,duration_s,thumbnail_url,rendered_url,display_title,alt_text,captured_at,tags,ai_tags,staff_id,consent_status,asset_purpose,updated_at'
+const SELECT = 'id,kind,blob_url,web_blob_url,web_width,web_height,width,height,mime_type,size_bytes,duration_s,thumbnail_url,rendered_url,display_title,alt_text,captured_at,tags,ai_tags,staff_id,pictured_staff_ids,consent_status,asset_purpose,updated_at'
 
 // tags / ai_tags are jsonb, so containment takes a JSON array (`cs.["x"]`);
 // the Postgres array form `cs.{x}` is a 22P02 error there, which was the 500.
@@ -48,7 +48,12 @@ export function keyMatches(header, secret) {
 export function shapeItem(row, staffById = new Map()) {
   const isVideo = row.kind === 'video'
   const tags = [...new Set([...(row.tags || []), ...(row.ai_tags || [])])]
-  const staff = row.staff_id ? staffById.get(row.staff_id) : null
+  // Photos list who is pictured (many). staff_id is the single attributed
+  // clinician for video voice/captions, so it only stands in for videos.
+  const ids = isVideo
+    ? (row.staff_id ? [row.staff_id] : [])
+    : (Array.isArray(row.pictured_staff_ids) ? row.pictured_staff_ids : [])
+  const people = ids.map((id) => staffById.get(id)).filter(Boolean).map((s) => ({ id: s.id, name: s.name }))
   const useWeb = Boolean(row.web_blob_url)
   return {
     id: row.id,
@@ -66,7 +71,7 @@ export function shapeItem(row, staffById = new Map()) {
     poster_url: isVideo ? (row.thumbnail_url || null) : undefined,
     title: row.display_title || null,
     alt: row.alt_text || null,
-    people: staff ? [{ id: staff.id, name: staff.name }] : [],
+    people,
     taken: row.captured_at ? String(row.captured_at).slice(0, 10) : null,
     purpose: row.asset_purpose || null,
     tags,
@@ -106,7 +111,7 @@ async function handler(req, res) {
   const staff = sp.get('staff')
   if (staff) {
     if (!UUID_RE.test(staff)) return res.status(400).json({ error: 'invalid_staff' })
-    filters.push(`staff_id=eq.${staff}`)
+    filters.push(`or=(staff_id.eq.${staff},pictured_staff_ids.cs.%7B${staff}%7D)`)
   }
   const since = sp.get('since')
   if (since) {
@@ -143,7 +148,7 @@ async function handler(req, res) {
     }
     const rows = await r.json()
 
-    const staffIds = [...new Set(rows.map((x) => x.staff_id).filter(Boolean))]
+    const staffIds = [...new Set(rows.flatMap((x) => (x.kind === 'video' ? [x.staff_id] : x.pictured_staff_ids || [])).filter(Boolean))]
     const staffById = new Map()
     if (staffIds.length) {
       const s = await supabaseRest(`staff?select=id,name&${scope.column}=eq.${scope.id}&id=in.(${staffIds.join(',')})`)

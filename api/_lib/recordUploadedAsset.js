@@ -12,7 +12,8 @@
 //   tokenPayload: parsed object (NOT a JSON string) carrying scope + meta:
 //                 { scopeColumn, scopeId, filename, createdBy, patientPseudonym,
 //                   condition, capturedAt, notes, assetPurpose, speakerRole,
-//                   parentId, contentPieceId, collectionId, staffId }
+//                   parentId, contentPieceId, collectionId, staffId,
+//                   picturedStaffIds }
 //
 // Returns the inserted media_assets row (or null on insert failure).
 
@@ -35,6 +36,7 @@ const FFMPEG_BIN   = process.env.FFMPEG_PATH || ffmpegStaticPath || 'ffmpeg'
 const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'application/json', prefer: 'return=representation' })
 
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const PURPOSES = new Set(['interview', 'broll', 'photo', 'brand'])
 
 function kindFromMime(mime) {
@@ -143,6 +145,18 @@ export async function recordUploadedAsset({ blob, tokenPayload }) {
     else console.warn(`recordUploadedAsset: staff_id ${meta.staffId} not in workspace ${scopeId}; dropping`)
   }
 
+  // Pictured people: photos only, each id must be a staff row of THIS
+  // workspace (same drop-if-not-owned rule as staffId above).
+  let picturedStaffIds = []
+  const wantedPictured = kind === 'photo' && Array.isArray(meta.picturedStaffIds)
+    ? [...new Set(meta.picturedStaffIds.filter((x) => typeof x === 'string' && UUID_RE.test(x)).map((x) => x.toLowerCase()))]
+    : []
+  if (wantedPictured.length) {
+    const pv = await sb(`staff?${scopeColumn}=eq.${scopeId}&id=in.(${wantedPictured.join(',')})&select=id`)
+    const pvRows = pv.ok ? await pv.json().catch(() => []) : []
+    picturedStaffIds = pvRows.map((r) => r.id)
+  }
+
   const isReturnUpload = !!parentId
   const assetPurpose = PURPOSES.has(meta.assetPurpose)
     ? meta.assetPurpose
@@ -187,6 +201,7 @@ export async function recordUploadedAsset({ blob, tokenPayload }) {
     speaker_role: speakerRole,
     parent_id: parentId,
     staff_id: staffId,
+    pictured_staff_ids: picturedStaffIds,
     // Seed videos as 'pending' when Mux will transcode them, so the player
     // shows the "Transcoding…" placeholder immediately instead of falling
     // back to a native <video> that can't play a non-faststart .mov (moov

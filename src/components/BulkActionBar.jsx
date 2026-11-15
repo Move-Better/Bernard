@@ -22,6 +22,8 @@ import {
   tagMediaAsset,
 } from '@/lib/mediaLib'
 import { useUserRole } from '@/lib/useUserRole'
+import { useStaff } from '@/lib/queries'
+import { pickableStaff } from '@/lib/activeStaff'
 import { useConfirm } from '@/lib/useConfirm'
 
 // Separator between pill action groups.
@@ -112,6 +114,8 @@ export default function BulkActionBar({
   const [purgeOpen, setPurgeOpen]     = useState(false)
   const [purgeConfirm, setPurgeConfirm] = useState('')
   const [selectingAll, setSelectingAll] = useState(false)
+  const [peopleIds, setPeopleIds]     = useState([])
+  const { data: staffRoster = [] } = useStaff()
 
   const count = selectedIds.length
   const visibleCount = assets.length
@@ -227,6 +231,27 @@ export default function BulkActionBar({
     } finally { setBusy(null) }
   }
 
+  // Add the chosen people to every selected photo (union with who is already
+  // tagged, so nobody is removed). Videos in the selection are skipped: their
+  // single attributed staff_id drives voice and captions, not pictured people.
+  async function addPeople() {
+    if (!count || !peopleIds.length) return
+    const byId = new Map(assets.map((a) => [a.id, a]))
+    const photos = selectedIds.filter((id) => (byId.get(id)?.kind || 'photo') === 'photo')
+    const skipped = count - photos.length
+    setBusy('people'); setError('')
+    try {
+      const results = await pMap(photos, (id) => updateMediaAsset(id, {
+        picturedStaffIds: [...new Set([...(byId.get(id)?.pictured_staff_ids || []), ...peopleIds])],
+      }), 6)
+      const base = summarize(results, 'Tagged people on')
+      setMessage(skipped > 0 ? `${base} ${skipped} video${skipped === 1 ? '' : 's'} skipped.` : base)
+      setPanel(null); setPeopleIds([])
+      onRefresh?.()
+      onClear?.()
+    } finally { setBusy(null) }
+  }
+
   async function archiveAll() {
     if (!count) return
     if (!(await confirm({
@@ -321,6 +346,44 @@ export default function BulkActionBar({
             })}
           </div>
           <button onClick={() => setPanel(null)} className="text-2xs text-card/40 hover:text-card/70 px-1">Close</button>
+        </div>
+      )}
+
+      {/* Who is pictured: add people to the selected photos */}
+      {panel === 'people' && canEdit && count > 0 && (
+        <div className="rounded-xl border border-foreground/30 bg-foreground shadow-2xl p-3 space-y-2 min-w-[280px] max-w-[420px]">
+          <div className="text-2xs text-card/50 px-1">
+            Who is in these {count} item{count === 1 ? '' : 's'}?
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {pickableStaff(staffRoster).map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                aria-pressed={peopleIds.includes(c.id)}
+                onClick={() => setPeopleIds((prev) => (prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id]))}
+                className={`text-2xs px-2.5 py-1 rounded-full border ${
+                  peopleIds.includes(c.id)
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-foreground/30 bg-foreground/80 text-card/80 hover:border-primary hover:text-primary'
+                }`}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-3 px-1">
+            <button
+              type="button"
+              onClick={addPeople}
+              disabled={!!busy || !peopleIds.length}
+              className="text-xs font-medium rounded-full bg-primary text-primary-foreground px-3 py-1 disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {busy === 'people' && <Icon as={Loader2} size="xs" className="animate-spin" />}
+              Add to {count} photo{count === 1 ? '' : 's'}
+            </button>
+            <button onClick={() => setPanel(null)} className="text-2xs text-card/40 hover:text-card/70">Close</button>
+          </div>
         </div>
       )}
 
@@ -437,6 +500,17 @@ export default function BulkActionBar({
               >
                 <Icon as={Tag} size="sm" className="inline mr-0.5" />
                 Tag
+              </button>
+            )}
+
+            {/* Who is pictured */}
+            {canEdit && (
+              <button
+                className={pillBtn(panel === 'people' ? 'text-primary' : '')}
+                onClick={() => setPanel(panel === 'people' ? null : 'people')}
+              >
+                <Icon as={Plus} size="sm" className="inline mr-0.5" />
+                People
               </button>
             )}
 

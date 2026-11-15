@@ -553,6 +553,7 @@
     "parent_asset_id",
     "parent_id",
     "patient_pseudonym",
+    "pictured_staff_ids",
     "render_error",
     "render_proxy_bytes",
     "render_proxy_generated_at",

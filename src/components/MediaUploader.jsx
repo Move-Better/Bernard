@@ -184,7 +184,10 @@ export default function MediaUploader({ onUploaded, createdBy }) {
   const [speakerRole, setSpeakerRole] = useState('clinician')
   const [collectionId, setCollectionId] = useState('')
   const [collections, setCollections] = useState([])
-  const [staffId, setStaffId] = useState('')
+  // Who is in the upload: several people allowed, nobody pre-selected. One
+  // person also sets the single attributed staff_id (video voice/captions);
+  // several or none leaves it null. Photos store every pick as pictured people.
+  const [staffIds, setStaffIds] = useState([])
   const [staff, setStaff] = useState([])
   // Smart-preview tray — files pending upload, with detected duration + any
   // purpose mismatch flags. Cleared after a successful upload kick-off.
@@ -266,7 +269,8 @@ export default function MediaUploader({ onUploaded, createdBy }) {
       speakerRole: showSpeakerRole ? speakerRole : null,
       // Optional — server verifies workspace scope before linking.
       collectionId: collectionId || null,
-      staffId: showStaffPicker ? staffId || null : null,
+      staffId: showStaffPicker && staffIds.length === 1 ? staffIds[0] : null,
+      picturedStaffIds: showStaffPicker ? staffIds : [],
     })))
 
     if (results.some((r) => r)) onUploaded?.()
@@ -379,16 +383,16 @@ export default function MediaUploader({ onUploaded, createdBy }) {
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Tag a staff member so this asset shows up on their profile and in searches.
+                Tag everyone in it so it shows up on their profile and in searches. Leave blank if you are not sure; you can tag it later from the Library.
               </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              onClick={() => setStaffId('')}
+              onClick={() => setStaffIds([])}
               className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                !staffId
+                staffIds.length === 0
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
               }`}
@@ -399,9 +403,9 @@ export default function MediaUploader({ onUploaded, createdBy }) {
               <button
                 type="button"
                 key={c.id}
-                onClick={() => setStaffId(c.id === staffId ? '' : c.id)}
+                onClick={() => setStaffIds((prev) => (prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id]))}
                 className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                  staffId === c.id
+                  staffIds.includes(c.id)
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
                 }`}
@@ -516,8 +520,8 @@ export default function MediaUploader({ onUploaded, createdBy }) {
             {collectionId && collections.find((c) => c.id === collectionId)
               ? ` · ${collections.find((c) => c.id === collectionId).name}`
               : ''}
-            {staffId && staff.find((c) => c.id === staffId)
-              ? ` · ${staff.find((c) => c.id === staffId).name}`
+            {staffIds.length
+              ? ` · ${staff.filter((c) => staffIds.includes(c.id)).map((c) => c.name).join(', ')}`
               : ''}.
           </p>
         </div>
