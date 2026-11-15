@@ -14,7 +14,7 @@ change (section 4). No media has been copied, moved or deleted.
   endpoint, picks items, and copies those entries into the website repo. The build reads only that committed
   file and the public Blob URLs; it never calls Bernard. Blob is Vercel's storage, so it serves files even if
   Bernard's app is down.
-- **Photos are resized by the website's own build** (Astro). **Videos get web versions from Bernard** (Mux),
+- **Photos are resized by the website's own build** (Astro). **Videos get web versions from Bernard** (an MP4 it makes on request),
   made on request.
 - **Labels come from Bernard's existing AI tagger**, extended with pillar, condition and facility tags. No
   location field.
@@ -89,9 +89,9 @@ Returns non-archived items with `consent_status <> 'revoked'`. Query params for 
     },
     {
       "id": "c21a…", "kind": "video",
-      "url": "https://stream.mux.com/<playback>.m3u8",   // null until a web version exists
-      "mp4_url": "https://stream.mux.com/<playback>/high.mp4",
-      "poster_url": "https://image.mux.com/<playback>/thumbnail.webp",
+      "url": "https://…blob.vercel-storage.com/media/web-video/…/c21a….mp4",   // web MP4 once made, else the original
+      "web_ready": true,
+      "poster_url": "https://…blob.vercel-storage.com/…poster.jpg",
       "captions_url": null,
       "width": 1080, "height": 1920, "duration_s": 42,
       "alt": "…", "tags": ["breathe"], "consent": "obtained"
@@ -129,12 +129,11 @@ Bernard being up or reachable.
   `media.json`. No per-request transform cost, nothing new in Bernard. Watch-outs: HEIC originals may not
   decode (test one early; if they fail, the session asks Bernard for a JPEG web variant); large originals
   slow the build, so enable Astro's image cache on Vercel.
-- **Videos: Bernard's job, on request.** Transcoding in a website build is slow and fragile. Bernard already
-  sends uploads to Mux. Add a small endpoint `POST /api/media/catalogue/:id/web-version` (same key) that
-  sends an imported video to Mux if it has no playback id yet and returns the playback URLs when ready. Only
-  videos a page actually uses get transcoded.
-- **Captions:** Mux can generate them from the audio track, or Bernard's existing transcription (Scribe)
-  can write a VTT; either becomes `captions_url`.
+- **Videos: Bernard's job, on request** (Q chose this over Mux public streams, 2026-11-14; Bernard's Mux
+  account uses signed playback, which a public site can't use without tokens). `POST /api/media/web-version`
+  (same key) encodes a 1080-class H.264 MP4 + JPEG poster into Blob next to the original. Shipped in #2785.
+  Only videos a page actually uses get encoded; sources over 10 minutes are refused.
+- **Captions:** not built. Bernard's existing transcription (Scribe) could write a VTT later.
 
 ## 6. Labels
 
@@ -154,11 +153,9 @@ Bernard being up or reachable.
   id so a missing image fails the build loudly.
 - **Photos:** `<Picture src={item.url} width height alt>` via `astro:assets`, Blob host in
   `image.remotePatterns`.
-- **Videos:** `<video poster>` with the Mux MP4, or the HLS URL with a small player, plus a captions
-  `<track>`.
+- **Videos:** `<video src poster controls playsinline>` with the web MP4 from Bernard.
 - **CSP (vercel.json):** `img-src` already allows `https:`. `media-src` already allows
-  `*.public.blob.vercel-storage.com`; add `https://stream.mux.com` to `media-src` and
-  `https://image.mux.com` is covered by `img-src`. Optionally narrow `*.public.blob…` to Bernard's exact
+  `*.public.blob.vercel-storage.com`, which covers the web MP4s; no change needed. Optionally narrow `*.public.blob…` to Bernard's exact
   host before enforcement in Dec 2026. Since photos are resized at build and served from the site itself,
   only videos load from outside hosts.
 - **Secret:** `MEDIA_CATALOGUE_KEY` (**Sensitive**) in the website's 1Password Environment; used only by the
@@ -172,11 +169,10 @@ Bernard being up or reachable.
 | 1 | Bernard: catalogue endpoint + key; tag vocabulary + re-tag run | revert PR; tags are additive |
 | 2 | Website: `media.json`, `getMedia`, `remotePatterns`; switch the ~14 condition-page photos | revert website PR; `public/images/` files stay until verified on prod |
 | 3 | Website: team headshots, heroes, treatment photos | revert website PR |
-| 4 | Bernard: video web-version endpoint; website: videos and captions, add Mux to CSP; move `movebetter-videos` items into the catalogue | revert; old video store kept until verified |
+| 4 | Bernard: video web-version endpoint; website: videos; move `movebetter-videos` items into the catalogue | revert; old video store kept until verified |
 | 5 | Clean-up: remove migrated `public/images/` files; retire `movebetter-videos` after 30 days (needs Q's yes) | git revert restores files |
 
-Costs to confirm before phase 4: Mux encoding and delivery for imported videos (Bernard's existing Mux
-account; small volume).
+Phase 4 cost: Vercel function time and Blob storage for each encoded video only; no Mux charges.
 
 ## Website-side checklist (hand to a Claude session in Move-Better/Movebetterco)
 
