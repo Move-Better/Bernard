@@ -22,7 +22,7 @@ import {
 import { listContentPieces, createContentPiece, segmentMediaAsset } from '@/lib/contentLib'
 import { PLATFORM_META, statusMetaFor } from '@/lib/contentMeta'
 import { useStaffSummaries } from '@/lib/queries'
-import { pickableStaff } from '@/lib/activeStaff'
+import { pickableStaff, pickablePictured } from '@/lib/activeStaff'
 import { useUserRole } from '@/lib/useUserRole'
 import { toast, runWithToast } from '@/lib/toast'
 import ContentBriefDetail from './ContentBriefDetail'
@@ -930,7 +930,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                   )}
                 </div>
                 <div className="flex flex-wrap gap-1.5" role="group" aria-label="Who is in this photo">
-                  {pickableStaff(staff, pictured).map((c) => (
+                  {pickablePictured(staff, pictured).map((c) => (
                     <button
                       type="button"
                       key={c.id}

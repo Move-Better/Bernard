@@ -23,7 +23,7 @@ import {
 } from '@/lib/mediaLib'
 import { useUserRole } from '@/lib/useUserRole'
 import { useStaff } from '@/lib/queries'
-import { pickableStaff } from '@/lib/activeStaff'
+import { pickablePictured } from '@/lib/activeStaff'
 import { useConfirm } from '@/lib/useConfirm'
 
 // Separator between pill action groups.
@@ -356,7 +356,7 @@ export default function BulkActionBar({
             Who is in these {count} item{count === 1 ? '' : 's'}?
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {pickableStaff(staffRoster).map((c) => (
+            {pickablePictured(staffRoster).map((c) => (
               <button
                 key={c.id}
                 type="button"
