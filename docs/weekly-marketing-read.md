@@ -142,3 +142,12 @@ looks at "now" to choose the week, and the Insights page's UTC weeks are unchang
   moved onto `workspace_credentials` first.
 - Sessions come from one total-range query, not the sum of GA4's by-date report that the Insights trend
   strip uses: the by-date sum was off by one in four of the six weeks checked.
+
+## Second reader: the website's interview count (2026-11-15)
+
+`GET https://movebetter.withbernard.ai/api/insights/interview-count` with the same `WEEKLY_MARKETING_KEY`
+returns `{ "workspace": "movebetter", "completed_interviews": 24, "computed_at": "…" }`: every completed
+interview in the workspace, all time. The Move Better website's build reads it for the homepage's "Doctor
+interviews" stat and hides the stat if the call fails. Same statuses as above (401, 404, 405, 429), plus
+502 `db_read_failed`. The website keeps its own copy of the key as `BERNARD_STATS_KEY` (**Sensitive**) in
+its Vercel project; rotate both readers' copies together.
