@@ -21,6 +21,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 import { supabaseRest } from '../../_lib/supabaseRest.js'
+import { imageMediaType } from '../../_lib/libraryTags.js'
 
 export const CATALOGUE_WORKSPACES = new Set(['movebetter'])
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -51,7 +52,7 @@ export function shapeItem(row, staffById = new Map()) {
     height: useWeb ? row.web_height : row.height,
     original_width: row.width,
     original_height: row.height,
-    mime: useWeb ? 'image/webp' : row.mime_type,
+    mime: useWeb ? imageMediaType(row.web_blob_url, row.mime_type) : row.mime_type,
     size_bytes: useWeb ? null : row.size_bytes,
     duration_s: isVideo ? row.duration_s : undefined,
     poster_url: isVideo ? (row.thumbnail_url || null) : undefined,
