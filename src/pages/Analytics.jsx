@@ -439,7 +439,7 @@ function LocationStatRow({ loc, fmtN }) {
 }
 
 // Google review rating + count per clinic (Move Better only: other workspaces get enabled:false and see
-// nothing). Totals only, refreshed quarterly from the Movebetterco repo.
+// nothing). Totals only, refreshed weekly from the Movebetterco repo.
 function ReviewsHeader({ children }) {
   return (
     <div className="flex items-start gap-3">
@@ -500,7 +500,7 @@ function GoogleReviewsRead({ data }) {
         )}
         {updated && (
           <p className="text-xs text-muted-foreground mt-3">
-            Updated {updated} · refreshed quarterly from your Google Business Profiles
+            Updated {updated} · refreshed weekly from your Google Business Profiles
           </p>
         )}
       </ReviewsHeader>

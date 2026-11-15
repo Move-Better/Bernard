@@ -1357,7 +1357,7 @@ export function useGbpPerformance() {
 //
 // Returns { enabled, updated, locations: [{ key, label, rating, count }], combined } from
 // /api/insights/google-reviews, or { enabled: false } for any other workspace. The source file refreshes
-// quarterly, so cache for an hour.
+// weekly, so cache for an hour.
 export function useGoogleReviews() {
   return useQuery({
     queryKey: queryKeys.googleReviews,
