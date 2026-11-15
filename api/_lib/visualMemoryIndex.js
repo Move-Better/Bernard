@@ -26,11 +26,14 @@ const sb = (path, init = {}) => supabaseRest(path, init, { contentType: 'applica
  * Compose the text that gets embedded for a media_asset.
  * Keep this stable — changing the composition invalidates existing embeddings.
  */
-function composeEmbeddingText(asset, staffName = '') {
+export function composeEmbeddingText(asset, staffName = '') {
   const lines = []
   const kind = asset.kind || 'media'
   const filename = asset.filename || asset.blob_pathname || '(unnamed)'
-  lines.push(`[capture] ${filename} (kind=${kind}${staffName ? `, captured by ${staffName}` : ''})`)
+  // Photos name everyone pictured (staffName is then "A, B"); videos keep the
+  // single attributed clinician. Wording for photos is new, videos unchanged.
+  const who = staffName ? (kind === 'photo' && asset.pictured_staff_ids?.length ? `, pictured: ${staffName}` : `, captured by ${staffName}`) : ''
+  lines.push(`[capture] ${filename} (kind=${kind}${who})`)
 
   if (asset.visual_narrative) {
     lines.push(`Visual: ${asset.visual_narrative}`)
@@ -60,10 +63,13 @@ function composeEmbeddingText(asset, staffName = '') {
 async function getStaffName(staffId, workspaceId) {
   if (!staffId || !workspaceId) return ''
   try {
-    const r = await sb(`staff?id=eq.${staffId}&workspace_id=eq.${workspaceId}&select=name`)
+    const ids = (Array.isArray(staffId) ? staffId : [staffId]).filter((x) => /^[0-9a-f-]{36}$/i.test(x))
+    if (!ids.length) return ''
+    const r = await sb(`staff?id=in.(${ids.join(',')})&workspace_id=eq.${workspaceId}&select=id,name`)
     if (!r.ok) return ''
     const rows = await r.json()
-    return rows?.[0]?.name || ''
+    // keep the order the ids were given in
+    return ids.map((id) => rows.find((x) => x.id === id)?.name).filter(Boolean).join(', ')
   } catch {
     return ''
   }
@@ -81,7 +87,7 @@ export async function indexMediaAsset({ assetId }) {
 
   // 1. Fetch the media_asset row.
   const assetRes = await sb(
-    `media_assets?id=eq.${assetId}&select=id,workspace_id,staff_id,kind,filename,blob_pathname,ai_tags,visual_narrative,alt_text,notes,condition,source,captured_at`,
+    `media_assets?id=eq.${assetId}&select=id,workspace_id,staff_id,pictured_staff_ids,kind,filename,blob_pathname,ai_tags,visual_narrative,alt_text,notes,condition,source,captured_at`,
   )
   if (!assetRes.ok) {
     return { ok: false, reason: `fetch_asset_failed_${assetRes.status}` }
@@ -91,7 +97,8 @@ export async function indexMediaAsset({ assetId }) {
   if (!asset) return { ok: false, reason: 'asset_not_found' }
 
   // 2. Compose embedding text. If too sparse, defer.
-  const staffName = await getStaffName(asset.staff_id, asset.workspace_id)
+  const pictured = asset.kind === 'photo' && Array.isArray(asset.pictured_staff_ids) ? asset.pictured_staff_ids : []
+  const staffName = await getStaffName(pictured.length ? pictured : asset.staff_id, asset.workspace_id)
   const text = composeEmbeddingText(asset, staffName)
   if (!text || text.length < 16) {
     return { ok: false, reason: 'text_too_sparse' }
@@ -126,7 +133,9 @@ export async function indexMediaAsset({ assetId }) {
     method: 'POST',
     body: JSON.stringify({
       workspace_id: asset.workspace_id,
-      staff_id: asset.staff_id,
+      // One chunk holds one staff_id: the attributed clinician, else the sole
+      // pictured person. Several pictured people are in the embedding text only.
+      staff_id: asset.staff_id || (pictured.length === 1 ? pictured[0] : null),
       source_type: 'media_asset',
       source_id: assetId,
       source_blob_url: asset.blob_pathname || null,
