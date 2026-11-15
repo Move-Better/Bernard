@@ -108,7 +108,8 @@ async function handler(req, res) {
     scopeColumn: scope.column,
     scopeId: scope.id,
     filename: filename,
-    createdBy: meta.createdBy || null,
+    // Uploader comes from the verified session, never the client payload.
+    createdBy: auth.userId || null,
     patientPseudonym: meta.patientPseudonym || null,
     condition: meta.condition || null,
     capturedAt: meta.capturedAt || null,
@@ -119,6 +120,9 @@ async function handler(req, res) {
     contentPieceId: meta.contentPieceId || null,
     collectionId: typeof meta.collectionId === 'string' && meta.collectionId ? meta.collectionId : null,
     staffId: typeof meta.staffId === 'string' && meta.staffId ? meta.staffId : null,
+    picturedStaffIds: Array.isArray(meta.picturedStaffIds)
+      ? meta.picturedStaffIds.filter((x) => typeof x === 'string').slice(0, 24)
+      : [],
   })
 
   let clientToken

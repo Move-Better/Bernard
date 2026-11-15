@@ -35,7 +35,7 @@ async function api(path, init = {}) {
 
 // ── List & detail ────────────────────────────────────────────────────────────
 
-export function listMedia({ kind, status, q, tag, purpose, collectionId, limit, offset, compact, sources } = {}) {
+export function listMedia({ kind, status, q, tag, purpose, collectionId, limit, offset, compact, sources, needsPeople } = {}) {
   const params = new URLSearchParams()
   if (kind)         params.set('kind', kind)
   if (status)       params.set('status', status)
@@ -47,6 +47,7 @@ export function listMedia({ kind, status, q, tag, purpose, collectionId, limit, 
   if (offset)       params.set('offset', String(offset))
   if (compact)      params.set('compact', 'true')
   if (sources)      params.set('sources', 'true')
+  if (needsPeople)  params.set('needsPeople', 'true')
   const qs = params.toString()
   return api(`/api/media/list${qs ? `?${qs}` : ''}`)
 }
@@ -258,6 +259,8 @@ async function maybeTranscodeHeic(file) {
 //                       omitted, server falls back to kind-based default.
 //   speakerRole       — 'clinician' | 'admin' | 'patient_guest'. Only set
 //                       when assetPurpose === 'interview'.
+//   staffId           — the single attributed staff member (video voice/captions)
+//   picturedStaffIds  — everyone pictured; stored on photos only
 //   parentId          — when set, this is a return-upload of a finished edit;
 //                       server inserts with parent_id set, status='approved',
 //                       and skips the AI auto-pipeline.

@@ -584,3 +584,12 @@ before acting on a "this file is too big" instinct.
 
 ## 2026-11-11 — Post editor: keep the unused editor branches (audit option F declined)
 Post editor audit (`.claude/post-editor-audit-2026-11-10.md`) options A–E shipped (#2765–#2770). Option F proposed removing the branches no real post reaches: the video Story composer (0 posts since 2026-07-01; the IG Story lane is disabled, see 2026-07-21) and the shared editor's email, Google Ads, Meta ads and landing-page paths (never created). **Q's call: keep them.** Why: those formats may still be planned, and keeping costs only code size. Don't re-propose removal on usage grounds alone; revisit if one of these formats is formally ruled out, or when the IG Story lane revives (approval capacity, per its own entry) and the composer needs real work.
+
+## 2026-11-15 — Who is pictured in a photo is its own field (`pictured_staff_ids`)
+**Job.** The movebetter.co website needs the right people on each photo; one `staff_id` can't hold two people, and it also drives video voice and captions.
+**Evidence (measured 2026-11-15).** 73 live movebetter photos wrongly said one clinician (now NULL, untagged); `1d8e9981` shows two people; `created_by` is null on 78 photos and 172 videos and was client-supplied.
+**Composition.** Uploader / MediaDetail / Library bulk bar → `media_assets.pictured_staff_ids uuid[]` → catalogue `people` → movebetter.co. `staff_id` stays the single attributed clinician for video renders, captions and the visual-memory index (not changed). `created_by` is now set from the verified session on every new upload (never the client payload) and shown read-only as "Uploaded by".
+**Decisions (Q, 2026-11-15).** New `uuid[]` column; copy the 11 live photos that still had a hand-picked `staff_id` into it; the 73 blank photos are NOT guessed (they form the "Needs people" worklist). Mockup: `.claude/mockups/pictured-staff.html`.
+**Case against.** Hand-tagging 73 photos is chore work and the website could ship without names. Accepted: the people on a photo are what the site shows next to it.
+**Kill criterion — revisit-by 2026-12-14.** If fewer than 36 of the 73 are tagged by then, drop the Needs-people view and tag them in one sitting instead.
+**Open.** Visual-memory index still reads `staff_id`, so it does not see pictured people. Old `created_by` rows stay "not recorded"; no backfill.

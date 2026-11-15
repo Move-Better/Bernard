@@ -222,6 +222,8 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   const [assetPurpose, setAssetPurpose] = useState(defaultPurposeFor(asset))
   const [speakerRole, setSpeakerRole] = useState(asset.speaker_role || 'clinician')
   const [staffId, setStaffId] = useState(asset.staff_id || '')
+  // Photos: everyone pictured (many). Videos keep the single staffId above.
+  const [pictured, setPictured] = useState(asset.pictured_staff_ids || [])
   const [aiTags, setAiTags]     = useState(asset.ai_tags || [])
   const [transcription, setTranscription] = useState(asset.transcription || '')
   const [visualNarrative, setVisualNarrative] = useState(asset.visual_narrative || '')
@@ -256,6 +258,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   const { data: staffRows = [] } = useStaffSummaries()
   const staff = Array.isArray(staffRows) ? staffRows : []
   const currentStaff = staff.find((c) => c.id === (asset.staff_id || ''))
+  const uploaderStaff = asset.created_by ? staff.find((c) => c.user_id === asset.created_by || c.created_by_id === asset.created_by) : null
 
   // Track when polling started for this asset, so we can cap it even if the
   // pipeline silently errored. Initialized lazily (null until first pending
@@ -351,6 +354,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     setAssetPurpose(asset.asset_purpose || (asset.kind === 'video' ? 'interview' : 'photo'))
     setSpeakerRole(asset.speaker_role || 'clinician')
     setStaffId(asset.staff_id || '')
+    setPictured(asset.pictured_staff_ids || [])
     setAiTags(asset.ai_tags || [])
     setTranscription(asset.transcription || '')
     setVisualNarrative(asset.visual_narrative || '')
@@ -436,7 +440,8 @@ export default function MediaDetail({ asset, onClose, onChange }) {
         // Server enforces speaker_role=null when purpose != interview, but
         // mirror the rule client-side so the optimistic state stays accurate.
         speakerRole: assetPurpose === 'interview' ? speakerRole : null,
-        staffId: staffId || null,
+        // Photos edit pictured people; their single staff_id is left as it is.
+        ...(asset.kind === 'photo' ? { picturedStaffIds: pictured } : { staffId: staffId || null }),
       })
       toast.success('Media details saved')
       onChange?.()
@@ -910,6 +915,44 @@ export default function MediaDetail({ asset, onClose, onChange }) {
               </div>
             </div>
 
+            {asset.kind === 'photo' ? (
+              <div>
+                {/* Pictured people: who is IN the photo. Separate from who
+                    uploaded it (read-only below). Shown on the website as the
+                    people in the picture. */}
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Who is in this photo</label>
+                  {pictured.length === 0 && (
+                    <span className="inline-flex items-center gap-1 text-3xs uppercase tracking-wide font-medium px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/30">
+                      <AlertTriangle className="h-3 w-3" />
+                      No one tagged
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Who is in this photo">
+                  {pickableStaff(staff, pictured).map((c) => (
+                    <button
+                      type="button"
+                      key={c.id}
+                      disabled={!canEdit}
+                      aria-pressed={pictured.includes(c.id)}
+                      onClick={() => setPictured((prev) => (prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id]))}
+                      className={`text-2xs px-2.5 py-1 rounded-full border transition-colors ${
+                        pictured.includes(c.id) ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                      }`}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-2xs text-muted-foreground mt-1">Tap to add or remove. Shown on the website as the people in the picture.</p>
+                <label className="text-xs font-medium text-muted-foreground block mt-3 mb-1.5">Uploaded by</label>
+                <div className="text-xs rounded-md border border-dashed px-2.5 py-1.5 text-muted-foreground">
+                  {uploaderStaff?.name || (asset.created_by ? 'A signed-in user' : 'Not recorded (uploaded before this was tracked)')}
+                </div>
+              </div>
+            ) : (
+            <>
             {/* Attributed staff member — drives the video lower-third, Haiku
                 caption persona, practice memory, and voice-phrase weaving.
                 Unattributed assets fall back to just the workspace name in
@@ -947,6 +990,8 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                 </SelectContent>
               </Select>
             </div>
+            </>
+            )}
 
             {assetPurpose === 'interview' && (
               <div>

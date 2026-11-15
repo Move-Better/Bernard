@@ -89,6 +89,8 @@ export default function MediaHub() {
   const kind    = searchParams.get('kind')    || ''
   const status  = searchParams.get('status')  || ''
   const staffFilter = searchParams.get('staff') || ''
+  // Worklist: photos with nobody tagged as pictured.
+  const needsPeople = searchParams.get('needsPeople') === '1'
 
   function setParam(key, value) {
     setSearchParams((prev) => {
@@ -102,6 +104,7 @@ export default function MediaHub() {
   const setKind      = (v) => setParam('kind', v)
   const setStatus    = (v) => setParam('status', v)
   const setStaffFilter = (v) => setParam('staff', v)
+  const setNeedsPeople = (on) => setParam('needsPeople', on ? '1' : '')
 
   const [search, setSearch]     = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -111,6 +114,8 @@ export default function MediaHub() {
   const [multiSelectMode, setMultiSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
   const [uploadOpen, setUploadOpen] = useState(false)
+  // The Needs people view is a tag-in-bulk worklist: start in select mode.
+  useEffect(() => { if (needsPeople) setMultiSelectMode(true) }, [needsPeople])
   const [driveImportOpen, setDriveImportOpen] = useState(false)
 
   // Debounce search input.
@@ -125,7 +130,8 @@ export default function MediaHub() {
   // a stable object reference so downstream useCallbacks don't churn on
   // every render (react-hooks/exhaustive-deps).
   const mediaFilters = useMemo(() => ({
-    kind:         kind || undefined,
+    kind:         needsPeople ? 'photo' : (kind || undefined),
+    needsPeople:  needsPeople || undefined,
     status:       status || undefined,
     q:            debouncedSearch || undefined,
     collectionId: collectionId || undefined,
@@ -133,7 +139,7 @@ export default function MediaHub() {
     // their parent's detail drawer (variant strip). Keeps the library focused
     // on source assets and prevents the same clip from appearing N+1 times.
     sources:      true,
-  }), [kind, status, debouncedSearch, collectionId])
+  }), [kind, needsPeople, status, debouncedSearch, collectionId])
   // staffFilter is a client-side filter (created_by value) — it isn't
   // sent to the server since the server only accepts workspace-scoped filter
   // params. We post-filter the flat asset array below after fetching.
@@ -532,6 +538,19 @@ export default function MediaHub() {
             </button>
           ))}
 
+          <button
+            type="button"
+            onClick={() => setNeedsPeople(!needsPeople)}
+            aria-pressed={needsPeople}
+            title="Photos where nobody is tagged as pictured"
+            className={`text-2xs px-2.5 py-1 rounded-full border transition-colors inline-flex items-center gap-1 ${
+              needsPeople ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+            }`}
+          >
+            Needs people
+            {needsPeople && !loading && <span className="opacity-70">· {countLabel(allAssets.length)}</span>}
+          </button>
+
           {staffOptions.length > 1 && (
             <>
               <span className="w-px h-4 bg-border mx-1" aria-hidden />
@@ -560,7 +579,7 @@ export default function MediaHub() {
           {/* Reset affordance once any of the 5 filter axes (kind/status/staff/
               search/collection) is active — was previously only reachable by
               filtering all the way down to zero results. */}
-          {!!(debouncedSearch || kind || status || collectionId || staffFilter) && (
+          {!!(debouncedSearch || kind || status || collectionId || staffFilter || needsPeople) && (
             <button
               type="button"
               onClick={() => {
@@ -568,6 +587,7 @@ export default function MediaHub() {
                 setKind('')
                 setStatus('')
                 setStaffFilter('')
+                setNeedsPeople(false)
                 setCollectionId(null)
               }}
               className="text-2xs px-2 py-1 text-muted-foreground hover:text-foreground underline underline-offset-2"

@@ -27,7 +27,7 @@ describe('shapeItem', () => {
   const staff = new Map([['s1', { id: 's1', name: 'Dr. Q' }]])
   it('prefers the web variant for photos and never exposes patient fields', () => {
     const item = shapeItem({ id: 'a', kind: 'photo', blob_url: 'o.jpg', web_blob_url: 'w.jpg', web_width: 2000, web_height: 1500,
-      width: 4000, height: 3000, mime_type: 'image/jpeg', staff_id: 's1', tags: ['x'], ai_tags: ['x', 'hinge'],
+      width: 4000, height: 3000, mime_type: 'image/jpeg', staff_id: 's2', pictured_staff_ids: ['s1'], tags: ['x'], ai_tags: ['x', 'hinge'],
       captured_at: '2024-04-12T10:00:00Z', patient_pseudonym: 'P1', consent_status: 'obtained' }, staff)
     expect(item.url).toBe('w.jpg')
     expect(item.mime).toBe('image/jpeg')
@@ -36,6 +36,15 @@ describe('shapeItem', () => {
     expect(item.people).toEqual([{ id: 's1', name: 'Dr. Q' }])
     expect(item.taken).toBe('2024-04-12')
     expect(JSON.stringify(item)).not.toContain('P1')
+  })
+  it('lists every pictured person on a photo and ignores staff_id', () => {
+    const two = new Map([['s1', { id: 's1', name: 'Aj Adams' }], ['s2', { id: 's2', name: 'Tyler Hoang' }], ['s3', { id: 's3', name: 'Other' }]])
+    const both = shapeItem({ id: 'a', kind: 'photo', blob_url: 'o.jpg', staff_id: 's3', pictured_staff_ids: ['s1', 's2'] }, two)
+    expect(both.people).toEqual([{ id: 's1', name: 'Aj Adams' }, { id: 's2', name: 'Tyler Hoang' }])
+    expect(shapeItem({ id: 'b', kind: 'photo', blob_url: 'o.jpg', staff_id: 's3', pictured_staff_ids: [] }, two).people).toEqual([])
+  })
+  it('falls back to the attributed staff_id for video only', () => {
+    expect(shapeItem({ id: 'v', kind: 'video', blob_url: 'x.mov', staff_id: 's1' }, staff).people).toEqual([{ id: 's1', name: 'Dr. Q' }])
   })
   it('uses the rendered file and poster for video', () => {
     const item = shapeItem({ id: 'v', kind: 'video', blob_url: 'raw.mov', rendered_url: 'r.mp4', thumbnail_url: 't.jpg' })
