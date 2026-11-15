@@ -139,6 +139,7 @@ export const queryKeys = {
   producerFeed:     (limit = 30) => ['producer-feed', limit],
   producerNeedsYou: ['producer-needs-you'],
   gbpPerformance:   ['gbp-performance'],
+  googleReviews:    ['google-reviews'],
   postMetrics: (contentItemId) => ['post-metrics', contentItemId],
   gbpMetrics:  (contentItemId) => ['gbp-metrics',  contentItemId],
   locations: {
@@ -1347,6 +1348,21 @@ export function useGbpPerformance() {
     queryKey: queryKeys.gbpPerformance,
     queryFn: () =>
       apiFetch('/api/insights/gbp-performance').catch(() => ({ connected: false })),
+    staleTime: 1000 * 60 * 60, // 1h
+    refetchOnWindowFocus: false,
+  })
+}
+
+// ── Google reviews (Insights, Move Better only) ───────────────────────────────
+//
+// Returns { enabled, updated, locations: [{ key, label, rating, count }], combined } from
+// /api/insights/google-reviews, or { enabled: false } for any other workspace. The source file refreshes
+// quarterly, so cache for an hour.
+export function useGoogleReviews() {
+  return useQuery({
+    queryKey: queryKeys.googleReviews,
+    queryFn: () =>
+      apiFetch('/api/insights/google-reviews').catch(() => ({ enabled: false })),
     staleTime: 1000 * 60 * 60, // 1h
     refetchOnWindowFocus: false,
   })
