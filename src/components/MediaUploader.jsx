@@ -188,6 +188,8 @@ export default function MediaUploader({ onUploaded, createdBy }) {
   // person also sets the single attributed staff_id (video voice/captions);
   // several or none leaves it null. Photos store every pick as pictured people.
   const [staffIds, setStaffIds] = useState([])
+  // A patient is in the photo (flag only, no person). Photos only on the server.
+  const [patient, setPatient] = useState(false)
   const [staff, setStaff] = useState([])
   // Smart-preview tray — files pending upload, with detected duration + any
   // purpose mismatch flags. Cleared after a successful upload kick-off.
@@ -271,6 +273,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
       collectionId: collectionId || null,
       staffId: showStaffPicker && staffIds.length === 1 ? staffIds[0] : null,
       picturedStaffIds: showStaffPicker ? staffIds : [],
+      picturedPatient: showStaffPicker && patient,
     })))
 
     if (results.some((r) => r)) onUploaded?.()
@@ -390,9 +393,9 @@ export default function MediaUploader({ onUploaded, createdBy }) {
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              onClick={() => setStaffIds([])}
+              onClick={() => { setStaffIds([]); setPatient(false) }}
               className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                staffIds.length === 0
+                staffIds.length === 0 && !patient
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
               }`}
@@ -416,6 +419,19 @@ export default function MediaUploader({ onUploaded, createdBy }) {
                 {c.name}
               </button>
             ))}
+            <button
+              type="button"
+              aria-pressed={patient}
+              onClick={() => setPatient((v) => !v)}
+              title="A patient is in it (no name is stored)"
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                patient
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+              }`}
+            >
+              Patient
+            </button>
           </div>
         </div>
       )}
@@ -522,7 +538,7 @@ export default function MediaUploader({ onUploaded, createdBy }) {
               : ''}
             {staffIds.length
               ? ` · ${staff.filter((c) => staffIds.includes(c.id)).map((c) => c.name).join(', ')}`
-              : ''}.
+              : ''}{patient ? ' · Patient' : ''}.
           </p>
         </div>
 

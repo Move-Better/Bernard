@@ -28,7 +28,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const TAG_RE = /^[a-z0-9][a-z0-9-]{0,39}$/
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
-const SELECT = 'id,kind,blob_url,web_blob_url,web_width,web_height,width,height,mime_type,size_bytes,duration_s,thumbnail_url,rendered_url,display_title,alt_text,captured_at,tags,ai_tags,staff_id,pictured_staff_ids,consent_status,asset_purpose,updated_at'
+const SELECT = 'id,kind,blob_url,web_blob_url,web_width,web_height,width,height,mime_type,size_bytes,duration_s,thumbnail_url,rendered_url,display_title,alt_text,captured_at,tags,ai_tags,staff_id,pictured_staff_ids,pictured_patient,consent_status,asset_purpose,updated_at'
 
 // tags / ai_tags are jsonb, so containment takes a JSON array (`cs.["x"]`);
 // the Postgres array form `cs.{x}` is a 22P02 error there, which was the 500.
@@ -83,6 +83,8 @@ export function shapeItem(row, staffById = new Map()) {
     title: row.display_title || null,
     alt: row.alt_text || null,
     people,
+    // A patient is in the photo. A flag only: patients are never named or given an id.
+    has_patient: !isVideo && row.pictured_patient === true,
     taken: row.captured_at ? String(row.captured_at).slice(0, 10) : null,
     purpose: row.asset_purpose || null,
     tags,

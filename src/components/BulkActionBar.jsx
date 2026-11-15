@@ -115,6 +115,7 @@ export default function BulkActionBar({
   const [purgeConfirm, setPurgeConfirm] = useState('')
   const [selectingAll, setSelectingAll] = useState(false)
   const [peopleIds, setPeopleIds]     = useState([])
+  const [peoplePatient, setPeoplePatient] = useState(false)
   const { data: staffRoster = [] } = useStaff()
 
   const count = selectedIds.length
@@ -235,7 +236,7 @@ export default function BulkActionBar({
   // tagged, so nobody is removed). Videos in the selection are skipped: their
   // single attributed staff_id drives voice and captions, not pictured people.
   async function addPeople() {
-    if (!count || !peopleIds.length) return
+    if (!count || (!peopleIds.length && !peoplePatient)) return
     const byId = new Map(assets.map((a) => [a.id, a]))
     const photos = selectedIds.filter((id) => (byId.get(id)?.kind || 'photo') === 'photo')
     const skipped = count - photos.length
@@ -243,10 +244,12 @@ export default function BulkActionBar({
     try {
       const results = await pMap(photos, (id) => updateMediaAsset(id, {
         picturedStaffIds: [...new Set([...(byId.get(id)?.pictured_staff_ids || []), ...peopleIds])],
+        // Only ever turned ON here, so an existing Patient tag is never cleared.
+        ...(peoplePatient ? { picturedPatient: true } : {}),
       }), 6)
       const base = summarize(results, 'Tagged people on')
       setMessage(skipped > 0 ? `${base} ${skipped} video${skipped === 1 ? '' : 's'} skipped.` : base)
-      setPanel(null); setPeopleIds([])
+      setPanel(null); setPeopleIds([]); setPeoplePatient(false)
       onRefresh?.()
       onClear?.()
     } finally { setBusy(null) }
@@ -371,12 +374,24 @@ export default function BulkActionBar({
                 {c.name}
               </button>
             ))}
+            <button
+              type="button"
+              aria-pressed={peoplePatient}
+              onClick={() => setPeoplePatient((v) => !v)}
+              className={`text-2xs px-2.5 py-1 rounded-full border ${
+                peoplePatient
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-foreground/30 bg-foreground/80 text-card/80 hover:border-primary hover:text-primary'
+              }`}
+            >
+              Patient
+            </button>
           </div>
           <div className="flex items-center gap-3 px-1">
             <button
               type="button"
               onClick={addPeople}
-              disabled={!!busy || !peopleIds.length}
+              disabled={!!busy || (!peopleIds.length && !peoplePatient)}
               className="text-xs font-medium rounded-full bg-primary text-primary-foreground px-3 py-1 disabled:opacity-50 flex items-center gap-1.5"
             >
               {busy === 'people' && <Icon as={Loader2} size="xs" className="animate-spin" />}
