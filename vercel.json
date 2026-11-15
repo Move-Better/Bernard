@@ -82,6 +82,9 @@
     "api/media/tag.js": {
       "includeFiles": "node_modules/ffmpeg-static/**"
     },
+    "api/media/web-version.js": {
+      "includeFiles": "node_modules/ffmpeg-static/**"
+    },
     "api/media/[id]/thumbnail.js": {
       "includeFiles": "node_modules/ffmpeg-static/**"
     },

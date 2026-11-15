@@ -6,14 +6,14 @@ import {
   Award, Globe, GitBranch, CheckCircle2, Mic, RefreshCw,
   Search, LogIn, TimerOff, PenLine, AlertTriangle, ExternalLink, MapPin,
   ArrowUp, ArrowDown, HelpCircle, X, Smartphone, Info, ChevronLeft,
-  ChevronRight, CalendarRange, LayoutGrid, Image as ImageIcon,
+  ChevronRight, CalendarRange, LayoutGrid, Image as ImageIcon, Star,
 } from 'lucide-react'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 import {
   useStories, useTopPerformers, useWorkspaceRecap, useTopicSuggestions,
   useWebsiteHealth, useWebsiteGA4, useSearchQueries, useGbpPerformance,
   useApplePerformance, useSocialByPeriod, useWebsiteByPeriod, useSearchByPeriod,
-  useInsightsSeries, useWorkspaceCredentials,
+  useInsightsSeries, useWorkspaceCredentials, useGoogleReviews,
 } from '@/lib/queries'
 import TrendStrip from '@/components/insights/TrendStrip'
 import LearningPanel from '@/components/producer/LearningPanel'
@@ -434,6 +434,76 @@ function LocationStatRow({ loc, fmtN }) {
         <StatPill label="Calls"          value={fmtN(t.callClicks)} />
         <StatPill label="Website clicks" value={fmtN(t.websiteClicks)} />
       </div>
+    </div>
+  )
+}
+
+// Google review rating + count per clinic (Move Better only: other workspaces get enabled:false and see
+// nothing). Totals only, refreshed quarterly from the Movebetterco repo.
+function ReviewsHeader({ children }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="h-9 w-9 rounded-full bg-info/10 flex items-center justify-center shrink-0">
+        <Star className="h-4 w-4 text-info" />
+      </div>
+      <div className="flex-1 min-w-0">{children}</div>
+    </div>
+  )
+}
+
+function GoogleReviewsRead({ data }) {
+  if (!data?.enabled) return null
+  const fmtN = (n) => Number(n || 0).toLocaleString()
+  if (data.error) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-5">
+        <ReviewsHeader>
+          <span className="text-2xs uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
+            Google reviews · temporarily unavailable
+          </span>
+          <p className="text-xs text-muted-foreground mt-2">Reviews are temporarily unavailable — check back shortly.</p>
+        </ReviewsHeader>
+      </div>
+    )
+  }
+  const { locations = [], combined } = data
+  const multiLoc = locations.length > 1
+  const [y, m, d] = String(data.updated || '').split('-').map(Number)
+  const updated = y && m && d
+    ? new Date(y, m - 1, d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    : null
+  const pills = (r) => (
+    <div className="flex flex-wrap gap-2">
+      <StatPill label="Rating"  value={Number(r.rating).toFixed(1)} />
+      <StatPill label="Reviews" value={fmtN(r.count)} />
+    </div>
+  )
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <ReviewsHeader>
+        <span className="text-2xs uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
+          Google reviews{multiLoc ? ` · ${locations.length} locations` : ''}
+        </span>
+        <div className="mt-3">
+          {locations.map((loc) => (
+            <div key={loc.key} className="pt-3 mt-3 border-t border-border first:border-0 first:pt-0 first:mt-0">
+              <p className="text-xs font-medium text-foreground mb-2">{loc.label}</p>
+              {pills(loc)}
+            </div>
+          ))}
+        </div>
+        {multiLoc && combined && (
+          <div className="mt-4 pt-3 border-t border-border">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Combined</p>
+            {pills(combined)}
+          </div>
+        )}
+        {updated && (
+          <p className="text-xs text-muted-foreground mt-3">
+            Updated {updated} · refreshed quarterly from your Google Business Profiles
+          </p>
+        )}
+      </ReviewsHeader>
     </div>
   )
 }
@@ -1188,6 +1258,7 @@ export default function Analytics() {
   const { data: websiteGA4 }    = useWebsiteGA4()
   const { data: searchData }    = useSearchQueries()
   const { data: gbpData }       = useGbpPerformance()
+  const { data: reviewsData }   = useGoogleReviews()
   const { data: appleData }     = useApplePerformance()
 
   const [activeTab, setActiveTab] = useState('social')
@@ -1388,7 +1459,10 @@ export default function Analytics() {
       {activeTab === 'gbp' && (
         <div>
           <ChannelNotScopedNotice>Rolling last 30 days — not yet scoped to a specific week.</ChannelNotScopedNotice>
-          <GbpPerformanceRead data={gbpData} disabled={role !== 'admin'} />
+          <div className="space-y-3">
+            <GoogleReviewsRead data={reviewsData} />
+            <GbpPerformanceRead data={gbpData} disabled={role !== 'admin'} />
+          </div>
         </div>
       )}
 

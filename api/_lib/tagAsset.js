@@ -11,6 +11,7 @@ import { z } from 'zod'
 import { recordAudit, snapshot } from './audit.js'
 
 import { supabaseRest } from './supabaseRest.js'
+import { classifyLibraryTags, mergeLibraryTags, LIBRARY_TAG_WORKSPACES } from './libraryTags.js'
 function requireScope(scope) {
   if (!scope?.workspace) {
     throw new Error('tagAsset: workspace scope is required (caller must pass a resolved scope)')
@@ -236,7 +237,17 @@ export async function tagAndPersist(asset, scope) {
   const s = requireScope(scope)
   const where = `id=eq.${asset.id}&${s.column}=eq.${s.id}`
   try {
-    const { ai_tags, transcription, visual_narrative, display_title } = await callModel(asset, s)
+    const { ai_tags: freeTags, transcription, visual_narrative, display_title } = await callModel(asset, s)
+    // Fixed-vocabulary website tags (libraryTags.js). Non-fatal: a failure here
+    // must never fail the main tagging pass.
+    let ai_tags = freeTags
+    if (LIBRARY_TAG_WORKSPACES.has(s.workspace?.slug)) {
+      try {
+        ai_tags = mergeLibraryTags(freeTags, await classifyLibraryTags(asset))
+      } catch (e) {
+        console.error(`[tagAsset] library tags failed for ${asset.id}: ${e?.message}`)
+      }
+    }
     const patch = { ai_tags, status: 'tagged', tag_error: null }
     if (asset.kind === 'video') {
       patch.transcription = transcription
@@ -294,7 +305,7 @@ export async function markTagging(asset, scope) {
 export async function lookupAssetForTag(id, scope) {
   const s = requireScope(scope)
   const where = `id=eq.${id}&${s.column}=eq.${s.id}`
-  const lookup = await sb(`media_assets?${where}&select=id,${s.column},kind,status,blob_url,mime_type,size_bytes,tags,notes,asset_purpose,display_title`)
+  const lookup = await sb(`media_assets?${where}&select=id,${s.column},kind,status,blob_url,web_blob_url,thumbnail_url,mime_type,size_bytes,tags,notes,asset_purpose,display_title`)
   if (!lookup.ok) throw new Error('Database error')
   const rows = await lookup.json()
   const asset = rows[0]
