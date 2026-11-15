@@ -28,7 +28,7 @@ export const config = { runtime: 'nodejs' }
 //
 // Auth: Bearer CRON_SECRET (same as all other crons).
 
-import { BundlePublisher } from '../../_lib/social/bundlePublisher.js'
+import { BundlePublisher, statsStaleReason } from '../../_lib/social/bundlePublisher.js'
 import { notifyChannelHealth } from '../../_lib/notifyChannelHealth.js'
 import { verifyCronSecret } from '../../_lib/auth.js'
 
@@ -69,6 +69,29 @@ async function checkLocationGbp(ws) {
   return unhealthy
 }
 
+// Brand-Team accounts bundle still calls connected but whose daily stats have
+// stopped arriving — the failure the flag check above cannot see (Move
+// Better's Facebook, silent from 2026-10-21 with every bundle flag null; see
+// statsStaleReason). Reads bundle live rather than social_channel_snapshots,
+// which only fills weekly. Never throws — a stats read that errors is not
+// evidence the channel is dead.
+async function checkStatsStale(publisher, accounts) {
+  const stale = []
+  for (const a of accounts) {
+    if (!a.connected || !a.type) continue
+    try {
+      const snap = await publisher.getAccountSnapshots({ platformType: a.type })
+      if (!snap) continue // platform has no account-stats endpoint
+      const newestAt = snap.snapshots.length ? snap.snapshots[snap.snapshots.length - 1].at : null
+      const reason = statsStaleReason({ newestAt, connectedAt: a.connectedAt })
+      if (reason) stale.push({ type: a.type, displayName: a.displayName ?? null, reason, stale: true })
+    } catch (e) {
+      console.warn('[check-channel-health] stats read failed:', a.type, e?.message)
+    }
+  }
+  return stale
+}
+
 export default async function handler(req, res) {
   if (!verifyCronSecret(req)) {
     return res.status(401).json({ error: 'Unauthorized' })
@@ -101,8 +124,9 @@ export default async function handler(req, res) {
       const publisher = new BundlePublisher(ws)
       const accounts = await publisher.listAccounts()
       const brandUnhealthy = accounts.filter((a) => !a.connected)
+      const statsStale = await checkStatsStale(publisher, accounts)
       const locationUnhealthy = await checkLocationGbp(ws)
-      const unhealthy = [...brandUnhealthy, ...locationUnhealthy]
+      const unhealthy = [...brandUnhealthy, ...statsStale, ...locationUnhealthy]
 
       if (unhealthy.length === 0) {
         summary.healthy++

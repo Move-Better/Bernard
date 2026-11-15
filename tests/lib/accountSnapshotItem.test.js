@@ -24,7 +24,7 @@ const FULL = {
 describe('mapAccountSnapshotItem — bundle item → snapshot row shape', () => {
   it('maps every persisted field from its own source field', () => {
     expect(mapAccountSnapshotItem(FULL)).toEqual({
-      at: '2026-08-05T00:25:18.836Z',
+      at: '2026-08-05T00:25:00.000Z', // truncated to the minute (snapshotMinute),
       postCount: 200,
       followers: 628,
       impressions: 8162,
@@ -46,7 +46,7 @@ describe('mapAccountSnapshotItem — bundle item → snapshot row shape', () => 
       // views/viewsUnique/likes/comments absent entirely
     })
     expect(out).toEqual({
-      at: '2026-08-06T00:00:00Z',
+      at: '2026-08-06T00:00:00.000Z',
       postCount: null,
       followers: null,
       impressions: null,

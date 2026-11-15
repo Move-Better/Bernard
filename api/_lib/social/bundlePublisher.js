@@ -204,6 +204,46 @@ export function isReelPayload(uploads) {
   return video > 0 && image === 0
 }
 
+// bundle's createdAt for the SAME daily item drifts by a few milliseconds
+// between reads (measured 2026-11-15: up to 131ms, e.g. …51.662 vs …51.669),
+// and social_channel_snapshots dedupes on the exact instant — so every weekly
+// re-sync of an already-stored day inserted a second copy (64 extra rows of
+// 439, all with identical values). Truncating to the minute makes re-syncs land
+// on the same key. Daily items are ~24h apart, so no two real snapshots share a
+// minute (0 pairs found).
+// ponytail: a jitter that straddles a minute boundary (…59.99 → …00.01) would
+// still slip through as a duplicate; none observed. Upgrade path: dedupe on a
+// bundle item id if bundle ever exposes a stable one.
+export function snapshotMinute(iso) {
+  if (!iso) return null
+  const t = new Date(iso).getTime()
+  if (!Number.isFinite(t)) return null
+  return new Date(t - (t % 60_000)).toISOString()
+}
+
+// bundle's account flags (accountIsConnected) only change when bundle's own
+// disconnect-check notices a problem. Facebook can keep a connection "healthy"
+// on bundle's side while Meta stops answering for the page: Move Better's
+// Facebook went silent on 2026-10-21 with all three flags null, and nothing
+// alerted for 3+ weeks. bundle captures account stats daily (max gap measured
+// 1 day 8 minutes on IG/FB/LinkedIn), so stats that stop arriving are the tell.
+// Returns a reason string when a connected account's stats have stalled, else
+// null. `newestAt` is the newest stats item bundle still holds (null = none);
+// `connectedAt` keeps a just-connected account with no stats yet from alarming.
+export const STATS_STALE_AFTER_MS = 3 * 24 * 60 * 60 * 1000
+export function statsStaleReason({ newestAt, connectedAt, now = Date.now(), maxAgeMs = STATS_STALE_AFTER_MS } = {}) {
+  const newest = newestAt ? new Date(newestAt).getTime() : NaN
+  if (Number.isFinite(newest)) {
+    if (now - newest <= maxAgeMs) return null
+    return `no stats received since ${new Date(newest).toISOString().slice(0, 10)}`
+  }
+  // bundle holds no stats at all (its ~31-day window has emptied). Only a
+  // problem once the account is old enough to have produced some.
+  const connected = connectedAt ? new Date(connectedAt).getTime() : NaN
+  if (!Number.isFinite(connected) || now - connected <= maxAgeMs) return null
+  return 'no stats received in the last 30 days'
+}
+
 // Map one bundle account-analytics item to the snapshot shape
 // getAccountSnapshots returns (and cron/snapshot-social-posts persists).
 // Pure and exported so the field mapping is unit-testable: a renamed or
@@ -213,7 +253,7 @@ export function isReelPayload(uploads) {
 export function mapAccountSnapshotItem(i) {
   const num = (v) => (Number.isFinite(v) ? v : null)
   return {
-    at: i?.createdAt ?? null,
+    at: snapshotMinute(i?.createdAt),
     // Cumulative profile counters.
     postCount: num(i?.postCount),
     followers: num(i?.followers),
@@ -555,6 +595,9 @@ export class BundlePublisher extends SocialPublisher {
       connected: accountIsConnected(a),
       // Why, when it isn't — see disconnectReason. null on a connected account.
       reason: disconnectReason(a),
+      // When this connection was made — lets statsStaleReason tell "no stats
+      // yet" from "no stats any more".
+      connectedAt: a?.createdAt ?? null,
     }))
   }
 
