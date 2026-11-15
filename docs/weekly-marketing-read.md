@@ -151,3 +151,11 @@ interview in the workspace, all time. The Move Better website's build reads it f
 interviews" stat and hides the stat if the call fails. Same statuses as above (401, 404, 405, 429), plus
 502 `db_read_failed`. The website keeps its own copy of the key as `BERNARD_STATS_KEY` (**Sensitive**) in
 its Vercel project; rotate both readers' copies together.
+
+## Third reader: Deep Thought's roster check (2026-11-15)
+
+`GET https://movebetter.withbernard.ai/api/insights/staff-roster` with the same `WEEKLY_MARKETING_KEY`
+returns `{ "workspace": "movebetter", "active_staff": [{ "name": "Dr. Q", "legal_name": "Michael Quasney" }, …], "computed_at": "…" }`:
+names only, of staff not deactivated or archived. Deep Thought's daily roster check matches these by name to
+people it records as former, and emails its alert list when a leaver is still active here. Same statuses as
+the interview count.
