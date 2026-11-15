@@ -42,6 +42,33 @@ export function channelLabel(account) {
   return TYPE_LABELS[account?.type] || account?.type || 'A channel'
 }
 
+// The words for the alert. A STALE channel (bundle still calls it connected,
+// but its daily stats stopped — see statsStaleReason) gets softer copy than a
+// disconnected one: we do not know publishing is broken, only that the
+// platform stopped answering, which is how Facebook's silent 2026-10-21 failure
+// looked. Any genuinely disconnected item in the list keeps the hard copy.
+export function channelHealthCopy({ unhealthy, wsName }) {
+  const names = [...new Set(unhealthy.map(channelLabel))]
+  const joined = names.join(' and ')
+  const plural = names.length > 1
+  if (unhealthy.every((a) => a.stale)) {
+    return {
+      kind:    'channel_stale',
+      title:   `${joined} stopped sending stats — reconnect suggested`,
+      subject: `⚠️ ${joined} stopped responding — ${wsName}`,
+      lead:    `${joined} ${plural ? 'are' : 'is'} still listed as connected, but Bernard has stopped receiving ${plural ? 'their' : 'its'} daily stats. That usually means the platform has withdrawn access, so posts there may fail. Reconnecting fixes it if so, and is harmless if not.`,
+      footer:  'It repeats daily until stats arrive again.',
+    }
+  }
+  return {
+    kind:    'channel_disconnected',
+    title:   `${joined} ${plural ? 'are' : 'is'} disconnected — nothing can publish there`,
+    subject: `⚠️ ${joined} ${plural ? 'are' : 'is'} disconnected — ${wsName}`,
+    lead:    `Bernard can't post to ${names.join(' or ')} right now. The connection needs to be re-authorized — until then, anything scheduled for ${plural ? 'those channels' : 'that channel'} will fail.`,
+    footer:  'It repeats daily until the connection is restored.',
+  }
+}
+
 /**
  * @param {{ workspace: { id: string, slug?: string, display_name?: string, created_by_clerk_user_id?: string, producer_config?: any }, unhealthy: Array<{type?: string, displayName?: string|null, status?: string|null}> }} args
  */
@@ -56,8 +83,8 @@ export async function notifyChannelHealth({ workspace, unhealthy }) {
     // so an unhealthy list with two broken locations would otherwise read
     // "Google Business Profile and Google Business Profile are disconnected".
     // The per-item `list` below still differentiates by displayName.
-    const names = [...new Set(unhealthy.map(channelLabel))]
     const wsName = workspace.display_name || 'your workspace'
+    const copy = channelHealthCopy({ unhealthy, wsName })
     const settingsLink = workspace.slug
       ? `https://${workspace.slug}.withbernard.ai/settings/integrations`
       : 'https://withbernard.ai/settings/integrations'
@@ -67,8 +94,8 @@ export async function notifyChannelHealth({ workspace, unhealthy }) {
     await recordAgentAction({
       workspaceId:    workspace.id,
       producerConfig: workspace.producer_config,
-      kind:           'channel_disconnected',
-      title:          `${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} disconnected — nothing can publish there`,
+      kind:           copy.kind,
+      title:          copy.title,
       detail:         { channels: unhealthy.map((a) => ({ type: a.type || null, reason: a.reason || null })) },
     })
 
@@ -86,23 +113,23 @@ export async function notifyChannelHealth({ workspace, unhealthy }) {
       return `${label}${who}${why}`
     })
 
-    const subject = `⚠️ ${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} disconnected — ${wsName}`
+    const subject = copy.subject
     const text = [
-      `Bernard can't post to ${names.join(' or ')} right now. The connection needs to be re-authorized — until then, anything scheduled for ${names.length > 1 ? 'those channels' : 'that channel'} will fail.`,
+      copy.lead,
       '',
       ...list.map((l) => `• ${l}`),
       '',
       `Reconnect: ${settingsLink}`,
       '',
-      `You're getting this because you own the ${wsName} workspace. It repeats daily until the connection is restored.`,
+      `You're getting this because you own the ${wsName} workspace. ${copy.footer}`,
     ].join('\n')
     const html = `<div style="font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6;color:#0b1220">
-  <p>Bernard can’t post to ${escapeHtml(names.join(' or '))} right now. The connection needs to be re-authorized — until then, anything scheduled for ${names.length > 1 ? 'those channels' : 'that channel'} will fail.</p>
+  <p>${escapeHtml(copy.lead)}</p>
   <div style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;background:#f8fafc;margin:12px 0">
     ${list.map((l) => `<p style="margin:0 0 4px;font-weight:600">${escapeHtml(l)}</p>`).join('')}
   </div>
   <p><a href="${escapeHtml(settingsLink)}" style="display:inline-block;background:#0C7580;color:#fff;text-decoration:none;padding:9px 16px;border-radius:6px;font-weight:600">Reconnect in Bernard</a></p>
-  <p style="color:#94a3b8;font-size:12px">You’re getting this because you own the ${escapeHtml(wsName)} workspace. It repeats daily until the connection is restored.</p>
+  <p style="color:#94a3b8;font-size:12px">You’re getting this because you own the ${escapeHtml(wsName)} workspace. ${escapeHtml(copy.footer)}</p>
 </div>`
 
     return await sendEmail({ to, subject, text, html })
