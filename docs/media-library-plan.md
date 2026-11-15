@@ -180,7 +180,7 @@ account; small volume).
 
 ## Website-side checklist (hand to a Claude session in Move-Better/Movebetterco)
 
-**Phase 1 is live (2026-11-14, PRs #2779 and #2780).** Everything below can start now.
+**Phase 1 is live (2026-11-14, PRs #2779 and #2780); the video step (phase 4, PR #2785) too.** Everything below can start now.
 
 ### The catalogue
 
@@ -221,6 +221,13 @@ account; small volume).
 5. Add a weekly GitHub Action (repo secret `MEDIA_CATALOGUE_KEY`) that requests
    `?ids=<every id in media.json>` and fails if any id is missing from the response (archived or consent
    withdrawn), naming the page. Prove it fails on a mutated id.
-6. Videos wait for Bernard's phase 4 (web versions via Mux). Until then, use only videos whose `url` is a
-   rendered `.mp4`.
+6. Videos: before using a video, ask Bernard for its web version:
+   ```bash
+   curl -s -X POST -H "Authorization: Bearer $MEDIA_CATALOGUE_KEY" -H "Content-Type: application/json" -d '{"id":"<video id>"}' https://movebetter.withbernard.ai/api/media/web-version
+   ```
+   It returns `{status: "created"|"ready", url, width, height, poster_url}` once the MP4 is made (up to
+   about 5 minutes for a long clip; instant if already made). Videos over 10 minutes return `too_long`.
+   After that the catalogue item shows `web_ready: true` and its `url` is the web MP4. Render with
+   `<video src={url} poster={poster_url} width height controls playsinline preload="metadata">`. The MP4
+   and poster live on the same Blob host the CSP already allows, so `vercel.json` needs no change.
 7. Verify on the deployed site: photos served from the site's own `/_astro/` output, no CSP reports.
