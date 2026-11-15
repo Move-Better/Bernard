@@ -484,12 +484,14 @@ function GoogleReviewsRead({ data }) {
         <span className="text-2xs uppercase tracking-wide bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
           Google reviews{multiLoc ? ` · ${locations.length} locations` : ''}
         </span>
-        {locations.map((loc) => (
-          <div key={loc.key} className="pt-3 mt-3 border-t border-border first:border-0 first:pt-0 first:mt-0">
-            <p className="text-xs font-medium text-foreground mb-2">{loc.label}</p>
-            {pills(loc)}
-          </div>
-        ))}
+        <div className="mt-3">
+          {locations.map((loc) => (
+            <div key={loc.key} className="pt-3 mt-3 border-t border-border first:border-0 first:pt-0 first:mt-0">
+              <p className="text-xs font-medium text-foreground mb-2">{loc.label}</p>
+              {pills(loc)}
+            </div>
+          ))}
+        </div>
         {multiLoc && combined && (
           <div className="mt-4 pt-3 border-t border-border">
             <p className="text-xs font-medium text-muted-foreground mb-2">Combined</p>
