@@ -1,0 +1,58 @@
+<title>Reviews Card Mockup</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: the real Analytics > Google Business tab. New Reviews card sits first, above the existing GBP performance card. App chrome colours only (Blue Spruce); no tenant orange. */
+:root{--bg:#f6f8f8;--card:#fff;--fg:#14262a;--muted:#5d7176;--border:#dbe4e6;--chip:#eef2f3;--pill:#f0f4f5;--info:#0c7580;--info-bg:#0c75801a;--warn:#b45309;--tab:#e8eff0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1a1c;--card:#16262a;--fg:#e6eff1;--muted:#93a9ae;--border:#264047;--chip:#1d3238;--pill:#1d3238;--info:#4cc3d0;--info-bg:#4cc3d026;--warn:#f0a548;--tab:#1d3238;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1a1c;--card:#16262a;--fg:#e6eff1;--muted:#93a9ae;--border:#264047;--chip:#1d3238;--pill:#1d3238;--info:#4cc3d0;--info-bg:#4cc3d026;--warn:#f0a548;--tab:#1d3238;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:14px/1.45 Inter,system-ui,sans-serif;padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{display:grid;gap:12px}
+.note{font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{padding:6px 12px;border-radius:999px;background:var(--tab);font-size:13px;color:var(--muted)}
+.tab.on{background:var(--info);color:#fff}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;gap:12px;min-width:0}
+.ico{width:36px;height:36px;border-radius:50%;background:var(--info-bg);color:var(--info);display:grid;place-items:center;flex:none;font-size:16px}
+.body{flex:1;min-width:0}
+.chip{display:inline-block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;background:var(--chip);color:var(--muted);padding:2px 8px;border-radius:999px;font-weight:500}
+.loc{padding-top:12px;margin-top:12px;border-top:1px solid var(--border)}
+.loc:first-of-type{border:0;margin-top:8px;padding-top:0}
+.loc p{margin:0 0 8px;font-size:12px;font-weight:500}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 16px;border-radius:12px;background:var(--pill);min-width:80px}
+.pill b{font-size:16px;font-variant-numeric:tabular-nums}
+.pill span{font-size:11px;color:var(--muted);text-align:center;line-height:1.2}
+.comb{margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
+.comb p{margin:0 0 8px;font-size:12px;font-weight:500;color:var(--muted)}
+.foot{margin-top:12px;font-size:12px;color:var(--muted)}
+.ghost{opacity:.55}
+h2{font-size:13px;margin:18px 0 0;color:var(--muted);font-weight:600}
+</style>
+<div class="wrap">
+  <p class="note">Mockup · Analytics page, Google Business tab · Move Better workspace only</p>
+  <div class="tabs"><span class="tab">Social</span><span class="tab">Website</span><span class="tab on">Google Business</span><span class="tab">Apple</span><span class="tab">SEO</span></div>
+  <p class="note">Rolling last 30 days — not yet scoped to a specific week.</p>
+
+  <div class="card">
+    <div class="ico">★</div>
+    <div class="body">
+      <span class="chip">Google reviews · 2 locations</span>
+      <div class="loc"><p>Portland</p><div class="pills"><div class="pill"><b>5.0</b><span>Rating</span></div><div class="pill"><b>130</b><span>Reviews</span></div></div></div>
+      <div class="loc"><p>Vancouver</p><div class="pills"><div class="pill"><b>5.0</b><span>Rating</span></div><div class="pill"><b>39</b><span>Reviews</span></div></div></div>
+      <div class="comb"><p>Combined</p><div class="pills"><div class="pill"><b>5.0</b><span>Rating</span></div><div class="pill"><b>169</b><span>Reviews</span></div></div></div>
+      <p class="foot">Updated Nov 14, 2026 · refreshed quarterly from your Google Business Profiles</p>
+    </div>
+  </div>
+
+  <div class="card ghost">
+    <div class="ico">⌖</div>
+    <div class="body"><span class="chip">Google Business Profile · 30d · 2 locations</span>
+      <div class="loc"><p>Portland</p><div class="pills"><div class="pill"><b>—</b><span>Impressions</span></div><div class="pill"><b>—</b><span>Maps views</span></div><div class="pill"><b>—</b><span>Calls</span></div></div></div>
+      <p class="foot">The existing card, unchanged and shown dimmed here.</p></div>
+  </div>
+
+  <h2>Other workspaces</h2>
+  <p class="note">The reviews card does not render at all, so there is no empty state or placeholder. These are Move Better's reviews.</p>
+  <h2>If the reviews can't be read</h2>
+  <div class="card"><div class="ico">★</div><div class="body"><span class="chip">Google reviews · temporarily unavailable</span><p class="foot" style="margin-top:8px">Reviews are temporarily unavailable — check back shortly.</p></div></div>
+</div>
