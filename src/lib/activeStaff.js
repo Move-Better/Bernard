@@ -20,3 +20,12 @@ export function pickableStaff(list, keepIds = []) {
   const keep = new Set((Array.isArray(keepIds) ? keepIds : [keepIds]).filter(Boolean))
   return (Array.isArray(list) ? list : []).filter((s) => !!s && (!s.deactivated_at || keep.has(s.id)))
 }
+
+// Pickers for WHO IS PICTURED in media. Same as pickableStaff, minus the
+// Playwright fixture rows ("E2E Smoke Staff", "E2E Smoke Clinician", "e2e"):
+// they must stay active for the e2e specs, but nobody is photographed as them.
+// A fixture already selected on the thing being edited stays visible.
+export function pickablePictured(list, keepIds = []) {
+  const keep = new Set((Array.isArray(keepIds) ? keepIds : [keepIds]).filter(Boolean))
+  return pickableStaff(list, keepIds).filter((s) => keep.has(s.id) || !/^e2e\b/i.test(s.name || ''))
+}

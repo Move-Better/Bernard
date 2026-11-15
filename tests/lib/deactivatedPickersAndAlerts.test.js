@@ -43,8 +43,9 @@ describe('every new-work picker filters deactivated people', () => {
   ]
   it.each(PICKERS)('%s imports and calls pickableStaff', (rel) => {
     const src = codeOnly(read(rel))
-    expect(src).toMatch(/import \{ pickableStaff \} from '@\/lib\/activeStaff'/)
-    expect(src).toMatch(/pickableStaff\(/)
+    // pickablePictured wraps pickableStaff (adds the e2e-fixture filter).
+    expect(src).toMatch(/import \{[^}]*\bpickable(Staff|Pictured)\b[^}]*\} from '@\/lib\/activeStaff'/)
+    expect(src).toMatch(/pickable(Staff|Pictured)\(/)
   })
 
   it('the merge target list and the coverage roster skip deactivated people', () => {
