@@ -42,17 +42,18 @@ export function shapeItem(row, staffById = new Map()) {
   const isVideo = row.kind === 'video'
   const tags = [...new Set([...(row.tags || []), ...(row.ai_tags || [])])]
   const staff = row.staff_id ? staffById.get(row.staff_id) : null
-  const useWeb = !isVideo && row.web_blob_url
+  const useWeb = Boolean(row.web_blob_url)
   return {
     id: row.id,
     kind: row.kind,
-    url: isVideo ? (row.rendered_url || row.blob_url) : (row.web_blob_url || row.blob_url),
+    url: isVideo ? (row.web_blob_url || row.rendered_url || row.blob_url) : (row.web_blob_url || row.blob_url),
+    web_ready: Boolean(row.web_blob_url),
     original_url: row.blob_url,
     width: useWeb ? row.web_width : row.width,
     height: useWeb ? row.web_height : row.height,
     original_width: row.width,
     original_height: row.height,
-    mime: useWeb ? imageMediaType(row.web_blob_url, row.mime_type) : row.mime_type,
+    mime: useWeb ? (isVideo ? 'video/mp4' : imageMediaType(row.web_blob_url, row.mime_type)) : row.mime_type,
     size_bytes: useWeb ? null : row.size_bytes,
     duration_s: isVideo ? row.duration_s : undefined,
     poster_url: isVideo ? (row.thumbnail_url || null) : undefined,
