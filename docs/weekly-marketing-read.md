@@ -73,12 +73,26 @@ in every one of the six weeks.
 - `interviews_by_kind_and_status`: interviews Bernard started that week (by `created_at`, Pacific date),
   counted per `kind` and `status`.
 
-**Do not write either component straight into the Scorecard.** They did not match the typed "Posts
-published" or "Bernard Interviews" values in the six weeks checked (2026-11-15): Bernard's one blog
-(2026-10-07) sits in the week ending 10-11 while the Scorecard has 1 in the week ending 10-04, and
-Bernard's three completed practice interviews (2026-10-07) sit in the week ending 10-11 while the
-Scorecard has 5 in the week ending 10-18. The components are here so the reader can apply a definition
-Q rules on; the route does not decide what counts.
+**Do not write either component straight into the Scorecard.** They are raw counts, and neither is the
+Scorecard's metric.
+
+Q's definitions (2026-11-15):
+
+- **Posts published** is social media posted through Bernard. That excludes `blog`.
+- **Bernard Interviews** is a staff member completing an interview and marking its subsequent blog
+  approved. An interview whose blog is still in review does not count.
+
+Measured against those definitions for the six weeks ending 2026-10-04 to 2026-11-08, neither can be
+filled from Bernard, so both stay typed by hand and the route does not return them as numbers:
+
+- Bernard published no social post in any of the six weeks (nothing since late September); the Scorecard
+  has 1 in the week ending 10-04.
+- One interview qualifies (completed and its blog approved, 2026-10-07, week ending 10-11); the Scorecard
+  has 0 at 10-04 and 5 at 10-18. A Thursday fill would move the 1 to 10-04, which does not match either.
+  Two other completed interviews from 10-07 have blogs still in review.
+
+Revisit when Bernard is publishing again: the components give the reader the rows to apply the
+definitions to, but re-measure against the typed values before relying on them.
 
 ### Not here, on purpose
 
