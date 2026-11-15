@@ -1,7 +1,8 @@
 # Shared media library for Bernard and movebetter.co — plan
 
-Status: **plan, revised 2026-11-14 after Q's answers.** Nothing in this doc is built yet except the consent
-change (section 4). No media has been copied, moved or deleted.
+Status (2026-11-14): **Bernard's side is live.** Consent backfill + default (#2777), the read-only catalogue
+and website tags (#2779, #2780), and video web versions (#2785) are shipped and verified on prod. Remaining
+work is on the website side: see the checklist at the end.
 
 ## The short version
 
