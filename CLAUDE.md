@@ -53,6 +53,11 @@ Bernard's SaaS-productization strategy (plan tiers, pricing, managed-vs-BYO anal
 - **In-app feedback is the `feedback` table, never the inbox**, and `resolved_at`, not the
   open-time `triage_note`, says whether it is fixed. Resolving emails the reporter, so confirm before
   resolving (`housekeeping.md`).
+- **Move Better's Google reviews are an external, read-only data source (2026-11-14).** 169 reviews
+  for both clinics live in the private repo `Move-Better/Movebetterco` (`data/google-reviews.json`,
+  contract in `docs/reviews/README.md`), read through the GitHub API with `GITHUB_REVIEWS_TOKEN`
+  (**Sensitive**, in the `bernard` 1Password Environment). Bernard stores no reviews itself; never copy
+  them into a table. Reader rules and the live-staff check are in `integrations.md`.
 - **This repo's instruments are `bernard-`-prefixed:** `/bernard-audit` (`full` for the whole
   codebase), `/bernard-checkup`, `/bernard-outcome-review`, `/bernard-triage-feedback`. A same-named
   command can load a sibling project's body (`housekeeping.md`).
@@ -181,7 +186,7 @@ Read the matching file in `.claude/lessons/` before work in that area; several c
 | `media.md` | a renderer or compositor, the video or slide editors and templates, captions, grades, thumbnails, `media_urls`, the blob store, the email template, any colour in tenant content |
 | `frontend.md` | a page layout, making something clickable, a route or back link, client polling, an ESLint rule, a Tailwind token, a brand-colour sweep, a mockup |
 | `ai.md` | a prompt or `src/lib/prompts.js`, streaming chat, the realtime voice session, an LLM judge or rubric, a tactic classifier, image generation |
-| `integrations.md` | Search Console, GBP Analytics, GA4, the citation probe, decrypted `workspace_credentials`, a rebrand, retiring a domain |
+| `integrations.md` | Google reviews data (Movebetterco repo), Search Console, GBP Analytics, GA4, the citation probe, decrypted `workspace_credentials`, a rebrand, retiring a domain |
 | `verify.md` | scoping a change to an "existing" feature, verifying an authed UI change on prod, driving Q's Chrome, calling a live API from the browser |
 | `screenshots.md` | merging a user-visible UI change (the staff-summary screenshot), running `scripts/capture-screenshot.mjs` |
 | `git-deploy.md` | a worktree or branch, a rebase, opening or merging a PR, a red check or E2E smoke, the lint ceiling, a deploy |
