@@ -1,6 +1,17 @@
 # Third-party integrations, renames and domain changes
 
-Read this before work on Google Search Console, GBP Analytics, GA4, the citation probe, decrypted `workspace_credentials`, a rebrand, or retiring a domain. Moved from `CLAUDE.md` on 2026-11-11; the section headings are unchanged, so a code comment citing `CLAUDE.md "<heading>"` finds its rule here.
+Read this before work on Google reviews data, Google Search Console, GBP Analytics, GA4, the citation probe, decrypted `workspace_credentials`, a rebrand, or retiring a domain. Moved from `CLAUDE.md` on 2026-11-11; the section headings are unchanged, so a code comment citing `CLAUDE.md "<heading>"` finds its rule here.
+
+## Google reviews come from the Movebetterco repo, read-only, never copied
+
+**Move Better's Google reviews (Portland + Vancouver, refreshed quarterly) are read live from `Move-Better/Movebetterco` on GitHub; Bernard stores none.** Checked 2026-11-14: no table, column, route or prompt in Bernard holds a Google review, star rating or review count (the schema has only approval-sense `review_*` columns), and the GBP routes (`gbp-analytics.js`, `insights/gbp-performance.js`) carry no review fields. So there is nothing for this source to replace.
+
+- **Files (all `?ref=main`, `Accept: application/vnd.github.raw+json`, `Authorization: Bearer $GITHUB_REVIEWS_TOKEN`):** `data/google-reviews.json`, `data/review-staff.json`, `docs/reviews/README.md` (the contract, read it before using the data), `docs/reviews/LATEST.md` (testimonial candidates per condition).
+- **Token:** `GITHUB_REVIEWS_TOKEN` (**Sensitive**, fine-grained, Contents read-only on that one repo) is in the Bernard 1Password Environment. Read it from the primary-checkout mount with `awk`, in the same command that uses it (`housekeeping.md`, `secrets.md`). Fetch server-side only, never ship it to the client.
+- **Shape of the file (2026-11-14 import):** `{updated, source, locations:{portland:{rating,count}, vancouver:{…}}, reviews:[…]}`; 130 + 39 reviews, all 5.0, none removed, 154 with text.
+- **Reader rules (from the contract):** skip `removed: true`; quote `text` verbatim; honour `hide_photo`; keep `animal_care: true` off human-care content; `conditions` tags are keyword matches, so read the text before using one; `providers_mentioned[].active` is stale by design: derive active staff live from `contents/src/content/team?ref=main` (file name minus `.md` is the `team_slug`, and a file with `draft: true` is not active). Read only; no write ever.
+- **Gotcha:** the first fetch right after the import landed returned 404 on all three paths while the repo and directory listings were fine; a retry minutes later returned 200. On a 404, list `contents/data` before concluding the token lacks access.
+- **Collides with a standing content rule:** Q killed patient-story angles for PHI risk (2026-06-21, #1566). Review text is public and written by the patient, but treat any use that quotes a reviewer in generated content as a new decision for Q, not a default.
 
 ## Probing live integration state through `workspace_credentials`
 
