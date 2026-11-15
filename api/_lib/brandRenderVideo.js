@@ -248,7 +248,7 @@ export const VIDEO_CHANNEL_SPECS = {
  * @param {string} filePath — local path to probe
  * @returns {Promise<string|null>} ffmpeg map spec (e.g. "0:0") or null if no decodable audio
  */
-function probeUsableAudioMap(filePath) {
+export function probeUsableAudioMap(filePath) {
   return new Promise((resolve) => {
     let proc
     try {
@@ -287,7 +287,7 @@ function probeUsableAudioMap(filePath) {
  * few stderr lines on non-zero exit (ffmpeg always writes progress to stderr
  * even on success, so we don't surface stderr on clean exit).
  */
-function runFfmpeg(args) {
+export function runFfmpeg(args) {
   return new Promise((resolve, reject) => {
     const proc = spawn(ffmpegPath, args, { stdio: ['ignore', 'ignore', 'pipe'] })
     const stderrChunks = []
