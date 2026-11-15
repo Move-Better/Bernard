@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { keyMatches, shapeItem, CATALOGUE_WORKSPACES } from '../api/_routes/media/catalogue.js'
+import { keyMatches, shapeItem, tagFilter, CATALOGUE_WORKSPACES } from '../api/_routes/media/catalogue.js'
 import { mergeLibraryTags, libraryTagImage, imageMediaType, LIBRARY_TAGS } from '../api/_lib/libraryTags.js'
 
 const KEY = 'k'.repeat(32)
@@ -13,6 +13,14 @@ describe('media catalogue key', () => {
     expect(keyMatches('Bearer ', undefined)).toBe(false)
   })
   it('is only open to Move Better', () => expect([...CATALOGUE_WORKSPACES]).toEqual(['movebetter']))
+})
+
+describe('tag filter', () => {
+  it('uses jsonb containment, not the Postgres array form', () => {
+    const f = tagFilter('knee-pain')
+    expect(f).not.toContain('{')
+    expect(decodeURIComponent(f)).toBe('or=(tags.cs.["knee-pain"],ai_tags.cs.["knee-pain"])')
+  })
 })
 
 describe('shapeItem', () => {

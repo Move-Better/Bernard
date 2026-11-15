@@ -30,6 +30,13 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 const SELECT = 'id,kind,blob_url,web_blob_url,web_width,web_height,width,height,mime_type,size_bytes,duration_s,thumbnail_url,rendered_url,display_title,alt_text,captured_at,tags,ai_tags,staff_id,consent_status,asset_purpose,updated_at'
 
+// tags / ai_tags are jsonb, so containment takes a JSON array (`cs.["x"]`);
+// the Postgres array form `cs.{x}` is a 22P02 error there, which was the 500.
+export function tagFilter(t) {
+  const v = encodeURIComponent(JSON.stringify([t]))
+  return `or=(tags.cs.${v},ai_tags.cs.${v})`
+}
+
 export function keyMatches(header, secret) {
   if (typeof secret !== 'string' || secret.length < 24) return false
   const expected = Buffer.from(`Bearer ${secret}`)
@@ -94,7 +101,7 @@ async function handler(req, res) {
   }
   for (const t of sp.getAll('tag')) {
     if (!TAG_RE.test(t)) return res.status(400).json({ error: 'invalid_tag' })
-    filters.push(`or=(tags.cs.{${t}},ai_tags.cs.{${t}})`)
+    filters.push(tagFilter(t))
   }
   const staff = sp.get('staff')
   if (staff) {
