@@ -196,6 +196,7 @@ export async function startResumableUpload(file, meta, { abortSignal, onProgress
         collectionId: meta.collectionId || null,
         staffId: meta.staffId || null,
         picturedStaffIds: Array.isArray(meta.picturedStaffIds) ? meta.picturedStaffIds : [],
+        picturedPatient: meta.picturedPatient === true,
       },
     }),
   })

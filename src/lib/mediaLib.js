@@ -261,6 +261,7 @@ async function maybeTranscodeHeic(file) {
 //                       when assetPurpose === 'interview'.
 //   staffId           — the single attributed staff member (video voice/captions)
 //   picturedStaffIds  — everyone pictured; stored on photos only
+//   picturedPatient   — a patient is pictured (flag, no person); photos only
 //   parentId          — when set, this is a return-upload of a finished edit;
 //                       server inserts with parent_id set, status='approved',
 //                       and skips the AI auto-pipeline.

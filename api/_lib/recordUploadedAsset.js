@@ -13,7 +13,7 @@
 //                 { scopeColumn, scopeId, filename, createdBy, patientPseudonym,
 //                   condition, capturedAt, notes, assetPurpose, speakerRole,
 //                   parentId, contentPieceId, collectionId, staffId,
-//                   picturedStaffIds }
+//                   picturedStaffIds, picturedPatient }
 //
 // Returns the inserted media_assets row (or null on insert failure).
 
@@ -202,6 +202,7 @@ export async function recordUploadedAsset({ blob, tokenPayload }) {
     parent_id: parentId,
     staff_id: staffId,
     pictured_staff_ids: picturedStaffIds,
+    pictured_patient: kind === 'photo' && meta.picturedPatient === true,
     // Seed videos as 'pending' when Mux will transcode them, so the player
     // shows the "Transcoding…" placeholder immediately instead of falling
     // back to a native <video> that can't play a non-faststart .mov (moov

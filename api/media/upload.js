@@ -98,6 +98,7 @@ async function handler(req, res) {
             picturedStaffIds: Array.isArray(meta.picturedStaffIds)
               ? meta.picturedStaffIds.filter((x) => typeof x === 'string').slice(0, 24)
               : [],
+            picturedPatient: meta.picturedPatient === true,
           }),
         }
       },

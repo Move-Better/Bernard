@@ -224,6 +224,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
   const [staffId, setStaffId] = useState(asset.staff_id || '')
   // Photos: everyone pictured (many). Videos keep the single staffId above.
   const [pictured, setPictured] = useState(asset.pictured_staff_ids || [])
+  const [patientPictured, setPatientPictured] = useState(!!asset.pictured_patient)
   const [aiTags, setAiTags]     = useState(asset.ai_tags || [])
   const [transcription, setTranscription] = useState(asset.transcription || '')
   const [visualNarrative, setVisualNarrative] = useState(asset.visual_narrative || '')
@@ -355,6 +356,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
     setSpeakerRole(asset.speaker_role || 'clinician')
     setStaffId(asset.staff_id || '')
     setPictured(asset.pictured_staff_ids || [])
+    setPatientPictured(!!asset.pictured_patient)
     setAiTags(asset.ai_tags || [])
     setTranscription(asset.transcription || '')
     setVisualNarrative(asset.visual_narrative || '')
@@ -441,7 +443,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
         // mirror the rule client-side so the optimistic state stays accurate.
         speakerRole: assetPurpose === 'interview' ? speakerRole : null,
         // Photos edit pictured people; their single staff_id is left as it is.
-        ...(asset.kind === 'photo' ? { picturedStaffIds: pictured } : { staffId: staffId || null }),
+        ...(asset.kind === 'photo' ? { picturedStaffIds: pictured, picturedPatient: patientPictured } : { staffId: staffId || null }),
       })
       toast.success('Media details saved')
       onChange?.()
@@ -922,7 +924,7 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                     people in the picture. */}
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Who is in this photo</label>
-                  {pictured.length === 0 && (
+                  {pictured.length === 0 && !patientPictured && (
                     <span className="inline-flex items-center gap-1 text-3xs uppercase tracking-wide font-medium px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/30">
                       <AlertTriangle className="h-3 w-3" />
                       No one tagged
@@ -944,6 +946,18 @@ export default function MediaDetail({ asset, onClose, onChange }) {
                       {c.name}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    disabled={!canEdit}
+                    aria-pressed={patientPictured}
+                    title="A patient is in the photo (no name is stored)"
+                    onClick={() => setPatientPictured((v) => !v)}
+                    className={`text-2xs px-2.5 py-1 rounded-full border transition-colors ${
+                      patientPictured ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                    }`}
+                  >
+                    Patient
+                  </button>
                 </div>
                 <p className="text-2xs text-muted-foreground mt-1">Tap to add or remove. Shown on the website as the people in the picture.</p>
                 <label className="text-xs font-medium text-muted-foreground block mt-3 mb-1.5">Uploaded by</label>

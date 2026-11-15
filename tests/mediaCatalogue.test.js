@@ -103,3 +103,15 @@ describe('combineFilters', () => {
     expect(decodeURIComponent(out)).toBe('and=(or(tags.cs.["knee-pain"],ai_tags.cs.["knee-pain"]),or(tags.cs.["hinge"],ai_tags.cs.["hinge"]))')
   })
 })
+
+describe('has_patient', () => {
+  it('flags a patient in a photo without naming anyone', () => {
+    const item = shapeItem({ id: 'a', kind: 'photo', blob_url: 'o.jpg', pictured_patient: true, pictured_staff_ids: [] })
+    expect(item.has_patient).toBe(true)
+    expect(item.people).toEqual([])
+  })
+  it('is false by default and for video', () => {
+    expect(shapeItem({ id: 'a', kind: 'photo', blob_url: 'o.jpg' }).has_patient).toBe(false)
+    expect(shapeItem({ id: 'v', kind: 'video', blob_url: 'v.mov', pictured_patient: true }).has_patient).toBe(false)
+  })
+})
