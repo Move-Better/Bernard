@@ -34,12 +34,12 @@ f. **Adoption denominator** (the north star): Bernard-published posts vs the cli
    -- per channel: cumulative post_count at each month boundary (take the row
    -- nearest each boundary; weekly cadence means within ~3 days of it)
    SELECT DISTINCT ON (platform)
-     platform, account_username, post_count, followers, captured_at
+     platform, account_username, post_count, followers, snapshot_at, captured_at
    FROM social_channel_snapshots
-   WHERE workspace_id = '<ws>' AND captured_at <= '<boundary>'
-   ORDER BY platform, captured_at DESC;
+   WHERE workspace_id = '<ws>' AND snapshot_at <= '<boundary>'
+   ORDER BY platform, snapshot_at DESC;
    ```
-   Run once with `<boundary>` = month start and once = month end; total = end − start per platform. Bernard's numerator is the existing published `content_items` count (metric b). Caveats: the delta is NET of deletions; a channel whose `post_count` sits at 0/null across snapshots isn't reporting a real total (Facebook pages sometimes don't — Meta exposes no reliable page post total) → fall back to a **manual profile check** for that channel and say so in the report. If the table has no row before the month start yet (instrumentation younger than the window), report the partial window explicitly rather than a made-up month.
+   Run once with `<boundary>` = month start and once = month end; total = end − start per platform. Filter and order by `snapshot_at` (the platform's own as-of time), not `captured_at` (when the cron ran): the cron keeps writing rows whose `snapshot_at` is frozen (Facebook has been stuck at 2026-10-21), and ordering by `captured_at` makes that stale value look current. Report any platform whose latest `snapshot_at` lags its latest `captured_at` by more than 7 days as a **stale feed**, not a real total. Bernard's numerator is the existing published `content_items` count (metric b). Caveats: the delta is NET of deletions; a channel whose `post_count` sits at 0/null across snapshots isn't reporting a real total (Facebook pages sometimes don't — Meta exposes no reliable page post total) → fall back to a **manual profile check** for that channel and say so in the report. If the table has no row before the month start yet (instrumentation younger than the window), report the partial window explicitly rather than a made-up month.
 
    **Do not conflate this table with per-post engagement.** `social_channel_snapshots` is ACCOUNT-level only; PER-POST engagement lives in `engagement_snapshots` (`source='bundle'`, keyed by `content_item_id`, written daily by `cron/refresh-engagement` at 1/3/7/30-day post-age checkpoints since 2026-07-09; `source='ga4'` for blog, `source='gbp'` dead-ended by the GBP quota block). The 2026-09-11 review wrote "per-post engagement isn't instrumented" into a kill-criteria ruling by missing this table — corrected in #2719. Before claiming any metric "isn't instrumented," grep for the candidate table's WRITERS (`grep -rln '<table>' api/`) and check row recency.
 
