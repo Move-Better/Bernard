@@ -18,10 +18,11 @@ describe('media catalogue key', () => {
 describe('shapeItem', () => {
   const staff = new Map([['s1', { id: 's1', name: 'Dr. Q' }]])
   it('prefers the web variant for photos and never exposes patient fields', () => {
-    const item = shapeItem({ id: 'a', kind: 'photo', blob_url: 'o.jpg', web_blob_url: 'w.webp', web_width: 2000, web_height: 1500,
+    const item = shapeItem({ id: 'a', kind: 'photo', blob_url: 'o.jpg', web_blob_url: 'w.jpg', web_width: 2000, web_height: 1500,
       width: 4000, height: 3000, mime_type: 'image/jpeg', staff_id: 's1', tags: ['x'], ai_tags: ['x', 'hinge'],
       captured_at: '2024-04-12T10:00:00Z', patient_pseudonym: 'P1', consent_status: 'obtained' }, staff)
-    expect(item.url).toBe('w.webp')
+    expect(item.url).toBe('w.jpg')
+    expect(item.mime).toBe('image/jpeg')
     expect([item.width, item.height]).toEqual([2000, 1500])
     expect(item.tags).toEqual(['x', 'hinge'])
     expect(item.people).toEqual([{ id: 's1', name: 'Dr. Q' }])
