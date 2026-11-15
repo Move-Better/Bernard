@@ -37,6 +37,17 @@ export function tagFilter(t) {
   return `or=(tags.cs.${v},ai_tags.cs.${v})`
 }
 
+// PostgREST takes one `or=` per query string, so several (two tags, or a tag
+// plus a staff filter) are ANDed together as `and=(or(..),or(..))`. Verified
+// against prod PostgREST 2026-11-15 (two tags returned the intersection).
+export function combineFilters(filters) {
+  const ors = filters.filter((f) => f.startsWith('or=')).map((f) => f.slice(4, -1))
+  const ands = filters.filter((f) => !f.startsWith('or='))
+  if (ors.length === 1) ands.push(`or=(${ors[0]})`)
+  else if (ors.length > 1) ands.push(`and=(${ors.map((o) => `or(${o})`).join(',')})`)
+  return ands
+}
+
 export function keyMatches(header, secret) {
   if (typeof secret !== 'string' || secret.length < 24) return false
   const expected = Buffer.from(`Bearer ${secret}`)
@@ -133,11 +144,7 @@ async function handler(req, res) {
   const offset = Math.max(parseInt(sp.get('offset') || '0', 10) || 0, 0)
 
   try {
-    // PostgREST only accepts one `or=` per query string, so combine them.
-    const ors = filters.filter((f) => f.startsWith('or=')).map((f) => f.slice(4, -1))
-    const ands = filters.filter((f) => !f.startsWith('or='))
-    if (ors.length === 1) ands.push(`or=(${ors[0]})`)
-    else if (ors.length > 1) ands.push(`and=(${ors.map((o) => `or(${o})`).join(',')})`)
+    const ands = combineFilters(filters)
 
     const r = await supabaseRest(
       `media_assets?select=${SELECT}&${ands.join('&')}&order=captured_at.desc.nullslast,id&limit=${limit}&offset=${offset}`,

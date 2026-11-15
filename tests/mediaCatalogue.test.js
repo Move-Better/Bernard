@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { keyMatches, shapeItem, tagFilter, CATALOGUE_WORKSPACES } from '../api/_routes/media/catalogue.js'
+import { keyMatches, shapeItem, tagFilter, combineFilters, CATALOGUE_WORKSPACES } from '../api/_routes/media/catalogue.js'
 import { mergeLibraryTags, libraryTagImage, imageMediaType, LIBRARY_TAGS } from '../api/_lib/libraryTags.js'
 
 const KEY = 'k'.repeat(32)
@@ -90,5 +90,16 @@ describe('web video', () => {
     expect(item.web_ready).toBe(true)
     expect(item.mime).toBe('video/mp4')
     expect([item.width, item.height]).toEqual([1080, 1920])
+  })
+})
+
+describe('combineFilters', () => {
+  it('leaves a single or= alone', () => {
+    expect(combineFilters(['a=eq.1', tagFilter('x')])).toEqual(['a=eq.1', tagFilter('x')])
+  })
+  it('ANDs several or= groups (two tags)', () => {
+    const [out] = combineFilters([tagFilter('knee-pain'), tagFilter('hinge')])
+    expect(out.startsWith('and=(or(tags.cs.')).toBe(true)
+    expect(decodeURIComponent(out)).toBe('and=(or(tags.cs.["knee-pain"],ai_tags.cs.["knee-pain"]),or(tags.cs.["hinge"],ai_tags.cs.["hinge"]))')
   })
 })

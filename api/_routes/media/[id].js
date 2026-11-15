@@ -5,6 +5,8 @@ import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
+import { waitUntil } from '@vercel/functions'
+import { indexMediaAsset } from '../../_lib/visualMemoryIndex.js'
 
 // Per-method role requirements (HANDOFF.md → Locked decisions):
 //   GET    → any authenticated user
@@ -268,6 +270,12 @@ async function handler(req, res) {
       req,
       scope,
     })
+
+    // Who is in / attributed to an asset is part of its embedding text, so
+    // re-index when either changes (after the response, never blocking it).
+    if (after && (body.pictured_staff_ids !== undefined || body.staff_id !== undefined)) {
+      waitUntil(indexMediaAsset({ assetId: id }).catch((e) => console.error('[media/[id]] reindex failed:', e?.message)))
+    }
 
     return res.status(200).json(after)
   }
