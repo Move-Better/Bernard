@@ -593,3 +593,8 @@ Post editor audit (`.claude/post-editor-audit-2026-11-10.md`) options A–E ship
 **Case against.** Hand-tagging 73 photos is chore work and the website could ship without names. Accepted: the people on a photo are what the site shows next to it.
 **Kill criterion — revisit-by 2026-12-14.** If fewer than 36 of the 73 are tagged by then, drop the Needs-people view and tag them in one sitting instead.
 **Open.** Visual-memory index still reads `staff_id`, so it does not see pictured people. Old `created_by` rows stay "not recorded"; no backfill.
+
+## 2026-11-15 — Daily check that every published blog post still opens (Q)
+
+Decision (Q, by button, after the challenge brief): `api/_routes/cron/check-published-links.js` loads every published blog's `resolved_url` daily and emails the workspace's owners about any a visitor cannot open (one retry; a Cloudflare bot challenge counts as "can't check", not broken). Evidence was thin: 0 of 19 published posts went missing after publishing; the live gaps were a retired domain (narraterx.ai, 404) and links that broke later. The animal site's silent six-month deploy gap (found 2026-11-15) is the failure it would catch.
+Kill criterion: if it raises nothing real by the revisit date, remove the cron. Revisit-by: 2027-02-15
