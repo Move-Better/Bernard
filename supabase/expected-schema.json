@@ -1026,6 +1026,7 @@
     "colors",
     "created_at",
     "created_by_clerk_user_id",
+    "default_consent_status",
     "display_name",
     "enabled_outputs",
     "engagement_digest_enabled",
