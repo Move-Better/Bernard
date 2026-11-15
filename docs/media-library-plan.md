@@ -180,21 +180,47 @@ account; small volume).
 
 ## Website-side checklist (hand to a Claude session in Move-Better/Movebetterco)
 
-Start after Bernard's phase 1 ships (catalogue endpoint exists).
+**Phase 1 is live (2026-11-14, PRs #2779 and #2780).** Everything below can start now.
 
-1. Add `MEDIA_CATALOGUE_KEY` (**Sensitive**) from the website's 1Password Environment for local use only;
-   never add it to the Vercel production build env.
-2. Write `scripts/media-pick.mjs`: query `https://movebetter.withbernard.ai/api/media/catalogue` with the
-   key and filters (`tag`, `kind`, `q`), and append chosen entries to `src/data/media.json`.
-3. Add `src/lib/media.ts` with `getMedia(id)` that throws on an unknown id.
-4. Add the Bernard Blob host to `image.remotePatterns` in `astro.config.mjs`; render photos with
-   `<Picture>` using the item's width, height and alt. Test one HEIC item first.
-5. Replace the condition-page photos (`/images/paradigm/*`, `homepage-treatment-*`, `about-hero.jpg` and
+### The catalogue
+
+- URL: `https://movebetter.withbernard.ai/api/media/catalogue` (**Not sensitive**)
+- Auth header: `Authorization: Bearer $MEDIA_CATALOGUE_KEY`. The key (**Sensitive**) is in the Movebetterco
+  1Password Environment as `MEDIA_CATALOGUE_KEY`. Use it locally and in GitHub Actions only; never put it in
+  the Vercel production build env or in client code.
+- Query params: `kind=photo|video`, `tag=<tag>` (repeatable, all must match), `staff=<staff uuid>`,
+  `since=YYYY-MM-DD`, `ids=<uuid,uuid,…>` (up to 200), `q=<words>` (searches title and alt text),
+  `limit` (max 1000, default 200), `offset`.
+- Returns only active Move Better items with consent on file. 507 items at launch.
+- Item fields: `id` (stable forever), `kind`, `url` (web-sized photo when one exists, else the original;
+  for video the rendered file, else the original), `original_url`, `width`, `height`, `original_width`,
+  `original_height`, `mime`, `size_bytes`, `duration_s` and `poster_url` (video), `title`, `alt`,
+  `people` (`[{id, name}]`, staff only), `taken` (YYYY-MM-DD), `purpose`, `tags`, `consent`, `updated_at`.
+- Website tags to search by (fixed spellings): pillars `breathe`, `brace`, `hinge`; conditions
+  `concussion-whiplash`, `foot-ankle`, `headaches-migraines`, `knee-pain`, `low-back-pain`,
+  `prenatal-postpartum`, `shoulder-pain`; type `treatment`, `exercise`, `assessment`, `headshot`, `team`,
+  `clinic-space`, `outdoors`. Facility shots carry `portland-facility` / `vancouver-facility` once a person
+  adds them in Bernard. Items also carry free-form AI tags (e.g. `kettlebell`, `thoracic-extension`).
+- Example:
+  ```bash
+  curl -s -H "Authorization: Bearer $MEDIA_CATALOGUE_KEY" "https://movebetter.withbernard.ai/api/media/catalogue?kind=photo&tag=hinge&limit=20"
+  ```
+
+### Steps
+
+1. Write `scripts/media-pick.mjs`: query the catalogue with filters and append chosen entries (whole item
+   objects) to `src/data/media.json`, keyed by `id`.
+2. Add `src/lib/media.ts` with `getMedia(id)` that throws on an unknown id.
+3. Add `t4otw6ecf8ztxfeq.public.blob.vercel-storage.com` to `image.remotePatterns` in `astro.config.mjs`;
+   render photos with `<Picture>` from `astro:assets` using the item's width, height and alt. Some originals
+   are HEIC or 10 MB+ JPEGs; prefer items whose `url` contains `/media/web/` (already web-sized), and test
+   one HEIC item before relying on it.
+4. Replace the condition-page photos (`/images/paradigm/*`, `homepage-treatment-*`, `about-hero.jpg` and
    the named photos in `src/content/conditions/*.md`) with library ids. Keep the old files until verified on
    prod.
-6. Add a weekly GitHub Action that checks every id in `media.json` against the catalogue and fails on
-   revoked or archived items. Prove it fails on a mutated id.
-7. For videos (phase 4): request a web version through Bernard, use the Mux MP4/HLS with poster and
-   captions, and add `https://stream.mux.com` to `media-src` in `vercel.json`.
-8. Verify on the deployed site: photos served from the site's own `/_astro/` output, videos from Mux, no
-   CSP reports.
+5. Add a weekly GitHub Action (repo secret `MEDIA_CATALOGUE_KEY`) that requests
+   `?ids=<every id in media.json>` and fails if any id is missing from the response (archived or consent
+   withdrawn), naming the page. Prove it fails on a mutated id.
+6. Videos wait for Bernard's phase 4 (web versions via Mux). Until then, use only videos whose `url` is a
+   rendered `.mp4`.
+7. Verify on the deployed site: photos served from the site's own `/_astro/` output, no CSP reports.
