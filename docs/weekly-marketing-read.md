@@ -79,13 +79,13 @@ Scorecard's metric.
 Q's definitions (2026-11-15):
 
 - **Posts published** is social media posted through Bernard. That excludes `blog`.
-- **Blogs published** is the Scorecard metric that used to be called "Bernard Interviews" (renamed
-  2026-11-15). Its first 16 weekly entries are interview counts, not blog counts. Q has not yet ruled how a
-  blog is counted; the `blog` key in `posts_published_by_platform` is the raw count of blogs Bernard
-  published that week.
+- **Blogs published** counts a blog when it is published through Bernard. It is the Scorecard metric that
+  used to be called "Bernard Interviews" (renamed 2026-11-15), so its first 16 weekly entries are interview
+  counts, not blog counts. The `blog` key in `posts_published_by_platform` is that count.
 
-Measured for the six weeks ending 2026-10-04 to 2026-11-08, neither can be filled from Bernard, so both
-stay typed by hand and the route does not return them as numbers:
+Measured for the six weeks ending 2026-10-04 to 2026-11-08, Posts published cannot be filled from Bernard
+and Blogs published has no comparable typed history, so both stay typed by hand and the route does not
+return them as numbers:
 
 - Bernard published no social post in any of the six weeks (nothing since late September); the Scorecard
   has 1 in the week ending 10-04.
