@@ -14,7 +14,7 @@ At publish time Bernard serializes the blog post (slug, title, description, pubD
 
 **Source**: the Astro deployment that receives publish requests. The URL is whatever path on the Astro site implements the publish receiver — by convention, `/api/publish` on the marketing domain.
 
-For `movebetter-animals`: `https://movebetteranimalchiro.com/api/publish`.
+For `movebetter-animals`: `https://www.movebetteranimalchiro.com/api/publish` (this is the stored value, checked 2026-11-15). Use the `www` host: the bare domain answers 307 to `www`, and a redirect to another host drops the `Authorization` header, so a publish to the bare address fails with 401.
 
 > Domain history: this site was at `movebetteranimal.co` through 2026-05-10, then renamed to `movebetteranimalchiro.com` to match the "Move Better Animals Chiropractic" brand. The old `.co` domain stays attached to the Astro Vercel project with a permanent (301) redirect to the new domain, so old blog post URLs and printed collateral keep working.
 
@@ -25,7 +25,7 @@ This URL is not a secret in the OWASP sense — knowing it doesn't grant access 
 **Source**: the same secret value lives in **two** places that must stay in sync:
 
 - **Bernard side**: encrypted in `workspace_credentials.secret_ciphertext` for `(workspace='movebetter-animals', service='astro_github')`. Originally also lived as the `BERNARD_PUBLISH_SECRET` env var on the legacy `bernard-animals` Vercel project; that value was marked **Sensitive** there and so `vercel env pull` returns empty for it (see `feedback_vercel_sensitive_env_pull_empty.md`).
-- **Astro deployment side**: env var on the `movebetteranimalchiro.com` Vercel project (probably named `BERNARD_PUBLISH_SECRET` to match the Bernard side, but the receiver picks whichever env name it reads). The Astro `/api/publish` handler compares the inbound `Authorization: Bearer …` header against this env var.
+- **Astro deployment side**: env var `NARRATERX_PUBLISH_SECRET` (named for Bernard's old name; `api/publish.ts` in the `movebetteranimal` repo reads exactly this, checked 2026-11-15) on the Vercel project **`movebetteranimalsite`**, the one serving `movebetteranimalchiro.com`. A project named `movebetteranimal` is not it. The `/api/publish` handler compares the inbound `Authorization: Bearer …` header against this env var.
 
 The two values **must match byte-for-byte**. A mismatch produces HTTP 401 from the Astro side, which Bernard surfaces as `error: 'auth_failed'` in the publish UI.
 
@@ -53,9 +53,9 @@ The output is ~44 characters of base64. Copy it once; it's the value you'll past
 
 Set the env var on the receiving Vercel project (the one that hosts `movebetteranimalchiro.com`) **before** updating Bernard. Publish requests with the *old* secret will fail during the gap; doing Astro first means the window is just the redeploy time, not the time it takes you to copy-paste.
 
-1. Open https://vercel.com → switch to the project that hosts `movebetteranimalchiro.com`.
+1. Open https://vercel.com → switch to the project `movebetteranimalsite` (it hosts `movebetteranimalchiro.com`).
 2. **Settings → Environment Variables**.
-3. Find `BERNARD_PUBLISH_SECRET` (or whatever env name the receiver reads — check `api/publish.ts` in the `movebetteranimal` repo if unsure).
+3. Find `NARRATERX_PUBLISH_SECRET` (the name `api/publish.ts` in the `movebetteranimal` repo reads; check it again if this note is old).
 4. Edit → paste the new value → save.
 5. **Redeploy production** so the new value is live. The redeploy isn't optional — Vercel env var changes don't apply to running deployments until the next build.
 
@@ -72,7 +72,7 @@ The "Configured" badge stays green; the encrypted value in `workspace_credential
 ### Step 4 — verify
 
 ```
-node scripts/astro-verify.mjs https://movebetteranimalchiro.com/api/publish "<new-secret>"
+node scripts/astro-verify.mjs https://www.movebetteranimalchiro.com/api/publish "<new-secret>"
 ```
 
 Or send a test publish from the Review Post UI with the **Draft** toggle on so it lands as an unpublished entry on the Astro side.
@@ -95,7 +95,7 @@ Open the existing `Bernard — movebetter-animals Astro+GitHub credentials` Secu
 Usage:
 
 ```
-node scripts/astro-verify.mjs https://movebetteranimalchiro.com/api/publish "<shared-secret>"
+node scripts/astro-verify.mjs https://www.movebetteranimalchiro.com/api/publish "<shared-secret>"
 ```
 
 The script never sends a payload the Astro side could mistake for a real post — `slug: '__bernard_verify__'` plus a deliberately empty `markdown` triggers the 400 path. If you ever change the Astro receiver to start writing minimum-viable posts from any well-formed payload, update this script.
@@ -135,7 +135,7 @@ publishing. Full rotation walkthrough: docs/ASTRO_GITHUB_CREDENTIALS.md.
 FIELD 1 — Publish webhook URL
 Sensitivity: Mildly sensitive
 ────────────────────────────────────────────
-Value:    https://movebetteranimalchiro.com/api/publish
+Value:    https://www.movebetteranimalchiro.com/api/publish
 Source:   The Astro deployment for movebetteranimalchiro.com (Vercel project).
           Path is whatever the receiver implements; conventionally /api/publish.
 Rotation: Stays stable unless the receiving site's URL or path changes.
@@ -149,7 +149,7 @@ Value:    <paste the secret here — same value as set on the Astro side>
 Source:   Mirrored in two places that must match byte-for-byte:
             1. Bernard workspace_credentials row (encrypted)
             2. movebetteranimalchiro.com Vercel project env var
-               (BERNARD_PUBLISH_SECRET or equivalent — check the
+               (NARRATERX_PUBLISH_SECRET on project movebetteranimalsite — check the
                 receiver source if unsure)
 Rotation: Generate new with `openssl rand -base64 32`. Paste into the
           Astro Vercel project's env var FIRST and redeploy, then into
@@ -198,7 +198,7 @@ publishing. Full rotation walkthrough: docs/ASTRO_GITHUB_CREDENTIALS.md.
 FIELD 1 — Publish webhook URL
 Sensitivity: Mildly sensitive
 ────────────────────────────────────────────
-Value:    https://movebetteranimalchiro.com/api/publish
+Value:    https://www.movebetteranimalchiro.com/api/publish
 Source:   The movebetteranimalchiro.com Vercel project (Astro app).
 
 ────────────────────────────────────────────
