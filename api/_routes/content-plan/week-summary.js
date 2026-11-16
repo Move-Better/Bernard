@@ -42,6 +42,13 @@ const shapeMoment = (m) =>
       }
     : null
 
+/** The newsletter digest /week and the post-call reveal show; null when the Newsletter channel is off. */
+export function activeDigest(ws) {
+  if (!Array.isArray(ws?.enabled_outputs) || !ws.enabled_outputs.includes('email')) return null
+  const digests = Array.isArray(ws.cadence_policy?.digests) ? ws.cadence_policy.digests : []
+  return digests.find((d) => d.enabled) || digests[0] || null
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') return err(res, 'Method not allowed', 405)
 
@@ -447,9 +454,10 @@ export default async function handler(req, res) {
     }
   }
 
-  // Active digest (the newsletter contribution line) from the cadence policy.
-  const digests = Array.isArray(ws.cadence_policy?.digests) ? ws.cadence_policy.digests : []
-  const digest = digests.find((d) => d.enabled) || digests[0] || null
+  // Active digest (the newsletter contribution line) from the cadence policy,
+  // only while the Newsletter channel is on (mirror of newsletterEnabled in
+  // src/lib/outputChannels.js; Q, 2026-11-16).
+  const digest = activeDigest(ws)
 
   const scheduledShaped = scheduled
     .map(shape)

@@ -386,3 +386,11 @@ export function channelOneClickReadyForIntent(channelId, intent) {
 export function channelHiddenForIntent(channelId, intent) {
   return channelId === 'email' && intent?.newsletter === 'skip'
 }
+
+// The newsletter follows the workspace's Newsletter channel (enabled_outputs
+// 'email', toggled in Settings → Channels). Off hides "Write a newsletter",
+// the /new/newsletter page and the "Newsletter — assembling" card (Q,
+// 2026-11-16). The server mirror is in api/_routes/content-plan/week-summary.js.
+export function newsletterEnabled(workspace) {
+  return Array.isArray(workspace?.enabled_outputs) && workspace.enabled_outputs.includes('email')
+}

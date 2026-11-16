@@ -3,6 +3,7 @@ import { ArrowLeft, Mic, MessageSquareText, Link as LinkIcon, FileText, Camera, 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { newsletterEnabled } from '@/lib/outputChannels'
 import { useSmartBack } from '@/lib/useSmartBack'
 import { useWorkspace } from '@/lib/WorkspaceContext'
 
@@ -76,7 +77,10 @@ export default function CapturePicker() {
     { key: 'import', path: '/new/import', icon: LinkIcon, label: 'Import writing', hint: 'Paste a link to something you\u2019ve written' },
     // The text interview was only reachable after the live call failed.
     { key: 'text', path: '/new/interview', icon: MessageSquareText, label: 'Type instead of talking', hint: 'The same interview, as a text chat' },
-    { key: 'newsletter', path: '/new/newsletter', icon: Mail, label: 'Write a newsletter', hint: 'Pick a goal and talk it through' },
+    // Only while the Newsletter channel is on (Settings → Channels).
+    ...(newsletterEnabled(workspace)
+      ? [{ key: 'newsletter', path: '/new/newsletter', icon: Mail, label: 'Write a newsletter', hint: 'Pick a goal and talk it through' }]
+      : []),
     { key: 'memo', path: '/new/voice-memo', icon: Mic, label: 'Voice memo', hint: 'Hit record, say what happened, save' },
     // Gated on workspace.patient_handouts_enabled (Phase 5 Feature 4).
     ...(handoutsEnabled
