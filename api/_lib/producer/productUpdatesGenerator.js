@@ -53,7 +53,9 @@ async function mergedPrsSince(isoDate, token) {
         signal: AbortSignal.timeout(15_000),
       },
     )
-    if (!r.ok) { console.error('[productUpdatesGenerator] pulls fetch failed:', r.status); break }
+    // A refused or failed read is an error, never "no new PRs": a dead token (401)
+    // made this feed write nothing from 2026-09-20 to 2026-11-15 while reporting ok.
+    if (!r.ok) throw new Error(`GitHub pulls read failed: ${r.status}${r.status === 401 ? ' (GITHUB_TOKEN_BERNARD_READ expired or revoked)' : ''}`)
     const rows = await r.json()
     if (!rows.length) break
     let sawOlder = false
