@@ -163,8 +163,8 @@ If this 1Password entry is lost:
   • Field 1 is recoverable from the movebetteranimalchiro.com Vercel
     project's domain settings in seconds.
   • Field 2 may be recoverable from the Astro deployment's env vars
-    (Vercel dashboard → Settings → Environment Variables → reveal the
-    BERNARD_PUBLISH_SECRET value). If that value is also marked
+    (Vercel project movebetteranimalsite → Settings → Environment
+    Variables → reveal the NARRATERX_PUBLISH_SECRET value). If that value is also marked
     Sensitive (can't be revealed), rotate per the walkthrough above —
     rotation is non-destructive aside from the brief redeploy window.
 ```
@@ -207,7 +207,7 @@ Sensitivity: Sensitive
 ────────────────────────────────────────────
 Value:    <REDACTED — retrieve from legacy bernard-animals Vercel
            project (BERNARD_PUBLISH_SECRET) OR from the receiving
-           movebetteranimalchiro.com Vercel project (same env var name).
+           Vercel project movebetteranimalsite (NARRATERX_PUBLISH_SECRET).
            If neither side can reveal the existing value, rotate per
            docs/ASTRO_GITHUB_CREDENTIALS.md.>
 
