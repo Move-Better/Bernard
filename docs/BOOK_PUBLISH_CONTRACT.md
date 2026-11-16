@@ -68,7 +68,9 @@ Field notes:
 ### 1. Auth
 
 Identical to the blog flow: `Authorization: Bearer <shared-secret>` against
-the same env var (`BERNARD_PUBLISH_SECRET`).
+the env var that receiver already uses for blogs: `BERNARD_PUBLISH_SECRET` on
+movebetter.co, `NARRATERX_PUBLISH_SECRET` on the animal site (named for
+Bernard's old name; checked 2026-11-15).
 
 ### 2. File destination
 
