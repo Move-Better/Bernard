@@ -42,9 +42,10 @@ Bernard's SaaS-productization strategy (plan tiers, pricing, managed-vs-BYO anal
 - **Driving prod is read-only, and a page load or a `fetch()` can write.** Never click Approve, Publish,
   Schedule, Delete or Send. Before opening an editor or calling a "render"/"compose"/"generate" route
   against a real row, check whether it persists on mount or on call (`verify.md`).
-- **Staff-update screenshots come from `scripts/capture-screenshot.mjs` (Q, 2026-11-12).** For these,
+- **Screenshots as files come from `scripts/capture-screenshot.mjs` (Q, 2026-11-12).** For these,
   Bernard's local Playwright script wins over the global "real Chrome only" screenshot rule
-  (`screenshots.md`).
+  (`screenshots.md`). The staff summary that used them was retired 2026-11-15, so no UI merge
+  owes a screenshot; capture only when Q asks.
 - **GBP Analytics "location detection failed" is a dead end (Q closed it 2026-07-22).** Never suggest
   retrying it; the shared Google project's quota is 0 and Basic API Access was denied
   (`integrations.md`).
@@ -188,7 +189,7 @@ Read the matching file in `.claude/lessons/` before work in that area; several c
 | `ai.md` | a prompt or `src/lib/prompts.js`, streaming chat, the realtime voice session, an LLM judge or rubric, a tactic classifier, image generation |
 | `integrations.md` | Google reviews data (Movebetterco repo), Search Console, GBP Analytics, GA4, the citation probe, decrypted `workspace_credentials`, a rebrand, retiring a domain |
 | `verify.md` | scoping a change to an "existing" feature, verifying an authed UI change on prod, driving Q's Chrome, calling a live API from the browser |
-| `screenshots.md` | merging a user-visible UI change (the staff-summary screenshot), running `scripts/capture-screenshot.mjs` |
+| `screenshots.md` | running `scripts/capture-screenshot.mjs`, or Q asking for a screenshot |
 | `git-deploy.md` | a worktree or branch, a rebase, opening or merging a PR, a red check or E2E smoke, the lint ceiling, a deploy |
 | `housekeeping.md` | an audit or checkup, triaging or resolving feedback, deleting or committing under `.claude/`, the memory index, the 1Password mount |
 
