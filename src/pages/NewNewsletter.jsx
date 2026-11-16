@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, Navigate } from 'react-router-dom'
 import { useSmartBack } from '@/lib/useSmartBack'
 import { useUser } from '@clerk/react'
 import {
@@ -15,7 +15,8 @@ import MicCheck from '@/components/MicCheck'
 import { useStaff, useCampaigns, useUpsertCampaign } from '@/lib/queries'
 import { pickableStaff } from '@/lib/activeStaff'
 import { getVoiceModes } from '@/lib/prompts'
-import { useWorkspace } from '@/lib/WorkspaceContext'
+import { useWorkspace, useWorkspaceState } from '@/lib/WorkspaceContext'
+import { newsletterEnabled } from '@/lib/outputChannels'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { toast } from '@/lib/toast'
 import PageSkeleton from '@/components/PageSkeleton'
@@ -46,7 +47,16 @@ const STYLE_CHIP = {
  * goal selection, which is bound to the interview as campaign_id +
  * selected_outputs:['email'].
  */
+// With the Newsletter channel off (Settings → Channels), the page sends people
+// back to Start something. Waits for the real workspace row so a first paint on
+// the static fallback never bounces someone whose channel is on.
 export default function NewNewsletter() {
+  const { workspace, source } = useWorkspaceState()
+  if (source === 'db' && !newsletterEnabled(workspace)) return <Navigate to="/new" replace />
+  return <NewNewsletterPage />
+}
+
+function NewNewsletterPage() {
   useDocumentTitle('Write a newsletter')
   const navigate = useNavigate()
   const goBack = useSmartBack('/new')
