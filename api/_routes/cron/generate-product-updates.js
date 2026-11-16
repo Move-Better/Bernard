@@ -11,7 +11,7 @@
 // entries without inserting — safe to hit manually to check the output.
 export const config = { runtime: 'nodejs', maxDuration: 120 }
 
-import { withSentry } from '../../_lib/sentry.js'
+import { withSentry, captureServerException } from '../../_lib/sentry.js'
 import { verifyCronSecret } from '../../_lib/auth.js'
 import { generateProductUpdates } from '../../_lib/producer/productUpdatesGenerator.js'
 
@@ -25,6 +25,8 @@ async function handler(req, res) {
     return res.status(200).json({ ok: true, dryRun, ...result })
   } catch (e) {
     console.error('[cron/generate-product-updates] failed:', e?.message)
+    // Reported, not just logged: this feed once stopped for two months with nobody told.
+    captureServerException(e, req)
     return res.status(500).json({ error: 'generation_failed' })
   }
 }
