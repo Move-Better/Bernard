@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { PhoneCall, Mic, ArrowRight } from 'lucide-react'
+import { posthogCapture } from '@/lib/posthog'
 
 /**
  * WeeklyCallHero — F1 Phase A. The call-first Home hero.
@@ -24,6 +26,15 @@ import { PhoneCall, Mic, ArrowRight } from 'lucide-react'
  *   badge, no email, no recurring nag — the line simply exists while true.
  */
 export default function WeeklyCallHero({ lastOwnCallAt = null, restock = null }) {
+  // Measures decisions.md kill criterion (f) (2026-07-27 moments entry): does a
+  // shown nudge lead to a capture within 2 weeks? One event per mount while the
+  // nudge is true; read it against interview events per workspace.
+  const restockShown = restock != null
+  const restockGaps = restock?.gaps?.length ?? 0
+  const restockDays = restock?.days
+  useEffect(() => {
+    if (restockShown) posthogCapture('restock_nudge_fired', { days_on_hand: restockDays, gap_topics: restockGaps })
+  }, [restockShown]) // eslint-disable-line react-hooks/exhaustive-deps -- once per mount, not per refetch
   const days =
     lastOwnCallAt != null
       ? Math.floor((Date.now() - lastOwnCallAt) / (24 * 60 * 60 * 1000))
