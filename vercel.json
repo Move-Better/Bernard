@@ -69,6 +69,7 @@
     { "path": "/api/cron/agent-tick", "schedule": "*/5 * * * *" },
     { "path": "/api/cron/check-channel-health", "schedule": "0 14 * * *" },
     { "path": "/api/cron/check-published-links", "schedule": "0 15 * * *" },
+    { "path": "/api/cron/visitor-question-digest", "schedule": "0 16 * * 1" },
     { "path": "/api/cron/approval-escalation", "schedule": "0 16 * * *" },
     { "path": "/api/cron/moment-sendback-nudge", "schedule": "30 16 * * *" },
     { "path": "/api/cron/auto-reel-week", "schedule": "20 * * * *" },

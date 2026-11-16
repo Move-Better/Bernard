@@ -85,15 +85,15 @@ describe('sidebar layouts (signed off 2026-11-09)', () => {
     }
   })
 
-  it('owner: six rows, the rest under Results and More (signed off 2026-11-10)', () => {
+  it('owner: seven rows, the rest under Results and More (six signed off 2026-11-10; Topics added 2026-11-16)', () => {
     const [top, ...rest] = NAV_LAYOUT[EXPERIENCE_OWNER]
     expect(rest).toEqual([])
     expect(top.label).toBeUndefined()
-    // Six visible rows: four links and two flyouts.
+    // Seven visible rows: five links and two flyouts.
     expect(top.items.map((it) => (typeof it === 'string' ? it : it.label)))
-      .toEqual(['home', 'week', 'stories', 'library', 'Results', 'More'])
+      .toEqual(['home', 'week', 'stories', 'topics', 'library', 'Results', 'More'])
     expect(navKeysFor(EXPERIENCE_OWNER)).toEqual([
-      'home', 'week', 'stories', 'library',
+      'home', 'week', 'stories', 'topics', 'library',
       'insights', 'overview', 'seo', 'usage',
       'producer', 'moments', 'ads', 'synthesis', 'book', 'write', 'previsit', 'admin',
     ])

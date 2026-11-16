@@ -65,12 +65,13 @@ export function effectiveExperience(actual, viewAs) {
 // The owner layout is exactly the sidebar that existed before 2026-11-09.
 
 export const NAV_LAYOUT = Object.freeze({
-  // Six rows (simplicity audit D, signed off 2026-11-10). Ordered by use: the
-  // four on top carried 435 of 590 owner-visible page views in 90 days. The
-  // rest stay one click away under Results and More, at the same addresses.
+  // Six rows (simplicity audit D, signed off 2026-11-10), seven since Topics came
+  // back under Stories (Q, 2026-11-16: the Monday visitor-question email links
+  // there). Ordered by use: the four on top carried 435 of 590 owner-visible page
+  // views in 90 days. The rest stay one click away under Results and More.
   [EXPERIENCE_OWNER]: [
     { items: [
-      'home', 'week', 'stories', 'library',
+      'home', 'week', 'stories', 'topics', 'library',
       { flyout: true, label: 'Results', items: ['insights', 'overview', 'seo', 'usage'] },
       { flyout: true, label: 'More', items: ['producer', 'moments', 'ads', 'synthesis', 'book', 'write', 'previsit', 'admin'] },
     ] },
