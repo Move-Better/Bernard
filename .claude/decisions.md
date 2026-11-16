@@ -607,3 +607,11 @@ Post editor audit (`.claude/post-editor-audit-2026-11-10.md`) options A–E ship
 
 Decision (Q, by button, after the challenge brief): `api/_routes/cron/check-published-links.js` loads every published blog's `resolved_url` daily and emails the workspace's owners about any a visitor cannot open (one retry; a Cloudflare bot challenge counts as "can't check", not broken). Evidence was thin: 0 of 19 published posts went missing after publishing; the live gaps were a retired domain (narraterx.ai, 404) and links that broke later. The animal site's silent six-month deploy gap (found 2026-11-15) is the failure it would catch.
 Kill criterion: if it raises nothing real by the revisit date, remove the cron. Revisit-by: 2027-02-15
+
+## 2026-11-16 — Newsletter off; new-patient counts and a leaver button declined (Q)
+
+**Newsletter (built, #2809).** The Newsletter channel (`enabled_outputs` 'email', Settings → Channels) now gates the "Write a newsletter" tile, `/new/newsletter` and the /week digest card, and is off for all three Move Better workspaces. No newsletter had ever been created (0 email posts). Turning the channel on restores it; don't propose a newsletter build while it is off.
+
+**New-patient counts into Bernard: declined.** Deep Thought holds new patients only as monthly totals (about 20–40), which against posts published is noise, and nothing in Bernard could act on the number. Its referral report counts patients with charges, not new ones, and carries revenue. Reopen only if a per-patient "came from a post" signal exists (for example a tagged booking link).
+
+**Deep Thought switching people off in Bernard: declined.** The daily roster check (Deep Thought #1707) emails within a day when a leaver is still active here, and the September approver gap was fixed by #2721/#2722. A cross-app key that can remove logins is not worth about 3 minutes a month. Switching someone off stays manual (Settings → Team).
