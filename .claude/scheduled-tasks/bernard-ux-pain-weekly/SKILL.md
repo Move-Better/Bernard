@@ -142,6 +142,9 @@ with other sessions; read-only git only.
 - **`$dead_click` with `el_text = None` on `/ads`** → ad-preview images render with a default cursor
   (`cursor:auto`, no button/link wrapper) — non-interactive by design; nothing claims to be clickable.
   **False positive**, live-verified 2026-09-07. (A click-to-zoom preview is a feature idea, not a bug.)
+- **`$rageclick` on the sidebar "Collapse" button (any route)** → `Layout.jsx` `toggleSidebar`; each
+  click flips the sidebar and its label (Collapse/Expand), so quick repeat clicks are someone toggling it
+  back and forth. **False positive**, live-verified 2026-11-16.
 
 For everything that is NOT filtered above, map selector/route → component (grep the repo) and put
 it on the candidate list with a provisional severity:
