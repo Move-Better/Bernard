@@ -114,6 +114,8 @@ Old→new, 3 samples each: every real answer's safety rose (running form 6.67→
 
 **Revisit-by: 2026-09-30.** If held answers pile up unresolved (queue `voice_audit->>'gate' = 'held'` aging >14d) or clinicians routinely override by rewriting to game the score rather than to improve the answer, re-examine the bar. If nothing is held for a month, the bar is too low to be doing work.
 
+**Re-dated 2026-11-15 (Vigil overdue-revisit pass): Revisit-by 2027-02-15.** Re-measured: 9 of 9 published answers passed at 7.5 (scores 83–93 on the 0–100 scale) and none was overridden. One answer is held (neck pain, Zach Cullen, score 73, untouched since 2026-08-03, 104 days), which trips the ">14d held" condition on a single row. 14 answers in total is too few to judge the bar, so it stays at 7.5 until 2027-02-15.
+
 ## 2026-07-25 — The answer voice check advises; it never blocks (reverses F16 Phase 1)
 Same day the 7.5 bar was confirmed (entry above), Q edited the running-form answer in light of Bernard's feedback, was still refused, and called it: *"Bernard should never STOP a post that is edited by a person who considers the feedback from Bernard. It should just advise against it with good reason and scoring then leave a back door."* **This reverses the hard gate shipped in F16 Phase 1 — deliberately, with the reasoning below, not by drift.**
 
@@ -129,6 +131,8 @@ Second argument, independent of the bug: blocking a licensed clinician from publ
 
 **Revisit-by: 2026-09-30** (same date as the bar entry, review together). Kill criteria: (a) anything factually wrong or unsafe reaches the public site via a one-click override — revert to the safety-floor option immediately; (b) if `published_over_flag` is set on the large majority of publishes, the bar is mis-set rather than the gate mis-designed — recalibrate rather than re-block; (c) if `answer_gap` topics accumulate `pending` and never get interviewed, the capture half is theatre — either wire it into interview prompting or drop it.
 
+**Re-dated 2026-11-15 (Vigil overdue-revisit pass): Revisit-by 2027-02-15.** Re-measured on prod: 14 answers, 9 published, all 9 passed the gate (83–93 on the 0–100 score), 0 `published_over_flag`, 0 `published_without_check`, so (a) and (b) show nothing. (c) is trending toward theatre: the one `answer_gap` topic (running form, 07-25) is still `pending` and was never interviewed, though that answer later published passing. Volume is too low to judge, so Q kept the clock.
+
 ## 2026-07-25 — Public answers: strict clinician ownership, no admin back door
 Q, on discovering other clinicians' answers in a cross-staff query: *"Clinicians should score and edit their own content. No admin back door should exist right now. Might change later if other tenants ask for it."*
 
@@ -141,6 +145,8 @@ Q, on discovering other clinicians' answers in a cross-staff query: *"Clinicians
 **Related, same session:** answers reach review **unscored** — scoring only ever ran on approve. `recheck` (#2346/#2353) now scores on demand without publishing, so a clinician can get a number before deciding. Q's queue was scored this way (sciatica 8.7 passed, running form 7.3 flagged); the other three clinicians' answers were left for them, per this decision. **Open, not built:** scoring at draft time so a score is always present on arrival.
 
 **Revisit-by: 2026-09-30** (with the other two voice-gate entries). Only if a tenant actually asks — and then as an explicit per-workspace capability (e.g. `workspaces.answer_admin_override_enabled`), never a blanket admin power restored globally. If Move Better itself starts wanting an admin to clear a departed clinician's queue, that's the signal — handle it as a staff-offboarding flow (reassign or retract), not as an override.
+
+**RULED 2026-11-15 (Vigil overdue-revisit pass) — CLOSED, trigger-gated, no clock.** Re-measured: no tenant has asked for an admin override and nobody who owns answers is deactivated (all 14 answers belong to active staff). Strict ownership stands; reopen on the trigger above.
 
 ## 2026-07-25 — Templates are authored in the real editors, not a template-editing screen
 Q, cutting off a build that was about to mirror the photo-templates settings page for video: *"Shouldn't the photo templates and video templates just use the existing photo and video editors to make changes and creations that can then be save or edit templates?"*
@@ -220,6 +226,7 @@ Philip (movebetter) asked for spell + grammar underlining in the caption boxes. 
 - **harper.js WASM grammar spiked (2.4.0, 18 real movebetter captions) and declined.** ~8 MB gzipped (~2× our largest chunk); noisy on social copy — every hashtag flags as misspelled, domain terms (deadlift/kettlebell/shockwave) flag as compound-split "typos", British dialect default. After full config (American dialect + hashtag/URL suppression + Readability off + a clinic-vocab dictionary) it collapsed to ~1 genuine catch across 18 already-clean AI-authored captions — and that catch was a *spelling* error native spellcheck already covers.
 - **Case against wins:** ~zero marginal grammar value over shipped native spellcheck on our clean pipeline output, for 8 MB + a dictionary-maintenance burden. Grammarly has no embeddable SDK; LanguageTool self-host is heavy + off-Vercel. Spike harness was /tmp scratch (not committed).
 - **Revisit-by: 2026-10-01**, or sooner if staff report grammar errors native spellcheck misses — then reconsider harper (fully configured, lazy-loaded) or a lighter targeted checker.
+- **RULED 2026-11-15 (Vigil overdue-revisit pass) — CLOSED, trigger-gated, no clock.** Harper stays declined. Re-measured: 0 `caption_correction` events since 2026-09-04, and the only grammar/spell feedback row is the original 07-27 request (resolved 07-28). Reopen only if staff report grammar errors native spellcheck misses, or a paying clinic asks.
 
 ## 2026-07-27 — UI flow audit: one "Moments" concept, planner-first, pantry-framed (supersedes held P4)
 
@@ -245,6 +252,8 @@ Mockups on real prod data with signal rules applied to all 7 workspaces: artifac
 
 **Revisit-by: 2026-09-15** (rides the bank decision's date). Additional kill criteria: (e) if On-hand browse sees ~zero use by then, demote /moments browse depth — the audience call was wrong; (f) if a fired Home nudge produces no capture within 2 weeks on a low workspace, rethink the restock loop (silent priming may be the honest answer).
 
+
+**RULED 2026-11-15 (Vigil overdue-revisit pass): (e) re-dated to 2026-12-14; (f) re-dated to 2027-01-15, instrument first.** Re-measured from PostHog (project 473748): 7 `/moments` pageviews in the 11 weeks since 09-01 (about 1 person a week, most weeks 0) against 400+ total pageviews, so (e) is trending to met, but Q chose four more weeks rather than demote now. (f) cannot be measured: PostHog has no restock-nudge event, so a chip adds a nudge-fired event first and (f) is read after it has data.
 **RULED 2026-09-11 (kill-criteria hearing) on kill (e) — first PostHog measurement possible (project 473748):** /moments browse saw a launch spike (37 visits in week 1) then a 0–3 visits/wk trickle since mid-August, almost entirely Philip. Q chose **4 more weeks** — the 09-01 review-queue rework (#2687) changed how /moments is used, so re-measure ~**2026-10-15** on post-rework data before any demotion. (f) remains untested (no restock-nudge firing measured).
 
 ## 2026-07-28 — P5 (approve-once) NOT built; the missed slots are an attention problem, so ship the nudge
