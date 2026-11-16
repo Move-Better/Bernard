@@ -630,3 +630,11 @@ Kill criterion: if it raises nothing real by the revisit date, remove the cron. 
 **New-patient counts into Bernard: declined.** Deep Thought holds new patients only as monthly totals (about 20–40), which against posts published is noise, and nothing in Bernard could act on the number. Its referral report counts patients with charges, not new ones, and carries revenue. Reopen only if a per-patient "came from a post" signal exists (for example a tagged booking link).
 
 **Deep Thought switching people off in Bernard: declined.** The daily roster check (Deep Thought #1707) emails within a day when a leaver is still active here, and the September approver gap was fixed by #2721/#2722. A cross-app key that can remove logins is not worth about 3 minutes a month. Switching someone off stays manual (Settings → Team).
+
+## 2026-11-16 — Topics page back, and a Monday count-only email for visitor questions (Q)
+
+**Job.** When a website visitor asks the chat something the site has no answer for, a person should hear about it and be able to act (start an interview, or archive it).
+**Evidence.** The website's chat files these as `topic_backlog` rows (`source = 'vigil_signal'`), but no screen listed topics (`TopicBacklogPanel` had no page since #375) and nothing told anyone. No real visitor question has been filed yet: the filing cutoffs were only fixed on 2026-11-15 (website #191).
+**Decisions (Q, 2026-11-16, by button).** Bring the panel back as `/topics`, with a "Visitor question" badge, as a top sidebar row under Stories: the owner sidebar is seven rows, not the six signed off on 2026-11-10. Email the workspace owner on Mondays with a count and a link only (`api/_routes/cron/visitor-question-digest.js`): a visitor's words can carry health details, so they stay in Bernard.
+**Case against.** Built before a single real question arrived. Accepted: it is small, and silent until one does.
+**Kill criterion.** If no real visitor question has been filed by the revisit date, drop the email; keep the page only if Topics is used. Revisit-by: 2027-02-16

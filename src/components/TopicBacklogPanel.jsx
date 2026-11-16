@@ -15,7 +15,7 @@ import { toast } from '@/lib/toast'
 import ReferencesPanel from '@/components/ReferencesPanel'
 import { useConfirm } from '@/lib/useConfirm'
 
-// Strategic topic backlog. Sits inside the Strategy page and gives the clinic
+// Strategic topic backlog. Lives on /topics (pages/Topics.jsx) and gives the clinic
 // a prioritized queue of "what to interview about next" — either AI-suggested
 // based on paradigm + coverage gaps, or manually added.
 export default function TopicBacklogPanel() {
@@ -191,6 +191,8 @@ function TopicRow({ topic, onStart, onComplete, onArchive, onRestore, onDelete }
   const isCompleted   = topic.status === 'completed'
   const isArchived    = topic.status === 'archived'
   const isAiSuggested = topic.source === 'ai_suggested'
+  // Filed by the website's chat through webhooks/topic-signal.
+  const isVisitorQuestion = topic.source === 'vigil_signal'
   const [refsOpen, setRefsOpen] = useState(false)
 
   return (
@@ -204,6 +206,9 @@ function TopicRow({ topic, onStart, onComplete, onArchive, onRestore, onDelete }
               <Sparkles className="h-2.5 w-2.5" />
               AI
             </Badge>
+          )}
+          {isVisitorQuestion && (
+            <Badge className="text-xs bg-primary/10 text-primary border-0 px-1.5 py-0 font-medium">Visitor question</Badge>
           )}
           {isInProgress && (
             <Badge className="text-xs bg-warning/15 text-warning border-0 px-1.5 py-0">In progress</Badge>

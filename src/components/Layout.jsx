@@ -9,7 +9,7 @@ import {
   Plus, Settings, Building2, Menu, Palette, Layers, ChevronDown, ChevronLeft,
   Check, UserCircle, Mic2, BookOpen, PenLine, Pickaxe, Wrench,
   LayoutDashboard, Newspaper, FolderOpen, BarChart3, CalendarRange, Megaphone,
-  TrendingUp, Gauge, Globe, Bot, MoreHorizontal, Mic,
+  TrendingUp, Gauge, Globe, Bot, MoreHorizontal, Mic, ListTodo,
 } from 'lucide-react'
 import { talkToBernardHref } from '@/lib/talkToBernard'
 import { FeedbackWidget } from '@/components/FeedbackWidget'
@@ -58,6 +58,7 @@ const NAV_ITEMS = {
   // has hired Bernard (producer_config.enabled).
   producer:  { to: '/producer', label: 'Bernard\u2019s workday', match: (p) => p.startsWith('/producer'), icon: Bot, showWhen: (ws) => ws?.producer_config?.enabled },
   stories:   { to: '/stories', label: 'Stories', hint: 'Stories', match: (p) => p.startsWith('/stories'), icon: Newspaper, requiresCapability: CAP_INTERVIEW_START },
+  topics:    { to: '/topics', label: 'Topics', hint: 'Up next', match: (p) => p.startsWith('/topics'), icon: ListTodo, requiresCapability: CAP_INTERVIEW_START },
   // Team-member screen: the same Stories list, filtered to their own.
   'my-stories': {
     to: (selfStaffId) => (selfStaffId ? `/stories?staff=${encodeURIComponent(selfStaffId)}` : '/stories?owner=me'),

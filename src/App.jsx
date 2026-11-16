@@ -62,6 +62,7 @@ const AccessMatrix = lazy(() => import('@/pages/AccessMatrix'))
 const Account = lazy(() => import('@/pages/Account'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const Stories = lazy(() => import('@/pages/Stories'))
+const Topics = lazy(() => import('@/pages/Topics'))
 const YourWeek = lazy(() => import('@/pages/YourWeek'))
 const AnswerReview = lazy(() => import('@/pages/AnswerReview'))
 const Overview = lazy(() => import('@/pages/Overview'))
@@ -689,6 +690,7 @@ function AppRoutes() {
             <Route path="/staff/:staffId" element={guarded(<StaffProfile />)} />
             <Route path="/clinician/:staffId" element={<LegacyStaffRedirect />} />
             <Route path="/stories" element={guarded(<Stories />)} />
+            <Route path="/topics" element={guarded(<Topics />)} />
             {/* Review Inbox — the producer's single review→schedule queue (P4).
                 Self-guards to editors (owner/producer/director) and redirects
                 individual clinicians home, same as Overview. */}
