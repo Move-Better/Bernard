@@ -1,9 +1,9 @@
 ---
 name: bernard-ux-pain-weekly
-description: Weekly Bernard check (Fridays): feedback triage, the UX-pain check with live verification in Q's Chrome, and on the first run of each month the outcome review. Report only; fixes go to the Needs-you inbox.
+description: Weekly Bernard check (Wednesdays 4 p.m.): feedback triage, the UX-pain check with live verification in Q's Chrome, and on the first run of each month the outcome review. Report only; fixes go to the Needs-you inbox.
 ---
 
-One weekly Bernard run, on Fridays. Q merged three tasks into it on 2026-11-16 to cut the number of scheduled runs: the daily feedback triage (no feedback had arrived since September), the Monday UX-pain check and the weekly outcome review (now monthly, while Bernard's code changes slowly). The task id is kept from the UX check.
+One weekly Bernard run, on Wednesday afternoons (moved from Friday on 2026-11-16, so its report and inbox items are ready for Q's Thursday 9:00 walk-through and his Friday 9:00 Bernard block, and it never drives Chrome while he is using it). Q merged three tasks into it on 2026-11-16 to cut the number of scheduled runs: the daily feedback triage (no feedback had arrived since September), the Monday UX-pain check and the weekly outcome review (now monthly, while Bernard's code changes slowly). The task id is kept from the UX check.
 
 Do the three parts in order, then send ONE final message with a short section per part, most urgent first. A part that finds nothing says so in one line. Every fix or decision for Q goes to the Needs-you inbox (`~/.claude/needs-you/README.md`), never into a question or a chip, per the global rule "Scheduled runs decide, report and file".
 
@@ -52,7 +52,7 @@ as a real bug**. A human then clicks the chip to start the fix.
   is Q's real authenticated session. Navigate + read_page + screenshot + DOM asserts only.
 
 **Where a fix goes (Q, 2026-11-16).** Scheduled runs no longer leave fix chips in their own session. Everywhere this file says to spawn a chip, write one item to the Needs-you inbox instead
-(`~/.claude/needs-you/README.md` is the contract): `kind: fix`, `owner: bernard`, `source: bernard-ux-pain-weekly`, the chip's tldr as `question`, "Start a fix session in Bernard" as `pick`, and the chip's full prompt as `brief`. Every chip rule below (confirmed-real only, never a false positive, judgment on N) applies to inbox items unchanged. De-dup against `~/.claude/needs-you/open/` and `answered/` as well as the last two reports. A P0 is `urgent: true` and leads the Step 7 message. Q answers them in Vigil's Monday walk-through.
+(`~/.claude/needs-you/README.md` is the contract): `kind: fix`, `owner: bernard`, `source: bernard-ux-pain-weekly`, the chip's tldr as `question`, "Start a fix session in Bernard" as `pick`, and the chip's full prompt as `brief`. Every chip rule below (confirmed-real only, never a false positive, judgment on N) applies to inbox items unchanged. De-dup against `~/.claude/needs-you/open/` and `answered/` as well as the last two reports. A P0 is `urgent: true` and leads the Step 7 message. Q answers them in Vigil's Thursday walk-through.
 
 **Browser dependency (unattended reality).** This fires whether or not Q's Chrome is open, logged
 in, and the extension connected. If the browser is not reachable, **DEGRADE — do not fail the run:**
@@ -330,9 +330,9 @@ Then go on to Part 3. No PRs, no code edits, no git mutations — only the repor
 - The key is Sensitive — never print its value; header-only usage; length/`phx_` prefix are the
   only safe things to echo.
 
-# Part 3 — Outcome review (first Friday run of each month only)
+# Part 3 — Outcome review (first Wednesday run of each month only)
 
-Run this part only if `/Users/qbook/Claude Projects/Bernard/.claude/outcome-reviews/<YYYY-MM>.md` for the current month does not exist yet. Otherwise write "Outcome review: done this month, next on the first Friday of next month" and stop.
+Run this part only if `/Users/qbook/Claude Projects/Bernard/.claude/outcome-reviews/<YYYY-MM>.md` for the current month does not exist yet. Otherwise write "Outcome review: done this month, next on the first Wednesday of next month" and stop.
 
 You are running the monthly Bernard outcome review (weekly until 2026-11-16).
 
@@ -344,5 +344,5 @@ Follow the checked-in skill file exactly: read `.claude/skills/bernard-outcome-r
 - Compute the scoreboard with real queries (video funnel: media_assets → video_segments → rendered → drafts → approved → published; cadence delivery vs workspaces.cadence_policy channels targets with format split; channel-silence >7 days + failed/publish_error rows; % published IG/FB rows with resolved_url set; feedback table themes; Bernard-published vs total clinic posts where bundle.social analytics allow). Metrics that can't be computed yet are reported as "not instrumented" — that is itself a finding.
 - Read `.claude/decisions.md` and flag any revisit-by dates passed or kill criteria hit/missed (e.g. the 2026-09-15 reels criterion: ≥2 reels/week publishing with IG reach clearly up).
 - Write the report to /Users/qbook/Claude Projects/Bernard/.claude/outcome-reviews/YYYY-MM.md (absolute primary path; create the directory if missing), with deltas vs the previous report. Each run adds ONE new dated section at the TOP of the file (newest first), made of two parts: "### The short version" (the plain-language brief: headline, six-row scorecard, at most three problems, coming up, good news; no PR numbers, migration numbers, or table/column names) and "### Technical detail (for audit)" (everything dense).
-- For each actionable gap, file one item in the Needs-you inbox (`~/.claude/needs-you/README.md` is the contract; `kind: fix`, `owner: bernard`, `source: bernard-monthly-outcome-review`, the self-contained prompt with file paths as its `brief`). This replaces the task chip the skill file describes (Q, 2026-11-16: scheduled runs file what they need from Q, they do not ask or leave chips). Check `open/` and `answered/` first and update an open item instead of filing it twice. Do not file passed revisit dates: Vigil's Monday list already carries those. Report-only otherwise: do NOT open fix PRs, do NOT approve/publish/mutate any live content.
+- For each actionable gap, file one item in the Needs-you inbox (`~/.claude/needs-you/README.md` is the contract; `kind: fix`, `owner: bernard`, `source: bernard-monthly-outcome-review`, the self-contained prompt with file paths as its `brief`). This replaces the task chip the skill file describes (Q, 2026-11-16: scheduled runs file what they need from Q, they do not ask or leave chips). Check `open/` and `answered/` first and update an open item instead of filing it twice. Do not file passed revisit dates: Vigil's weekly list already carries those. Report-only otherwise: do NOT open fix PRs, do NOT approve/publish/mutate any live content.
 - Paste "The short version" unchanged as the Part 3 section of the final message, with no second summary in different words. Keep decisions.md stamps to at most two sentences each. If the scoreboard is healthy, say so in the headline and don't invent gaps.
