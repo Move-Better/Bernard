@@ -118,6 +118,10 @@ AssetsPane.jsx:791, OnHandTab.jsx:305, VideoEditor.jsx:2107, WordsApproval.jsx:1
 - [live] T4 video_segments.discard_reasons — carried from 07-31: was 0 rows same-day as
   the Deny feature shipped; re-check counts next audit
 
+## Escaped (found after an audit)
+
+Bugs that staff, Sentry or feedback reported inside code an audit had covered (added 2026-11-16, Q). One line each: date found, file, the shape of the bug, and which audit covered it. A pattern that appears here twice becomes a named bug shape in the agent prompts. Empty so far.
+
 ## Notes for agents
 
 - If a finding below is listed under "Known false positives," don't re-report it unless

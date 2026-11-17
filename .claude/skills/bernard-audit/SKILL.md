@@ -14,7 +14,7 @@ Run a structured multi-agent audit, **fix everything it safely can in the same s
 | `/bernard-audit` (default) | Commits **since the last audit** | ~10 min | $3–6 |
 | `/bernard-audit full` | **Entire codebase**, no diff scoping | ~20 min | $8–15 |
 
-Use the default for routine cadence (weekly). Use `full` for a baseline: before a release, after a long autonomous sprint, or when you suspect a since-last run missed something. If the user passes any other text, treat it as default mode.
+When to run is decided by `~/.claude/audit-schedule.md` (Q, 2026-11-16): the default mode when about 100 commits and 14 days have passed since the last audit, `full` once a quarter. The weekly `audit-when-due` scheduled task applies it. Do not run a second audit because you suspect the last one missed something: a reviewer reads a different sample each pass and always finds something, which is what kept the audit, fix, re-audit loop going. If the user passes any other text, treat it as default mode.
 
 **Calibration loop**: every run reads `.claude/audit-history/calibration.md` into each agent's prompt and updates it afterward — settled false positives stop being re-reported, and findings that recur unresolved across 2+ runs get auto-escalated. This one file is force-tracked (`git add -f`) even though `.claude/audit-history/` is otherwise gitignored, so it survives into fresh worktrees. See "Calibration loop" under Notes.
 
@@ -26,7 +26,7 @@ Use the default for routine cadence (weekly). Use `full` for a baseline: before 
 |---|---|---|
 | `bug-hunter` | Files changed in the diff range | Every file under `src/` and `api/`, skipping `node_modules`, `dist`, `.claude/worktrees` |
 | `tenant-isolation-auditor` | Changed API handlers (`api/**/*.js`) | Every file under `api/` recursively |
-| `ui-reviewer` | **Always a full sweep** — visual drift is cumulative; an old PR's color choice can read as inconsistent only when a new page lands | Same (full app, all major screens) |
+| `ui-reviewer` | Screens and components changed in the diff range, and the pages they appear on (since 2026-11-16; visual drift across untouched screens is the quarterly `full` run's job) | Full app, all major screens |
 
 **Diff range** (default mode): read `.claude/audit-history/.last-audit` (a single-line file containing the SHA of the last audit's HEAD). The audit reviews commits in `<.last-audit>..HEAD`. If the file is missing or unreadable, fall back to `origin/main~20..HEAD`.
 
@@ -191,6 +191,8 @@ Fix findings directly in this same session, instead of spawning fix-task chips. 
 5. Push and open **one PR** covering the batch. List what was fixed, and separately what was deliberately skipped and why (needs-mockup / blast-radius / needs-migration-confirmation / not-confident).
 6. If nothing is fixable but calibration.md changed, commit and push just that on its own small branch/PR.
 7. For anything skipped, leave it in the punch list at its original priority — the calibration loop escalates it if it keeps recurring.
+8. **Stop rule (Q, 2026-11-16).** Each fix is proven by its own test, watched failing on the unfixed code. Do not re-run the audit, or a second reviewer, to look for what this one missed. When the audit runs from a scheduled task, everything it did not fix goes to the Needs-you inbox (`~/.claude/needs-you/README.md`), one item per decision, not into a question.
+9. **Escaped bugs are the measure of what audits miss.** When staff, Sentry or feedback later reports a bug inside code an audit covered, the session fixing it adds one line under "## Escaped (found after an audit)" in `.claude/audit-history/calibration.md`: the date, the file, the shape of the bug and which audit covered it. Agents read that section like the rest of the file.
 
 ---
 
@@ -206,8 +208,7 @@ Same fail-fast rules as `/bernard-checkup`, plus:
 
 ## Notes
 
-- **Do not run on every commit.** This is a deep audit, billable in agent tokens. Default mode weekly; `full` monthly or pre-release.
-- **Pair with `/schedule`** for an automated weekly run: `/schedule create "Weekly audit" cron="0 9 * * 1" "/bernard-audit"`.
+- **Do not run on every commit.** This is a deep audit, billable in agent tokens. The cadence is change volume and the quarter, set in `~/.claude/audit-schedule.md` and run by the `audit-when-due` task, not a weekly cron.
 - **The since-last pointer is a single SHA** in `.claude/audit-history/.last-audit`. Reset manually with `git rev-parse HEAD > .claude/audit-history/.last-audit` from the project root.
 - **Agent prompts must be self-contained.** Each agent starts fresh with no conversation context — paste the relevant CLAUDE.md, `.claude/lessons/` and memory references inline.
 - **Calibration loop** (`.claude/audit-history/calibration.md`, force-tracked despite the gitignored directory): each run feeds it into every agent prompt and updates it in Phase 3. Settled false positives stop being re-reported; findings unresolved across 2+ runs get auto-escalated to at least P1. The false-positive list only grows by explicit judgment — never auto-populated because a finding didn't reappear.
