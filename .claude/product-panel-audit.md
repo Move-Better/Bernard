@@ -4,9 +4,9 @@
 **Purpose:** a repeatable way to answer one question — **"how do we make Bernard a genuinely better *tool for the Move Better team to use, day to day*?"** A simulated panel of top experts (design, behavioral psychology, voice/conversation, AI, reliability, team-workflow) reviews the *actual app* and returns a prioritized list of improvements. This is the instrument Q wanted from the start: not strategy, not bug-hunting — **product and experience quality for our own team.**
 
 **Where it sits among the instruments:**
-- `/audit` · `/auditfull` · `/checkup` → **code & bug layer** (does it work / is it safe).
+- `/bernard-audit` · `/bernard-audit full` · `/bernard-checkup` → **code & bug layer** (does it work / is it safe).
 - `blindspot-audit.md` / `blindspot-audit-inhouse.md` → **strategy & direction layer** (are we building the right thing / is it worth the time).
-- **This doc** → **product & experience layer** (is the app a *delight to use* for our clinicians, and what would world-class experts change).
+- **This doc** (run it with `/bernard-product-panel`) → **product & experience layer** (is the app a *delight to use* for our clinicians, and what would world-class experts change).
 
 ---
 
