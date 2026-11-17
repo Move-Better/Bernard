@@ -70,10 +70,13 @@ Auto-fix scope (this layer): unused imports, unused locals, simple reorderings E
 After auto-fixes, commit them as a single commit (only at end of run, only if other layers are 🟢):
 
 ```bash
-git add -A && git commit -m "chore(checkup): auto-fixes from /bernard-checkup"
+git diff --stat origin/main   # expect only the files you auto-fixed; other sessions share this repo
+git add <each auto-fixed file, by name> && git commit -m "chore(checkup): auto-fixes from /bernard-checkup"
 ```
 
-If layers 2/3 are red, hold the commit and ask the user.
+Never `git add -A`: stage only the files you auto-fixed, by name, after the `git diff --stat origin/main` above shows nothing else.
+
+If layers 2/3 are red, hold the commit and ask the user. When the run is scheduled, do not ask: leave the auto-fixes uncommitted on the run's branch, say so in the first line of the report, and file one Needs-you item (`kind: go-ahead`, `owner: bernard`, per `~/.claude/needs-you/README.md`) naming the red layer and the held files.
 
 ---
 
@@ -123,7 +126,7 @@ Requires dev server. Start it in the background if not already running:
 npm run dev
 ```
 
-For each of the three workspaces in the `workspaces` table (movebetter-people, movebetter-equine, movebetter-animals), walk the golden path. Use Chrome MCP tools to script and screenshot; otherwise produce a checklist for the user to run manually. **If you need to produce image files rather than just look at the screen, use `scripts/capture-screenshot.mjs` (local Playwright)** — the agent browser tab is never visible and its file-out routes fail silently (`~/.claude/lessons/browser.md`).
+For each of the three workspaces in the `workspaces` table (`movebetter`, formerly `movebetter-people`; `movebetter-equine`; `movebetter-animals`), walk the golden path. Use Chrome MCP tools to script and screenshot; otherwise produce a checklist for the user to run manually. **If you need to produce image files rather than just look at the screen, use `scripts/capture-screenshot.mjs` (local Playwright)** — the agent browser tab is never visible and its file-out routes fail silently (`~/.claude/lessons/browser.md`).
 
 **Per-workspace checklist:**
 
@@ -164,7 +167,7 @@ The latest prod deployment should be aliased to `withbernard.ai` and `*.withbern
 
 Hit prod from a browser:
 - `https://withbernard.ai/` — loads, no console errors
-- `https://movebetter-people.withbernard.ai/` — loads, no console errors
+- `https://movebetter.withbernard.ai/` — loads, no console errors
 
 Confirm the deployed SHA matches `git rev-parse origin/main` (fetch first); a mismatch means a deploy was skipped or is still in flight → 🟡.
 

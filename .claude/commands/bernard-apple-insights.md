@@ -17,6 +17,10 @@ Run it around the **7th**. Default is last month; pass a month to target one:
 steps against the same endpoint. Use this command to run it early, re-run a
 month, or debug a failed run — not as the only path.
 
+**When this runs as the scheduled task, nobody is there to answer.** Wherever a
+step below says stop and ask, or tell Q, the scheduled run instead file one Needs-you item (`kind: blocked`, `owner: bernard`, `source: bernard-apple-insights-monthly`, per `~/.claude/needs-you/README.md`), import what you can, and say it in the first line of the final report. It never ends on a question
+(`~/.claude/CLAUDE.md`, "Scheduled runs decide, report and file").
+
 ---
 
 ## Read this before running
@@ -46,7 +50,8 @@ month, or debug a failed run — not as the only path.
 
 Apple also lists **7902 NE St Johns Rd, Vancouver** ("In Review"). Q confirmed
 2026-09-03 it is a **move/duplicate** — it has no Bernard row and must not get
-one. If a recap arrives for that address, stop and ask; do not guess which
+one. If a recap arrives for that address, stop and ask (scheduled run: skip that
+recap and file one Needs-you item (`kind: blocked`, `owner: bernard`, `source: bernard-apple-insights-monthly`, per `~/.claude/needs-you/README.md`), import what you can, and say it in the first line of the final report); do not guess which
 Bernard location it belongs to.
 
 ---
@@ -88,7 +93,7 @@ Gmail connector returns attachment ids, never bytes, and there is no
 download-attachment tool (`get_message` `RAW` would push the whole base64 PDF
 through context, which is not a routine). In that case tell Q to upload the PDF
 through **Settings → Integrations → Apple Business Insights**, which already
-works and uses the same parser. Then record in memory that the email-body route
+works and uses the same parser (scheduled run: file one Needs-you item (`kind: blocked`, `owner: bernard`, `source: bernard-apple-insights-monthly`, per `~/.claude/needs-you/README.md`), import what you can, and say it in the first line of the final report). Then record in memory that the email-body route
 is unavailable, so the next run does not retry it.
 
 ## Step 3 — preview (writes nothing)
@@ -111,7 +116,8 @@ cd "/Users/qbook/Claude Projects/Bernard" && T=$(mktemp) && cat .env.bernard.1pw
 ```
 
 If the mount reads empty or hangs, stop and ask Q to fully quit and reopen the
-1Password app — do not retry in a loop.
+1Password app — do not retry in a loop. Scheduled run: stop before any import and
+file one Needs-you item (`kind: blocked`, `owner: bernard`, `source: bernard-apple-insights-monthly`, per `~/.claude/needs-you/README.md`), and say it in the first line of the final report.
 
 (The awk deliberately uses `sub()` rather than awk's whole-record variable. A
 dollar sign immediately followed by a digit is a POSITIONAL ARGUMENT slot in a

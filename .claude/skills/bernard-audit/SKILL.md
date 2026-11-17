@@ -1,9 +1,9 @@
 ---
 name: bernard-audit
-description: Multi-agent deep audit of the Bernard codebase — static gates + parallel runs of bug-hunter, tenant-isolation-auditor, and ui-reviewer, then fixes everything it safely can in the same session. Modes: default (since last audit) | full (whole codebase). UI findings stay report-only pending a mockup.
+description: Multi-agent deep audit of the Bernard codebase — static gates + parallel runs of bug-hunter, tenant-isolation-auditor, and ui-reviewer, then fixes the P0/P1 code findings it safely can, each proven by a test watched failing first. Modes: default (since last audit) | full (whole codebase). UI findings stay report-only pending a mockup.
 ---
 
-Run a structured multi-agent audit, **fix everything it safely can in the same session**, and produce a prioritized punch list. Composes three specialized agents in parallel with the static-check stack. Sister command to `/bernard-checkup` (procedural health pass).
+Run a structured multi-agent audit, **fix the P0/P1 code findings it safely can in the same session**, and produce a prioritized punch list. Composes three specialized agents in parallel with the static-check stack. Sister command to `/bernard-checkup` (procedural health pass).
 
 **Uniquely named on purpose.** Bernard, Deep Thought and Vigil all define audit instruments, and same-named commands across sibling projects can load the *wrong* project's body — a confirmed failure mode, not a theoretical one. The `bernard-` prefix makes that impossible. Plain `/audit` still resolves to the generic global skeleton, which auto-discovers this repo's agents and works fine, just less tuned. See `~/.claude/lessons/harness.md` ("If a loaded skill or command body names a stack detail … that doesn't match the repo you're in").
 
@@ -18,7 +18,7 @@ When to run is decided by `~/.claude/audit-schedule.md` (Q, 2026-11-16): the def
 
 **Calibration loop**: every run reads `.claude/audit-history/calibration.md` into each agent's prompt and updates it afterward — settled false positives stop being re-reported, and findings that recur unresolved across 2+ runs get auto-escalated. This one file is force-tracked (`git add -f`) even though `.claude/audit-history/` is otherwise gitignored, so it survives into fresh worktrees. See "Calibration loop" under Notes.
 
-**Auto-fix**: Phase 4 fixes every P0/P1/P2 `bug-hunter` and `tenant-isolation-auditor` finding inline, tests each fix, and ships it via commit + PR — all in this run, no fix-task chips. `ui-reviewer` findings are the deliberate exception: this project's CLAUDE.md requires a mockup + Q's sign-off before any UI/flow change, so those stay report-only until greenlit. Blast-radius fixes (dozens+ call sites) and anything needing a live-prod migration also get flagged instead of auto-applied.
+**Auto-fix**: Phase 4 fixes every P0/P1 `bug-hunter` and `tenant-isolation-auditor` finding inline, each proven by its own test watched failing on the unfixed code, and ships them via commit + PR in this run (`~/.claude/audit-schedule.md`). P2s are not fixed: they go in the report, or to the Needs-you inbox when the run is scheduled. `ui-reviewer` findings are the deliberate exception: this project's CLAUDE.md requires a mockup + Q's sign-off before any UI/flow change, so those stay report-only until greenlit. Blast-radius fixes (dozens+ call sites) and anything needing a live-prod migration also get flagged instead of auto-applied.
 
 ## Scope per agent
 
@@ -28,7 +28,7 @@ When to run is decided by `~/.claude/audit-schedule.md` (Q, 2026-11-16): the def
 | `tenant-isolation-auditor` | Changed API handlers (`api/**/*.js`) | Every file under `api/` recursively |
 | `ui-reviewer` | Screens and components changed in the diff range, and the pages they appear on (since 2026-11-16; visual drift across untouched screens is the quarterly `full` run's job) | Full app, all major screens |
 
-**Diff range** (default mode): read `.claude/audit-history/.last-audit` (a single-line file containing the SHA of the last audit's HEAD). The audit reviews commits in `<.last-audit>..HEAD`. If the file is missing or unreadable, fall back to `origin/main~20..HEAD`.
+**Diff range** (default mode): read `/Users/qbook/Claude Projects/Bernard/.claude/audit-history/.last-audit` (absolute path in the primary checkout: the file is gitignored, so a worktree has no copy; it holds one line, the `origin/main` SHA the last audit started from). The audit reviews commits in `<.last-audit>..HEAD`. If the file is missing or unreadable, fall back to `origin/main~20..HEAD`.
 
 ⚠️ **Audit reports + `.last-audit` live in the PRIMARY checkout**, not a session worktree — see `.claude/lessons/housekeeping.md` ("Audit reports + `.last-audit` live in the PRIMARY checkout"). Write them to the absolute path `/Users/qbook/Claude Projects/Bernard/.claude/audit-history/`, and at audit start check the worktree copy for stranded reports from prior sessions.
 
@@ -42,7 +42,7 @@ Run from the repo root (project root or any worktree):
 npm run typecheck && npm run lint && npm run build && npm run verify-bundles
 ```
 
-If any of these fail, **stop the audit** and surface the failure to the user. No point burning agent tokens on a tree that doesn't compile. Auto-fix scope here is identical to `/bernard-checkup` Layer 1 (unused imports, trivial lint warnings); if you can't auto-fix in <2 minutes, stop and report.
+If any of these fail, **stop the audit** and surface the failure to the user (when the run is scheduled, file one `kind: blocked` Needs-you item per `~/.claude/needs-you/README.md` instead, and report). No point burning agent tokens on a tree that doesn't compile. Auto-fix scope here is identical to `/bernard-checkup` Layer 1 (unused imports, trivial lint warnings); if you can't auto-fix in <2 minutes, stop and report.
 
 Run `npm test` too if test files changed in the diff range (default mode), or always in `full` mode.
 
@@ -55,7 +55,9 @@ Send a single message with **three concurrent Agent tool calls** so they run in 
 **Scoping prep** (run first):
 
 ```bash
-LAST_AUDIT_SHA="$(cat .claude/audit-history/.last-audit 2>/dev/null || git rev-parse origin/main~20)"
+LAST_AUDIT_FILE="/Users/qbook/Claude Projects/Bernard/.claude/audit-history/.last-audit"
+AUDIT_START_SHA="$(git rev-parse origin/main)"   # recorded in step 3 and in the ledger
+LAST_AUDIT_SHA="$(cat "$LAST_AUDIT_FILE" 2>/dev/null || git rev-parse origin/main~20)"
 COMMIT_RANGE="${LAST_AUDIT_SHA}..HEAD"
 CHANGED_FILES="$(git diff --name-only $COMMIT_RANGE)"
 git log --oneline $COMMIT_RANGE 2>/dev/null | head -50
@@ -103,16 +105,18 @@ In `full` mode, skip the range and sweep everything — the log above is informa
   >
   > Scope: `<changed api/* files or "all of api/">`
   >
-  > Reference patterns: see `api/_lib/segmentInterview.js` (single-table CRUD) and `api/collections/items.js` (junction with verifyScope on both sides). See `reference_tenant_isolation_canonical_pattern.md` in memory for the audit baseline.
+  > Reference patterns: see `api/_lib/segmentInterview.js` (single-table CRUD) and `api/_routes/collections/items.js` (junction with verifyScope on both sides). See `reference_tenant_isolation_canonical_pattern.md` in memory for the audit baseline.
   >
   > Output as Markdown. For each handler audited: green (filter present + correct) / yellow (filter present but possibly bypassable) / red (missing filter — cross-tenant leak risk). Report ONLY yellow + red findings with file:line.
 
 ### Agent 3 — ui-reviewer
-- **Scope**: always a full sweep, in both modes.
+- **Scope**: default mode = the screens and components in `$CHANGED_FILES` and the pages they appear on (same rule as the scope table above); `full` mode = full app sweep.
 - **Prompt template**:
-  > Review the Bernard UI screen-by-screen against `.claude/development-roadmap.md` and the competitor-UI memory notes (reference_ui_research_2026_05.md). Focus on usability, visual hierarchy, hover/empty states, brand-color consistency, and the cross-page coherence issues called out in `.claude/lessons/frontend.md` "Brand-color refresh checklist".
+  > Review the Bernard UI screen-by-screen against `.claude/roadmap.md` and the competitor-UI memory notes (reference_ui_research_2026_05.md). Focus on usability, visual hierarchy, hover/empty states, brand-color consistency, and the cross-page coherence issues called out in `.claude/lessons/frontend.md` "Brand-color refresh checklist".
   >
-  > Major screens: Home (`/`), Stories (`/stories`), StoryDetail (`/stories/:id`), Library / MediaHub, Settings (workspace, brand kit, channels, locations), Account, New Interview, Interview Session.
+  > Scope: `<changed screens/components and their pages, or "full sweep">`
+  >
+  > Major screens (full sweep): Home (`/`), Stories (`/stories`), StoryDetail (`/stories/:id`), Library / MediaHub, Settings (workspace, brand kit, channels, locations), Account, New Interview, Interview Session.
   >
   > Output as Markdown with P0 (broken / unusable), P1 (confusing or off-brand), P2 (polish). Each finding: `<screen> — <issue> — <suggested fix>`. Cap at top 15 findings.
 
@@ -156,9 +160,9 @@ After all three agents return:
    <verbatim per agent, for traceability>
    ```
 
-3. **Update the last-audit pointer** (both modes — a full sweep resets the baseline too):
+3. **Update the last-audit pointer** (both modes — a full sweep resets the baseline too). Write the `origin/main` SHA the audit started from to the primary checkout's file, never a worktree copy:
    ```bash
-   git rev-parse HEAD > .claude/audit-history/.last-audit
+   echo "$AUDIT_START_SHA" > "/Users/qbook/Claude Projects/Bernard/.claude/audit-history/.last-audit"
    ```
 
 4. **Console summary** — print to chat *before* fixing anything, so the user sees raw findings first:
@@ -170,11 +174,11 @@ After all three agents return:
 
 ---
 
-## Phase 4 — Fix everything fixable, in this session
+## Phase 4 — Fix the P0/P1 findings, in this session
 
-Fix findings directly in this same session, instead of spawning fix-task chips. Chip-spawning left P1/P2 findings permanently unaddressed — that's the gap this phase closes.
+Fix findings directly in this same session, instead of spawning fix-task chips.
 
-**Scope**: every P0/P1/P2 finding from **bug-hunter** and **tenant-isolation-auditor**. These are objective code-correctness/security issues.
+**Scope**: every P0/P1 finding from **bug-hunter** and **tenant-isolation-auditor** (objective code-correctness/security issues), each with its own test watched failing on the unfixed code before the fix (`~/.claude/audit-schedule.md`). **P2s are not fixed in the audit run**: they stay in the report, and when the run is scheduled each becomes a Needs-you item (`kind: fix` for one worth its own session) instead of a question.
 
 **Explicitly do NOT auto-fix:**
 - **Anything from ui-reviewer** — this project's CLAUDE.md requires a clickable mockup and Q's explicit sign-off before any UI or flow change ships. Leave these report-only and surface them as "needs a mockup — say the word and I'll build one."
@@ -184,8 +188,8 @@ Fix findings directly in this same session, instead of spawning fix-task chips. 
 
 **How to fix the rest:**
 
-1. Work through P0s, then P1s, then P2s, **serially in this working tree** — not via parallel subagents editing the same files (concurrent edits to overlapping files can silently clobber each other).
-2. Fix one finding (or a tightly-related group in the same file) at a time.
+1. Work through P0s, then P1s, **serially in this working tree** — not via parallel subagents editing the same files (concurrent edits to overlapping files can silently clobber each other).
+2. Fix one finding (or a tightly-related group in the same file) at a time. Write its test first and watch it fail (exit code) on the unfixed code; a fix you cannot prove that way stays in the punch list.
 3. After each fix or small batch, re-run the Phase 1 gates (and `npm test` if relevant). If a fix breaks a gate, back it out and leave that finding in the punch list rather than shipping broken code.
 4. Commit each fix (or logical group) separately with a message referencing the finding — small reviewable commits, not one giant commit. Include the `calibration.md` update in one of them.
 5. Push and open **one PR** covering the batch. List what was fixed, and separately what was deliberately skipped and why (needs-mockup / blast-radius / needs-migration-confirmation / not-confident).
@@ -193,6 +197,7 @@ Fix findings directly in this same session, instead of spawning fix-task chips. 
 7. For anything skipped, leave it in the punch list at its original priority — the calibration loop escalates it if it keeps recurring.
 8. **Stop rule (Q, 2026-11-16).** Each fix is proven by its own test, watched failing on the unfixed code. Do not re-run the audit, or a second reviewer, to look for what this one missed. When the audit runs from a scheduled task, everything it did not fix goes to the Needs-you inbox (`~/.claude/needs-you/README.md`), one item per decision, not into a question.
 9. **Escaped bugs are the measure of what audits miss.** When staff, Sentry or feedback later reports a bug inside code an audit covered, the session fixing it adds one line under "## Escaped (found after an audit)" in `.claude/audit-history/calibration.md`: the date, the file, the shape of the bug and which audit covered it. Agents read that section like the rest of the file.
+10. **Update the ledger last.** Edit Bernard's row in the "Ledger" table of `~/.claude/audit-schedule.md`: the date in "Last quick" (default mode) or "Last full" (`full` mode), and `$AUDIT_START_SHA` (short) in "Sha at last audit", with a one-line note. `~/.claude` is a repo that hooks auto-commit and push to every laptop within seconds: read `~/.claude/lessons/harness.md` first and change only that one row.
 
 ---
 
@@ -209,8 +214,8 @@ Same fail-fast rules as `/bernard-checkup`, plus:
 ## Notes
 
 - **Do not run on every commit.** This is a deep audit, billable in agent tokens. The cadence is change volume and the quarter, set in `~/.claude/audit-schedule.md` and run by the `audit-when-due` task, not a weekly cron.
-- **The since-last pointer is a single SHA** in `.claude/audit-history/.last-audit`. Reset manually with `git rev-parse HEAD > .claude/audit-history/.last-audit` from the project root.
+- **The since-last pointer is a single SHA** in `/Users/qbook/Claude Projects/Bernard/.claude/audit-history/.last-audit` (primary checkout, gitignored). Reset manually with `git -C "/Users/qbook/Claude Projects/Bernard" rev-parse origin/main > "/Users/qbook/Claude Projects/Bernard/.claude/audit-history/.last-audit"`.
 - **Agent prompts must be self-contained.** Each agent starts fresh with no conversation context — paste the relevant CLAUDE.md, `.claude/lessons/` and memory references inline.
 - **Calibration loop** (`.claude/audit-history/calibration.md`, force-tracked despite the gitignored directory): each run feeds it into every agent prompt and updates it in Phase 3. Settled false positives stop being re-reported; findings unresolved across 2+ runs get auto-escalated to at least P1. The false-positive list only grows by explicit judgment — never auto-populated because a finding didn't reappear.
-- **Phase 4 fixes everything it safely can, inline** — cost and time scale with how many fixable findings turn up, on top of the audit itself.
+- **Phase 4 fixes the P0/P1 code findings it safely can, inline** — cost and time scale with how many turn up, on top of the audit itself.
 - **Structure is deliberately aligned with Deep Thought's `/dt-audit`** (Vigil SOP sync, 2026-07-23): same phases, calibration loop, synthesis format, and fix policy. Only the agent lineup, stack doctrine, gates and URLs differ. If you change the *recipe* here, mirror it there — and if you change only Bernard's parameters, don't.
