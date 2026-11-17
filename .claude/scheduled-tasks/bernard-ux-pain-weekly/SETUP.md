@@ -7,7 +7,7 @@ routine queries PostHog's HogQL API directly — no live browser SSO session req
 
 ## What it does now
 
-Every Monday (cron `0 9 * * 1`, local time) it:
+**Since 2026-11-16 this task is the weekly Bernard check** (Fridays, cron `6 9 * * 5`, local time): Part 1 feedback triage (the retired daily `triage-bernard-feedback`), Part 2 this UX-pain check, Part 3 the outcome review on the first Friday run of each month (the retired weekly `bernard-monthly-outcome-review`). Fixes go to the Needs-you inbox (`~/.claude/needs-you/`), not chips. Part 2 still does what follows. Every week it:
 1. Reads `POSTHOG_PERSONAL_API_KEY` from `.env.bernard.1pw` (defensively — bails with a message
    if the mount serves empty, no retry loop).
 2. Runs a fixed set of HogQL queries against PostHog project **473748** (frustration signals,
@@ -37,7 +37,7 @@ Edit one → mirror the other via `mcp__scheduled-tasks__update_scheduled_task`.
 
 - [x] `POSTHOG_PERSONAL_API_KEY` in the Bernard 1Password env → served in `.env.bernard.1pw`
       (verified: `GET /api/projects/473748/` → 200, HogQL query → 200 with data).
-- [x] Task `bernard-ux-pain-weekly` registered, cron `0 9 * * 1`, enabled.
+- [x] Task `bernard-ux-pain-weekly` registered, enabled; cron `6 9 * * 5` (Fridays) since 2026-11-16, was `0 9 * * 1`.
 - [x] `.claude/audit-history/` exists (has prior `*-posthog-ux.md` reports).
 
 ## Known limitations (accepted)
