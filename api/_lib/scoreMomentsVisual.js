@@ -49,7 +49,7 @@ const visualSchema = z.object({
   note:              z.string().max(200).default(''),
 })
 
-function buildInstructions(ws) {
+export function buildInstructions(ws) {
   const who = ws?.clinic_context ? String(ws.clinic_context).slice(0, 240) : 'a clinical practice'
   return [
     `You are a short-form video editor judging on-camera moments from real recorded sessions at ${ws?.display_name || 'a clinical practice'}.`,
@@ -59,7 +59,7 @@ function buildInstructions(ws) {
     '',
     'Score each dimension 0..100:',
     '- energy: presence and expressiveness across the frames — animated face/posture/gesture vs flat, slack, or disengaged.',
-    '- eye_contact: looking INTO the camera/at the listener vs reading notes or looking away/down. Reading = low.',
+    '- eye_contact: looking INTO the camera lens vs reading notes or looking away/down. Looking at another person in the frame (an interviewer, a patient, someone standing beside them) is NOT eye contact with the camera. Reading = low.',
     '- gesture: purposeful hands/demonstration that reinforces the point vs stiff or fidgety.',
     '- framing: subject well-composed for a 9:16 vertical crop — centered, head not cut off, stable, in focus. A wide/off-center/tilted/shaky frame is low.',
     '- broll_worthiness: is something visually happening worth watching (a demo, movement, a treatment) vs a static talking head.',
