@@ -34,11 +34,20 @@ import { tmpdir } from 'node:os'
 import { generateObject } from 'ai'
 import ffmpegStaticPath from 'ffmpeg-static'
 
-// Gemini 2.5 Pro — sharper on subtle visual cues (eye contact, micro-gesture)
-// than Flash, which matters for the framing/delivery judgments F13 makes.
-// Reachable through the AI Gateway with a plain provider/model string, exactly
-// like tagAsset.js's google/gemini-2.5-flash — no new SDK, no new provider key.
-export const DEFAULT_VIDEO_MODEL = 'google/gemini-2.5-pro'
+// Reachable through the AI Gateway with a plain provider/model string, like
+// tagAsset.js's google/gemini-3.8-flash — no new SDK, no new provider key.
+// Moved gemini-2.5-pro -> gemini-3.8-flash (2026-11-16) because Google retires 2.5-pro on
+// 2026-12-01. Three bake-off rounds on 30 real F13 clips (Pro scores = baseline): Flash keeps the
+// blended feed rank (rank corr 0.87 vs Pro's 0.88-0.92 against its own stored scores) but is WEAK on
+// two cues Pro was picked for: eye_contact averages ~32 where Pro gives ~3 (~40 before the v2 prompt
+// wording in scoreMomentsVisual.js; it still rates speakers talking to each other as partly
+// on-camera), and its scores bunch into 35-67, so the visual_score < vetoFloor (25) veto in
+// scoreMomentsVisual.js effectively never fires. gemini-3.1-pro-preview matched eye contact but
+// scored everything ~25 pts lower (vetoed ~1/3 of clips, and it is preview-only); Gemini 4 Carbon
+// over-scored eye contact like Flash (~42) and ranked worse. Taken anyway: no segment has been scored
+// since 2026-08-31 (61 ever), so little stored data mixes. Revisit when F13 scoring is in use again or a
+// GA Pro-tier Gemini ships — see .claude/decisions.md 2026-11-16.
+export const DEFAULT_VIDEO_MODEL = 'google/gemini-3.8-flash'
 
 // Same binary-resolution priority as tagAsset.js.
 const FFMPEG_BIN = process.env.FFMPEG_PATH || ffmpegStaticPath || 'ffmpeg'
@@ -49,12 +58,11 @@ const DEFAULT_FRAMES = 6
 // Downscale long edge for the sampled stills — plenty for framing/eye-contact.
 const FRAME_LONG_EDGE = 512
 
-// Per-1M-token rates (USD) for cost logging. Approximate Gateway list price for
-// Gemini 2.5 Pro at the <200k-context tier; used only for an order-of-magnitude
-// spend log, never for billing. Update if the rate card moves.
-const RATE_CARD = {
-  'google/gemini-2.5-pro':   { in: 1.25, out: 10.0 },
-  'google/gemini-2.5-flash': { in: 0.30, out: 2.50 },
+// Per-1M-token rates (USD) for cost logging. Gateway list price for Gemini 3.8 Flash as of
+// 2026-11-16 (ai-gateway.vercel.sh/v1/models); used only for an order-of-magnitude spend log, never
+// for billing. Update if the rate card moves. A model missing here logs a null cost.
+export const RATE_CARD = {
+  'google/gemini-3.8-flash': { in: 0.75, out: 3.75 },
 }
 
 /** Evenly-spaced timestamps across [start,end], inset slightly from the edges. */

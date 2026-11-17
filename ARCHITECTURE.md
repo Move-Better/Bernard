@@ -1288,7 +1288,7 @@ round on the same surface, stop and build an HTML mockup for Q to approve first.
 To have a model "watch" a clinical source video (F13 visual scoring/nomination; F17 read-back
 verification), the ONLY viable path is `api/_lib/analyzeVideoWindow.js` — sample a handful of
 stills via ffmpeg **fast input seeks** (`-ss T -i URL -frames:v 1`) and send the JPEGs as image
-parts to Gemini (`google/gemini-2.5-pro`, via the AI Gateway — same path as `tagAsset.js`, no new
+parts to Gemini (`google/gemini-3.8-flash`, via the AI Gateway — same path as `tagAsset.js`, no new
 SDK). Two hard constraints learned on real footage, both non-obvious:
 
 - **Never download the whole source.** Real footage is multi-GB 4K (a movebetter seminar is 3.3GB);
@@ -1299,13 +1299,16 @@ SDK). Two hard constraints learned on real footage, both non-obvious:
   Keyframe-skip (`-skip_frame nokey`) made it *worse*. A single-frame input seek returns in **~3s
   regardless of source size** because it decodes ~1 frame. So sample N stills (6 for a window,
   `sampleFramesAcross` for a whole-source scan with a concurrency pool), not a video. Stills read
-  eye-contact/framing/gesture/scene well; energy is the one dimension they read weaker than motion.
+  framing/gesture/scene well; energy is the one dimension they read weaker than motion. **Eye contact depends on the
+  model:** Gemini 2.5 Pro (retired 2026-12-01) read it well, but `gemini-3.8-flash` (now the default) over-scores it
+  (~32 vs ~3 on real clips: it counts speakers looking at each other as on-camera) and its scores bunch in 35-67, so
+  the `BLEND.vetoFloor` veto effectively never fires. Treat the eye-contact bar as weak signal (decisions.md 2026-11-16).
   `media_assets.web_blob_url` (a would-be low-res proxy) is **never populated** — don't rely on it.
 
 Pure scoring/transform code with no Clerk dependency → **verify with a node harness against a real
 blob URL** (same discipline as the Sharp compositor above): pull a real source + its
 `video_segments` from prod via the service key, run the scorer, print the result. Cost is real but
-cheap (~$0.10/video at Gemini 2.5 Pro + 6 frames) — **log per-video cost** and, for any bulk
+cheap (order of $0.01-0.10/video depending on model + 6 frames) — **log per-video cost** and, for any bulk
 re-score, log the count + total (no silent spend). The Chrome screenshot tool returns **blank
 frames at deep-scroll positions** in long/virtualized feeds (the moment feed) even though the DOM
 is present — don't chase a render bug; verify the rendered result via a **DOM assertion**
