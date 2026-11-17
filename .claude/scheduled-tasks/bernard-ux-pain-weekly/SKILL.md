@@ -13,7 +13,7 @@ Run the Bernard feedback triage loop over user-submitted in-app feedback.
 
 Working directory: the Bernard project. If a session git worktree isn't already set up, cd to "/Users/qbook/Claude Projects/Bernard" (it stays on main) or create a worktree — this is a READ-ONLY / report-only task for product code.
 
-1. Invoke the `bernard-triage-feedback` skill (command file .claude/commands/bernard-triage-feedback.md in the Bernard repo). Follow it exactly.
+1. Invoke the `bernard-triage-feedback` skill (skill file .claude/skills/bernard-triage-feedback/SKILL.md in the Bernard repo). Follow it exactly.
 
 What it does (summarized so this prompt is self-contained if the command file is unavailable):
 - Query Bernard prod Supabase (project id `wrqfrjhevkbbheymzezy`) via the Supabase MCP `execute_sql`:

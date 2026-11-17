@@ -1,3 +1,5 @@
+> Retired 2026-11-17 (Q): the /product-panel and /frontier-panel commands were deleted after no run since mid-2026; kept as history.
+
 # Bernard — Frontier Product Panel (No-Boundaries "Push It" Audit)
 
 **Created:** 2026-06-20 · **Owner:** Q · **Status:** living doc — re-run on cadence, Q marks up
@@ -327,4 +329,4 @@ This panel is **expert *simulation*, not user *observation*** — sharp at "what
 
 ---
 
-*Keep file (human-authored instrument — treat like source, per the `.claude/` scratch-vs-keep convention). Sibling: `product-panel-audit.md` (pragmatic). Run via `/frontier-panel`.*
+*Keep file (human-authored instrument — treat like source, per the `.claude/` scratch-vs-keep convention). Sibling: `product-panel-audit.md` (pragmatic). Retired 2026-11-17; no command runs it now.*
