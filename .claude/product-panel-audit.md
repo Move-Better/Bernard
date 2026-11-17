@@ -1,3 +1,5 @@
+> Retired 2026-11-17 (Q): the /product-panel and /frontier-panel commands were deleted after no run since mid-2026; kept as history.
+
 # Bernard — Expert Product Panel ("Make-It-Better" Audit)
 
 **Created:** 2026-06-04 · **Owner:** Q · **Status:** living doc — re-run on cadence, Q marks up
@@ -6,7 +8,7 @@
 **Where it sits among the instruments:**
 - `/bernard-audit` · `/bernard-audit full` · `/bernard-checkup` → **code & bug layer** (does it work / is it safe).
 - `blindspot-audit.md` / `blindspot-audit-inhouse.md` → **strategy & direction layer** (are we building the right thing / is it worth the time).
-- **This doc** (run it with `/bernard-product-panel`) → **product & experience layer** (is the app a *delight to use* for our clinicians, and what would world-class experts change).
+- **This doc** → **product & experience layer** (is the app a *delight to use* for our clinicians, and what would world-class experts change).
 
 ---
 

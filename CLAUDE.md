@@ -60,7 +60,7 @@ Bernard's SaaS-productization strategy (plan tiers, pricing, managed-vs-BYO anal
   (**Sensitive**, in the `bernard` 1Password Environment). Bernard stores no reviews itself; never copy
   them into a table. Reader rules and the live-staff check are in `integrations.md`.
 - **This repo's instruments are `bernard-`-prefixed:** `/bernard-audit` (`full` for the whole
-  codebase), `/bernard-checkup`, `/bernard-outcome-review`, `/bernard-triage-feedback`, `/bernard-product-panel`. A same-named
+  codebase), `/bernard-checkup`, `/bernard-outcome-review`, `/bernard-triage-feedback`. A same-named
   command can load a sibling project's body (`housekeeping.md`).
 
 ## Process discipline (Bernard's additions to the global rules)
