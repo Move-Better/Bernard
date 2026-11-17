@@ -1,11 +1,13 @@
 ---
 name: bernard-triage-feedback
-description: Read untriaged in-app feedback (the `feedback` Supabase table — the source of truth for Bernard's Feedback button), investigate each report against the codebase, produce a prioritized punch list, spawn a task chip per actionable item, and stamp the rows triaged. Report-only by default — does NOT open fix PRs (review-before-ship). Sister command to /bernard-audit (code sweep) and /bernard-checkup (health pass).
+description: Read untriaged in-app feedback (the `feedback` Supabase table — the source of truth for Bernard's Feedback button), investigate each report against the codebase, produce a prioritized punch list, hand off each actionable item (interactive: a start_session proposal; scheduled: a Needs-you `kind: fix` item), and stamp the rows triaged. Report-only by default — does NOT open fix PRs (review-before-ship). Sister command to /bernard-audit (code sweep) and /bernard-checkup (health pass).
 ---
 
-Triage the **user-submitted feedback** captured by Bernard's in-app Feedback button. Every submission is stored durably in the `feedback` table in Supabase (see `api/_routes/feedback.js`) — the email to `ADMIN_NOTIFY_EMAIL` is only a notification copy, so **read the table, never the inbox**. This command turns that queue into an investigated, prioritized punch list and one task chip per actionable item.
+Triage the **user-submitted feedback** captured by Bernard's in-app Feedback button. Every submission is stored durably in the `feedback` table in Supabase (see `api/_routes/feedback.js`) — the email to `ADMIN_NOTIFY_EMAIL` is only a notification copy, so **read the table, never the inbox**. This command turns that queue into an investigated, prioritized punch list and one hand-off per actionable item (interactive run: propose a session with `start_session`; scheduled run: file a Needs-you item, `kind: fix`, per `~/.claude/needs-you/README.md`).
 
-**Autonomy: investigate + punch list only.** Diagnose each item and spawn a task chip, but do NOT open fix PRs or edit product code in this run — Q reviews before anything ships. (To also fix, run `/bernard-audit` afterward or act on the chips.)
+**Autonomy: investigate + punch list only.** Diagnose each item and hand it off (interactive run: propose a session with `start_session`; scheduled run: file a Needs-you item, `kind: fix`, per `~/.claude/needs-you/README.md`), but do NOT open fix PRs or edit product code in this run — Q reviews before anything ships.
+
+**Scheduled vs interactive.** This skill also runs inside the weekly `bernard-ux-pain-weekly` scheduled task. A scheduled run never asks and never sends anything outbound (`~/.claude/CLAUDE.md`, "Scheduled runs decide, report and file"): fixes become Needs-you `kind: fix` items, and the reporter emails in Phase 4 become one `kind: go-ahead` item. Its final message is a report, not a question.
 
 **State is DB-native.** A row is "new" when `triaged_at IS NULL`. This works identically for an interactive session and a headless scheduled routine — there's no local pointer file to get out of sync. Stamp every row you investigate with `triaged_at = now()` (+ a short `triage_note`) so it never re-surfaces.
 
@@ -49,7 +51,7 @@ Investigate the rows concurrently when they touch different areas (parallel Expl
 
 ---
 
-## Phase 3 — Punch list + chips + stamp
+## Phase 3 — Punch list + hand-offs + stamp
 
 1. **Write the report** to `.claude/feedback-history/<YYYY-MM-DD-HHMM>.md`:
    ```
@@ -71,34 +73,34 @@ Investigate the rows concurrently when they touch different areas (parallel Expl
    ```
    `.claude/feedback-history/` is gitignored scratch (like `audit-history/`); create it if missing.
 
-2. **Spawn one task chip per actionable P0/P1/P2** via `spawn_task`. Each chip must stand alone — include the feedback `id`, the verbatim message, the page route, the reporter, the root-cause `file:line`, and the suggested fix, so the spawned session can act without this conversation. **The chip's prompt must end with an explicit instruction to close the loop once the fix ships**: "Once the fix is merged and deployed, call `PATCH /api/feedback/resolve` with `{ id: '<feedback-id>', note: '<one-line plain-language summary of what was fixed>' }` (authenticated as an admin/staff user of the reporter's workspace) — this emails the original reporter that it's safe to use the feature again and clears the in-app 'fixed' banner they'll see on Home. Do not call it until the fix is actually live in prod." Do NOT spawn chips for `already-fixed` / `not-reproducible` items — note those in the report only, but see Phase 4 below for `already-fixed`.
+2. **Hand off each actionable P0/P1/P2.** Interactive run: propose one session per item with `start_session` (`initiation: "own_initiative"`). Scheduled run: file one Needs-you item per item (`kind: fix`, `owner: bernard`, `source: <the scheduled task id>`, `stakes: normal` or `high` for P0), with the content below in its `brief:` line. Each hand-off must stand alone — include the feedback `id`, the verbatim message, the page route, the reporter, the root-cause `file:line`, and the suggested fix, so the fixing session can act without this conversation. **The brief must end with an explicit instruction to close the loop once the fix ships**: "Once the fix is merged and deployed, call `PATCH /api/feedback/resolve` with `{ id: '<feedback-id>', note: '<one-line plain-language summary of what was fixed>' }` (authenticated as an admin/staff user of the reporter's workspace) — this emails the original reporter that it's safe to use the feature again and clears the in-app 'fixed' banner they'll see on Home. Do not call it until the fix is actually live in prod." Do NOT hand off `already-fixed` / `not-reproducible` items — note those in the report only, but see Phase 4 below for `already-fixed`.
 
 3. **Stamp every investigated row triaged** (one statement, all ids):
    ```sql
    UPDATE public.feedback
    SET triaged_at = now(),
        triage_note = CASE id
-         WHEN '<id1>' THEN 'P0: <short> — chip spawned'
+         WHEN '<id1>' THEN 'P0: <short> — handed off'
          WHEN '<id2>' THEN 'already fixed in #<pr>'
          … END
    WHERE id IN ('<id1>','<id2>', …);
    ```
    Never stamp a row you didn't actually investigate — an un-stamped row is the safety net that it resurfaces next run.
 
-4. **Console summary** to chat: one line per tier (counts), a link to the report, the top P0/P1 items inlined, and the count of chips spawned. Call out anything classified `already-fixed` so the loop is visibly working, not silently swallowing reports.
+4. **Console summary** to chat: one line per tier (counts), a link to the report, the top P0/P1 items inlined, and the count of items handed off (sessions proposed or Needs-you items filed). Call out anything classified `already-fixed` so the loop is visibly working, not silently swallowing reports.
 
 ---
 
 ## Phase 4 — Closing the loop (the reporter gets told)
 
-Bernard's Feedback button is used mostly by front-desk/operational staff (e.g. Philip) who deliberately **stop using a feature the moment they hit a bug**, and wait to be told it's fixed before going back to it. A report that's fixed-but-never-communicated means that person keeps avoiding a bottleneck in their workflow indefinitely. This is why chips (Phase 3, step 2) carry the resolve instruction, and why `already-fixed` rows here get the same treatment:
+Bernard's Feedback button is used mostly by front-desk/operational staff (e.g. Philip) who deliberately **stop using a feature the moment they hit a bug**, and wait to be told it's fixed before going back to it. A report that's fixed-but-never-communicated means that person keeps avoiding a bottleneck in their workflow indefinitely. This is why hand-offs (Phase 3, step 2) carry the resolve instruction, and why `already-fixed` rows here get the same treatment:
 
-- **If a row classifies as `already-fixed`** (Phase 2, step 4) and it has a `user_email` on file, resolve it directly in this run — don't just note it in the report:
+- **If a row classifies as `already-fixed`** (Phase 2, step 4) and it has a `user_email` on file, resolve it — don't just note it in the report. Resolving emails the reporter, so it is outbound: in an **interactive** run confirm with Q first (Bernard CLAUDE.md, "In-app feedback"), then call it; in a **scheduled** run do not call it — file one Needs-you item (`kind: go-ahead`, `stakes: high`) listing every `already-fixed` row (id, one-line note, PR) so Q can approve the emails in one answer:
   ```
   PATCH /api/feedback/resolve
   { "id": "<row id>", "note": "<one-line plain-language summary, e.g. 'Fixed 2026-07-20 in #2198'>" }
   ```
-  Call it authenticated against the reporter's own workspace subdomain (the `w.slug` from Phase 1's query). This is the only Phase-4 action this command takes directly; everything else (P0/P1/P2 chips) resolves itself later when the spawned session ships its fix and calls the same endpoint per its chip instructions.
+  Call it authenticated against the reporter's own workspace subdomain (the `w.slug` from Phase 1's query). This is the only Phase-4 action this command takes directly; everything else (P0/P1/P2 hand-offs) resolves itself later when the fixing session ships its fix and calls the same endpoint per its brief.
 - **Never resolve a row you haven't personally confirmed is fixed** — a false "it's fixed" email is worse than silence, since it invites the reporter back into a still-broken flow.
 - The resolve endpoint is best-effort on the email (a missing `user_email` silently skips it) but always sets `resolved_at`, which is what drives the in-app banner on Home (`FeedbackResolvedBanner`, queried via `/api/feedback/my-notices`) — so even a reporter with no email on file eventually sees it next time they log in.
 
@@ -106,7 +108,7 @@ Bernard's Feedback button is used mostly by front-desk/operational staff (e.g. P
 
 ## Notes
 
-- **Report-only by design.** This command never edits product code or opens PRs. Fixes happen when Q acts on the chips or runs `/bernard-audit`. This matches the review-before-ship autonomy Q chose for the feedback loop.
+- **Report-only by design.** This command never edits product code or opens PRs. Fixes happen when Q starts the proposed sessions or answers the Needs-you items. This matches the review-before-ship autonomy Q chose for the feedback loop.
 - **Screenshots live in Blob** at `feedback/<workspace_id>/<uuid>.png` and the row carries the public `screenshot_url` — always look at it, it's usually the fastest path to the root cause.
-- **Pair with `/schedule`** to run automatically (e.g. Mondays 9am): `/schedule create "Triage feedback" cron="0 9 * * 1" "/bernard-triage-feedback"`. The DB-native `triaged_at` state means a scheduled headless run and a manual run never double-process a row.
+- **Already scheduled** inside the weekly `bernard-ux-pain-weekly` task; do not add another schedule. The DB-native `triaged_at` state means a scheduled headless run and a manual run never double-process a row.
 - **The `feedback` table is the "directory for Claude"** Q asked about — no email parsing, no copy-paste. To manually re-open a triaged item, `UPDATE feedback SET triaged_at = NULL WHERE id = '…'` and it rejoins the queue.
