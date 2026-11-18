@@ -14,7 +14,7 @@
 // sourcing platform/content/media from the content_items row itself instead
 // of a fresh request body.
 //
-// On success: content_items → status back to scheduled/published,
+// On success: content_items → status 'scheduled' (bundle promotes it),
 // publish_error cleared, platform_post_id set; an
 // agent_actions 'published' row is written so needs-you.js's
 // unresolvedPublishFailures() supersedes the earlier 'publish_failed' row for
@@ -30,7 +30,7 @@ import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { recordAgentAction } from '../../_lib/agentActions.js'
 import { notifyPublishFailure } from '../../_lib/notifyPublishFailure.js'
-import { runBundlePublish } from '../publish/social.js'
+import { runBundlePublish, dispatchCommitFields } from '../publish/social.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
 import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
 import { resolveGbpLocationIds } from '../../../src/lib/gbpLocations.js'
@@ -58,6 +58,21 @@ async function dbErr(res, r, msg = 'Database error', status = 500) {
   const body = await r.text().catch(() => '')
   console.error(`[producer/retry-publish] ${msg} — supabase ${r.status}: ${body.slice(0, 500)}`)
   return res.status(status).json({ error: msg })
+}
+
+// The content_items write after a successful retry. Same commit as the main
+// publish path (social.js dispatchCommitFields): ALWAYS 'scheduled' with a
+// real scheduled_at, because bundle creates every post SCHEDULED and promotes
+// it itself. Writing 'published' here defeated the post.published webhook
+// (guarded on status=eq.scheduled) and the hourly backstop, which reconciles
+// only scheduled rows (audit 2026-11-18).
+export function retryCommitPatch(resultBody, scheduledAt, nowIso) {
+  return {
+    ...dispatchCommitFields(resultBody, scheduledAt, nowIso),
+    publish_error:  null,
+    dispatching_at: null,  // release the dispatch claim atomically with the terminal status
+    updated_at:     nowIso,
+  }
 }
 
 export default async function handler(req, res) {
@@ -149,15 +164,7 @@ export default async function handler(req, res) {
   }
 
   const willBeScheduled = !!scheduledAt
-  const patch = {
-    status:            willBeScheduled ? 'scheduled' : 'published',
-    published_at:      willBeScheduled ? null : new Date().toISOString(),
-    platform_post_id:  result.body.postId ?? null,
-    publish_error:     null,
-    dispatching_at:    null,  // release the dispatch claim atomically with the terminal status
-    updated_at:        new Date().toISOString(),
-    ...(willBeScheduled && result.body.scheduledAt ? { scheduled_at: result.body.scheduledAt } : {}),
-  }
+  const patch = retryCommitPatch(result.body, scheduledAt, new Date().toISOString())
   const upd = await sb(`content_items?id=eq.${contentItemId}&workspace_id=eq.${ws.id}`, {
     method: 'PATCH',
     body:   JSON.stringify(patch),
@@ -170,8 +177,8 @@ export default async function handler(req, res) {
 
   // Mirror the committed schedule onto the plan atom (/week renders from the
   // atom, not the item — see api/_lib/atomSchedule.js). Only on the SCHEDULED
-  // branch: a publish-now retry commits status 'published' with published_at,
-  // and that instant is history, not a slot the board should be moved to.
+  // branch: a publish-now retry's scheduled_at is the moment it was sent,
+  // which is history, not a slot the board should be moved to.
   if (willBeScheduled) {
     await syncAtomSchedule({
       pieceId: contentItemId,
