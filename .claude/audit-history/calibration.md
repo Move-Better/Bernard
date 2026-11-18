@@ -41,9 +41,11 @@ snapshot" below and wasn't fixed in between. Format:
 - [agent] file:line — problem — first flagged YYYY-MM-DD, seen again YYYY-MM-DD (Nx)
 Remove an entry once the finding stops appearing (i.e. it got fixed). -->
 
-_(none — the Analytics.jsx SEO stat-hierarchy item that reached 2x on 2026-08-08 was
-resolved by Q the same day as intentional emphasis and moved to "Known false positives"
-above. Nothing else is carrying forward unresolved.)_
+- [bug] api/_lib/aspectVariants.js:95,156 — saveAspectVariant find-then-insert race (two
+  near-simultaneous reframes of one source+channel insert duplicate variants) — first flagged
+  2026-07-31, seen again 2026-08-08 and 2026-11-18 (3x). Blocked on migration
+  203_aspect_variant_unique.sql being applied to prod plus a 23505-tolerant insert; filed to
+  the Needs-you inbox 2026-11-18 because it needs a prod migration sign-off.
 
 ## Findings snapshot (for next run's recurrence check)
 
@@ -53,70 +55,49 @@ and don't survive into a fresh worktree, so this snapshot — inside the one for
 file — is what the NEXT run diffs against to detect recurrence. After comparing, the next
 run overwrites this section with its own snapshot. -->
 
-From the 2026-08-08 since-last run (report: 2026-08-08-0912.md, range 8e6b1c9d..17389ed1).
-Items marked FIXED were repaired in-session; if one reappears, that's a regression — report
-at P1 minimum. From the 2026-07-31 snapshot: all 4 FIXED bug/tenant items re-verified holding
-(agent-tick untouched, copy-to-platforms/coaching/opacity guards intact); the teal-Approve
-[ui] item shipped and was confirmed fixed app-wide (EditorWorkflowBar.jsx:412,
-AssetsPane.jsx:791, OnHandTab.jsx:305, VideoEditor.jsx:2107, WordsApproval.jsx:167 — all
-`variant="success"`); Analytics.jsx hierarchy recurred → moved to Chronic.
+From the 2026-11-18 FULL run (report: 2026-11-18-full.md in the primary checkout, sha
+3ea172d9, scheduled by audit-when-due). Items marked FIXED shipped in the audit PR with a
+test watched failing first; if one reappears, that is a regression, report at P1 minimum.
+From the 2026-08-08 snapshot: the 3 FIXED bug items were not re-flagged; the OnHandTab
+MomentExcerpt pencil is FIXED (outline Button + aria-label, #2591/#2687); aspectVariants
+recurred and moved to Chronic.
 
-- [bug] src/lib/publish.js:257 — dispatchBrief "Schedule" mode created the row pre-set to
-  status='scheduled', which the publish route's cross-path double-publish guard
-  (social.js:244) read as already-dispatched → returned alreadyDispatched:true and NEVER
-  called runBundlePublish. Silent no-op reported as success — 2026-08-08 (FIXED same
-  session: create at 'draft', server's dispatchCommitFields is the only terminal-status
-  writer)
-- [bug] api/_lib/blogTarget.js:93 — "archived rows don't count" checked
-  status==='archived', a value that doesn't exist in VALID_STATUSES (archiving is the
-  archived_at timestamp); both callers' SELECTs didn't fetch archived_at. Archived blogs
-  still counted toward the monthly target and could suppress the nudge — 2026-08-08
-  (FIXED same session: check archived_at, SELECTs updated, test now uses the real
-  mechanism)
-- [bug] api/_routes/db/interviews.js:434-479 — fan-out re-entrancy guard read-then-insert
-  race can duplicate per-platform rows under concurrent completion PATCHes — 2026-08-08
-  (FIXED same day, migration 209 + per-platform inserts tolerating 23505. The discriminator
-  question was settled by measuring prod, not reasoning: a blanket unique index would have
-  collided with 40 existing groups — 39 content-plan (instagram/linkedin/facebook/gbp,
-  excluded by the platform list) and 1 split-into-series blog group (excluded by
-  `series_id IS NULL`). Zero duplicates in the resulting scope. Note PostgREST's
-  `on_conflict=` CANNOT infer a partial index, which is why the insert loops per platform
-  instead of batching. tests/lib/fanoutUniqueIndexMatchesMap.test.js pins the index
-  predicate to OUTPUT_PLATFORM_MAP — if that guard reddens, the two lists have drifted.)
-- [tenant] api/_routes/db/content.js PATCH media_urls — no per-asset ownership check on
-  client-supplied mediaAssetId (pre-existing, informational; blob URLs public by design,
-  no DB-row leak) — 2026-08-08 (record-only)
-- [bug] api/_lib/aspectVariants.js:107-180 — saveAspectVariant find-then-insert race —
-  carried from 2026-07-31 (migration 203_aspect_variant_unique.sql PREPARED, not applied
-  to prod — still needs manual apply + review)
-- [ui] WordsApproval.jsx:95 — redundant px-4 py-8 double-pads vs Layout's main padding —
-  2026-08-08 (FIXED after mockup sign-off. SCOPE CORRECTION: the report also named
-  OnboardingInterview.jsx and BrandInterview.jsx as "the same pattern" — they are NOT.
-  Both use `px-4 py-5` plus `minHeight: calc(100vh - 4rem)`, i.e. deliberate full-height
-  interview layouts, not document pages. Deliberately left alone; don't sweep them in on
-  a future run without treating it as its own layout change.)
-- [ui] Analytics.jsx:519 vs :680 / AppleBusinessInsightsCard — Apple card defaultOpen
-  unconditional while the adjacent GBP card collapses once configured — 2026-08-08
-  (RESOLVED by design decision, not by removing defaultOpen. Q chose "keep it open and
-  explain why" over "collapse to match": Apple genuinely needs a hand-uploaded recap every
-  month where Google syncs itself. A hint line now renders once `configured`. Do NOT
-  re-flag the open-vs-collapsed asymmetry — it is now deliberate and labelled. A real
-  finding here would be the hint going missing, or Apple gaining real sync.)
-- [ui] VideoEditor.jsx:1061 — add-overlay "Text" button only control in its row with no
-  hover state — 2026-08-08 (FIXED: now reuses the row's own `zoomBtn` class)
-- [ui] OnHandTab.jsx:74-80 — RowMenu kebab has no resting-state chip; sole Retire/Restore
-  entry point in browse mode — 2026-08-08 (FIXED)
-- [ui] OnHandTab.jsx:~270 — MomentExcerpt's "Edit this quote" pencil carries the IDENTICAL
-  bare-until-hover treatment the kebab just lost, and is likewise the only way to edit
-  (the blockquote has no onClick) — 2026-08-08 (OPEN, awaiting its own sign-off; different
-  surface, review-queue cards rather than browse rows). Worth noting how it surfaced: the
-  ui-reviewer's report named only the kebab, and this was found by grepping the class
-  string. A report's list of sites is a lower bound, not the scope.
-- [live] agent_actions kind='channel_disconnected' — carried: keep watching, don't
-  escalate without a confirmed live disconnection to test against (last checked 07-31)
-- [live] T3 slots config — carried: still a product-adoption signal, not an audit finding
-- [live] T4 video_segments.discard_reasons — carried from 07-31: was 0 rows same-day as
-  the Deny feature shipped; re-check counts next audit
+- [bug] api/_routes/billing/webhook.js:173 — checkout.session.completed PATCH filtered on
+  stripe_customer_id=eq.<new customer>; a first-time subscriber has NULL there, so the
+  workspace was never activated — 2026-11-18 (FIXED: or=(is.null,eq) for checkout only;
+  tests/lib/billingWebhookFirstCheckout.test.js)
+- [bug] api/_lib/longformEngine.js:162 — stale reclaim reset dead 'rendering' pieces to
+  'pending' with no attempts cap, so a piece killed by the 300s wall looped forever —
+  2026-11-18 (FIXED: staleReclaimRequests fails exhausted pieces first)
+- [bug] src/components/story-detail/SlideEditor.jsx:441 — autosave whitelist dropped
+  objects (logo layer), scrim and rendered_url/rendered_sig — 2026-11-18 (FIXED: moved to
+  src/lib/slideSave.js; test pins SlideEditor to it)
+- [bug] api/publish/website.js:383 — uploadMedia fetched client-supplied image URLs with a
+  bare redirect-following fetch (SSRF, readable via WordPress) — 2026-11-18 (FIXED:
+  api/_lib/ssrfGuard.js fetchPublic, shared with scan-website)
+- [bug] api/_routes/producer/retry-publish.js:151 — publish-now retry wrote 'published'
+  ahead of bundle — 2026-11-18 (FIXED: built on dispatchCommitFields)
+- [tenant] api/_routes/media/[id].js:197 — PATCH stored thumbnailUrl/renderedUrl unchecked;
+  both later reach blob del() in a store shared by every tenant — 2026-11-18 (FIXED:
+  isWorkspaceBlobUrl; the blobDel call sites themselves still trust stored URLs)
+- [bug] src/pages/VideoEditor.jsx:103,228 — restore reads a cached (up to 5 min) asset row,
+  so a reopen can restore an older video_edit_draft and autosave writes it back — 2026-11-18
+  (OPEN, inbox: no component-test harness to prove a fix)
+- [bug] api/_lib/aspectVariants.js:95,156 — see Chronic (OPEN, inbox)
+- [bug] api/_lib/dispatchContentItem.js:157 — server dispatch sends every media item to GBP;
+  the editor path sends one — 2026-11-18 (OPEN, inbox: whether bundle rejects multi-media GBP
+  is unverified)
+- [bug] api/_routes/publish/social.js:76-97 — GBP fan-out partial failure discards the posts
+  already made, so a retry re-posts those locations (auto-publish keeps a posted-set) —
+  2026-11-18 (OPEN, inbox)
+- [bug] api/_routes/webhooks/twilio-recording.js:189 — completion PATCH unchecked; a failed
+  write strands the interview in 'processing' — 2026-11-18 (OPEN, inbox)
+- [ui] WeeklyRecapPanel.jsx:241,262,301,321 and ProducerSettings.jsx:180 — Link rows inherit
+  the teal link colour (no text-foreground) — 2026-11-18 (OPEN, needs a mockup)
+- [ui] PhotoTemplates.jsx:751, BrandAnchorsEditor.jsx:120, PointCapture.jsx:188,
+  StoryDetail.jsx:156, Book.jsx:362 — action controls visible only on hover, unreachable on
+  touch — 2026-11-18 (OPEN, needs a mockup; same pattern as the fixed OnHand kebab/pencil)
+- [live] T4 video_segments.discard_reasons — carried; not re-checked this run (no prod read)
 
 ## Escaped (found after an audit)
 
