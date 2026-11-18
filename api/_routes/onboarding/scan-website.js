@@ -1,7 +1,6 @@
 import { withSentry } from '../../_lib/sentry.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
-import dns from 'node:dns/promises'
-import net from 'node:net'
+import { isBlockedHostnameLiteral, isPublicHostname } from '../../_lib/ssrfGuard.js'
 export const config = { runtime: 'nodejs' }
 // POST /api/onboarding/scan-website
 //
@@ -55,62 +54,6 @@ function normalizeUrl(raw) {
     return u
   } catch {
     return null
-  }
-}
-
-// SSRF guard: reject any address inside a non-routable / link-local /
-// loopback / unique-local / cloud-metadata range. This is the address-level
-// check; DNS resolution wraps it for hostnames.
-function isPrivateIp(ip) {
-  const family = net.isIP(ip)
-  if (family === 4) {
-    const parts = ip.split('.').map(Number)
-    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return true
-    const [a, b] = parts
-    if (a === 10) return true                                  // 10.0.0.0/8
-    if (a === 127) return true                                 // 127.0.0.0/8 loopback
-    if (a === 0) return true                                   // 0.0.0.0/8
-    if (a === 169 && b === 254) return true                    // 169.254.0.0/16 link-local + AWS/GCP metadata
-    if (a === 172 && b >= 16 && b <= 31) return true           // 172.16.0.0/12
-    if (a === 192 && b === 168) return true                    // 192.168.0.0/16
-    if (a === 100 && b >= 64 && b <= 127) return true          // 100.64.0.0/10 CGNAT
-    if (a >= 224) return true                                  // 224.0.0.0/4 multicast + reserved
-    return false
-  }
-  if (family === 6) {
-    const lower = ip.toLowerCase()
-    if (lower === '::1' || lower === '::') return true
-    // IPv4-mapped (::ffff:a.b.c.d) — re-check as IPv4
-    const mapped = lower.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/)
-    if (mapped) return isPrivateIp(mapped[1])
-    // Unique-local fc00::/7 → first byte 0xfc or 0xfd
-    if (/^f[cd][0-9a-f]{2}:/.test(lower)) return true
-    // Link-local fe80::/10
-    if (/^fe[89ab][0-9a-f]:/.test(lower)) return true
-    return false
-  }
-  // Unknown / unparseable — treat as private to be safe.
-  return true
-}
-
-function isBlockedHostnameLiteral(hostname) {
-  const h = hostname.replace(/^\[|\]$/g, '').toLowerCase()
-  if (h === 'localhost' || h.endsWith('.localhost')) return true
-  if (h.endsWith('.internal') || h.endsWith('.local')) return true
-  if (net.isIP(h) && isPrivateIp(h)) return true
-  return false
-}
-
-async function isPublicHostname(hostname) {
-  const h = hostname.replace(/^\[|\]$/g, '')
-  if (isBlockedHostnameLiteral(h)) return false
-  if (net.isIP(h)) return !isPrivateIp(h)
-  try {
-    const addrs = await dns.lookup(h, { all: true })
-    if (!addrs.length) return false
-    return addrs.every(a => !isPrivateIp(a.address))
-  } catch {
-    return false
   }
 }
 

@@ -45,13 +45,29 @@ const FALLBACK_CHANNEL = 'youtube'
 const PASS_BUDGET_MS = 150_000
 // A piece that fails this many times (transient download / ffmpeg hiccup) is
 // marked terminally failed, which fails the whole package.
-const MAX_CHUNK_ATTEMPTS = 3
+export const MAX_CHUNK_ATTEMPTS = 3
 // A 'rendering' piece older than this is assumed orphaned by a dead worker and
 // reclaimed to 'pending'. Safe because the 300s function ceiling means NO live
 // worker can hold a piece 'rendering' for more than ~5 min — if it's older than
 // that, the worker that claimed it is already dead. 6 min gives a 1-min margin
 // so we never reclaim a piece a still-running function is actively rendering.
 const STALE_RENDERING_MS = 6 * 60 * 1000
+
+// The PATCHes that reclaim stale 'rendering' pieces (dead worker), in order.
+// A worker killed by the 300s wall or an OOM never reaches the render catch,
+// which is the only other place MAX_CHUNK_ATTEMPTS is enforced, so a piece that
+// always dies mid-render was reclaimed to 'pending' forever and the package
+// never failed (audit 2026-11-18). An exhausted piece goes to 'failed' first;
+// step 5 then fails the package. Only pieces with attempts left are reclaimed.
+export function staleReclaimRequests({ packageId, workspaceId, staleBefore }) {
+  const stale =
+    `story_package_chunks?package_id=eq.${packageId}&workspace_id=eq.${workspaceId}` +
+    `&status=eq.rendering&updated_at=lt.${staleBefore}`
+  return [
+    { path: `${stale}&attempts=gte.${MAX_CHUNK_ATTEMPTS}`, body: { status: 'failed' } },
+    { path: `${stale}&attempts=lt.${MAX_CHUNK_ATTEMPTS}`, body: { status: 'pending' } },
+  ]
+}
 
 const sb = (path, init = {}) => supabaseRest(path, init, { timeoutMs: 8_000, contentType: 'application/json', prefer: 'return=representation' })
 
@@ -160,11 +176,9 @@ export async function runChunkPass({ packageId, baseUrl }) {
 
   // ── 3. Reclaim stale 'rendering' pieces (dead worker) → 'pending' ─────────
   const staleBefore = new Date(Date.now() - STALE_RENDERING_MS).toISOString()
-  await sb(
-    `story_package_chunks?package_id=eq.${packageId}&workspace_id=eq.${ws.id}` +
-      `&status=eq.rendering&updated_at=lt.${staleBefore}`,
-    { method: 'PATCH', body: JSON.stringify({ status: 'pending' }) },
-  ).catch(() => {})
+  for (const { path, body } of staleReclaimRequests({ packageId, workspaceId: ws.id, staleBefore })) {
+    await sb(path, { method: 'PATCH', body: JSON.stringify(body) }).catch(() => {})
+  }
 
   // ── 4. Load all pieces ───────────────────────────────────────────────────
   const chunks = await getJson(await sb(

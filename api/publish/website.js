@@ -1,5 +1,6 @@
 import { withSentry } from '../_lib/sentry.js'
 import { applyUtmToUrl } from '../_lib/utm.js'
+import { fetchPublic } from '../_lib/ssrfGuard.js'
 export const config = { runtime: 'nodejs' }
 // Website publish endpoint — Node.js runtime.
 //
@@ -380,7 +381,8 @@ async function publishToWordPress(res, payload, cred) {
 }
 
 async function uploadMedia(wp, sourceUrl, altText, overrideFilename = null) {
-  const sourceRes = await fetch(sourceUrl)
+  // SSRF guard: sourceUrl comes from the request body (audit 2026-11-18).
+  const sourceRes = await fetchPublic(sourceUrl)
   if (!sourceRes.ok) throw new Error(`Could not download image from ${sourceUrl} (${sourceRes.status})`)
   const contentType = sourceRes.headers.get('content-type') || 'application/octet-stream'
   const filename = overrideFilename || filenameFromUrl(sourceUrl, contentType)

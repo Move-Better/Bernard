@@ -4,6 +4,7 @@ import { recordAudit, snapshot } from '../../_lib/audit.js'
 import { requireRole } from '../../_lib/auth.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
+import { isWorkspaceBlobUrl } from '../../_lib/blobNamespace.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { waitUntil } from '@vercel/functions'
 import { indexMediaAsset } from '../../_lib/visualMemoryIndex.js'
@@ -175,6 +176,17 @@ async function handler(req, res) {
       if (!isFinite(ts.getTime())) {
         return res.status(400).json({ error: 'Invalid capturedAt — must be ISO timestamp' })
       }
+    }
+
+    // thumbnail_url / rendered_url are later passed to Blob del() (thumbnail
+    // replace, purge), and the Blob store is shared by every tenant: only a URL
+    // inside this workspace's own namespace may be stored (audit 2026-11-18).
+    for (const [field, value] of [['thumbnailUrl', patch.thumbnailUrl], ['renderedUrl', patch.renderedUrl]]) {
+      if (value == null) continue
+      const ok = field === 'thumbnailUrl'
+        ? isWorkspaceBlobUrl(patch.thumbnailUrl, scope.id)
+        : isWorkspaceBlobUrl(patch.renderedUrl, scope.id)
+      if (!ok) return res.status(400).json({ error: `Invalid ${field}` })
     }
 
     const allowed = {

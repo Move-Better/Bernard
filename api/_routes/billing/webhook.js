@@ -72,10 +72,19 @@ function verifyStripeSignature(rawBody, sigHeader, secret) {
 // Update a workspace. When stripeCustomerId is provided, the PATCH also
 // filters on stripe_customer_id so a forged event with a valid workspace_id
 // but wrong customer cannot modify another workspace's billing state.
-async function updateWorkspace(workspaceId, patch, stripeCustomerId = null) {
-  const customerFilter = stripeCustomerId
-    ? `&stripe_customer_id=eq.${encodeURIComponent(stripeCustomerId)}`
-    : ''
+//
+// allowUnbound: also match a workspace with NO customer yet. Only
+// checkout.session.completed passes it: a first purchase is the moment the
+// customer is bound, so the row's stripe_customer_id is still NULL and an eq
+// filter alone matched zero rows (paid, never activated; audit 2026-11-18).
+// A workspace already bound to a DIFFERENT customer still matches nothing.
+async function updateWorkspace(workspaceId, patch, stripeCustomerId = null, { allowUnbound = false } = {}) {
+  const cust = stripeCustomerId ? encodeURIComponent(stripeCustomerId) : null
+  const customerFilter = !cust
+    ? ''
+    : allowUnbound
+      ? `&or=(stripe_customer_id.is.null,stripe_customer_id.eq.${cust})`
+      : `&stripe_customer_id=eq.${cust}`
   const r = await sb(
     `workspaces?id=eq.${encodeURIComponent(workspaceId)}${customerFilter}`,
     {
@@ -170,7 +179,7 @@ async function handler(req, res) {
         // filter — consistent with subscription.updated / invoice.paid paths which
         // all pass the customer ID to prevent a crafted event from activating an
         // unrelated workspace. Without this, signature verification is the only guard.
-        await updateWorkspace(workspaceId, patch, customerId || null)
+        await updateWorkspace(workspaceId, patch, customerId || null, { allowUnbound: true })
         console.info(`[billing/webhook] activated workspace ${workspaceId} on plan ${patch.plan}`)
         break
       }
