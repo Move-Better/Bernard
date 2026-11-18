@@ -8,7 +8,7 @@ import { useWorkspace } from '@/lib/WorkspaceContext'
 import { resolveTheme, DEFAULT_DECK_THEME } from '@/lib/photoTemplates'
 import { buildPhotoTemplateFromEditor, suggestPhotoTemplateName } from '@/lib/photoTemplateCapture'
 import { apiFetch } from '@/lib/api'
-import { normalizeGrade, isNeutralGrade } from '@/lib/gradeParams'
+import { cleanSlidesForSave } from '@/lib/slideSave'
 import { ensureRenderedSlides } from '@/lib/renderSlides'
 import { photoSourceUrl, clipToMediaEntry, mediaEntryKey, slidePhotos, slideMediaEntry, isVideoEntry } from '@/lib/mediaEntry'
 import { formatChoicesFor } from '@/lib/platformFormats'
@@ -438,29 +438,8 @@ export default function SlideEditor({ piece, onBack, formatLabel, formatSub, pho
     // That is a real window, not a theoretical one — the producer's second
     // report landed one second after the row's scheduled_at.
     if (locked) return
-    const cleaned = next.slides.map((s) => ({
-      photo_idx: typeof s.photo_idx === 'number' ? s.photo_idx : null,
-      // media_idx must be in this whitelist or every autosave silently strips
-      // the binding a video slide depends on (saveDraft rebuilds slides from
-      // scratch, so an omitted field is a deletion, not a passthrough).
-      ...(typeof s.media_idx === 'number' ? { media_idx: s.media_idx } : {}),
-      template:  s.template,
-      // Preserve the per-slide theme override. Without this it was silently
-      // dropped on save — the picker set slide.template_id, the resolver and the
-      // bake honored it, but this rebuilt slides without it, so a per-slide
-      // theme never persisted. (P0 data-loss fix.)
-      template_id: s.template_id || null,
-      // Persist the photo reframe (pan/zoom) so it survives reload and ships in
-      // the bake. Omit when neutral to keep rows lean + legacy slides identical.
-      ...(s.photo_zoom > 1 ? { photo_zoom: s.photo_zoom } : {}),
-      ...(s.photo_fill != null ? { photo_fill: s.photo_fill } : {}),
-      ...(s.photo_offset && (s.photo_offset.x || s.photo_offset.y)
-        ? { photo_offset: { x: s.photo_offset.x || 0, y: s.photo_offset.y || 0 } }
-        : {}),
-      // Persist the colorist grade; omit when neutral so legacy slides stay lean.
-      ...(s.grade && !isNeutralGrade(s.grade) ? { grade: normalizeGrade(s.grade) } : {}),
-      blocks:    s.blocks.filter((b) => (b.text || '').trim() !== ''),
-    }))
+    // Whitelist rebuild: an omitted field is a deletion (see src/lib/slideSave.js).
+    const cleaned = cleanSlidesForSave(next.slides)
 
     let toPersist = cleaned
     let renderFailed = false
