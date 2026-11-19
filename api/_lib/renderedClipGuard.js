@@ -23,6 +23,10 @@
 // field — an asset we cannot classify as a source is treated as raw (false),
 // matching the callers' existing "if the field is absent, proceed" behaviour;
 // the callers already reject a genuinely-missing asset separately.
+//
+// Aspect-ratio variants (aspectVariants.js) are derived outputs too, but they
+// mark their source with parent_id (+ variant_label), not parent_asset_id, so
+// the guard missed them (audit 2026-11-18, P2). Callers select both columns.
 export function isRenderedClip(asset) {
-  return Boolean(asset && asset.parent_asset_id)
+  return Boolean(asset && (asset.parent_asset_id || asset.parent_id))
 }

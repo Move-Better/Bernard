@@ -123,8 +123,20 @@ describe('every clip entry point selects parent_asset_id and applies the guard',
       // The field must be pulled in a PostgREST select, or the guard reads
       // undefined and silently passes everything.
       expect(src).toMatch(/parent_asset_id/)
+      // Aspect-ratio variants mark their source with parent_id instead
+      // (audit 2026-11-18, P2): the select must pull it in the same list.
+      expect(src).toMatch(/parent_asset_id,parent_id/)
       // The guard must actually be called — a mere import is not enough.
       expect(src).toMatch(/isRenderedClip\(/)
     })
   }
+})
+
+describe('aspect-ratio variants count as derived (audit 2026-11-18, P2)', () => {
+  it('treats a parent_id child (aspectVariants.js) as a rendered clip', () => {
+    expect(isRenderedClip({ parent_asset_id: null, parent_id: 'src-1', variant_label: 'aspect-9x16' })).toBe(true)
+  })
+  it('still treats a row with neither parent as raw', () => {
+    expect(isRenderedClip({ parent_asset_id: null, parent_id: null })).toBe(false)
+  })
 })
