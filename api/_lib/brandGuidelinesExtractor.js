@@ -70,7 +70,6 @@ export async function extractBrandGuidelines(pdfBlobUrl) {
       model: 'anthropic/claude-sonnet-4-6',
       instructions: EXTRACTION_PROMPT,
       messages: [{ role: 'user', content: `BRAND BOOK TEXT:\n\n${pdfText}` }],
-      temperature: 0.1,
       maxOutputTokens: 400,
     })
     const trimmed = text.trim()

@@ -161,7 +161,6 @@ async function handler(req, res) {
         role: 'user',
         content: `Business:\n${facts}\n\nResearch notes:\n${research}`,
       }],
-      temperature: 0,
     })
     object = result.object
   } catch (e) {

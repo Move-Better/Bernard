@@ -165,7 +165,6 @@ export async function auditContentItem(ws, contentItemId) {
       schema: auditSchema,
       instructions: systemPrompt,
       messages: [{ role: 'user', content: userContent }],
-      temperature: 0.2,
     })
     audit = object
   } catch (e) {

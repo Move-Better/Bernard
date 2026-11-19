@@ -95,7 +95,6 @@ export async function scoreSegments(segments, workspace) {
       schema: resultSchema,
       instructions: buildSystem(workspace),
       messages: [{ role: 'user', content: buildUser(segments) }],
-      temperature: 0.2,
       maxOutputTokens: 1500,
     })
     const out = fallback.map((f) => ({ ...f }))
