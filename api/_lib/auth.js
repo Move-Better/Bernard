@@ -141,7 +141,19 @@ export async function isDeactivatedInWorkspace(userId, workspaceId, rest = supab
   }
 }
 
-export async function requireRole(req, allowedRoles = null, { orgId = null } = {}) {
+export async function requireRole(req, allowedRoles = null, options = {}) {
+  const { orgId = null } = options
+  // A caller that passes the `orgId` key is asking for the workspace's org to
+  // be enforced. If the workspace has no Clerk org (null/empty clerk_org_id),
+  // or no workspace resolved at all (`ws?.clerk_org_id`), fail closed: without
+  // this, `if (orgId && …)` below skipped the org check and any signed-in
+  // Clerk user from any org passed. (2026-11-18 audit, P2.) Callers that omit
+  // the key (apex/admin routes with no workspace) are unaffected.
+  if (Object.prototype.hasOwnProperty.call(options, 'orgId') &&
+      (typeof orgId !== 'string' || orgId.trim() === '')) {
+    console.error('[auth] workspace has no clerk_org_id; refusing request')
+    return { ok: false, reason: 'no-workspace-org' }
+  }
   if (!CLERK_SECRET) {
     // Fail closed. A missing secret is an ops misconfiguration, not a reason
     // to grant access. Surface clearly in logs so it's easy to diagnose.

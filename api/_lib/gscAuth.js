@@ -45,8 +45,8 @@ function b64urlDecode(str) {
   return Buffer.from(str.replace(/-/g, '+').replace(/_/g, '/') + pad, 'base64')
 }
 
-export function signOAuthState({ workspaceId, slug, userId }) {
-  const payload = { w: workspaceId, s: slug, u: userId, n: b64url(randomBytes(12)), e: Date.now() + STATE_TTL_MS }
+export function signOAuthState({ workspaceId, slug, userId, nonce }) {
+  const payload = { w: workspaceId, s: slug, u: userId, n: nonce || b64url(randomBytes(12)), e: Date.now() + STATE_TTL_MS }
   const body = b64url(JSON.stringify(payload))
   const sig  = b64url(createHmac('sha256', getStateKey()).update(body).digest())
   return `${body}.${sig}`
@@ -62,7 +62,7 @@ export function verifyOAuthState(state) {
   try { payload = JSON.parse(b64urlDecode(body).toString('utf8')) } catch { return null }
   if (!payload?.w || !payload?.s || !payload?.e) return null
   if (Date.now() > Number(payload.e)) return null
-  return { workspaceId: payload.w, slug: payload.s, userId: payload.u || null }
+  return { workspaceId: payload.w, slug: payload.s, userId: payload.u || null, nonce: typeof payload.n === 'string' ? payload.n : null }
 }
 
 function clientId()     { return process.env.GOOGLE_SC_CLIENT_ID     || process.env.GOOGLE_DRIVE_CLIENT_ID }
