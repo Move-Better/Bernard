@@ -10,6 +10,12 @@
 -- probability (single-user UI action, not a hot path) and non-destructive
 -- (an extra row, not data loss), so this migration is PREPARED but NOT
 -- applied to prod as part of that audit; apply manually once reviewed.
+--
+-- APPLIED to prod 2026-11-19 on Q's approval (0 duplicate groups beforehand).
+-- Q chose this exact predicate over one narrowed to aspect variants, so it also
+-- covers the rotate/crop editor (api/media/[id]/edit.js): a second variant of
+-- the same master with the same label is now refused with 23505.
+-- saveAspectVariant treats 23505 as a lost race and PATCHes the winning row.
 CREATE UNIQUE INDEX IF NOT EXISTS media_assets_aspect_variant_unique
   ON public.media_assets (parent_id, variant_label)
   WHERE archived_at IS NULL AND variant_label IS NOT NULL;
