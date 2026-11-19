@@ -472,9 +472,11 @@ export class BundlePublisher extends SocialPublisher {
     // bundle takes a single postDate + status SCHEDULED|DRAFT. "Now" = a
     // near-future timestamp the queue picks up immediately (mirrors the spike);
     // bundle promotes SCHEDULED -> POSTED itself.
-    const postDate = scheduledAt
-      ? new Date(scheduledAt).toISOString()
-      : new Date(Date.now() + 60_000).toISOString()
+    // An unparseable scheduledAt made toISOString() throw a bare RangeError,
+    // which reached the producer as an opaque 500. Reject it as a 400.
+    const when = scheduledAt ? new Date(scheduledAt) : new Date(Date.now() + 60_000)
+    if (Number.isNaN(when.getTime())) throw publishError('invalid scheduledAt', 400)
+    const postDate = when.toISOString()
 
     let uploads = []
     if (Array.isArray(mediaUrls) && mediaUrls.length) {
@@ -545,7 +547,16 @@ export class BundlePublisher extends SocialPublisher {
 
   async deletePost({ postId } = {}) {
     if (!postId) throw publishError('deletePost requires postId', 400)
-    await this.sdk.post.postDelete({ id: postId })
+    try {
+      await this.sdk.post.postDelete({ id: postId })
+    } catch (e) {
+      // Already deleted at bundle (or never existed): the cancel the caller
+      // wanted has happened. Report it as alreadyGone (the interface in
+      // socialPublisher.js) instead of a 502 the producer cannot act on.
+      const status = e?.status ?? e?.statusCode ?? e?.body?.statusCode
+      if (status === 404) return { success: true, alreadyGone: true }
+      throw e
+    }
     return { success: true }
   }
 
@@ -661,7 +672,10 @@ export class BundlePublisher extends SocialPublisher {
       const up = await this.sdk.upload.uploadCreateFromUrl({
         requestBody: { teamId: this.teamId, url: m.url },
       })
-      if (up?.id) uploads.push(up)
+      // An upload with no id used to be skipped, so a carousel could publish
+      // missing a slide with no error. Fail the publish with the reason instead.
+      if (!up?.id) throw publishError(`media upload returned no id for item ${uploads.length + 1} of ${mediaUrls.length}`, 502)
+      uploads.push(up)
     }
     return uploads
   }
@@ -703,11 +717,27 @@ export class BundlePublisher extends SocialPublisher {
 // no `post.analytics` field at all (the earlier guess here was wrong and meant every
 // non-force read silently normalized to all-zero metrics, regardless of the real
 // numbers bundle held in `items[]`). Read the LAST item (most recent poll) first.
-function normalizeBundleAnalytics(res) {
+// The newest poll by createdAt, not by array position: bundle does not
+// document the order of items[], and a reversed array read the oldest poll.
+// Items without a parseable createdAt fall back to array order.
+export function newestAnalyticsItem(items) {
+  if (!Array.isArray(items) || items.length === 0) return null
+  let best = null
+  let bestT = -Infinity
+  items.forEach((it, i) => {
+    if (!it || it.deletedAt) return
+    const t = Date.parse(it.createdAt)
+    const key = Number.isFinite(t) ? t : -Infinity
+    if (best === null || key > bestT || (key === bestT && i > best.i)) { best = { it, i }; bestT = key }
+  })
+  return best?.it ?? null
+}
+
+export function normalizeBundleAnalytics(res) {
   const items = Array.isArray(res?.items) ? res.items : null
   const candidates = [
     res,
-    items?.[items.length - 1],
+    newestAnalyticsItem(items),
     res?.post,
     res?.analytics,
   ].filter(Boolean)
