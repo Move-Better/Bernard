@@ -464,6 +464,10 @@ export default async function handler(req, res) {
     if (!r.ok) return dbErr(res, r, req, 'Update failed')
     const data = await r.json()
     const updated = attachMoment(data[0])
+    // No row matched (deleted, or another workspace's id): say so instead of
+    // a 200 with an empty body the client cached as the piece (audit
+    // 2026-11-18, P2).
+    if (!updated) return err(res, 'Not found', 404)
 
     // Keep the linked plan atom's schedule in sync — the /week board renders
     // from the ATOM, so a (re)schedule that writes only content_items leaves the

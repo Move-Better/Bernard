@@ -243,7 +243,7 @@ async function publishToAstro(res, payload, cred, workspaceSlug, publishTopics, 
 
 // ── WordPress mode ────────────────────────────────────────────────────────────
 
-async function publishToWordPress(res, payload, cred) {
+export async function publishToWordPress(res, payload, cred) {
   const baseUrl = cred.config?.site_url
   if (!baseUrl) {
     return res.status(503).json({ error: 'not_configured', message: 'WordPress site_url is not set in the workspace credential config. It must point at /wp-json/wp/v2/posts on the receiving site.' })
@@ -278,6 +278,12 @@ async function publishToWordPress(res, payload, cred) {
     } else if (collisionRes.status === 401 || collisionRes.status === 403) {
       console.error(tag, 'auth_failed on collision check:', collisionRes.status)
       return res.status(502).json({ error: 'auth_failed', message: 'The WordPress site rejected the credentials. Re-paste WordPress user / app password in Workspace Settings.' })
+    } else {
+      // Any other failure used to fall through and publish anyway: WordPress
+      // then auto-suffixes a duplicate slug, so the post went live at the
+      // wrong URL (audit 2026-11-18, P2). Fail closed; the caller can retry.
+      console.error(tag, 'collision check failed:', collisionRes.status)
+      return res.status(502).json({ error: 'collision_check_failed', retriable: true })
     }
   } catch (e) {
     console.error(tag, 'network_error on collision check:', e.message)
