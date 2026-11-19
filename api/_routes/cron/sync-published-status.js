@@ -53,7 +53,11 @@ async function fetchOverdueItems(wsFilter) {
     `&scheduled_at=gte.${cutoff}` +
     wsFilter +
     `&select=id,workspace_id,platform_post_id,scheduled_at,platform,topic,resolved_url` +
-    `&order=scheduled_at.asc` +
+    // Newest first. Oldest-first let rows that stay 'scheduled' for good (post
+    // deleted at bundle, or not found) take every one of the MAX_ITEMS slots
+    // each run, so newer posts were never checked (audit 2026-11-18, P2).
+    // In-flight posts resolve within minutes, so they cannot pin the page.
+    `&order=scheduled_at.desc` +
     `&limit=${MAX_ITEMS}`
   )
   if (!r.ok) {
