@@ -83,10 +83,17 @@ export async function sweepDriftedAnswers(ws, { limit = 25, now = Date.now() } =
   const out = { checked: 0, requeued: 0, respected: 0, failed: 0 }
   if (!ws?.id) return out
 
+  // Eligibility is filtered in the query, not only after it. Ordering by
+  // voice_rechecked_at nullsfirst put every never-rechecked answer first,
+  // including ones published last week, so `limit` recently published answers
+  // filled the page and the eligible ones behind them were never reached
+  // (audit 2026-11-18, P2). isEligible() below stays as a second check.
+  const cutoff = new Date(now - RECHECK_DAYS * 24 * 60 * 60 * 1000).toISOString()
   const r = await sb(
     `answers?workspace_id=eq.${ws.id}&status=eq.published&movebetterco_slug=not.is.null` +
+      `&or=(voice_rechecked_at.lte.${cutoff},and(voice_rechecked_at.is.null,published_at.lte.${cutoff}))` +
       `&select=id,staff_id,question,condition,answer_lead,body,voice_audit,voice_fidelity_score,published_at,voice_rechecked_at` +
-      `&order=voice_rechecked_at.asc.nullsfirst&limit=${limit}`,
+      `&order=voice_rechecked_at.asc.nullsfirst,published_at.asc&limit=${limit}`,
   )
   if (!r.ok) {
     console.error('[sweepDriftedAnswers] fetch failed', r.status)
@@ -142,7 +149,9 @@ export async function sweepDriftedAnswers(ws, { limit = 25, now = Date.now() } =
       patch.review_reason = 'voice_drift'
     }
 
-    const upd = await sb(`answers?workspace_id=eq.${ws.id}&id=eq.${row.id}`, {
+    // status=eq.published: scoring is slow, and a retract or edit made while
+    // it ran must not be overwritten by this stale re-score.
+    const upd = await sb(`answers?workspace_id=eq.${ws.id}&id=eq.${row.id}&status=eq.published`, {
       method: 'PATCH',
       headers: { Prefer: 'return=minimal' },
       body: JSON.stringify(patch),

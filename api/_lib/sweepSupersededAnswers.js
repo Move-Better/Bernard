@@ -123,9 +123,12 @@ export async function sweepSupersededAnswers({ ws, supersessionId }) {
       // Re-queue the fresh draft for review. Keep movebetterco_slug set (the old
       // page stays live) and mark WHY it re-surfaced so the UI can show the
       // "still live — approve to replace, or retract" treatment.
-      const upd = await sb(`answers?workspace_id=eq.${ws.id}&id=eq.${a.id}`, {
+      // status=eq.published: the re-draft takes seconds, and a retract made
+      // meanwhile was being overwritten back to needs_review (audit
+      // 2026-11-18, P2). return=representation tells us whether it landed.
+      const upd = await sb(`answers?workspace_id=eq.${ws.id}&id=eq.${a.id}&status=eq.published`, {
         method: 'PATCH',
-        headers: { Prefer: 'return=minimal' },
+        headers: { Prefer: 'return=representation' },
         body: JSON.stringify({
           answer_lead: drafted.answer_lead,
           body: drafted.body,
@@ -139,8 +142,10 @@ export async function sweepSupersededAnswers({ ws, supersessionId }) {
           updated_at: nowIso,
         }),
       })
-      if (upd.ok) affected++
-      else console.error('[sweepSupersededAnswers] patch failed', a.id, upd.status)
+      if (upd.ok) {
+        const landed = await upd.json().catch(() => [])
+        if (Array.isArray(landed) && landed.length) affected++
+      } else console.error('[sweepSupersededAnswers] patch failed', a.id, upd.status)
     }
 
     if (affected) {
