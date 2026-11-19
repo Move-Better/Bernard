@@ -29,7 +29,6 @@ function walk(dir, out = []) {
 const DECORATIVE_HOVER_ONLY = {
   'src/components/Layout.jsx': 1, // nav tooltip
   'src/components/FeedbackWidget.jsx': 1, // tooltip
-  'src/components/settings/PatientArchetypes.jsx': 1, // pencil icon in a clickable row
   'src/pages/settings/InterviewSetupPage.jsx': 1, // chevron icon in a clickable row
   'src/components/story-detail/slide-editor/SuggestionThumb.jsx': 1, // pointer-events-none overlay
   'src/components/story-detail/slide-editor/PhotoInspector.jsx': 1, // pointer-events-none overlay
@@ -67,6 +66,7 @@ describe('hover-only row controls', () => {
     ['src/components/home/PointCapture.jsx', 1],
     ['src/pages/StoryDetail.jsx', 1],
     ['src/pages/Book.jsx', 1],
+    ['src/components/settings/PatientArchetypes.jsx', 1],
     ['src/components/book/ExcludeFromBookToggle.jsx', 1],
     ['src/components/storyboard/DraftContextPanel.jsx', 1],
     ['src/components/editor/UnifiedEditor.jsx', 1],
@@ -88,5 +88,33 @@ describe('link rows are ink at rest, not teal', () => {
 
   it('Producer "This week" tile link carries text-foreground', () => {
     expect(read('src/pages/ProducerSettings.jsx')).toContain('<Link to="/producer" className="group text-foreground">')
+  })
+})
+
+// 2026-11-18 audit P2 ui list (mockup signed off by Q 2026-11-19,
+// .claude/mockups/hover-p2-sweep.html): a hover effect promises a click.
+describe('hover only where the element actually acts', () => {
+  it('SEO opportunity, Slipping and Moment cards do not react to hover (the card itself does nothing)', () => {
+    const seo = read('src/pages/SeoOpportunities.jsx')
+    expect(seo).toContain('className="bg-card border border-border rounded-xl p-4"')
+    expect(seo).toContain('className="bg-card border border-destructive/30 rounded-xl p-4"')
+    expect(read('src/pages/MomentMiner.jsx')).toContain('className="bg-card border border-border rounded-xl p-3.5 flex gap-4"')
+  })
+
+  it('Your Week clickable tiles share one hover style: lift plus teal edge', () => {
+    const src = read('src/pages/YourWeek.jsx')
+    expect(src).not.toContain('${cardCls} hover:bg-muted')
+    expect(src).toContain('<div className={`${cardCls} hover:border-primary/30`}>')
+    expect(src).toContain('<Link to={drillTo(item)} className={`${cardCls} block hover:border-primary/30`}>')
+    expect(src).toContain("${drillHref ? 'transition-shadow hover:shadow-md hover:border-primary/30' : ''}")
+  })
+
+  it('Staff profile interview card: hover on the Link, not the Card that also holds Delete', () => {
+    const src = read('src/pages/StaffProfile.jsx')
+    const start = src.indexOf('The delete button is destructive')
+    const block = src.slice(start, src.indexOf('aria-label="Delete interview"', start))
+    expect(block).not.toMatch(/<Card className="[^"]*hover:/)
+    expect(block).toContain('<Link to={href} className="group flex')
+    expect(block).toMatch(/truncate group-hover:text-primary/)
   })
 })

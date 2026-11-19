@@ -113,7 +113,7 @@ function MomentCard({ moment, onReview, onSave, onDismiss, saving }) {
   const m = moment
   const dur = m.durationSec ? `${Math.round(m.durationSec)}s` : null
   return (
-    <div className="bg-card border border-border rounded-xl p-3.5 flex gap-4 hover:border-primary/40 transition-colors">
+    <div className="bg-card border border-border rounded-xl p-3.5 flex gap-4">
       <div
         className="w-[78px] shrink-0 rounded-lg overflow-hidden bg-foreground/75 relative grid place-items-center"
         style={{ aspectRatio: m.width && m.height ? `${m.width} / ${m.height}` : '9 / 16' }}

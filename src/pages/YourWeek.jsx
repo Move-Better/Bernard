@@ -411,7 +411,7 @@ function PlanCard({ item, tz, onDraft, drafting, draftBusy, readOnly }) {
   // state that actually needs a human's eye.
   if (needsDraft) {
     return (
-      <div className={`${cardCls} hover:bg-muted`}>
+      <div className={`${cardCls} hover:border-primary/30`}>
         {body}
         <span className="mt-1.5 inline-flex w-full items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-3xs font-semibold">
           {drafting ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3 w-3" aria-hidden="true" />}
@@ -765,7 +765,7 @@ function DayPlanCard({ item, tz, onDraft, drafting, draftBusy, onApprove, approv
   const drillHref = showOpen ? drillTo(item) : null
 
   return (
-    <div className={`relative flex gap-3.5 overflow-hidden rounded-xl border border-border bg-card p-4 pl-5 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_18px_-12px_rgba(15,23,42,0.24)] ${drillHref ? 'transition-shadow hover:shadow-md' : ''}`}>
+    <div className={`relative flex gap-3.5 overflow-hidden rounded-xl border border-border bg-card p-4 pl-5 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_8px_18px_-12px_rgba(15,23,42,0.24)] ${drillHref ? 'transition-shadow hover:shadow-md hover:border-primary/30' : ''}`}>
       {/* Stretched card link — see PlanCard for why an overlay and not a wrapper. */}
       {drillHref && (
         <Link
