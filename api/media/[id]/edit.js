@@ -16,6 +16,7 @@ import { enforceLimit } from '../../_lib/ratelimit.js'
 import { EDITOR_ROLES } from '../../_lib/roles.js'
 import { workspaceScope } from '../../_lib/workspaceScope.js'
 import { generateThumbnailFromPath } from '../../_lib/thumbnail.js'
+import { insertEditVariant } from '../../_lib/insertEditVariant.js'
 
 // POST /api/media/:id/edit — Edit Media (rotate + crop).
 //
@@ -504,10 +505,9 @@ async function handler(req, res) {
       condition:     source.condition || null,
       notes:         source.notes || null,
     }
-    const ins = await sb('media_assets', { method: 'POST', body: JSON.stringify(variantRow) })
-    if (!ins.ok) throw new Error(`Insert variant failed: ${ins.status} ${await ins.text()}`)
-    const insertedRows = await ins.json()
-    const variant = insertedRows[0] || null
+    // A label already live on this master ("9:16 Vertical") saves as
+    // "9:16 Vertical (2)" instead of failing on migration 203's unique index.
+    const variant = await insertEditVariant(sb, variantRow)
 
     // Regenerate thumbnail synchronously from outPath (already in /tmp).
     let variantThumbnailUrl = null
