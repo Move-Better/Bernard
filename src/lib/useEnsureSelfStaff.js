@@ -24,7 +24,7 @@ import { useUser } from '@clerk/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
 import { useWorkspace } from '@/lib/WorkspaceContext'
-import { useStaffSummaries } from '@/lib/queries'
+import { useStaffSummaries, queryKeys } from '@/lib/queries'
 
 export function useEnsureSelfStaff() {
   const { user, isLoaded } = useUser()
@@ -63,6 +63,10 @@ export function useEnsureSelfStaff() {
         // Refresh so useSelfStaffId picks up the new row and the avatar
         // menu's "My staff profile" item appears without a page reload.
         qc.invalidateQueries({ queryKey: ['staff'] })
+        // The tier lives on that row and /api/workspace/me read it BEFORE the
+        // row existed (null), which on an internal plan means owner. Without
+        // this a first-time invitee keeps the owner screen until a reload.
+        qc.invalidateQueries({ queryKey: queryKeys.workspace.me })
       } catch (e) {
         // Non-fatal: the row will still be created lazily on first interview.
         // Reset the guard so a later navigation can retry.
