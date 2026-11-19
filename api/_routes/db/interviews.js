@@ -283,7 +283,7 @@ export default async function handler(req, res) {
 
     if (!userId) return err(res, 'Forbidden', 403)
 
-    const chk = await sb(`interviews?id=eq.${id}&${wsFilter}&select=owner_id,staff_id,topic,location_id,capture_mode,source_audio_url,selected_outputs,source_published_at,created_at`)
+    const chk = await sb(`interviews?id=eq.${id}&${wsFilter}&select=owner_id,staff_id,topic,location_id,capture_mode,source_audio_url,selected_outputs,source_published_at,created_at,status,region,theme`)
     if (!chk.ok) return dbErr(res, chk)
     const rows = await chk.json()
     if (!rows.length) return err(res, 'Not found', 404)
@@ -393,12 +393,29 @@ export default async function handler(req, res) {
       patch.turn_timings = sanitizeTurnTimings(body.turnTimings)
     }
 
-    const r = await sb(`interviews?id=eq.${id}&${wsFilter}`, {
-      method: 'PATCH',
-      body: JSON.stringify(patch),
-    })
+    // First transition to completed. The completion cascade below pays for
+    // several AI calls and several of its writes accumulate (concept and
+    // voice-phrase weights, the style ledger), so it must run once per
+    // interview, not once per save: a retried or repeated "complete" PATCH
+    // re-fired all of it (audit 2026-11-18, P2). The stored status read above
+    // is only a fast path, since two concurrent completions can both read
+    // 'in_progress'. The PATCH that actually flips the row is filtered on
+    // "not yet completed", so exactly one request matches it; a request that
+    // matches nothing lost the race and re-applies its fields unfiltered.
+    // status is nullable (default 'in_progress'), hence the is.null arm.
+    const patchBody = JSON.stringify(patch)
+    const patchInterview = (extra = '') => sb(`interviews?id=eq.${id}&${wsFilter}${extra}`, { method: 'PATCH', body: patchBody })
+    const completing = patch.status === 'completed' && rows[0].status !== 'completed'
+    let r = await patchInterview(completing ? '&or=(status.is.null,status.neq.completed)' : '')
     if (!r.ok) return dbErr(res, r, 'Update failed')
-    const data = await r.json()
+    let data = await r.json()
+    let firstCompletion = completing
+    if (completing && !data.length) {
+      firstCompletion = false
+      r = await patchInterview()
+      if (!r.ok) return dbErr(res, r, 'Update failed')
+      data = await r.json()
+    }
 
     // Auto-create content_items + content_plan_atoms + extract concepts when
     // outputs are saved for the first time. Each block is independently
@@ -412,6 +429,9 @@ export default async function handler(req, res) {
     // enrichment paths to bubble up and 500 the PATCH.
     // Both outputs AND status='completed' must be in the same PATCH for the
     // cascade to fire. A retry that sends only outputs won't re-trigger it.
+    // Only the content_items fan-out runs on every such PATCH (it is
+    // re-entrant per platform so a late output still lands); everything after
+    // it runs on the first transition to completed only (see firstCompletion).
     if (body.outputs && body.status === 'completed') {
       const { staff_id, topic, location_id, capture_mode, source_audio_url, source_published_at } = rows[0]
       const o = body.outputs
@@ -499,6 +519,13 @@ export default async function handler(req, res) {
                 resolved_url:   isImportedBlog ? source_audio_url : null,
                 media_urls:     [],
                 location_id:    location_id ?? null,
+                // A late output arrives after the region classifier already
+                // stamped the interview and its rows, and the classifier no
+                // longer re-runs on a repeat completion, so inherit the stored
+                // classification here. Null on first completion; the
+                // classifier stamps these rows itself then.
+                region:         rows[0].region ?? null,
+                theme:          rows[0].theme ?? null,
               }
             })
 
@@ -557,6 +584,19 @@ export default async function handler(req, res) {
         }
       } catch (e) {
         console.error(`[db/interviews] content_items block threw for interview=${id} ws=${ws.slug}: ${e?.message}`)
+      }
+
+      // Everything below accumulates or pays for an AI call, so it runs on the
+      // first transition to completed only. Per block: concepts and voice
+      // phrases bump weights on every run; the style classifier merges into
+      // the staff ledger; summary, RAG index, moment bank and region are
+      // overwrite/skip-if-present but would still pay for the model or
+      // embedding call again; the Strategist replan is an LLM call (its grid
+      // fallback keeps its own exists-guard); markBookStale is a flag and
+      // gains nothing from a repeat.
+      if (!firstCompletion) {
+        console.info(`[db/interviews] repeat completion for interview=${id} ws=${ws.slug} — fan-out only, cascade skipped`)
+        return ok(res, data[0])
       }
 
       // Concept extraction from clinician's transcript turns.
