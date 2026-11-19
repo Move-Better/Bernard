@@ -1,3 +1,4 @@
+import { isPathInNamespace } from '../../_lib/blobPathGuard.js'
 import { withSentry } from '../../_lib/sentry.js'
 import { handleUpload } from '@vercel/blob/client'
 import { waitUntil } from '@vercel/functions'
@@ -44,7 +45,7 @@ async function handler(req, res) {
         // path restriction of its own — pin it to this workspace's namespace
         // (brandKitLib.js uploadBrandAnchorImage builds brand-anchors/<ws.id>/…).
         // Throw → outer catch → 400.
-        if (!scope || typeof pathname !== 'string' || !pathname.startsWith(`brand-anchors/${scope.id}/`)) {
+        if (!scope || typeof pathname !== 'string' || !isPathInNamespace(pathname, `brand-anchors/${scope.id}/`)) {
           throw new Error('pathname outside workspace namespace')
         }
         return {

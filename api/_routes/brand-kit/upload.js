@@ -1,3 +1,4 @@
+import { isPathInNamespace } from '../../_lib/blobPathGuard.js'
 import { withSentry } from '../../_lib/sentry.js'
 import { handleUpload } from '@vercel/blob/client'
 import { waitUntil } from '@vercel/functions'
@@ -89,7 +90,7 @@ async function handler(req, res) {
         // to its own folder so a minted token can't plant blobs inside another
         // lane's workspace-scoped namespace (media/raw/<ws>/, music/<ws>/, …).
         // Throw → outer catch → 400.
-        if (typeof pathname !== 'string' || !pathname.startsWith('brand-assets/')) {
+        if (typeof pathname !== 'string' || !isPathInNamespace(pathname, 'brand-assets/')) {
           throw new Error('pathname outside brand-assets namespace')
         }
         let meta = {}

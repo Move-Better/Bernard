@@ -20,6 +20,7 @@
 
 export const config = { runtime: 'nodejs' }
 
+import { isPathInNamespace } from '../../_lib/blobPathGuard.js'
 import { withSentry } from '../../_lib/sentry.js'
 import { handleUpload } from '@vercel/blob/client'
 import { requireRole } from '../../_lib/auth.js'
@@ -65,7 +66,7 @@ async function handler(req, res) {
         // slug — see CLAUDE.md blob-path rule). `pathname` is client-controlled
         // and @vercel/blob's token mint has no path restriction of its own —
         // enforce the namespace here. Throw → outer catch → 400.
-        if (!scope || typeof pathname !== 'string' || !pathname.startsWith(`seminar/${scope.id}/`)) {
+        if (!scope || typeof pathname !== 'string' || !isPathInNamespace(pathname, `seminar/${scope.id}/`)) {
           throw new Error('pathname outside workspace namespace')
         }
         return {

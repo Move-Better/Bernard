@@ -159,6 +159,15 @@ export function isVideoEntry(entry) {
   return entry?.kind === 'video' || entry?.type === 'video'
 }
 
+// URL of the first photo in a media_urls list, skipping videos. A blog hero
+// must be an image; the Beehiiv send took media_urls[0] blindly, so a piece
+// whose first entry was a video sent a video URL as the hero image (audit
+// 2026-11-18, P2). Same rule as the website publish path's hero pick.
+export function firstPhotoUrl(mediaUrls) {
+  if (!Array.isArray(mediaUrls)) return undefined
+  return mediaUrls.find((m) => m?.url && !isVideoEntry(m))?.url
+}
+
 // True when content_items.slides holds real, operator-written carousel text
 // (a non-empty `text` on any block of any slide) — not just an empty scaffold.
 // Used to guard against silently orphaning that text: attaching a video to a

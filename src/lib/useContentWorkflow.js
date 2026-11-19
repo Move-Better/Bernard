@@ -13,7 +13,7 @@ import {
 import { publishBlogToWebsite, sendBlogToBeehiiv, cancelScheduledPost } from '@/lib/publish'
 import { publishPieceToSocial } from '@/lib/publishPiece'
 import { renderAndUploadHero } from '@/lib/renderSlides'
-import { publishMediaForFormat, photoSourceUrl, isVideoEntry } from '@/lib/mediaEntry'
+import { publishMediaForFormat, photoSourceUrl, isVideoEntry, firstPhotoUrl } from '@/lib/mediaEntry'
 import { heroReframed } from '@/lib/heroPhoto'
 import { brandStyleForRender } from '@/lib/brandSwatches'
 import { suggestScheduleTime } from '@/lib/scheduleHeuristics'
@@ -395,9 +395,7 @@ export function useContentWorkflow(piece) {
       const descLine = body.split('\n').find((l) => l.trim() && !/^#/.test(l) && !/^!\[/.test(l))
       const description = descLine?.trim().slice(0, 200) || title
       const slug = slugifyTitle(title)
-      const heroImage = Array.isArray(piece.media_urls) && piece.media_urls[0]?.url
-        ? piece.media_urls[0].url
-        : undefined
+      const heroImage = firstPhotoUrl(piece.media_urls)
       const payload = { contentItemId: piece.id, title, description, markdown: body, slug }
       if (heroImage) payload.heroImage = heroImage
       const result = await runWithToast(sendBlogToBeehiiv(payload), {

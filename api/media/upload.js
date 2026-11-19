@@ -1,3 +1,4 @@
+import { isPathInNamespace } from '../_lib/blobPathGuard.js'
 import { withSentry } from '../_lib/sentry.js'
 import { handleUpload } from '@vercel/blob/client'
 import { requireRole } from '../_lib/auth.js'
@@ -63,8 +64,7 @@ async function handler(req, res) {
         if (
           !scope ||
           typeof pathname !== 'string' ||
-          (!pathname.startsWith(`media/raw/${scope.id}/`) &&
-            !pathname.startsWith(`media/edited/${scope.id}/`))
+          !isPathInNamespace(pathname, [`media/raw/${scope.id}/`, `media/edited/${scope.id}/`])
         ) {
           throw new Error('pathname outside workspace namespace')
         }
