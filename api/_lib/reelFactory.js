@@ -43,7 +43,7 @@ import { resolveVideoTemplate, headlineHoldSeconds, isCustomTemplateId } from '.
  * wants the headline card opts back in by pinning `hook_card` (reel_preset) or
  * setting a custom default template.
  */
-async function resolveWorkspaceTemplate(ws) {
+export async function resolveWorkspaceTemplate(ws) {
   const pin = ws?.reel_preset || null
   if (pin && !isCustomTemplateId(pin)) return resolveVideoTemplate(pin, [])
 
@@ -56,7 +56,11 @@ async function resolveWorkspaceTemplate(ws) {
   } catch (e) {
     console.error('[reelFactory] custom template read failed, using built-in:', e?.message)
   }
-  if (pin) return resolveVideoTemplate(pin, customs)
+  // A pinned custom template that no longer exists (deleted, or the read
+  // failed) fell through resolveVideoTemplate to its hook_card fallback, the
+  // look Q ruled out as the floor. Treat a missing pin as no pin (audit
+  // 2026-11-18, P2).
+  if (pin && customs.some((t) => t && String(t.id) === String(pin))) return resolveVideoTemplate(pin, customs)
   const dflt = customs.find((t) => t.is_default)
   return resolveVideoTemplate(dflt?.id || 'captions_only', customs)
 }
@@ -225,7 +229,7 @@ export async function renderSegmentToReel({ ws, seg, asset, staffName, createDra
     // workspace can author its own templates that stops being an experiment and
     // starts being a reel rendered in a look nobody chose. Resolution order is
     // now explicit: the workspace's pin, else its default template, else the
-    // built-in hook_card. Usage is still recorded on the asset's variant_label.
+    // built-in captions_only. Usage is still recorded on the asset's variant_label.
     const template = await resolveWorkspaceTemplate(ws)
 
     // A template with no headline role IS captions-only; a headline that doesn't
@@ -428,7 +432,7 @@ export async function selectReelCandidates({ ws, limit }) {
       `&rendered_asset_id=is.null&order=score.desc&limit=120` +
       `&select=id,source_asset_id,staff_id,start_sec,end_sec,hook,transcript_excerpt,score,` +
       `speaker_voice,speaker_voice_confidence,` +
-      `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status,transcript_words,size_bytes,render_proxy_url,parent_asset_id)`,
+      `source_asset:media_assets!video_segments_source_asset_id_fkey(id,kind,blob_url,filename,archived_at,consent_status,transcript_words,size_bytes,render_proxy_url,parent_asset_id,parent_id)`,
   )
   if (!res.ok) {
     console.error('[reelFactory] candidate fetch failed:', res.status)
