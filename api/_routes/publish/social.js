@@ -14,9 +14,10 @@ import { requireRole } from '../../_lib/auth.js'
 import { enforceLimit } from '../../_lib/ratelimit.js'
 import { BundlePublisher } from '../../_lib/social/index.js'
 import { YOUTUBE_PRIVACIES } from '../../_lib/social/bundlePublisher.js'
-import { resolveBundleGbpTargets } from '../../_lib/social/gbpTargets.js'
+import { resolveBundleGbpTargets, gbpMedia } from '../../_lib/social/gbpTargets.js'
+import { unpostedTargets, mergePostedLocations } from '../../_lib/autoPublishRetry.js'
 import { checkWordsApproved } from '../../_lib/wordsApprovalGate.js'
-import { claimDispatch, releaseDispatch } from '../../_lib/dispatchClaim.js'
+import { claimDispatch, releaseDispatch, recordDispatchState } from '../../_lib/dispatchClaim.js'
 import { syncAtomSchedule } from '../../_lib/atomSchedule.js'
 import { clampToCap, platformCap } from '../../_lib/socialLengthTargets.js'
 import { FORMAT_IDS, describeFormatViolation } from '../../../src/lib/platformFormats.js'
@@ -52,7 +53,13 @@ export function dispatchCommitFields(resultBody, scheduledAt, nowIso) {
   return committed
 }
 
-export async function runBundlePublish(workspace, { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents, format = null, title = null, description = null, privacy = null }) {
+// `dispatch` ({ pieceId, state }) ties a GBP fan-out to its content_items row:
+// `state` is the row's dispatch_state as read from the claim (authoritative),
+// and every location posted is recorded into it immediately (migration 157 —
+// the same posted-set dispatchContentItem.js keeps). Locations already in it
+// are skipped, so a retry after a part-way failure posts only to the locations
+// that failed. Omitted for an ad-hoc publish with no row (nothing to record).
+export async function runBundlePublish(workspace, { platform, content, mediaUrls = [], scheduledAt, locationIds, locationContents, format = null, title = null, description = null, privacy = null, dispatch = null }) {
   let publisher
   try {
     publisher = new BundlePublisher(workspace)
@@ -71,24 +78,74 @@ export async function runBundlePublish(workspace, { platform, content, mediaUrls
           body: { error: 'No Google Business location is connected to bundle.social. Open Settings → Integrations and connect each location’s Google Business listing.' },
         }
       }
-      const gbpMediaUrls = Array.isArray(mediaUrls) ? mediaUrls.slice(0, 1) : mediaUrls
-      const posts = []
-      for (const loc of targets) {
+      const gbpMediaUrls = gbpMedia(mediaUrls)
+      const state = dispatch?.state && typeof dispatch.state === 'object' ? { ...dispatch.state } : {}
+      let channelState = state.published_channels?.gbp || {}
+      const pending = unpostedTargets(targets, channelState)
+      const failed = []
+      let firstNew = null
+      let recordLost = false
+      // Post each pending location on its own: one location's failure must not
+      // stop the others, and each success is recorded before the next post.
+      for (const loc of pending) {
         const rawText = (locationContents && typeof locationContents === 'object' && locationContents[loc.id]) || content
         const text = clampToCap(rawText, GBP_CAP)
-        const locPublisher = new BundlePublisher(workspace, { teamId: loc.teamId })
-        const r = await locPublisher.publish({ platform: 'gbp', content: text, mediaUrls: gbpMediaUrls, scheduledAt })
-        posts.push(r)
+        try {
+          const locPublisher = new BundlePublisher(workspace, { teamId: loc.teamId })
+          const r = await locPublisher.publish({ platform: 'gbp', content: text, mediaUrls: gbpMediaUrls, scheduledAt })
+          firstNew = firstNew || r
+          channelState = mergePostedLocations(
+            { ...channelState, ...(dispatch?.pieceId ? { content_item_id: dispatch.pieceId } : {}) },
+            [{ id: loc.id, postId: r?.postId ?? null }],
+            new Date().toISOString(),
+          )
+          if (dispatch?.pieceId) {
+            state.published_channels = { ...(state.published_channels || {}), gbp: channelState }
+            if (!(await recordDispatchState(dispatch.pieceId, workspace.id, state))) {
+              // This location posted but the record of it didn't save. Stop
+              // here: every further location posted now is one more a retry
+              // would duplicate. The rest are reported as not posted.
+              recordLost = true
+              break
+            }
+          }
+        } catch (e) {
+          console.error('[publish/bundle gbp] location failed:', loc.label || loc.id, e?.stack || e?.message, e?.body ? JSON.stringify(e.body) : '')
+          failed.push({ id: loc.id, label: loc.label || null })
+        }
       }
-      const first = posts[0]
+      if (recordLost) {
+        const done = new Set(Object.keys(channelState.locations || {}))
+        for (const loc of pending) {
+          if (!done.has(loc.id) && !failed.some((f) => f.id === loc.id)) failed.push({ id: loc.id, label: loc.label || null })
+        }
+      }
+      const postedCount = targets.length - failed.length
+      if (failed.length > 0) {
+        // Partial (or total) failure. The posted locations are recorded above,
+        // so a retry from any path posts only to `failedLocations`.
+        return {
+          status: 502,
+          body: {
+            error: postedCount > 0 ? 'bundle_gbp_partial_failure' : 'bundle_gbp_post_failed',
+            partial: postedCount > 0,
+            postedCount,
+            failedLocations: failed,
+          },
+        }
+      }
+      // Every target is posted (some possibly on an earlier attempt). The row's
+      // post id is the first location's, whichever attempt posted it.
+      const firstRecorded = targets.map((t) => channelState.locations?.[t.id]?.post_id).find(Boolean)
       return {
         status: 200,
         body: {
           success: true,
-          postId: first?.postId,
-          scheduledAt: first?.scheduledAt,
-          status: first?.status,
-          profileCount: posts.length,
+          postId: firstRecorded || firstNew?.postId,
+          scheduledAt: firstNew?.scheduledAt,
+          status: firstNew?.status,
+          profileCount: targets.length,
+          ...(pending.length < targets.length ? { alreadyPostedCount: targets.length - pending.length } : {}),
         },
       }
     } catch (e) {
@@ -186,10 +243,11 @@ async function handleBundlePublish(req, res, workspace) {
       `${SUPABASE_URL}/rest/v1/content_items?platform_post_id=eq.${encodeURIComponent(postId)}&workspace_id=eq.${workspace.id}&select=id`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
     )
-    if (ownerCheck.ok) {
-      const rows = await ownerCheck.json()
-      if (!rows.length) return res.status(403).json({ error: 'Post not found in this workspace' })
-    }
+    // Fail closed: if the ownership lookup itself errors, don't cancel. It used
+    // to fall through and cancel anyway (audit P2, 2026-11-18).
+    if (!ownerCheck.ok) return res.status(503).json({ error: 'ownership_check_failed' })
+    const rows = await ownerCheck.json().catch(() => [])
+    if (!Array.isArray(rows) || !rows.length) return res.status(403).json({ error: 'Post not found in this workspace' })
     try {
       const r = await publisher.deletePost({ postId })
       return res.status(200).json({ success: true, ...(r.alreadyGone ? { alreadyGone: true } : {}) })
@@ -232,6 +290,7 @@ async function handleBundlePublish(req, res, workspace) {
   // piece-backed publish can be guarded — an ad-hoc publish with no contentItemId
   // has no row to lock (and no persisted piece another path could also dispatch).
   let claimed = false
+  let dispatch = null
   if (contentItemId && UUID_RE.test(contentItemId)) {
     const claim = await claimDispatch(contentItemId, workspace.id)
     if (!claim.ok) {
@@ -249,6 +308,7 @@ async function handleBundlePublish(req, res, workspace) {
       return res.status(200).json({ success: true, alreadyDispatched: true })
     }
     claimed = true
+    dispatch = { pieceId: contentItemId, state: claim.row?.dispatch_state }
   }
 
   let result
@@ -257,6 +317,7 @@ async function handleBundlePublish(req, res, workspace) {
       platform, content, mediaUrls, scheduledAt, locationIds, locationContents,
       format: format || null,
       title: ytTitle, description: ytDescription, privacy: ytPrivacy,
+      dispatch,
     })
   } catch (e) {
     // runBundlePublish catches internally today; this is belt-and-suspenders so

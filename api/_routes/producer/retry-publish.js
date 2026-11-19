@@ -149,6 +149,9 @@ export default async function handler(req, res) {
   const result = await runBundlePublish(ws, {
     platform, content, mediaUrls, scheduledAt, locationIds, locationContents,
     format: item.format || null,
+    // The posted-set from the claimed (authoritative) row: GBP locations that
+    // already posted on an earlier attempt are skipped, never re-posted.
+    dispatch: { pieceId: contentItemId, state: claim.row?.dispatch_state },
   })
 
   if (result.status !== 200 || !result.body?.success) {

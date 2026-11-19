@@ -78,3 +78,38 @@ export async function releaseDispatch(pieceId, workspaceId, extra = {}) {
     body: JSON.stringify({ dispatching_at: null, updated_at: new Date().toISOString(), ...extra }),
   }).catch((e) => console.warn('[dispatchClaim] release failed:', e?.message))
 }
+
+/**
+ * Persist a content_items row's dispatch_state (the append-only record of which
+ * targets have been posted — shape in migration 157). Called after EACH post of
+ * a GBP fan-out so a failure part-way through leaves the already-posted
+ * locations recorded, and the next attempt from ANY path (Approve, the editor's
+ * Publish button, the producer retry) skips them instead of posting twice to a
+ * public listing.
+ *
+ * Returns whether the write landed. A non-2xx response counts as a failure, not
+ * only a thrown fetch (audit P2, 2026-11-18: a rejected PATCH used to pass
+ * silently, so the record was lost and the next retry re-posted). Callers stop
+ * the fan-out on false: posting more locations whose record can't be saved
+ * only widens what a retry would duplicate.
+ *
+ * @param {string} pieceId
+ * @param {string} workspaceId
+ * @param {object} dispatchState  the whole dispatch_state object to write
+ * @returns {Promise<boolean>}
+ */
+export async function recordDispatchState(pieceId, workspaceId, dispatchState) {
+  try {
+    const res = await sb(`content_items?id=eq.${pieceId}&workspace_id=eq.${workspaceId}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ dispatch_state: dispatchState, updated_at: new Date().toISOString() }),
+    })
+    if (res.ok) return true
+    console.error('[dispatchClaim] dispatch_state persist rejected:', pieceId, res.status)
+    return false
+  } catch (e) {
+    console.error('[dispatchClaim] dispatch_state persist failed:', pieceId, e?.message)
+    return false
+  }
+}
