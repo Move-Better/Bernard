@@ -12,6 +12,7 @@ import { apiFetch } from '@/lib/api'
 import { buildTemplateFromEditor, suggestTemplateName } from '@/lib/videoTemplateCapture'
 import { posthogCapture } from '@/lib/posthog'
 import { getMediaAsset, updateMediaAsset } from '@/lib/mediaLib'
+import { videoEditAssetQuery, isDraftReady } from '@/lib/videoEditAsset'
 import { resolveVideoEditSource, shouldUseSourceWindow } from '@/lib/videoEditSource'
 import { videoEditFingerprint, isVideoEditUnbaked, VIDEO_EDIT_HASH_KEY } from '@/lib/videoEditFingerprint'
 import { applyCaptionWindow} from '@/lib/captionTimeline'
@@ -98,9 +99,12 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     return v && UUID_RE.test(v) ? v : null
   }, [location.search])
 
-  // Distinct query key ('src') so the source_clip-enriched asset the editor needs
-  // can't be clobbered by MediaDetail's plain ['media-asset', id] cache entry.
-  const { data: asset, isLoading, error } = useQuery({ queryKey: ['media-asset', assetId, 'src'], queryFn: () => getMediaAsset(assetId, { withSourceClip: true }), enabled: !!assetId, retry: 1 })
+  // Distinct 'src' key, refetched on every open so the draft restore below reads
+  // the server's current edit, not a cached copy from an earlier open
+  // (videoEditAsset.js).
+  const assetQuery = useQuery(videoEditAssetQuery(assetId))
+  const { data: asset, isLoading, error } = assetQuery
+  const draftReady = isDraftReady(assetQuery)
   const { data: segData } = useQuery({ queryKey: ['video-segments', assetId], queryFn: () => getSegments(assetId), enabled: !!assetId, staleTime: 30_000 })
 
   // A caption-baked auto-reel's editable source is the RAW un-captioned interview
@@ -224,7 +228,9 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
   // history and autosave both need an actual re-render to pick up enabled=true.
   const [hydrated, setHydrated] = useState(false)
   useEffect(() => {
-    if (!asset || restoredRef.current) return
+    // draftReady: wait for this open's refetch, or a cached asset from an earlier
+    // open restores an older draft and autosave writes it back over the newer one.
+    if (!asset || !draftReady || restoredRef.current) return
     restoredRef.current = true
     let draftAccent = null
     let draftStartSec = null
@@ -307,7 +313,7 @@ export default function VideoEditor({ piece = null, embedded = false, onBack = n
     setHydrated(true)
     // restoredRef guards this to one run, so `piece` in the deps can't re-fire
     // it — it's here only because the shape-restore gate above reads piece.id.
-  }, [asset, assetId, piece])
+  }, [asset, draftReady, assetId, piece])
 
   // Draft snapshot shared by autosave + undo/redo.
   // shapePieceId records WHICH piece the current `format` was chosen for, so a
