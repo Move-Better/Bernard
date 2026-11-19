@@ -281,7 +281,7 @@ export async function runChunkPass({ packageId, baseUrl }) {
       const blob = await blobPut(pathname, buffer, {
         access: 'public', contentType: 'video/mp4', addRandomSuffix: false, allowOverwrite: true,
       })
-      await sb(
+      const doneRes = await sb(
         `story_package_chunks?id=eq.${next.id}&workspace_id=eq.${ws.id}&status=eq.rendering`,
         {
           method: 'PATCH',
@@ -291,6 +291,10 @@ export async function runChunkPass({ packageId, baseUrl }) {
           }),
         },
       )
+      // An unchecked failure here left the piece 'rendering' until the cron
+      // net noticed the stall. Throw so the catch below re-queues it now
+      // (audit 2026-11-18, P2). The blob is overwritten on the re-render.
+      if (!doneRes?.ok) throw new Error(`chunk done PATCH failed (${doneRes?.status})`)
       didWork += 1
     } catch (e) {
       const attempts = (next.attempts || 0) + 1

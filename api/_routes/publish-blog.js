@@ -36,11 +36,20 @@ const CONTENT_PATH_PREFIX = 'src/content/blog'
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/
 
 function yamlQuote(s) {
-  // Quote a string with double quotes for YAML, escaping backslashes and quotes.
-  return `"${String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+  // Quote a string with double quotes for YAML, escaping backslashes, quotes
+  // and line breaks (a raw newline inside the quotes broke the frontmatter).
+  return `"${String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\r/g, '\\r').replace(/\n/g, '\\n')}"`
 }
 
-function buildMarkdownFile(data) {
+// pubDate / updatedDate go into the frontmatter unquoted (Astro reads them as
+// YAML dates), so only a date or ISO timestamp is allowed: free text such as
+// "2026-11-19\ndraft: true" would inject keys (audit 2026-11-18, P2).
+export const YAML_DATE_RE = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?$/
+
+export function buildMarkdownFile(data) {
+  for (const k of ['pubDate', 'updatedDate']) {
+    if (data[k] && !YAML_DATE_RE.test(String(data[k]))) throw new Error(`${k} must be a date`)
+  }
   const fm = []
   fm.push(`title: ${yamlQuote(data.title)}`)
   // seoTitle — the ≤60-char <title>/og:title. `title` stays the on-page <h1>
@@ -157,6 +166,9 @@ export default async function handler(req, res) {
   const required = ['slug', 'title', 'description', 'pubDate', 'markdown']
   for (const k of required) {
     if (!payload[k] || (typeof payload[k] === 'string' && !payload[k].trim())) issues.push(`${k} required`)
+  }
+  for (const k of ['pubDate', 'updatedDate']) {
+    if (payload[k] && !YAML_DATE_RE.test(String(payload[k]))) issues.push(`${k} must be a date (YYYY-MM-DD or ISO timestamp)`)
   }
   if (payload.slug && !SLUG_RE.test(payload.slug)) {
     issues.push('slug must be lowercase alphanumeric + hyphens (matches /^[a-z0-9][a-z0-9-]*$/)')
