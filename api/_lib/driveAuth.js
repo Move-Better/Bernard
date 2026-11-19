@@ -57,12 +57,12 @@ function b64urlDecode(str) {
   return Buffer.from(str.replace(/-/g, '+').replace(/_/g, '/') + pad, 'base64')
 }
 
-export function signOAuthState({ workspaceId, slug, userId }) {
+export function signOAuthState({ workspaceId, slug, userId, nonce }) {
   const payload = {
     w: workspaceId,
     s: slug,
     u: userId,
-    n: b64url(randomBytes(12)),
+    n: nonce || b64url(randomBytes(12)),
     e: Date.now() + STATE_TTL_MS,
   }
   const body = b64url(JSON.stringify(payload))
@@ -84,7 +84,7 @@ export function verifyOAuthState(state) {
   }
   if (!payload?.w || !payload?.s || !payload?.e) return null
   if (Date.now() > Number(payload.e)) return null
-  return { workspaceId: payload.w, slug: payload.s, userId: payload.u || null }
+  return { workspaceId: payload.w, slug: payload.s, userId: payload.u || null, nonce: typeof payload.n === 'string' ? payload.n : null }
 }
 
 // Build the Google OAuth authorization URL. access_type=offline + prompt=consent
