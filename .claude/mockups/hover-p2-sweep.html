@@ -1,0 +1,220 @@
+<title>Hover That Tells the Truth</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one scrolling page; per spot, TODAY | CHANGE panes, each at desktop and phone width.
+   Bernard is light-only, so this mock commits to the app's light tokens on purpose. */
+:root{
+  --bg:#f6f7f9; --card:#ffffff; --fg:hsl(222 47% 8%); --muted:hsl(215 19% 34%);
+  --muted-bg:hsl(220 14% 96%); --border:hsl(214 32% 91%); --primary:#0C7580;
+  --destructive:#ef4444; --action:#d97706; --info:#0284c7; --success:#16a34a;
+  --today:#b42318; --change:#067647;
+  --font:'Inter',system-ui,-apple-system,sans-serif; color-scheme:light;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.5;margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 60px}
+.wrap{display:flex;flex-direction:column;gap:30px}
+h1{font-size:24px;margin:0;letter-spacing:-.02em;text-wrap:balance} h2{font-size:18px;margin:0;text-wrap:balance} p{margin:0}
+.lead{max-width:72ch;color:var(--muted);display:flex;flex-direction:column;gap:8px}
+.decide{border:1px solid var(--border);background:var(--card);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;max-width:84ch}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+section{display:flex;flex-direction:column;gap:12px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px} @media (max-width:900px){.cols{grid-template-columns:1fr}}
+.pane{border:1px solid var(--border);background:var(--card);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.tag{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px;align-self:flex-start}
+.tag.today{background:#fee4e2;color:var(--today)} .tag.change{background:#dcfae6;color:var(--change)}
+.note{font-size:12px;color:var(--muted)}
+.frames{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.frame{border:1px dashed var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.frame.desk{flex:1 1 280px} .frame.phone{flex:0 1 240px;width:240px}
+code{font-size:12px;background:var(--muted-bg);padding:1px 5px;border-radius:5px}
+
+/* replicas */
+.c{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;transition:border-color .15s,box-shadow .15s,background .15s;min-width:0}
+.c .q{font-weight:600;font-size:13.5px} .c .s{font-size:11.5px;color:var(--muted)}
+.btns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.b{font-size:11.5px;font-weight:600;border-radius:8px;padding:4px 9px;border:1px solid var(--border);background:var(--card);color:var(--fg);cursor:pointer}
+.b:hover{background:var(--muted-bg)} .b.pri{background:var(--action);border-color:var(--action);color:#fff} .b.pri:hover{opacity:.9}
+.today-hb:hover{border-color:rgba(12,117,128,.4)}
+.today-hd{border-color:rgba(239,68,68,.3)} .today-hd:hover{border-color:rgba(239,68,68,.5)}
+.chg-hd{border-color:rgba(239,68,68,.3)}
+.chip{font-size:10px;font-weight:700;border-radius:999px;padding:1px 7px;background:var(--destructive);color:#fff}
+.thumb{width:40px;aspect-ratio:9/16;border-radius:6px;background:linear-gradient(160deg,#556,#222);flex-shrink:0}
+.row{display:flex;gap:10px;align-items:flex-start}
+/* week tiles */
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.frame.phone .tiles{grid-template-columns:1fr}
+.t{position:relative;border:1px solid var(--border);border-radius:8px;background:var(--card);padding:8px 8px 8px 11px;font-size:11.5px;cursor:pointer;
+  box-shadow:0 1px 2px rgba(15,23,42,.05),0 8px 18px -11px rgba(15,23,42,.3);transition:box-shadow .15s,border-color .15s,background .15s}
+.t::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:8px 0 0 8px;background:var(--info)}
+.t.rev::before{background:var(--action)} .t.day::before{background:var(--success)}
+.t .k{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.t .x{font-weight:600;margin-top:2px}
+.t .dr{margin-top:6px;border:1px solid var(--border);border-radius:6px;text-align:center;font-size:10px;font-weight:600;padding:2px}
+.lift:hover{box-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1)}
+.today-grey:hover{background:var(--muted-bg)} .teal:hover{border-color:rgba(12,117,128,.3)}
+/* archetypes */
+.ac{display:block;width:100%;text-align:left;border:1px solid var(--border);border-radius:10px;background:var(--card);padding:12px;cursor:pointer;font:inherit;color:inherit}
+.ac:hover{border-color:rgba(12,117,128,.4);background:hsl(160 60% 97%)}
+.ac .h{display:flex;gap:8px;align-items:center;font-weight:600;font-size:13.5px}
+.ac .h span.l{flex:1;min-width:0}
+.pen{width:14px;height:14px;color:var(--muted);flex-shrink:0}
+.ac .rv{opacity:0;transition:opacity .15s} .ac:hover .rv{opacity:1}
+.ac .nx{opacity:0;transition:opacity .15s} .ac:hover .nx,.ac:focus-visible .nx{opacity:1}
+@media (hover:none){.ac .nx{opacity:1}} .phone.touch .nx{opacity:1}
+.ac:focus-visible,.lk:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+/* staff interview card */
+.ic{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:12px;background:var(--card);padding:10px 12px;transition:box-shadow .15s}
+.ic.today-lift:hover{box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.lk{display:flex;flex:1;min-width:0;align-items:center;gap:10px;color:var(--fg);text-decoration:none;border-radius:8px}
+.ico{height:30px;width:30px;border-radius:8px;background:var(--muted-bg);display:grid;place-items:center;flex-shrink:0;color:var(--primary)}
+.ti{font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{font-size:10.5px;font-weight:600;background:var(--muted-bg);border-radius:6px;padding:1px 6px;flex-shrink:0}
+.chev{color:var(--muted);flex-shrink:0}
+.lk.chg:hover .ti,.lk.chg:hover .chev{color:var(--primary)}
+.del{height:28px;width:28px;border:0;background:transparent;color:var(--muted);border-radius:6px;cursor:pointer;flex-shrink:0;display:grid;place-items:center}
+.del:hover{color:var(--destructive);background:rgba(239,68,68,.08)}
+svg.i{width:14px;height:14px}
+table{border-collapse:collapse;width:100%;font-size:12.5px} td,th{border-bottom:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:top}
+.tbl{overflow-x:auto}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:10px">
+    <div class="eyebrow">Bernard · audit 2026-11-18, P2 ui list · follow-up to PR #2832 · mockup for sign-off</div>
+    <h1>Hover effects that promise a click that isn't there</h1>
+    <div class="lead">
+      <p>Four spots where the hover effect says something false: a card that lights up but doesn't open, two hover styles on one screen, a pencil phones never see, and a card that lifts even when you're pointing at its delete button.</p>
+      <p>The panes are live. Hover them on desktop. Phone frames act like a touch screen, with no hover.</p>
+    </div>
+    <div class="decide">
+      <div class="eyebrow">What you are deciding</div>
+      <p><b>1. SEO and Moment cards:</b> they stop lighting up on hover, because the card itself does nothing. Their buttons keep their own hover.</p>
+      <p><b>2. Your Week tiles:</b> every tile you can click reacts the same way, lifting with a teal edge. Today the "Draft" tile turns grey instead.</p>
+      <p><b>3. Patient types pencil:</b> it uses the shared reveal from #2832, so it always shows on phones and on keyboard focus.</p>
+      <p><b>4. Staff profile interview card:</b> the card stops lifting. The title and arrow turn teal when you point at the part that opens; the delete button keeps its red hover.</p>
+    </div>
+  </header>
+
+  <!-- 1 -->
+  <section>
+    <div class="eyebrow">1 · Search opportunities and Moment Miner</div>
+    <h2>Cards light up but don't open</h2>
+    <p class="note">Real Move Better rows: two tracked questions and two moments. The ranking numbers are left out, since they don't affect hover.</p>
+    <div class="cols">
+      <div class="pane"><span class="tag today">Today</span>
+        <div class="frames"><div class="frame desk"><div class="eyebrow">Desktop · hover a card</div>
+          <div class="c today-hb"><div class="q">How can I get relief from lower back pain?</div><div class="s">Low back pain · people search this, no post answers it</div><div class="btns"><button class="b pri">Draft a post</button><button class="b">Start interview</button><button class="b">Dismiss</button></div></div>
+          <div class="c today-hd"><span class="chip">Slipping</span><div class="q" style="margin-top:4px">How do I know if I have sciatica?</div><div class="btns"><button class="b pri">Refresh content</button><button class="b">Dismiss</button></div></div>
+          <div class="c today-hb row"><span class="thumb"></span><div style="min-width:0"><div class="s">insight</div><div class="q">There's no such thing as a 'bad' movement. There are just more options you haven't tried y…</div><div class="btns"><button class="b">Review</button><button class="b">Save</button></div></div></div>
+        </div></div>
+        <p class="note">Pointing anywhere on the card turns its edge teal (or a stronger red), but clicking the card does nothing. Only the buttons work.</p>
+      </div>
+      <div class="pane"><span class="tag change">Change</span>
+        <div class="frames"><div class="frame desk"><div class="eyebrow">Desktop · hover a card</div>
+          <div class="c"><div class="q">How can I get relief from lower back pain?</div><div class="s">Low back pain · people search this, no post answers it</div><div class="btns"><button class="b pri">Draft a post</button><button class="b">Start interview</button><button class="b">Dismiss</button></div></div>
+          <div class="c chg-hd"><span class="chip">Slipping</span><div class="q" style="margin-top:4px">How do I know if I have sciatica?</div><div class="btns"><button class="b pri">Refresh content</button><button class="b">Dismiss</button></div></div>
+          <div class="c row"><span class="thumb"></span><div style="min-width:0"><div class="s">insight</div><div class="q">There's no such thing as a 'bad' movement. There are just more options you haven't tried y…</div><div class="btns"><button class="b">Review</button><button class="b">Save</button></div></div></div>
+        </div></div>
+        <p class="note">The card stays still, and only the buttons react. Nothing changes on phones, which have no hover anyway.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section>
+    <div class="eyebrow">2 · Your Week</div>
+    <h2>Two hover styles on one screen</h2>
+    <p class="note">The three tile kinds on /week: a post to draft, a post in review, and the day card. Tile text is from real Move Better stories.</p>
+    <div class="cols">
+      <div class="pane"><span class="tag today">Today</span>
+        <div class="frames"><div class="frame desk"><div class="eyebrow">Desktop · hover each tile</div>
+          <div class="tiles">
+            <div class="t lift today-grey"><div class="k">Reel · needs draft</div><div class="x">The Repetition Problem</div><div class="dr">✦ Draft</div></div>
+            <div class="t rev lift teal"><div class="k">Post · in review</div><div class="x">When should I stop training if I am injured</div></div>
+            <div class="t day lift"><div class="k">Blog · Wed</div><div class="x">What Happens in Your First Visit at Move Better</div></div>
+          </div>
+        </div></div>
+        <p class="note">All three lift. The Draft tile also turns grey, the review tile gets a teal edge, and the day card gets neither.</p>
+      </div>
+      <div class="pane"><span class="tag change">Change</span>
+        <div class="frames"><div class="frame desk"><div class="eyebrow">Desktop · hover each tile</div>
+          <div class="tiles">
+            <div class="t lift teal"><div class="k">Reel · needs draft</div><div class="x">The Repetition Problem</div><div class="dr">✦ Draft</div></div>
+            <div class="t rev lift teal"><div class="k">Post · in review</div><div class="x">When should I stop training if I am injured</div></div>
+            <div class="t day lift teal"><div class="k">Blog · Wed</div><div class="x">What Happens in Your First Visit at Move Better</div></div>
+          </div>
+        </div></div>
+        <p class="note">One style for everything you can click: lift plus a teal edge. Tiles that don't open (the day card without an Open action) still don't react.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section>
+    <div class="eyebrow">3 · Settings → Interview setup → Patient types</div>
+    <h2>The edit pencil never shows on a phone</h2>
+    <p class="note">Real Move Better patient types.</p>
+    <div class="cols">
+      <div class="pane"><span class="tag today">Today</span>
+        <div class="frames">
+          <div class="frame desk"><div class="eyebrow">Desktop · hover or Tab</div>
+            <button class="ac"><div class="h"><span>🔄</span><span class="l">Recover — "Reconnect"</span><svg class="pen rv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div></button>
+            <button class="ac"><div class="h"><span>⚡</span><span class="l">Longevity — "Continue"</span><svg class="pen rv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div></button>
+          </div>
+          <div class="frame phone"><div class="eyebrow">Phone (touch)</div>
+            <button class="ac" tabindex="-1"><div class="h"><span>🎯</span><span class="l">Performance — "Excel"</span><svg class="pen rv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div></button>
+          </div>
+        </div>
+        <p class="note">On a phone nothing says these cards are editable. On desktop, tabbing to a card doesn't show the pencil either.</p>
+      </div>
+      <div class="pane"><span class="tag change">Change</span>
+        <div class="frames">
+          <div class="frame desk"><div class="eyebrow">Desktop · hover or Tab</div>
+            <button class="ac"><div class="h"><span>🔄</span><span class="l">Recover — "Reconnect"</span><svg class="pen nx" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div></button>
+            <button class="ac"><div class="h"><span>⚡</span><span class="l">Longevity — "Continue"</span><svg class="pen nx" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div></button>
+          </div>
+          <div class="frame phone touch"><div class="eyebrow">Phone (touch)</div>
+            <button class="ac" tabindex="-1"><div class="h"><span>🎯</span><span class="l">Performance — "Excel"</span><svg class="pen nx" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div></button>
+          </div>
+        </div>
+        <p class="note">Same shared reveal as this morning's fix: always shown on phones, and shown on hover or Tab on desktop.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section>
+    <div class="eyebrow">4 · Team → staff profile → interviews</div>
+    <h2>The card lifts even when you point at Delete</h2>
+    <p class="note">Real Move Better interview topic. Hover the trash icon in each pane.</p>
+    <div class="cols">
+      <div class="pane"><span class="tag today">Today</span>
+        <div class="frames"><div class="frame desk"><div class="eyebrow">Desktop</div>
+          <div class="ic today-lift"><a class="lk" href="#p4"><span class="ico">▤</span><span style="flex:1;min-width:0"><div class="ti">When should I stop training if I am injured</div><div class="note">Oct 7</div></span><span class="badge">Captured</span><span class="chev">›</span></a><button class="del" aria-label="Delete interview"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button></div>
+        </div></div>
+        <p class="note">The whole card lifts, including when you're pointing at Delete, so the card looks like one big "open" target.</p>
+      </div>
+      <div class="pane"><span class="tag change">Change</span>
+        <div class="frames"><div class="frame desk"><div class="eyebrow">Desktop</div>
+          <div class="ic"><a class="lk chg" href="#p4"><span class="ico">▤</span><span style="flex:1;min-width:0"><div class="ti">When should I stop training if I am injured</div><div class="note">Oct 7</div></span><span class="badge">Captured</span><span class="chev">›</span></a><button class="del" aria-label="Delete interview"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button></div>
+        </div></div>
+        <p class="note">Pointing at the part that opens turns the title and arrow teal, matching this morning's recap rows. Pointing at Delete shows only its red hover.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="pane">
+    <div class="eyebrow">Where each change lands</div>
+    <div class="tbl"><table>
+      <tr><th>Spot</th><th>Change</th><th>Source</th></tr>
+      <tr><td>Search opportunity card, Slipping card</td><td>Remove the card hover</td><td><code>SeoOpportunities.jsx:67, :134</code></td></tr>
+      <tr><td>Moment card</td><td>Remove the card hover</td><td><code>MomentMiner.jsx:116</code></td></tr>
+      <tr><td>Your Week Draft tile; day card</td><td>Use lift plus teal edge, like the review tile</td><td><code>YourWeek.jsx:414, :768</code></td></tr>
+      <tr><td>Patient type pencil</td><td><code>nx-reveal</code> (from #2832)</td><td><code>PatientArchetypes.jsx:199</code></td></tr>
+      <tr><td>Staff profile interview card</td><td>Card stops lifting; the openable part gets a teal title and arrow on hover</td><td><code>StaffProfile.jsx:1269</code></td></tr>
+    </table></div>
+    <p class="note">Left alone: the staff profile "published post" card (line 755), where the whole card does open, so its lift is honest.</p>
+  </div>
+</div>

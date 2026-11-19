@@ -64,7 +64,7 @@ function OpportunityCard({ opp, onStartInterview, onDraft, onDismiss, dismissing
   const Icon = meta.icon
   const MatchIcon = opp.match?.has ? FilePen : FilePlus2
   return (
-    <div className="bg-card border border-border rounded-xl p-4 hover:border-primary/30 transition-colors">
+    <div className="bg-card border border-border rounded-xl p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -131,7 +131,7 @@ function LockedCard({ tag, icon: Icon, label, why }) {
 function DecayCard({ item, onRefresh, onStartInterview, onDismiss, dismissing }) {
   return (
     <div
-      className="bg-card border border-destructive/30 rounded-xl p-4 hover:border-destructive/50 transition-colors"
+      className="bg-card border border-destructive/30 rounded-xl p-4"
       style={{ background: 'linear-gradient(0deg, hsl(var(--destructive) / 0.04), transparent)' }}
     >
       <div className="flex items-start justify-between gap-4">

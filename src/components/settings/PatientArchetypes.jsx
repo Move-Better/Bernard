@@ -196,7 +196,7 @@ export function ArchetypeCardsSection({ value, onChange, interviewerName }) {
                   <span className="text-sm font-semibold flex-1">
                     {proto.label || <em className="font-normal text-muted-foreground">Untitled patient type</em>}
                   </span>
-                  <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  <Pencil className="h-3.5 w-3.5 text-muted-foreground nx-reveal shrink-0" />
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {buildArchetypeProbeText(proto, interviewerName)}

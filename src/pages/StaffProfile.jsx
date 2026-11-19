@@ -1264,11 +1264,13 @@ function InterviewRow({ interview, staffId, currentUserId, staffList, onDelete }
   // click/keyboard nav. So the Link wraps everything else (icon, title, badge,
   // chevron) instead of the whole Card; that's still "the row navigates" for
   // every non-destructive pixel (2026-07-22 audit: hover-lift promised whole-card
-  // navigation, only the chevron button worked).
+  // navigation, only the chevron button worked). The hover lives on the Link
+  // (teal title + chevron), not the Card, so pointing at Delete doesn't make
+  // the whole card look like an open target (2026-11-18 audit, P2 ui).
   return (
-    <Card className="hover:shadow-sm transition-shadow">
+    <Card>
       <CardContent className="p-4 flex items-center gap-4">
-        <Link to={href} className="flex flex-1 min-w-0 items-center gap-4">
+        <Link to={href} className="group flex flex-1 min-w-0 items-center gap-4">
           <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
             {isComplete
               ? <FileText className="h-4 w-4 text-primary" />
@@ -1276,7 +1278,7 @@ function InterviewRow({ interview, staffId, currentUserId, staffList, onDelete }
             }
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm text-foreground truncate" title={stripStoryDatePrefix(interview.topic)}>{stripStoryDatePrefix(interview.topic)}</p>
+            <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors" title={stripStoryDatePrefix(interview.topic)}>{stripStoryDatePrefix(interview.topic)}</p>
             <p className="text-xs text-muted-foreground">
               {formatRelativeDate(interview.updated_at)}
               {ownerName && <span className="ml-2 text-muted-foreground/60">· by {ownerName}</span>}
@@ -1288,7 +1290,7 @@ function InterviewRow({ interview, staffId, currentUserId, staffList, onDelete }
           >
             {isComplete ? 'Captured' : 'In progress'}
           </Badge>
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" aria-hidden="true" />
         </Link>
         {isOwner && (
           <Button
