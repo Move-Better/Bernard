@@ -141,6 +141,34 @@ export async function isDeactivatedInWorkspace(userId, workspaceId, rest = supab
   }
 }
 
+// ── Internal-plan bypass honors a restricting tier ──────────────────────────
+// On 'internal' workspaces (Move Better's own) every member used to resolve to
+// admin, so a Team member or Viewer could open owner pages and run owner
+// actions. Q, 2026-11-19: honor the tier. A person whose staff row says
+// 'clinician' (shown as Team member) or 'viewer' is NOT admin here; owners
+// (Clerk org admins), producers and people with no row yet keep the bypass.
+// A failed lookup degrades to the restricted role, never to admin, and is not
+// cached. Org admins never reach this (they are admin before it is asked).
+const RESTRICTED_TIERS = new Set(['clinician', 'viewer'])
+const _restrictedCache = new Map() // `${userId}|${workspaceId}` → { restricted, expiresAt }
+const RESTRICTED_TTL_MS = 30_000
+
+export function invalidateRestrictedTier(userId, workspaceId) {
+  _restrictedCache.delete(`${userId}|${workspaceId}`)
+}
+
+async function isRestrictedOnInternalPlan(userId, workspaceId) {
+  if (!userId || !workspaceId) return false
+  const key = `${userId}|${workspaceId}`
+  const cached = _restrictedCache.get(key)
+  if (cached && Date.now() < cached.expiresAt) return cached.restricted
+  const lookup = await lookupPermissionTier(userId, workspaceId)
+  if (!lookup.ok) return true // fail to least privilege, do not cache
+  const restricted = RESTRICTED_TIERS.has(lookup.tier)
+  _restrictedCache.set(key, { restricted, expiresAt: Date.now() + RESTRICTED_TTL_MS })
+  return restricted
+}
+
 export async function requireRole(req, allowedRoles = null, options = {}) {
   const { orgId = null } = options
   // A caller that passes the `orgId` key is asking for the workspace's org to
@@ -205,6 +233,8 @@ export async function requireRole(req, allowedRoles = null, options = {}) {
   const isOrgAdmin     = payload.org_role === 'org:admin'
   const wsRow          = await lookupWorkspaceByOrgId(payload.org_id)
   const internalBypass = wsRow?.plan === 'internal'
+    && !isOrgAdmin
+    && !(await isRestrictedOnInternalPlan(userId, wsRow.id))
   const role = (isOrgAdmin || internalBypass) ? 'admin' : metadataRole
 
   // Switched off by an owner (migration 216). Checked before the allow-list so
@@ -361,7 +391,7 @@ export async function requireTier(req, workspace, allowedTiers) {
   // they're trusted across all surfaces (mirrors the admin bypass in
   // requireRole). Without this, the org owner gets locked out of producer-
   // gated routes by default since their clinicians row defaults to 'clinician'.
-  if (workspace.plan === 'internal' || req.clerk?.role === 'admin') {
+  if (req.clerk?.role === 'admin') {
     return { ok: true, tier: 'owner', userId, bypassed: true }
   }
 

@@ -81,9 +81,11 @@ if (!isSelf && auth.role !== 'admin') return res.status(403).json({ error: 'forb
   coincidentally matching). NOT `created_by_id` (that's the UI's "I created this row" signal).
 - **`auth.role === 'admin'` is the admin-authority signal** — a strict superset of `auth.isOrgAdmin`
   (`auth.js:148` resolves `role` to `'admin'` for Clerk org admins, `publicMetadata.role:'admin'`
-  users, AND every member of an `internal`-plan workspace). Gate on `role === 'admin'`, not
-  `isOrgAdmin`, or you'll 403 internal-plan members (the Move Better seed workspaces, where every
-  member is a trusted admin). The security property holds identically either way.
+  users, AND every member of an `internal`-plan workspace EXCEPT those whose staff row says
+  `clinician` (Team member) or `viewer`, a restriction added 2026-11-19; a failed tier lookup also
+  lands there, never on admin). Gate on `role === 'admin'`, not `isOrgAdmin`, or you'll 403
+  internal-plan producers (the Move Better seed workspaces). The security property holds identically
+  either way.
 
 The 4 `voice-clone/{opt-out,revoke,create,resume}` routes had this gap (PR #1806); the audit
 flagged it as a P0 because opt-out/revoke call ElevenLabs `deleteVoice()` (irreversible). The
