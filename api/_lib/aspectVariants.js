@@ -128,14 +128,18 @@ export async function saveAspectVariant({ sourceAsset, channel, render, reframe 
     updated_at:    new Date().toISOString(),
   }
 
-  let variant
-  if (existing) {
+  const patchExisting = async (row) => {
     const upd = await sb(
-      `media_assets?id=eq.${encodeURIComponent(existing.id)}&workspace_id=eq.${encodeURIComponent(workspaceId)}`,
+      `media_assets?id=eq.${encodeURIComponent(row.id)}&workspace_id=eq.${encodeURIComponent(workspaceId)}`,
       { method: 'PATCH', body: JSON.stringify(body) },
     )
     if (!upd.ok) throw new Error(`aspect variant update failed: ${upd.status} ${await upd.text().catch(() => '')}`)
-    variant = (await upd.json().catch(() => []))[0] || null
+    return (await upd.json().catch(() => []))[0] || null
+  }
+
+  let variant
+  if (existing) {
+    variant = await patchExisting(existing)
   } else {
     const row = {
       workspace_id:  workspaceId,
@@ -154,7 +158,26 @@ export async function saveAspectVariant({ sourceAsset, channel, render, reframe 
       ...body,
     }
     const ins = await sb('media_assets', { method: 'POST', body: JSON.stringify(row) })
+    // 23505 = a concurrent call (double-submit, retried "Fit for carousel")
+    // inserted the same (parent_id, variant_label) between our find and our
+    // insert. The partial unique index media_assets_aspect_variant_unique
+    // (migration 203) is what refuses the second row; the find-then-insert
+    // above cannot close that window on its own. Losing the race is not a
+    // failure: re-find the winner's row and PATCH our render onto it, which is
+    // exactly the "replace, don't accumulate" outcome the happy path gives.
+    // The error body has to be read once, so it is kept for the throw below.
+    let insErr = null
     if (!ins.ok) {
+      insErr = await ins.text().catch(() => '')
+      if (insErr.includes('23505')) {
+        const winner = await findAspectVariant({ sourceAssetId: sourceAsset.id, channel, workspaceId })
+        if (winner) {
+          console.info(`[aspectVariants] lost insert race for parent=${sourceAsset.id} label=${label}; patching row ${winner.id}`)
+          variant = await patchExisting(winner)
+        }
+      }
+    }
+    if (!ins.ok && !variant) {
       // Include PostgREST's OWN message, not just the status. A bare
       // "insert failed: 400" says nothing about which column or constraint —
       // diagnosing one cost a full deploy cycle plus a hand-run SQL insert to
@@ -162,9 +185,9 @@ export async function saveAspectVariant({ sourceAsset, channel, render, reframe 
       // codebase's dbErr() helper already logs the full body for this reason;
       // this matches it. Server-side only — the route still returns an opaque
       // key to the client.
-      throw new Error(`aspect variant insert failed: ${ins.status} ${await ins.text().catch(() => '')}`)
+      throw new Error(`aspect variant insert failed: ${ins.status} ${insErr}`)
     }
-    variant = (await ins.json().catch(() => []))[0] || null
+    if (ins.ok) variant = (await ins.json().catch(() => []))[0] || null
   }
 
   // Poster frame. Every `kind:'video'` media_assets insert owes this call — the

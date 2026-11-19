@@ -1,3 +1,4 @@
+import { issueOAuthNonce } from '../../../_lib/oauthNonceCookie.js'
 import { withSentry } from '../../../_lib/sentry.js'
 import { requireRole, requireCapability } from '../../../_lib/auth.js'
 import { CAP_INTEGRATIONS_CONNECT } from '../../../_lib/capabilities.js'
@@ -51,6 +52,7 @@ async function handler(req, res) {
       workspaceId: workspace.id,
       slug: workspace.slug,
       userId: auth.userId,
+      nonce: issueOAuthNonce(req, res, 'drive'),
     })
   } catch (e) {
     console.error('[drive/connect] state sign failed:', e?.message)

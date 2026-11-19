@@ -1,3 +1,4 @@
+import { clearOAuthNonce, oauthNonceMatches } from '../../../_lib/oauthNonceCookie.js'
 import { withSentry } from '../../../_lib/sentry.js'
 import {
   gscRedirectUri,
@@ -42,6 +43,7 @@ function renderApexError(res, message) {
 
 async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'method-not-allowed' })
+  clearOAuthNonce(req, res, 'gsc')
 
   const url      = new URL(req.url, 'http://localhost')
   const code     = url.searchParams.get('code')
@@ -61,6 +63,14 @@ async function handler(req, res) {
   const parsed = verifyOAuthState(state)
   if (!parsed) {
     return renderApexError(res, 'OAuth state is invalid or has expired (10 minute window). Try connecting again.')
+  }
+
+  // The state must have been started in THIS browser (nonce cookie set by
+  // connect), or a victim could be walked into linking their Google account
+  // to an attacker's workspace. See api/_lib/oauthNonceCookie.js.
+  if (!oauthNonceMatches(req, 'gsc', parsed.nonce)) {
+    console.error('[gsc/callback] state not bound to this browser')
+    return renderApexError(res, 'This connect link was started in a different browser, or it has expired. Start again from Settings → Integrations in this browser.')
   }
 
   let tokens

@@ -182,12 +182,17 @@ async function runCascade({ iv, recordingUrl, authToken, interview, wsId }) {
   // so each weekly call is uniquely, meaningfully named.
   const storyTitle = await generateCallStoryTitle({ messages, callDate: interview.created_at })
 
-  // 4. Write transcript + outputs + title to the interview row.
-  await sb(`interviews?id=eq.${iv}&workspace_id=eq.${wsId}`, {
+  // 4. Write transcript + outputs + title to the interview row. A non-OK write
+  // must throw: PostgREST answers 4xx/5xx without rejecting, and swallowing it
+  // left the row stuck at 'processing' with the transcript lost (2026-11-18
+  // audit). Throwing hands control to processRecording's catch, which releases
+  // the claim back to 'in_progress'.
+  const doneRes = await sb(`interviews?id=eq.${iv}&workspace_id=eq.${wsId}`, {
     method: 'PATCH',
     headers: { Prefer: 'return=minimal' },
     body: JSON.stringify({ messages, outputs, topic: storyTitle, status: 'completed', session_state: null, updated_at: new Date().toISOString() }),
   })
+  if (!doneRes.ok) throw new Error(`completion_patch_failed_${doneRes.status}`)
 
   // 5. Enrichment — mirrors api/_routes/db/interviews.js completion cascade.
   const wsFilter = `workspace_id=eq.${wsId}`

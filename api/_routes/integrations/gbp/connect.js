@@ -1,3 +1,4 @@
+import { issueOAuthNonce } from '../../../_lib/oauthNonceCookie.js'
 import { withSentry } from '../../../_lib/sentry.js'
 import { requireRole, requireCapability } from '../../../_lib/auth.js'
 import { CAP_INTEGRATIONS_CONNECT } from '../../../_lib/capabilities.js'
@@ -33,7 +34,7 @@ async function handler(req, res) {
 
   let state
   try {
-    state = signOAuthState({ workspaceId: workspace.id, slug: workspace.slug, userId: auth.userId })
+    state = signOAuthState({ workspaceId: workspace.id, slug: workspace.slug, userId: auth.userId, nonce: issueOAuthNonce(req, res, 'gbp') })
   } catch (e) {
     console.error('[gbp/connect] state sign failed:', e?.message)
     return res.status(500).json({ error: 'state-sign-failed' })
