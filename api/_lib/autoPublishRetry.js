@@ -28,8 +28,18 @@ export const MAX_AUTO_PUBLISH_RETRIES = 6
 // Targets that have NOT yet been posted for a channel, keyed by stable id.
 // `targets` is the full per-location target list ({ id, ... }); `channelState`
 // is published_channels[channel] (may be undefined on first run).
+//
+// A location whose recorded post later came back ERROR from bundle.social (the
+// webhook marks it status 'error', see withLocationOutcome) counts as NOT
+// posted: that post never went live, so a retry must post it again rather than
+// skip it and report success with nothing published.
+export function postedLocationIds(channelState) {
+  const locations = channelState?.locations || {}
+  return new Set(Object.keys(locations).filter((id) => locations[id]?.status !== 'error'))
+}
+
 export function unpostedTargets(targets, channelState) {
-  const posted = new Set(Object.keys(channelState?.locations || {}))
+  const posted = postedLocationIds(channelState)
   return (Array.isArray(targets) ? targets : []).filter((t) => t && !posted.has(t.id))
 }
 
@@ -41,7 +51,9 @@ export function mergePostedLocations(channelState, posted, nowIso) {
   const locations = { ...(next.locations || {}) }
   for (const p of Array.isArray(posted) ? posted : []) {
     if (!p || !p.id) continue
-    if (locations[p.id]) continue // already recorded — never overwrite
+    // Already recorded — never overwrite. The one exception is a post bundle
+    // reported ERROR: it never went live, so the retry's new post replaces it.
+    if (locations[p.id] && locations[p.id].status !== 'error') continue
     locations[p.id] = { post_id: p.postId ?? null, fired_at: nowIso }
   }
   next.locations = locations
@@ -56,7 +68,7 @@ export function mergePostedLocations(channelState, posted, nowIso) {
 export function isChannelComplete(targets, channelState) {
   const list = Array.isArray(targets) ? targets : []
   if (list.length === 0) return false
-  const posted = new Set(Object.keys(channelState?.locations || {}))
+  const posted = postedLocationIds(channelState)
   const allPosted = list.every((t) => posted.has(t.id))
   const ciOk = channelState?.content_item_id != null
   return allPosted && ciOk
@@ -80,4 +92,22 @@ export function decideClaimDisposition({ allComplete, anyRetriable, retryCount, 
   if (!anyRetriable) return { release: false, exhausted: false }
   if (retryCount >= maxRetries) return { release: false, exhausted: true }
   return { release: true, exhausted: false }
+}
+
+// The location whose recorded post has this bundle post id, or null. A GBP
+// fan-out stores one post per location, and only the first lands in
+// content_items.platform_post_id, so the webhook finds the rest through here.
+export function locationForPostId(channelState, postId) {
+  if (!postId) return null
+  const locations = channelState?.locations || {}
+  return Object.keys(locations).find((id) => locations[id]?.post_id === postId) || null
+}
+
+// Record what bundle.social reported for one location's post ({ status:
+// 'posted', url } or { status: 'error', error }). Returns a new channel state;
+// the post id and fired_at are kept.
+export function withLocationOutcome(channelState, locationId, outcome) {
+  const locations = { ...(channelState?.locations || {}) }
+  locations[locationId] = { ...(locations[locationId] || {}), ...outcome }
+  return { ...(channelState || {}), locations }
 }

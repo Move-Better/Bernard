@@ -30,6 +30,7 @@ import { waitUntil } from '@vercel/functions'
 import { bundleErrorText, bundlePermalink } from '../../_lib/social/bundlePublisher.js'
 import { notifyPublishFailure } from '../../_lib/notifyPublishFailure.js'
 import { recordAgentAction } from '../../_lib/agentActions.js'
+import { locationForPostId, withLocationOutcome } from '../../_lib/autoPublishRetry.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -46,6 +47,62 @@ function sb(path, init = {}) {
       ...init.headers,
     },
   })
+}
+
+const ITEM_SELECT = 'id,workspace_id,status,platform,topic,content,resolved_url,dispatch_state'
+
+// How far back to look for a GBP row by a non-first location's post id. bundle
+// fires post.published about a minute after the post's date, so a post is
+// scheduled at most weeks ahead. ponytail: a JS scan of recent GBP rows (a few
+// per week per workspace), because PostgREST can't filter on a value nested
+// under unknown location keys; if GBP volume grows, replace it with an RPC or
+// an indexed post-id column.
+const GBP_LOOKBACK_DAYS = 120
+
+// A GBP post fans out to one bundle post per location, but only the first post
+// id lands in platform_post_id. Find the row whose dispatch_state lists this
+// post id under any location, so every location's outcome comes back.
+async function findGbpRowByLocationPost(postId) {
+  const since = new Date(Date.now() - GBP_LOOKBACK_DAYS * 86_400_000).toISOString()
+  const r = await sb(
+    `content_items?platform=eq.gbp&created_at=gte.${since}&select=${ITEM_SELECT}&order=created_at.desc&limit=1000`,
+    { method: 'GET' }
+  )
+  const rows = r.ok ? (await r.json().catch(() => [])) : []
+  return (Array.isArray(rows) ? rows : [])
+    .find((row) => locationForPostId(row?.dispatch_state?.published_channels?.gbp, postId)) || null
+}
+
+// Record one location's outcome in the row's dispatch_state. The write is
+// conditional on dispatch_state being unchanged since it was read, because a
+// fan-out or another location's webhook may be writing the same column; losing
+// a fan-out's record would let a retry post that location twice. Retries on a
+// conflict with a fresh read. An ERROR'd location is then retried by the next
+// publish (unpostedTargets treats it as not posted).
+export async function recordLocationOutcome(item, postId, outcome) {
+  let state = item.dispatch_state && typeof item.dispatch_state === 'object' ? item.dispatch_state : {}
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const channel = state.published_channels?.gbp
+    const locationId = locationForPostId(channel, postId)
+    if (!locationId) return false
+    const next = {
+      ...state,
+      published_channels: { ...state.published_channels, gbp: withLocationOutcome(channel, locationId, outcome) },
+    }
+    const scope = `content_items?id=eq.${item.id}&workspace_id=eq.${item.workspace_id}`
+    const w = await sb(`${scope}&dispatch_state=eq.${encodeURIComponent(JSON.stringify(state))}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ dispatch_state: next, updated_at: new Date().toISOString() }),
+    })
+    const written = w.ok ? (await w.json().catch(() => [])) : []
+    if (Array.isArray(written) && written.length > 0) return true
+    const fresh = await sb(`${scope}&select=dispatch_state`, { method: 'GET' })
+    const rows = fresh.ok ? (await fresh.json().catch(() => [])) : []
+    if (!rows?.[0]) return false
+    state = rows[0].dispatch_state || {}
+  }
+  console.error('[bundle/webhook] location outcome not recorded after 3 attempts:', item.id, postId)
+  return false
 }
 
 export default async function handler(req, res) {
@@ -102,11 +159,12 @@ export default async function handler(req, res) {
   // workspace_id.
   const look = await sb(
     `content_items?platform_post_id=eq.${encodeURIComponent(postId)}` +
-    `&select=id,workspace_id,status,platform,topic,content,resolved_url&limit=1`,
+    `&select=${ITEM_SELECT}&limit=1`,
     { method: 'GET' }
   )
   const rows = look.ok ? (await look.json().catch(() => [])) : []
-  const item = Array.isArray(rows) ? rows[0] : null
+  // Not the first post id: it may be another location of a GBP fan-out.
+  const item = (Array.isArray(rows) ? rows[0] : null) || await findGbpRowByLocationPost(postId)
   if (!item) {
     // Unmatched (post deleted in Bernard, or a retry replaced the id) — ack.
     return res.status(200).json({ received: true, unmatched: true })
@@ -120,6 +178,9 @@ export default async function handler(req, res) {
     // would mean the posts most in need of a receipt never got one. Skipped when
     // the row already has one so a redelivered webhook rewrites nothing.
     const permalink = bundlePermalink(data, item.platform)
+    if (item.platform === 'gbp') {
+      await recordLocationOutcome(item, postId, { status: 'posted', ...(permalink ? { url: permalink } : {}) })
+    }
     if (permalink && !item.resolved_url) {
       await sb(
         `content_items?id=eq.${item.id}&workspace_id=eq.${item.workspace_id}`,
@@ -162,6 +223,9 @@ export default async function handler(req, res) {
 
   if (status === 'ERROR') {
     const reason = bundleErrorText(data) || 'Publishing failed on the network.'
+    if (item.platform === 'gbp') {
+      await recordLocationOutcome(item, postId, { status: 'error', error: reason.slice(0, 500) })
+    }
     // status=neq.failed allows BOTH scheduled→failed and the optimistic
     // published→failed (publish-now) correction, while making the write
     // idempotent: a second delivery (or the cron) updates 0 rows → no re-email.
