@@ -54,7 +54,6 @@ export default async function handler(req, res) {
       schema: gradeSchema,
       instructions: SYSTEM,
       messages: [{ role: 'user', content: `Look to translate: "${prompt}"` }],
-      temperature: 0.2,
     })
     // Clamp defensively (schema already bounds, but never trust the wire).
     const clampSafe = (n) => Math.max(-100, Math.min(100, Math.round(Number(n) || 0)))

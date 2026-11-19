@@ -177,7 +177,6 @@ export async function nominateVisualWindows({ source, workspace, durationSec, cu
         instructions: buildHookInstructions(workspace),
         messages: [{ role: 'user', content: kept.map((k, i) =>
           `#${i}\nvisual: ${k.visual_reason}\nsaid: ${k.transcript_excerpt || '(little or no speech)'}`).join('\n\n') }],
-        temperature: 0.4,
         abortSignal: AbortSignal.timeout(60_000),
       })
       hooks = h.hooks || []

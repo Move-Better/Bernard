@@ -71,7 +71,6 @@ export default async function handler(req, res) {
         },
       ],
       maxOutputTokens: 120,
-      temperature: 0.7,
     })
     question = text.trim().replace(/^["']|["']$/g, '') // strip wrapping quotes if model adds them
   } catch (e) {

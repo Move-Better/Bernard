@@ -259,7 +259,6 @@ export async function extractAndBankMoments({ workspace, interview }) {
       schema: proposalSchema,
       instructions: buildExtractionSystem(workspace),
       messages: [{ role: 'user', content: buildExtractionUser(turns) }],
-      temperature: 0.3,
       // Seminar-length transcripts can produce 20+ proposals with long
       // excerpts; 8k truncated mid-JSON on the first backfill.
       maxOutputTokens: 16_000,

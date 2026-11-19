@@ -430,7 +430,6 @@ async function handler(req, res) {
         role: 'user',
         content: `Read the following website content from ${u.origin} and produce starter brand-voice context.\n\n${corpus.join('\n\n---\n\n')}`,
       }],
-      temperature: 0.3,
     })
     object = result.object
   } catch (e) {

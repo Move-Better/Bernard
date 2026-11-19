@@ -83,7 +83,6 @@ export async function auditPointContentSafety(ws, contentItemId) {
       schema: pointSafetySchema,
       instructions,
       messages: [{ role: 'user', content: user }],
-      temperature: 0.2,
     })
     result = object
   } catch (e) {

@@ -282,7 +282,6 @@ export async function detectSegmentsForAsset({ workspace, asset, maxSegments = D
       schema: detectorOutput,
       instructions: buildSystemPrompt(ws, maxSegments),
       messages: [{ role: 'user', content: buildUserMessage(cues, durationSec) }],
-      temperature: 0.4,
       abortSignal: AbortSignal.timeout(180_000),
     })
 

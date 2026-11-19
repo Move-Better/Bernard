@@ -173,7 +173,6 @@ async function callModel(asset, scope) {
     schema: segmenterOutput,
     instructions: buildSystemPrompt(speakerRole, scope),
     messages: [{ role: 'user', content: buildUserMessage(asset) }],
-    temperature: 0.4,
   })
 
   return object.moments

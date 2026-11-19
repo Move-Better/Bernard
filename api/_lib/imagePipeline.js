@@ -145,7 +145,6 @@ async function generateAltText(imageBytes, mime) {
     const { text } = await generateText({
       model: ALT_MODEL,
       maxOutputTokens: ALT_MAX_TOKENS,
-      temperature: 0.2,
       messages: [{
         role: 'user',
         content: [

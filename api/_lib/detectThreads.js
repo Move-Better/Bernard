@@ -139,7 +139,6 @@ export async function detectInterviewThreads(ws, contentItemId) {
       schema: detectionSchema,
       instructions: systemPrompt,
       messages: [{ role: 'user', content: `TRANSCRIPT (${staffName}'s verbatim words):\n\n${transcript}` }],
-      temperature: 0.1,
     })
     detection = object
   } catch (e) {
