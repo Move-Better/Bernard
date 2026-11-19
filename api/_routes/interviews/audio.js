@@ -84,7 +84,10 @@ export default async function handler(req, res) {
         // `pathname` is client-controlled and @vercel/blob's token mint has no
         // path restriction of its own — pin it to the just-validated interview
         // (useInterviewAudioCapture.js builds interviews/audio/<interviewId>.<ext>).
-        if (typeof pathname !== 'string' || !pathname.startsWith(`interviews/audio/${interviewId}.`)) {
+        // Exactly <interviewId>.<ext>: a prefix check alone let a suffix such
+        // as `.webm/../../media/raw/<other ws>/x` through (audit 2026-11-18, P2).
+        // interviewId is UUID-checked above, so it is safe inside the pattern.
+        if (typeof pathname !== 'string' || !new RegExp(`^interviews/audio/${interviewId}\\.[a-z0-9]{1,8}$`, 'i').test(pathname)) {
           throw new Error('pathname outside interview namespace')
         }
 
