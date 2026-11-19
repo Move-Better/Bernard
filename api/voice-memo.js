@@ -30,7 +30,7 @@ export const config = {
   api: { bodyParser: false },
 }
 
-import { put as blobPut } from '@vercel/blob'
+import { put as blobPut, del as blobDel } from '@vercel/blob'
 import { createClerkClient } from '@clerk/backend'
 import { requireRole } from './_lib/auth.js'
 import { workspaceContext } from './_lib/workspaceContext.js'
@@ -138,10 +138,17 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: 'Audio upload failed — please try again.' })
   }
 
+  // Every failure after the upload used to leave the audio in the blob store
+  // with no row pointing at it (audit 2026-11-18, P2). Best-effort delete.
+  const fail = async (status, body) => {
+    try { await blobDel(blobResult.url) } catch (e) { console.warn(`[voice-memo] orphan blob delete failed: ${e?.message}`) }
+    return res.status(status).json(body)
+  }
+
   // ── 3. Transcribe via Scribe (shared seam: api/_lib/transcribe.js) ──────
   if (!SCRIBE_KEY) {
     console.error('[voice-memo] ELEVENLABS_API_KEY is not set — transcription unavailable')
-    return res.status(500).json({ error: 'Transcription service is not configured on this deployment. Set ELEVENLABS_API_KEY.' })
+    return fail(500, { error: 'Transcription service is not configured on this deployment. Set ELEVENLABS_API_KEY.' })
   }
 
   let transcript
@@ -152,7 +159,7 @@ export default async function handler(req, res) {
     if (!transcript) throw new Error('Transcription returned an empty transcript')
   } catch (e) {
     console.error(`[voice-memo] transcription error for ws=${ws.slug}: ${e?.message}`)
-    return res.status(502).json({ error: 'transcription_failed' })
+    return fail(502, { error: 'transcription_failed' })
   }
 
   // ── 4. Find or create Self-clinician for this user ────────────────────────
@@ -204,20 +211,24 @@ export default async function handler(req, res) {
     if (!cRes.ok) {
       const body = await cRes.text().catch(() => '')
       console.error(`[voice-memo] staff create failed ${cRes.status}: ${body.slice(0, 300)}`)
-      return res.status(500).json({ error: 'Could not create staff member record' })
+      return fail(500, { error: 'Could not create staff member record' })
     }
     staffId = (await cRes.json())[0]?.id
   }
 
   if (!staffId) {
-    return res.status(500).json({ error: 'Clinician ID could not be determined' })
+    return fail(500, { error: 'Clinician ID could not be determined' })
   }
 
   // ── 5. Create interview row (capture_mode = 'voice_memo') ─────────────────
   // The transcript lands as a single user-role message. The capture review
   // page drives all content generation from this — same client-driven pipeline
   // as a regular chat interview, no server-side generation here.
-  const date  = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD
+  // The clinic's local date, not the server's (UTC): a memo recorded on a
+  // Tuesday evening in California was titled Wednesday (audit 2026-11-18, P2).
+  const timeZone = ws.cadence_policy?.timezone || 'America/Los_Angeles'
+  let date
+  try { date = new Date().toLocaleDateString('en-CA', { timeZone }) } catch { date = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) }
   const topic = `Voice memo — ${date}`
 
   const ivRes = await sb('interviews', {
@@ -240,7 +251,7 @@ export default async function handler(req, res) {
   if (!ivRes.ok) {
     const body = await ivRes.text().catch(() => '')
     console.error(`[voice-memo] interview create failed ${ivRes.status}: ${body.slice(0, 300)}`)
-    return res.status(500).json({ error: 'Could not save interview record' })
+    return fail(500, { error: 'Could not save interview record' })
   }
   const interview = (await ivRes.json())[0]
   if (!interview?.id) {

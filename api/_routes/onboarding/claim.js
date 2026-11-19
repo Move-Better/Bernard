@@ -99,6 +99,27 @@ async function findReusableOrg(userId, displayName) {
   return null
 }
 
+// Roll back the Clerk org after a failed workspace insert — but only when it is
+// safe. A double-submit races two claims: A creates the org, B finds it via
+// findReusableOrg (no workspace bound yet) and reuses it, B's insert wins and
+// A's loses on the slug. A then deleted the org B's new workspace is bound to
+// (audit 2026-11-18, P2). So: never delete an org this request reused, and
+// never delete one a workspace is bound to; if that can't be checked, keep the
+// org (an orphan is reused on the next claim; a deleted live org is an outage).
+export async function rollbackOrg(orgId, { createdHere, deleteOrg }) {
+  if (!createdHere || !orgId) return false
+  try {
+    const r = await sb(`workspaces?clerk_org_id=eq.${encodeURIComponent(orgId)}&select=id&limit=1`)
+    if (!r.ok) return false
+    const rows = await r.json().catch(() => null)
+    if (!Array.isArray(rows) || rows.length > 0) return false
+    await deleteOrg(orgId)
+    return true
+  } catch {
+    return false
+  }
+}
+
 // eslint-disable-next-line bernard/require-workspace-scope -- Onboarding — creates the workspace row itself; no workspace exists yet to scope by
 function sb(path, init = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -372,6 +393,7 @@ async function handler(req, res) {
   // automatically). Reuse an orphan org from an abandoned prior attempt so a
   // retry never mints a duplicate (see findReusableOrg).
   let org = await findReusableOrg(userId, display_name)
+  const orgCreatedHere = !org
   if (org) {
     console.info(`[claim] reusing orphan org=${org.id} for user=${userId} name="${display_name}"`)
   } else {
@@ -459,15 +481,15 @@ async function handler(req, res) {
     })
   } catch (e) {
     console.error('[claim] insert network:', e?.message)
-    // Best-effort rollback of the Clerk org we just made.
-    try { await clerk().organizations.deleteOrganization(org.id) } catch { /* swallow */ }
+    // Best-effort rollback of the Clerk org we just made (see rollbackOrg).
+    await rollbackOrg(org.id, { createdHere: orgCreatedHere, deleteOrg: (id) => clerk().organizations.deleteOrganization(id) })
     return res.status(500).json({ error: 'db-error' })
   }
 
   if (!ins.ok) {
     const text = await ins.text().catch(() => '')
     console.error(`[claim] supabase insert ${ins.status}:`, text)
-    try { await clerk().organizations.deleteOrganization(org.id) } catch { /* swallow */ }
+    await rollbackOrg(org.id, { createdHere: orgCreatedHere, deleteOrg: (id) => clerk().organizations.deleteOrganization(id) })
     // 23505 = unique_violation — slug taken since pre-check (race)
     if (ins.status === 409 || /duplicate key|unique/i.test(text)) {
       return res.status(409).json({ error: 'slug-taken' })
@@ -478,7 +500,7 @@ async function handler(req, res) {
   const inserted = await ins.json().catch(() => null)
   const row = Array.isArray(inserted) ? inserted[0] : null
   if (!row) {
-    try { await clerk().organizations.deleteOrganization(org.id) } catch { /* swallow */ }
+    await rollbackOrg(org.id, { createdHere: orgCreatedHere, deleteOrg: (id) => clerk().organizations.deleteOrganization(id) })
     return res.status(500).json({ error: 'db-error' })
   }
 
@@ -550,7 +572,7 @@ async function handler(req, res) {
       } catch (rollbackErr) {
         console.error('[claim] rollback delete workspace failed:', rollbackErr?.message)
       }
-      try { await clerk().organizations.deleteOrganization(org.id) } catch { /* swallow */ }
+      await rollbackOrg(org.id, { createdHere: orgCreatedHere, deleteOrg: (id) => clerk().organizations.deleteOrganization(id) })
       return res.status(502).json({ error: 'domain_registration_failed' })
     }
   } else {

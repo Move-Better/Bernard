@@ -70,6 +70,12 @@ async function handler(req, res) {
     ? Math.min(Math.max(parseInt(maxOutputTokens, 10) || 1024, 256), 16_000)
     : 1024
 
+  // Stop the model call when the client goes away (tab closed, navigation,
+  // a cancelled turn). Without this the generation ran to completion, up to
+  // 16k output tokens, billed for text nobody receives (audit 2026-11-18, P2).
+  const abort = new AbortController()
+  res.on?.('close', () => { if (!res.writableEnded) abort.abort() })
+
   let result
   try {
     result = streamText({
@@ -77,6 +83,7 @@ async function handler(req, res) {
       instructions: systemPrompt,
       messages,
       maxOutputTokens: cap,
+      abortSignal: abort.signal,
     })
   } catch (_e) {
     res.status(500).json({ error: 'stream_init_failed' })
@@ -97,6 +104,7 @@ async function handler(req, res) {
   let errored = false
   const sendError = (message) => {
     errored = true
+    if (abort.signal.aborted) return // client is gone; nothing to tell it
     // Log server-side so mid-stream failures are visible in Vercel logs.
     // Without this, the request logs as a clean 200 (headers/status were
     // already flushed before streaming began) and the failure is invisible —
@@ -115,6 +123,7 @@ async function handler(req, res) {
 
   try {
     for await (const part of result.stream) {
+      if (abort.signal.aborted) break
       if (part?.type === 'text-delta') {
         const text = part.text ?? part.delta
         if (!text) continue
@@ -129,7 +138,7 @@ async function handler(req, res) {
         break
       }
     }
-    if (!errored) res.write('data: [DONE]\n\n')
+    if (!errored && !abort.signal.aborted) res.write('data: [DONE]\n\n')
   } catch (_e) {
     sendError('stream_error')
   } finally {
