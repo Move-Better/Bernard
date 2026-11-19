@@ -30,7 +30,10 @@ export function useUserRole() {
   // every org member — full feature + admin access without per-user grants.
   const metadataRole   = (user?.publicMetadata?.role || ROLE_CLINICIAN).toLowerCase()
   const isOrgAdmin     = orgRole === 'org:admin'
-  const internalBypass = workspace?.plan === 'internal'
+  // Mirrors the server: a Team member or Viewer is not admin on an internal plan
+  // (api/_lib/auth.js, "Internal-plan bypass honors a restricting tier").
+  const tier           = workspace?.current_user_tier
+  const internalBypass = workspace?.plan === 'internal' && tier !== 'clinician' && tier !== 'viewer'
   const role           = (isOrgAdmin || internalBypass) ? ROLE_ADMIN : metadataRole
   const isLoading      = !isLoaded
 

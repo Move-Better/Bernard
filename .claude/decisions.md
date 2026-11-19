@@ -647,3 +647,13 @@ Kill criterion: if it raises nothing real by the revisit date, remove the cron. 
 **Case against.** Eye contact and the unwatchable-clip veto are the two signals Pro was chosen for, and both are now weak. A Pro-tier model that fit would have been better; none did.
 **Known limitation.** The eye-contact bar in Moment Miner (`src/pages/MomentMiner.jsx`) and the "Films well" band copy (`src/lib/ratingBands.js:100`) imply a reliable signal; wording left unchanged pending Q's sign-off.
 **Revisit when F13 scoring is in use again, or a GA Pro-tier Gemini ships, whichever is first.** Then re-run the same 30-clip comparison (harness notes in the 2026-11-16 session) before trusting eye contact or the veto.
+
+## 2026-11-19 — Internal plan honors a restricting tier (Q, AskUserQuestion)
+
+**Job.** A Team member at Move Better (Aimy, first sign-in) landed on the owner screen and, because every member of an `internal` workspace resolved to server-side admin, could also reach owner pages and actions by URL.
+
+**Decision.** On `plan='internal'`, a person whose staff row says `clinician` (Team member) or `viewer` is not admin. Org admins, producers and people with no row yet keep the bypass. A failed tier lookup degrades to the restricted role. Option chosen over full per-tier enforcement (producers would lose pages) and hide-only (not a real block). Code: `isRestrictedOnInternalPlan` in `api/_lib/auth.js`, mirrored in `src/lib/useUserRole.js`; test `tests/lib/internalPlanHonorsTier.test.js`.
+
+**Effect, measured 2026-11-19 on movebetter.** Restricted: Aimy, Sophie, Tyler, Zach, Whitney (unless she is a Clerk org admin) and the e2e login. Unchanged: Dr. Q (owner row), Aj and Alli (producers).
+
+**Kill criterion / revisit 2026-12-19.** If any Team member reports a page or action they need that is now 403, or the e2e smoke fails on role, the capability template for `clinician` is wrong, not the lock; tune the template. Revisit then.
