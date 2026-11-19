@@ -23,7 +23,7 @@
 // already-posted targets — critical for GBP multi-location fan-out.
 
 import { BundlePublisher } from './social/index.js'
-import { resolveBundleGbpTargets } from './social/gbpTargets.js'
+import { resolveBundleGbpTargets, gbpMedia } from './social/gbpTargets.js'
 import { resolveGbpLocationIds } from '../../src/lib/gbpLocations.js'
 import { unpostedTargets, mergePostedLocations } from './autoPublishRetry.js'
 import { isInstagramReel } from '../../src/lib/mediaEntry.js'
@@ -31,7 +31,7 @@ import { resolveArchetype } from '../../src/lib/editorArchetype.js'
 import { videoEditTarget, isVideoEditUnbaked } from '../../src/lib/videoEditFingerprint.js'
 import { UUID_RE } from './requestSchemas/primitives.js'
 import { checkWordsApproved } from './wordsApprovalGate.js'
-import { claimDispatch, releaseDispatch } from './dispatchClaim.js'
+import { claimDispatch, releaseDispatch, recordDispatchState } from './dispatchClaim.js'
 import { syncAtomSchedule } from './atomSchedule.js'
 import { clampToCap, platformCap } from './socialLengthTargets.js'
 
@@ -127,8 +127,6 @@ export async function dispatchContentItem({ ws, piece }) {
   const gate = await checkWordsApproved(piece.id, ws.id)
   if (!gate.ok) return { dispatched: false, error: gate.body?.error || 'words_not_approved' }
 
-  const wsFilter = `workspace_id=eq.${ws.id}`
-
   // ── Atomic claim ──────────────────────────────────────────────────────────
   // Serialize concurrent dispatches of the SAME piece across every publish path
   // (the /week Approve here, the editor Publish/Schedule button, and the manual
@@ -194,10 +192,7 @@ export async function dispatchContentItem({ ws, piece }) {
       published_channels: { ...(state.published_channels || {}), [piece.platform]: nextChannelState },
     }
     state.published_channels = nextState.published_channels
-    await sb(`content_items?id=eq.${piece.id}&${wsFilter}`, {
-      method: 'PATCH', headers: { Prefer: 'return=minimal' },
-      body: JSON.stringify({ dispatch_state: nextState, updated_at: new Date().toISOString() }),
-    }).catch((e) => console.warn('[dispatchContentItem] dispatch_state persist failed:', e?.message))
+    return recordDispatchState(piece.id, ws.id, nextState)
   }
 
   let firstResult = null
@@ -214,7 +209,10 @@ export async function dispatchContentItem({ ws, piece }) {
       const publisher = piece.platform === 'gbp'
         ? new BundlePublisher(ws, { teamId: t.teamId })
         : new BundlePublisher(ws)
-      const r = await publisher.publish({ platform: piece.platform, content: text, mediaUrls, scheduledAt, format: piece.format || null })
+      // GBP takes at most one image (gbpMedia) — the same media the editor's
+      // Publish button sends through runBundlePublish.
+      const media = piece.platform === 'gbp' ? gbpMedia(mediaUrls) : mediaUrls
+      const r = await publisher.publish({ platform: piece.platform, content: text, mediaUrls: media, scheduledAt, format: piece.format || null })
       firstResult = firstResult || r
       // Record THIS post immediately so a mid-fan-out failure can't cause a
       // retry to double-post an already-posted location.
@@ -223,7 +221,11 @@ export async function dispatchContentItem({ ws, piece }) {
         [{ id: t.id, postId: r.postId }],
         new Date().toISOString(),
       )
-      await persistState(channelState)
+      if (!(await persistState(channelState))) {
+        // The posted-set didn't save, so a retry can't know this target went
+        // out. Stop before posting more targets a retry would also duplicate.
+        throw new Error('dispatch_state_not_saved')
+      }
     }
   } catch (e) {
     console.error('[dispatchContentItem] publish failed:', ws.slug, piece.id, e?.message)
