@@ -46,6 +46,9 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
   const [saved, setSaved]         = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError]         = useState('')
+  // The draft a failed dispatch left behind, so Retry publishes that row
+  // instead of creating another (see dispatchBrief's retryItem).
+  const [retryItem, setRetryItem] = useState(null)
   const [publishing, setPublishing] = useState(false)
   const [publishMode, setPublishMode] = useState('now')   // 'now' | 'schedule'
   const [scheduledAt, setScheduledAt] = useState('')
@@ -158,6 +161,7 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
           composedContent: composedContent(),
           scheduledAt: effectiveScheduledAt,
           userId: user?.primaryEmailAddress?.emailAddress,
+          retryItem,
         }),
         {
           loading: publishMode === 'schedule' ? 'Scheduling brief…' : 'Publishing brief…',
@@ -165,6 +169,7 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
           error: (e) => ({ message: 'Publish failed', description: e.message }),
         },
       )
+      setRetryItem(null)
       await updateContentPiece(brief.id, {
         status: 'published',
         publishedTargetId: item.id,
@@ -175,6 +180,7 @@ export default function ContentBriefDetail({ brief, onClose, onChange }) {
     } catch (e) {
       // runWithToast already raised the error toast; keep inline error for
       // the in-modal hint surface so the user sees both.
+      if (e?.retryItem) setRetryItem(e.retryItem)
       setError(`Publish failed: ${e.message}`)
     } finally {
       setPublishing(false)

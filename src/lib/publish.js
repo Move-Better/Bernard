@@ -266,6 +266,7 @@ export async function dispatchBrief({
   scheduledAt,      // ISO string | null
   locationIds,      // optional, gbp only
   userId,
+  retryItem = null, // { id, platform } from a previous failed attempt's error
 }) {
   if (!brief?.target_platform) throw new Error('Pick a target platform first')
   if (!composedContent?.trim()) throw new Error('Empty post body')
@@ -274,8 +275,24 @@ export async function dispatchBrief({
     ? [{ url: asset.blob_url, type: asset.kind === 'video' ? 'video' : 'photo' }]
     : []
 
-  // 1. Create the canonical content_items row.
-  const [created] = await apiFetch('/api/db/content', {
+  // 1. The canonical content_items row. A failed attempt left its draft behind
+  // and a retry used to create another one (audit 2026-11-18, P2; Q chose
+  // "reuse the draft" 2026-11-19). Reuse it when it targets the same platform
+  // (platform is not PATCHable); a reused row that no longer exists falls
+  // back to a new one.
+  let created = null
+  if (retryItem?.id && retryItem.platform === brief.target_platform) {
+    try {
+      created = await updateContentItem(retryItem.id, {
+        content: composedContent,
+        mediaUrls,
+        scheduledAt: scheduledAt || null,
+      })
+    } catch (e) {
+      if (e?.status !== 404) throw e
+    }
+  }
+  if (!created) [created] = await apiFetch('/api/db/content', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify([{
@@ -303,8 +320,14 @@ export async function dispatchBrief({
     scheduledAt,
     locationIds: brief.target_platform === 'gbp' ? locationIds : undefined,
   }
-  const result = await publishAndTrack(item, userId)
-  return { item: created, result }
+  try {
+    const result = await publishAndTrack(item, userId)
+    return { item: created, result }
+  } catch (e) {
+    // Carry the row so the caller's retry reuses it instead of a new draft.
+    if (e && typeof e === 'object') e.retryItem = { id: created.id, platform: brief.target_platform }
+    throw e
+  }
 }
 
 // Publish one item to all relevant platforms at once.
