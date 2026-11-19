@@ -94,9 +94,12 @@ async function updateWorkspace(workspaceId, patch, stripeCustomerId = null, { al
     },
   )
   if (!r.ok) {
+    // A failed write must not be acknowledged: throw so the handler answers
+    // 500 and Stripe retries the event (it never retries a 2xx). A 0-row match
+    // below is different: retrying cannot change it, so it is logged and acked.
     const text = await r.text().catch(() => '')
     console.error(`[billing/webhook] workspace patch failed (${r.status}):`, text)
-    return false
+    throw new Error(`workspace patch failed (${r.status})`)
   }
   const rows = await r.json().catch(() => [])
   if (stripeCustomerId && (!Array.isArray(rows) || rows.length === 0)) {
@@ -269,14 +272,13 @@ async function handler(req, res) {
           const customerId = invoice.customer
           if (customerId) {
             const r = await sb(`workspaces?stripe_customer_id=eq.${encodeURIComponent(customerId)}&stripe_subscription_id=not.is.null&status=eq.active&select=id&limit=1`)
-            if (r.ok) {
-              const rows = await r.json()
-              if (rows[0]?.id) {
-                await updateWorkspace(rows[0].id, { plan: 'past_due' }, customerId)
-                console.warn(`[billing/webhook] invoice.payment_failed: workspace ${rows[0].id} marked past_due`)
-              } else {
-                console.info(`[billing/webhook] invoice.payment_failed: no active workspace for customer ${customerId} — likely cancelled, ignoring`)
-              }
+            if (!r.ok) throw new Error(`workspace lookup failed (${r.status})`)
+            const rows = await r.json()
+            if (rows[0]?.id) {
+              await updateWorkspace(rows[0].id, { plan: 'past_due' }, customerId)
+              console.warn(`[billing/webhook] invoice.payment_failed: workspace ${rows[0].id} marked past_due`)
+            } else {
+              console.info(`[billing/webhook] invoice.payment_failed: no active workspace for customer ${customerId} — likely cancelled, ignoring`)
             }
           } else {
             console.error('[billing/webhook] invoice.payment_failed: could not resolve workspace_id')
@@ -303,10 +305,9 @@ async function handler(req, res) {
           // already cancelled, and a late invoice for the final period must not
           // restore its plan. Matches the invoice.payment_failed guard above.
           const r = await sb(`workspaces?stripe_customer_id=eq.${encodeURIComponent(customerId)}&stripe_subscription_id=not.is.null&status=eq.active&select=id&limit=1`)
-          if (r.ok) {
-            const rows = await r.json()
-            workspaceId = rows[0]?.id || null
-          }
+          if (!r.ok) throw new Error(`workspace lookup failed (${r.status})`)
+          const rows = await r.json()
+          workspaceId = rows[0]?.id || null
         }
 
         if (!workspaceId) {
@@ -370,7 +371,8 @@ async function handler(req, res) {
     return res.status(500).json({ error: 'handler-error' })
   }
 
-  // Always return 200 to acknowledge receipt — Stripe retries on non-2xx.
+  // 200 acknowledges the event. Stripe retries on non-2xx, so a failed
+  // Supabase write or lookup throws above and answers 500 instead.
   return res.status(200).json({ received: true })
 }
 
