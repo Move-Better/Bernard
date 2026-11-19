@@ -9,6 +9,7 @@ import LinkPage from '@/pages/LinkPage'
 import {
   ClerkProvider,
   SignIn,
+  SignUp,
   useAuth,
   useUser,
   useOrganizationList,
@@ -19,6 +20,7 @@ import { getPendingAnnouncement } from '@/lib/announcements'
 import { useExperience } from '@/lib/useExperience'
 import { EXPERIENCE_OWNER, EXPERIENCE_PRODUCER } from '@/lib/experience'
 import { BERNARD_PRIMARY_HSL } from '@/lib/brand'
+import { inviteAuthMode } from '@/lib/inviteTicket'
 const TeamHome = lazy(() => import('@/pages/TeamHome'))
 const ProducerHome = lazy(() => import('@/pages/ProducerHome'))
 const OwnerHome = lazy(() => import('@/pages/OwnerHome'))
@@ -870,8 +872,8 @@ function ProtectedApp() {
           <h1 className="text-xl font-bold">{signInName}</h1>
           <p className="text-sm text-muted-foreground">{signInBlurb}</p>
         </div>
-        <SignIn
-          appearance={{
+        {(() => {
+          const appearance = {
             layout: {
               logoImageUrl: '/bernard-logo.svg',
               logoPlacement: 'inside',
@@ -882,8 +884,14 @@ function ProtectedApp() {
               logoImage: 'h-14 w-auto',
               logoBox: 'h-14',
             },
-          }}
-        />
+          }
+          // An invitee with no account yet arrives with a Clerk ticket and
+          // status sign_up; <SignUp> redeems it. <SignIn> would send them to
+          // the apex new-business wizard.
+          return inviteAuthMode(window.location.search) === 'signup'
+            ? <SignUp routing="hash" appearance={appearance} />
+            : <SignIn appearance={appearance} />
+        })()}
         <div className="flex gap-4 justify-center mt-6 text-xs text-muted-foreground">
           <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
           <Link to="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
