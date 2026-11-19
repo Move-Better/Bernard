@@ -147,6 +147,14 @@ export default async function handler(req, res) {
     }
   }
 
+  // The location must belong to this workspace, like target_staff_ids above
+  // (audit 2026-11-18, P2: a bare UUID check accepted another tenant's location).
+  if (typeof target_location_id === 'string') {
+    const locChk = await sb(`workspace_locations?id=eq.${target_location_id}&workspace_id=eq.${ws.id}&select=id&limit=1`)
+    const locRows = locChk.ok ? await locChk.json() : []
+    if (!locRows.length) return res.status(400).json({ error: 'target_location_id not found in workspace' })
+  }
+
   if (start_at === 'invalid') return res.status(400).json({ error: 'invalid start_at' })
   if (end_at === 'invalid')   return res.status(400).json({ error: 'invalid end_at' })
   if (event_at === 'invalid') return res.status(400).json({ error: 'invalid event_at' })
