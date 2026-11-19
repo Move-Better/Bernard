@@ -90,6 +90,8 @@ Rule: when adding or auditing a platform-specific constraint (length cap, media-
 
 A multi-location Google Business post is one bundle post per location, and a public duplicate can't be undone. Each path that fans out (`runBundlePublish` in `publish/social.js`, `dispatchContentItem.js`) reads the posted-set from the **claimed** row's `content_items.dispatch_state`, skips locations already in it (`unpostedTargets`), records each new post right away (`mergePostedLocations` + `recordDispatchState`), and stops if that save fails. A new GBP dispatch path must do the same. GBP media goes through `gbpMedia()`: bundle.social allows "0-1 image only (no video)" on Google Business ([limits](https://info.bundle.social/api-reference/limits)). (2026-11-19, PR #2839: the editor and retry paths used to re-post locations that had already gone out, and the approve path sent every image.)
 
+The bundle webhook writes back into the same posted-set: it finds a GBP row by any location's post id (not only `platform_post_id`), records `status: 'posted'|'error'` per location with a conditional PATCH (`dispatch_state=eq.<what it read>`, re-read on conflict), and an errored location counts as **not posted** (`postedLocationIds`), so the next retry re-posts only it. Any new writer to `dispatch_state` must use the same conditional write. (2026-11-19, PR #2841.)
+
 ## bundle.social's `upload/from-url` endpoint — no declared size cap, but a ~100s gateway timeout
 
 Building the Library's YouTube publish lane (#2545), a bundle.social blog post claimed "resumable
