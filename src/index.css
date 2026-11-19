@@ -154,6 +154,21 @@
    ──────────────────────────────────────────────────────────────────────── */
 @layer components {
 
+  /* Hover-reveal row controls (audit 2026-11-18, items 12-13). A button that
+     hides until its row is hovered must also show when the row holds keyboard
+     focus, and ALWAYS on a touch screen, which has no hover: before this,
+     phone users never saw Duplicate / Dismiss / Pin / Remove. Put `group` on
+     the row and `nx-reveal` on the control (or its wrapper). Never hand-roll
+     `opacity-0 group-hover:opacity-100` on a button again;
+     tests/hoverRevealControls.test.js fails if one comes back. */
+  .nx-reveal { opacity: 0; transition: opacity 150ms; }
+  .group:hover .nx-reveal,
+  .group:focus-within .nx-reveal,
+  .nx-reveal:focus-visible { opacity: 1; }
+  @media (hover: none) {
+    .nx-reveal { opacity: 1; }
+  }
+
   /* Pills — semantic chips. Use ONE of these per pill; do not stack. */
   .nx-pill {
     display: inline-flex; align-items: center; gap: 6px;

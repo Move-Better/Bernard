@@ -475,7 +475,7 @@ function MediaPanel({ piece, updateItem }) {
                     type="button"
                     onClick={() => removeAt(idx)}
                     aria-label="Remove media"
-                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity hover:bg-black/80 group-hover:opacity-100"
+                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white nx-reveal hover:bg-black/80"
                   >
                     <X className="h-3 w-3" aria-hidden="true" />
                   </button>

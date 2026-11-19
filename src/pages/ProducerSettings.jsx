@@ -177,7 +177,7 @@ export default function ProducerSettings() {
             <div className="rounded-xl border bg-card p-4">
               <div className="text-2xs font-bold uppercase tracking-wide text-muted-foreground">This week</div>
               <div className="mt-2 flex items-center gap-6">
-                <Link to="/producer" className="group">
+                <Link to="/producer" className="group text-foreground">
                   <div className="text-xl font-bold tabular-nums group-hover:text-primary">{weekActions}</div>
                   <div className="text-xs text-muted-foreground group-hover:text-primary">actions →</div>
                 </Link>

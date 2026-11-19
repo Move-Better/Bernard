@@ -117,7 +117,7 @@ export default function BrandAnchorsEditor({ anchors = [] }) {
                 <button
                   onClick={() => handleRemove(a)}
                   disabled={busy}
-                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                  className="nx-reveal text-muted-foreground hover:text-foreground disabled:opacity-30"
                   aria-label="Remove reference"
                 >
                   <X className="h-3.5 w-3.5" />

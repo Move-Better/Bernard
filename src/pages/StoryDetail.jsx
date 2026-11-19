@@ -153,7 +153,7 @@ function EditableTitle({ value, displayValue, canEdit, disabled, onSave }) {
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="ml-2 inline-flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-foreground hover:bg-muted/60 transition"
+          className="ml-2 inline-flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground nx-reveal hover:text-foreground hover:bg-muted/60 transition"
           title="Edit title"
           aria-label="Edit title"
         >
