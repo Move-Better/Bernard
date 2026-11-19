@@ -307,6 +307,12 @@ export default async function handler(req, res) {
     }
     if (body.locationId !== undefined) {
       if (body.locationId && !UUID_RE.test(body.locationId)) return err(res, 'Invalid locationId', 400)
+      // Same workspace check as POST: a bare UUID check let a caller point
+      // this story at another tenant's location (audit 2026-11-18, P2).
+      if (body.locationId) {
+        const locCheck = await sb(`workspace_locations?id=eq.${body.locationId}&${wsFilter}&select=id&limit=1`)
+        if (!locCheck.ok || !(await locCheck.json()).length) return err(res, 'Location not found in workspace', 404)
+      }
       patch.location_id = body.locationId || null
     }
     if (body.pullQuoteSelectedId !== undefined) patch.pull_quote_selected_id = body.pullQuoteSelectedId || null
@@ -320,6 +326,12 @@ export default async function handler(req, res) {
     if (body.storyType !== undefined)  patch.story_type  = body.storyType  || null
     if (body.campaignId !== undefined) {
       if (body.campaignId && !UUID_RE.test(body.campaignId)) return err(res, 'Invalid campaignId', 400)
+      // Same workspace check as POST: an unscoped campaign_id leaked another
+      // tenant's campaign name back through the staff embed (audit 2026-11-18, P2).
+      if (body.campaignId) {
+        const campCheck = await sb(`campaigns?id=eq.${body.campaignId}&${wsFilter}&select=id&limit=1`)
+        if (!campCheck.ok || !(await campCheck.json()).length) return err(res, 'Campaign not found in workspace', 422)
+      }
       patch.campaign_id = body.campaignId || null
     }
     // summaryText — the channel-neutral "story in your words" the keystone
