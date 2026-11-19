@@ -185,7 +185,7 @@ function PointCard({ point, onDismiss, onRecord, isRecording }) {
         type="button"
         onClick={onDismiss}
         title="Dismiss"
-        className="absolute top-2 right-2 h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition"
+        className="absolute top-2 right-2 h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground nx-reveal hover:bg-destructive/10 hover:text-destructive transition"
       >
         <X className="h-3 w-3" />
       </button>

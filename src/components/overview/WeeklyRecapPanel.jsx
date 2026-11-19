@@ -236,7 +236,7 @@ function RecapBlock({ week, weekOffset, canPrev, onPrev, onNext, onToday, onPres
                       <Icon className="h-4 w-4 text-muted-foreground/40 shrink-0" aria-hidden="true" />
                     </>
                   )
-                  const cls = 'flex items-center gap-3 group border-l-2 border-l-success pl-2.5'
+                  const cls = 'flex items-center gap-3 group text-foreground border-l-2 border-l-success pl-2.5'
                   return item.interview_id ? (
                     <Link key={item.interview_id} to={`/stories/${item.interview_id}`} className={cls}>{inner}</Link>
                   ) : (
@@ -259,7 +259,7 @@ function RecapBlock({ week, weekOffset, canPrev, onPrev, onNext, onToday, onPres
             ) : (
               <div className="space-y-2">
                 {captured.slice(0, 4).map((c) => (
-                  <Link key={c.interview_id} to={`/stories/${c.interview_id}`} className="flex items-center gap-2.5 text-sm group border-l-2 border-l-info pl-2.5">
+                  <Link key={c.interview_id} to={`/stories/${c.interview_id}`} className="flex items-center gap-2.5 text-sm group text-foreground border-l-2 border-l-info pl-2.5">
                     <span className="h-6 w-6 rounded-full bg-muted text-muted-foreground text-3xs font-bold flex items-center justify-center shrink-0">
                       {getInitials(c.staff_name)}
                     </span>
@@ -298,7 +298,7 @@ function NowRow({ scheduled, waiting }) {
         ) : (
           <div className="space-y-2">
             {scheduled.slice(0, 4).map((s, i) => (
-              <Link key={`${s.storyId}-${i}`} to={`/stories/${s.storyId}`} className="flex items-center gap-2 text-sm group border-l-2 border-l-info pl-2.5">
+              <Link key={`${s.storyId}-${i}`} to={`/stories/${s.storyId}`} className="flex items-center gap-2 text-sm group text-foreground border-l-2 border-l-info pl-2.5">
                 <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                 <span className="font-semibold truncate flex-1 group-hover:text-primary transition-colors">{stripStoryDatePrefix(s.topic)}</span>
                 <span className="text-2xs text-muted-foreground shrink-0">{dateTimeLabel(s.scheduledAt)}</span>
@@ -318,7 +318,7 @@ function NowRow({ scheduled, waiting }) {
         ) : (
           <div className="space-y-2">
             {waiting.slice(0, 4).map((w) => (
-              <Link key={w.storyId} to={`/stories/${w.storyId}`} className="flex items-center gap-2 text-sm group border-l-2 border-l-warning pl-2.5">
+              <Link key={w.storyId} to={`/stories/${w.storyId}`} className="flex items-center gap-2 text-sm group text-foreground border-l-2 border-l-warning pl-2.5">
                 <span className="font-semibold truncate flex-1 group-hover:text-primary transition-colors">{stripStoryDatePrefix(w.topic)}</span>
                 <span className="text-2xs text-muted-foreground shrink-0">{w.staffName}</span>
               </Link>

@@ -70,7 +70,7 @@ export default function DraftContextPanel({ piece, onRemoveMedia, removingKey })
                     type="button"
                     onClick={() => onRemoveMedia(m)}
                     disabled={removingKey === key}
-                    className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition-opacity hover:bg-black/80 group-hover:opacity-100 disabled:opacity-50"
+                    className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white nx-reveal hover:bg-black/80 disabled:opacity-50"
                     title="Remove"
                     aria-label="Remove attached media"
                   >

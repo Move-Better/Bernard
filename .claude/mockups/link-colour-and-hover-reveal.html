@@ -1,0 +1,252 @@
+<title>Teal Rows and Hidden Buttons</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one scrolling page; per problem, TODAY | CHANGE panes, each at desktop and phone width.
+   Bernard is light-only, so this mock commits to the app's light tokens on purpose. */
+:root{
+  --bg:#f6f7f9; --card:#ffffff; --fg:hsl(222 47% 8%); --muted:hsl(215 19% 34%);
+  --muted-bg:hsl(220 14% 96%); --border:hsl(214 32% 91%); --primary:#0C7580;
+  --success:#16a34a; --info:#0284c7; --warning:#d97706; --destructive:#ef4444;
+  --today:#b42318; --change:#067647;
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.5;margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 60px}
+.wrap{display:flex;flex-direction:column;gap:28px}
+h1{font-size:24px;margin:0;text-wrap:balance;letter-spacing:-.02em}
+h2{font-size:18px;margin:0;text-wrap:balance}
+h3{font-size:13px;margin:0}
+p{margin:0}
+.lead{max-width:70ch;color:var(--muted);display:flex;flex-direction:column;gap:8px}
+.decide{border:1px solid var(--border);background:var(--card);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;max-width:80ch}
+.decide b{color:var(--fg)}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+section{display:flex;flex-direction:column;gap:14px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:900px){.cols{grid-template-columns:1fr}}
+.pane{border:1px solid var(--border);background:var(--card);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px;align-self:flex-start}
+.tag.today{background:#fee4e2;color:var(--today)} .tag.change{background:#dcfae6;color:var(--change)}
+.note{font-size:12px;color:var(--muted)}
+.frames{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.frame{border:1px dashed var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.frame.desk{flex:1 1 300px} .frame.phone{flex:0 1 250px;width:250px}
+.frame > .eyebrow{font-size:10px}
+code{font-size:12px;background:var(--muted-bg);padding:1px 5px;border-radius:5px}
+
+/* ── App replicas (classes copied from the real components) ── */
+.app a{color:var(--primary);text-decoration:none}           /* index.css: a { @apply text-primary } */
+.app .text-foreground{color:var(--fg)}
+.row{display:flex;align-items:center;gap:10px;padding-left:10px;border-left:2px solid var(--success)}
+.row.info{border-left-color:var(--info)} .row.warn{border-left-color:var(--warning)}
+.av{height:26px;width:26px;border-radius:50%;background:var(--muted-bg);color:var(--muted);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.grow{flex:1;min-width:0}
+.t{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list{display:flex;flex-direction:column;gap:9px}
+.app a.group:hover .t, .app a.group:hover .hov{color:var(--primary)}
+.tile{border:1px solid var(--border);border-radius:12px;padding:14px}
+.big{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.ph{color:var(--muted);font-style:italic;font-weight:500}
+
+/* hover-reveal: TODAY = opacity-0 group-hover:opacity-100 */
+.hx .rv{opacity:0;transition:opacity .15s}
+.hx .grp:hover .rv{opacity:1}
+/* CHANGE = proposed .nx-reveal: hover OR keyboard focus inside the row, and always on touch */
+.hx .nx-reveal{opacity:0;transition:opacity .15s}
+.hx .grp:hover .nx-reveal,.hx .grp:focus-within .nx-reveal{opacity:1}
+@media (hover:none){.hx .nx-reveal{opacity:1}}
+.phone.touch .nx-reveal{opacity:1}       /* phone frames simulate a touch screen */
+.ib{height:24px;width:24px;border-radius:6px;border:0;background:transparent;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.ib:hover{background:var(--muted-bg);color:var(--fg)}
+.ib.del{color:var(--destructive)}
+.ib:focus-visible,.pin:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+.ib svg{width:13px;height:13px}
+.grp{display:flex;align-items:center;gap:8px;border-radius:8px;padding:6px}
+.grp:hover{background:var(--muted-bg)}
+.thumb{height:30px;width:24px;border-radius:4px;background:linear-gradient(160deg,#334,#111);flex-shrink:0}
+.thumb.l{background:linear-gradient(160deg,#fff,#e5e7eb);border:1px solid var(--border)}
+.pill{font-size:10px;font-weight:600;color:var(--primary);background:rgba(12,117,128,.1);border-radius:999px;padding:1px 6px;margin-left:4px}
+.card{position:relative;border:1px solid rgba(12,117,128,.38);background:linear-gradient(180deg,#fff,rgba(12,117,128,.08));border-radius:12px;padding:10px 26px 10px 10px}
+.card .x{position:absolute;top:6px;right:6px}
+.h1{font-size:19px;font-weight:700;display:flex;align-items:center;min-width:0;gap:6px}
+.h1 span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pin{font-size:11.5px;font-weight:500;color:var(--muted);border:0;background:transparent;border-radius:6px;padding:3px 7px;display:inline-flex;gap:4px;align-items:center;cursor:pointer}
+.pin:hover{background:var(--muted-bg);color:var(--fg)}
+.media{position:relative;height:56px;width:56px;border-radius:6px;background:linear-gradient(135deg,#9aa4b1,#4b5563)}
+.media .ib{position:absolute;top:3px;right:3px;height:18px;width:18px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff}
+.sites{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+td,th{border-bottom:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:top}
+.tbl{overflow-x:auto}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:10px">
+    <div class="eyebrow">Bernard · audit 2026-11-18, items 12–13 · mockup for sign-off</div>
+    <h1>Teal rows that look like links, and buttons phones never see</h1>
+    <div class="lead">
+      <p>Two small problems with one cause: the app's base stylesheet paints every link teal, and several rows use hover to hide their buttons. Each section shows <b>today</b> and the <b>change</b> at desktop and phone width.</p>
+      <p>The panes are live. Hover the desktop rows, or press Tab to move through them. Phone frames act like a touch screen: there is no hover.</p>
+    </div>
+    <div class="decide">
+      <div class="eyebrow">What you are deciding</div>
+      <p><b>1. Recap rows:</b> story titles and names go back to dark text, and turn teal only when you point at them.</p>
+      <p><b>2. Hidden buttons:</b> on phones they are always shown (in grey). On desktop they stay hidden until you point at the row, as today, but now also appear when you Tab to the row with the keyboard.</p>
+      <p><b>3. Scope:</b> the audit named 5 places. I found 3 more with the same pattern (Book "exclude", and two "remove media" buttons in editors). I propose fixing all 8 with one shared style.</p>
+    </div>
+  </header>
+
+  <!-- ───────────── Problem 1 ───────────── -->
+  <section>
+    <div class="eyebrow">Problem 1 · Home → This week recap, and Producer settings</div>
+    <h2>Rows read as teal links at rest</h2>
+    <p class="note">Real story rows from Move Better (their dates are from Aug–Oct, not this week). The Producer counts are placeholders (N, M).</p>
+    <div class="cols">
+      <div class="pane">
+        <span class="tag today">Today</span>
+        <div class="frames">
+          <div class="frame desk app"><div class="eyebrow">Desktop</div>
+            <h3>Published</h3>
+            <div class="list">
+              <a class="row group" href="#p1"><span class="av">AA</span><span class="grow"><div class="t">The Repetition Problem: Why One Motion Didn't Hurt You, But a Thousand Did</div><div class="s">Aj Adams · Reel, Blog · Wed</div></span></a>
+              <a class="row group" href="#p1"><span class="av">ZC</span><span class="grow"><div class="t">When should I stop training if I am injured</div><div class="s">Zach Cullen · Post · Wed</div></span></a>
+            </div>
+            <h3>Captured</h3>
+            <div class="list">
+              <a class="row info group" href="#p1"><span class="av">SK</span><span class="t grow">Sophie Kaplan</span><span class="s">Thu</span></a>
+              <a class="row info group" href="#p1"><span class="av">TH</span><span class="t grow">Tyler Hoang</span><span class="s">Wed</span></a>
+            </div>
+            <h3>In review</h3>
+            <div class="list">
+              <a class="row warn group" href="#p1"><span class="t grow">What Happens in Your First Visit at Move Better (It's Not What You'd Expect)</span><span class="s">Aj Adams</span></a>
+            </div>
+          </div>
+          <div class="frame phone app"><div class="eyebrow">Phone</div>
+            <div class="list">
+              <a class="row group" href="#p1"><span class="av">AA</span><span class="grow"><div class="t">The Repetition Problem: Why One Motion Didn't Hurt You…</div><div class="s">Aj Adams · Wed</div></span></a>
+              <a class="row info group" href="#p1"><span class="av">SK</span><span class="t grow">Sophie Kaplan</span><span class="s">Thu</span></a>
+              <a class="row warn group" href="#p1"><span class="t grow">What Happens in Your First Visit…</span><span class="s">Aj Adams</span></a>
+            </div>
+            <div class="tile"><div class="eyebrow">This week</div>
+              <div style="display:flex;gap:22px;margin-top:6px">
+                <a class="group" href="#p1"><div class="big">N</div><div class="s" style="color:inherit">actions →</div></a>
+                <div><div class="big">M</div><div class="s">need you</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="note">Every title and name is teal, so the recap looks like a page of links. The Producer "N actions →" is teal while "M need you" next to it is black.</p>
+      </div>
+
+      <div class="pane">
+        <span class="tag change">Change</span>
+        <div class="frames">
+          <div class="frame desk app"><div class="eyebrow">Desktop · hover a row</div>
+            <h3>Published</h3>
+            <div class="list">
+              <a class="row group text-foreground" href="#p1"><span class="av">AA</span><span class="grow"><div class="t">The Repetition Problem: Why One Motion Didn't Hurt You, But a Thousand Did</div><div class="s">Aj Adams · Reel, Blog · Wed</div></span></a>
+              <a class="row group text-foreground" href="#p1"><span class="av">ZC</span><span class="grow"><div class="t">When should I stop training if I am injured</div><div class="s">Zach Cullen · Post · Wed</div></span></a>
+            </div>
+            <h3>Captured</h3>
+            <div class="list">
+              <a class="row info group text-foreground" href="#p1"><span class="av">SK</span><span class="t grow">Sophie Kaplan</span><span class="s">Thu</span></a>
+              <a class="row info group text-foreground" href="#p1"><span class="av">TH</span><span class="t grow">Tyler Hoang</span><span class="s">Wed</span></a>
+            </div>
+            <h3>In review</h3>
+            <div class="list">
+              <a class="row warn group text-foreground" href="#p1"><span class="t grow">What Happens in Your First Visit at Move Better (It's Not What You'd Expect)</span><span class="s">Aj Adams</span></a>
+            </div>
+          </div>
+          <div class="frame phone app"><div class="eyebrow">Phone</div>
+            <div class="list">
+              <a class="row group text-foreground" href="#p1"><span class="av">AA</span><span class="grow"><div class="t">The Repetition Problem: Why One Motion Didn't Hurt You…</div><div class="s">Aj Adams · Wed</div></span></a>
+              <a class="row info group text-foreground" href="#p1"><span class="av">SK</span><span class="t grow">Sophie Kaplan</span><span class="s">Thu</span></a>
+              <a class="row warn group text-foreground" href="#p1"><span class="t grow">What Happens in Your First Visit…</span><span class="s">Aj Adams</span></a>
+            </div>
+            <div class="tile"><div class="eyebrow">This week</div>
+              <div style="display:flex;gap:22px;margin-top:6px">
+                <a class="group text-foreground" href="#p1"><div class="big hov">N</div><div class="s hov">actions →</div></a>
+                <div><div class="big">M</div><div class="s">need you</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="note">Dark text at rest, teal on hover (that hover already exists in the code). The coloured left stripe and the arrow still say "this opens".</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── Problem 2 ───────────── -->
+  <section class="hx">
+    <div class="eyebrow">Problem 2 · buttons that only appear on mouse hover</div>
+    <h2>Phone users can't see these buttons at all</h2>
+    <p class="note">Template names are Bernard's real built-ins (Move Better has no custom templates, so only Duplicate shows). The reference and the idea card are marked examples, since Move Better has none saved.</p>
+    <div class="cols">
+      <div class="pane">
+        <span class="tag today">Today</span>
+        <div class="frames">
+          <div class="frame desk"><div class="eyebrow">Desktop · hover a row</div>
+            <div class="grp"><span class="thumb"></span><span class="grow"><div class="t">Full Photo<span class="pill">Default</span></div><div class="s">Built-in</div></span>
+              <span class="rv"><button class="ib" aria-label="Duplicate template"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></span></div>
+            <div class="grp"><span class="thumb l"></span><span class="grow"><div class="t">Light Claim</div><div class="s">Built-in</div></span>
+              <span class="rv"><button class="ib" aria-label="Duplicate template"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></span></div>
+            <div class="grp"><span class="grow"><b>@example.account</b> <span class="s">— [example reference]</span></span>
+              <button class="ib rv" aria-label="Remove reference"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+            <div class="grp h1"><span>The Repetition Problem: Why One Motion…</span>
+              <button class="ib rv" aria-label="Edit title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></div>
+          </div>
+          <div class="frame phone"><div class="eyebrow">Phone (touch)</div>
+            <div class="grp"><span class="thumb"></span><span class="grow"><div class="t">Full Photo<span class="pill">Default</span></div><div class="s">Built-in</div></span><span class="rv"><button class="ib" aria-label="Duplicate template" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></span></div>
+            <div class="card"><div class="s">Aj Adams</div><div class="t">[example idea card]</div><button class="ib x rv" style="height:18px;width:18px" aria-label="Dismiss" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+            <div class="grp" style="justify-content:space-between"><b style="font-size:16px">Chapter: First visits</b><button class="pin rv" tabindex="-1">Pin</button></div>
+            <div class="media"><button class="ib rv" aria-label="Remove media" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+          </div>
+        </div>
+        <p class="note">On a phone there's no hover, so Duplicate, Dismiss, Pin and Remove never appear. Tabbing on desktop doesn't show them either.</p>
+      </div>
+
+      <div class="pane">
+        <span class="tag change">Change</span>
+        <div class="frames">
+          <div class="frame desk"><div class="eyebrow">Desktop · hover or Tab</div>
+            <div class="grp"><span class="thumb"></span><span class="grow"><div class="t">Full Photo<span class="pill">Default</span></div><div class="s">Built-in</div></span>
+              <span class="nx-reveal"><button class="ib" aria-label="Duplicate template"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></span></div>
+            <div class="grp"><span class="thumb l"></span><span class="grow"><div class="t">Light Claim</div><div class="s">Built-in</div></span>
+              <span class="nx-reveal"><button class="ib" aria-label="Duplicate template"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></span></div>
+            <div class="grp"><span class="grow"><b>@example.account</b> <span class="s">— [example reference]</span></span>
+              <button class="ib nx-reveal" aria-label="Remove reference"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+            <div class="grp h1"><span>The Repetition Problem: Why One Motion…</span>
+              <button class="ib nx-reveal" aria-label="Edit title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></div>
+          </div>
+          <div class="frame phone touch"><div class="eyebrow">Phone (touch)</div>
+            <div class="grp"><span class="thumb"></span><span class="grow"><div class="t">Full Photo<span class="pill">Default</span></div><div class="s">Built-in</div></span><span class="nx-reveal"><button class="ib" aria-label="Duplicate template" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></span></div>
+            <div class="card"><div class="s">Aj Adams</div><div class="t">[example idea card]</div><button class="ib x nx-reveal" style="height:18px;width:18px" aria-label="Dismiss" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+            <div class="grp" style="justify-content:space-between"><b style="font-size:16px">Chapter: First visits</b><button class="pin nx-reveal" tabindex="-1">Pin</button></div>
+            <div class="media"><button class="ib nx-reveal" aria-label="Remove media" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+          </div>
+        </div>
+        <p class="note">Phones always show the buttons, in the same grey as today's hover state. Desktop looks the same as today at rest, and keyboard users now see the buttons too.</p>
+      </div>
+    </div>
+
+    <div class="pane">
+      <div class="eyebrow">All 8 places, one shared style (<code>nx-reveal</code> in index.css)</div>
+      <div class="tbl"><table>
+        <tr><th>Where</th><th>Button</th><th>Source</th></tr>
+        <tr><td>Settings → Photo templates</td><td>Duplicate · Edit · Delete</td><td><code>PhotoTemplates.jsx:751</code></td></tr>
+        <tr><td>Settings → Brand references</td><td>Remove reference</td><td><code>BrandAnchorsEditor.jsx:120</code></td></tr>
+        <tr><td>Home → idea cards</td><td>Dismiss</td><td><code>PointCapture.jsx:188</code></td></tr>
+        <tr><td>Story page title</td><td>Edit title</td><td><code>StoryDetail.jsx:156</code></td></tr>
+        <tr><td>Book chapter</td><td>Pin</td><td><code>Book.jsx:362</code></td></tr>
+        <tr><td>Book story row <i>(found, not in audit)</i></td><td>Exclude from book</td><td><code>ExcludeFromBookToggle.jsx:153</code></td></tr>
+        <tr><td>Draft context panel <i>(found)</i></td><td>Remove attached media</td><td><code>DraftContextPanel.jsx:73</code></td></tr>
+        <tr><td>Post editor media strip <i>(found)</i></td><td>Remove media</td><td><code>UnifiedEditor.jsx:478</code></td></tr>
+      </table></div>
+      <p class="note">Left alone on purpose: tooltips, and hover hints that aren't buttons (a pencil or chevron inside a row that is itself clickable, "click to attach" overlays on thumbnails).</p>
+    </div>
+  </section>
+</div>
