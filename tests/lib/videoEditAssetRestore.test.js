@@ -8,10 +8,9 @@
 // the app's defaults and a cache seeded at the previous open.
 // Part 2 pins that VideoEditor's one-shot restore effect waits on that gate.
 //
-// ponytail: this is not a render test. The suite has no jsdom/RTL (adding them
-// was blocked in the session that wrote this), so the VideoEditor wiring is
-// held by a source guard. Upgrade path: render <VideoEditor> under jsdom with a
-// stale cache and assert on the restored trim.
+// The render-level check (the real <VideoEditor> under jsdom) is
+// tests/pages/videoEditorDraftRestore.test.jsx; the source guard below stays as a
+// cheap second net.
 import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { QueryClient, QueryObserver } from '@tanstack/react-query'
