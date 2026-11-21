@@ -10,6 +10,8 @@
 // Retrying on the conflict (rather than reading existing labels first) is also
 // what makes two simultaneous saves safe: the loser just takes the next number.
 
+import { RESERVED_VARIANT_LABELS } from './aspectVariants.js'
+
 const VARIANT_INDEX = 'media_assets_aspect_variant_unique'
 // ponytail: 20 same-named live crops of one master is far past real use; past
 // that the save fails loudly instead of looping. Raise if anyone ever hits it.
@@ -22,7 +24,11 @@ const MAX_ATTEMPTS = 20
  */
 export async function insertEditVariant(sb, row) {
   const base = row.variant_label
-  for (let n = 1; n <= MAX_ATTEMPTS; n++) {
+  // saveAspectVariant finds its carousel bake by (parent_id, variant_label) and
+  // PATCHes it, so a user crop holding that label would be overwritten by the
+  // next render. Start numbering at (2) for a reserved label, even when free.
+  const first = RESERVED_VARIANT_LABELS.includes(base) ? 2 : 1
+  for (let n = first; n <= MAX_ATTEMPTS; n++) {
     const variant_label = n === 1 ? base : `${base} (${n})`
     const ins = await sb('media_assets', { method: 'POST', body: JSON.stringify({ ...row, variant_label }) })
     if (ins.ok) return (await ins.json())[0] || null

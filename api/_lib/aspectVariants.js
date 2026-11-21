@@ -38,6 +38,9 @@ const VARIANT_LABELS = {
   instagram_carousel_video: '4:5 carousel',
 }
 
+/** Labels the renderer owns; a user crop must never be saved under one. */
+export const RESERVED_VARIANT_LABELS = Object.values(VARIANT_LABELS)
+
 export function aspectVariantLabel(channel) {
   return VARIANT_LABELS[channel] || null
 }

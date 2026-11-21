@@ -31,6 +31,12 @@ function scripted(script) {
 const row = { workspace_id: 'ws', parent_id: 'src-1', variant_label: '9:16 Vertical', kind: 'photo' }
 
 describe('insertEditVariant', () => {
+  it('never saves a user crop under the label the carousel render owns', async () => {
+    const { sb, calls } = scripted([res(201, [{ id: 'v1' }])])
+    await insertEditVariant(sb, { ...row, variant_label: '4:5 carousel' })
+    expect(calls.map((c) => c.body.variant_label)).toEqual(['4:5 carousel (2)'])
+  })
+
   it('saves under the plain label when it is free', async () => {
     const { sb, calls } = scripted([res(201, [{ id: 'v1', variant_label: '9:16 Vertical' }])])
     const v = await insertEditVariant(sb, row)
