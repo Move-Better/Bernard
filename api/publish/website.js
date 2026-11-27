@@ -56,6 +56,7 @@ import { rewriteMarkdownImageUrls } from '../_lib/publishImageMirror.js'
 import { findBodyH1, deriveSeoTitle, SEO_TITLE_MAX } from '../../src/lib/blogOutput.js'
 import { checkWordsApproved } from '../_lib/wordsApprovalGate.js'
 import { fetchApprovedCitations, insertApprovedCitations } from '../_lib/citations/insertCitations.js'
+import { MOVE_BETTER_WEBSITE_SLUG, checkMoveBetterBlog } from '../_lib/websitePublishChecks.js'
 
 async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed', message: 'POST only' })
@@ -106,6 +107,15 @@ async function handler(req, res) {
   // parent interview must have its words approved before this can publish.
   const gate = await checkWordsApproved(payload.contentItemId, workspaceId)
   if (!gate.ok) return res.status(gate.status).json(gate.body)
+
+  // Move Better's own site rules (old links, doctor names, alt text). Gated to
+  // that one workspace; runs before citations, which quote outside authors.
+  if (workspaceSlug === MOVE_BETTER_WEBSITE_SLUG) {
+    const issues = await checkMoveBetterBlog(payload, { lookupAlt: (name) => mediaAltText(name, workspaceId) })
+    if (issues.length) {
+      return res.status(400).json({ error: 'website_content_check', message: `${issues.join('. ')}.`, issues })
+    }
+  }
 
   // Research citations (.claude/blog-research-citations-spec.md) — the ONLY
   // place an approved citation is mechanically appended to the published
@@ -491,6 +501,14 @@ async function resolveTags(wp, names) {
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
+
+async function mediaAltText(fileName, workspaceId) {
+  const r = await supabaseRest(
+    `media_assets?workspace_id=eq.${encodeURIComponent(workspaceId)}&filename=eq.${encodeURIComponent(fileName)}&alt_text=not.is.null&select=alt_text&limit=1`,
+  )
+  if (!r.ok) return ''
+  return (await r.json())[0]?.alt_text?.trim() || ''
+}
 
 // Stamps how the receiver topic was chosen on the content item so the monthly
 // topic review can list the guesses (via 'classifier'|'fallback'). Best-effort:
